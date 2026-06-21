@@ -1,0 +1,7 @@
+node_modules/
+dist/
+YoteMarket Web Platform.html
+.DS_Store
+.env
+.env.*
+.vercel
