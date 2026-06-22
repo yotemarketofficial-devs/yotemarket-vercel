@@ -13,6 +13,7 @@ import KitFrame from './components/KitFrame.jsx';
 const StorefrontApp = lazy(() => import('./kits/storefront/index.jsx'));
 const DashboardApp = lazy(() => import('./kits/dashboard/index.jsx'));
 const MarketersApp = lazy(() => import('./kits/marketers/index.jsx'));
+const EarnLanding = lazy(() => import('./kits/earn/index.jsx'));
 const StaffApp = lazy(() => import('./kits/staff/index.jsx'));
 const AdminApp = lazy(() => import('./kits/admin/index.jsx'));
 
@@ -46,8 +47,18 @@ function App() {
             </KitFrame>
           }
         />
+        {/* /marketers = the Marketer Program recruitment landing (reached via "Earn");
+            the scout app itself lives at /marketers/app */}
         <Route
           path="/marketers"
+          element={
+            <KitFrame scope="kit-earn">
+              <EarnLanding />
+            </KitFrame>
+          }
+        />
+        <Route
+          path="/marketers/app"
           element={
             <KitFrame scope="kit-marketers">
               <MarketersApp />
