@@ -1,0 +1,78 @@
+/* Merchant Dashboard theme — shared YoteMarket purple+gold, light/dark.
+   Source for scope-css.mjs; do not import directly (dashboard.css is generated). */
+:root{
+  --m-primary:#4f46e5; --m-primary-deep:#4338ca; --m-primary-press:#3730a3;
+  --m-secondary:#a020f0; --m-amber:#fcd34d; --m-gold:#f4b530;
+  --m-success:#10b981; --m-danger:#ef4444; --m-mpesa:#009b3a; --m-whatsapp:#25d366;
+  --m-grad:linear-gradient(135deg,#2a0e64 0%,#5b2c9c 55%,#8b3fea 100%);
+  --m-grad-deep:linear-gradient(160deg,#1a0640 0%,#3a1a78 50%,#8b3fea 100%);
+  --m-bg:#f6f7fb; --m-surface:#fff; --m-surface-2:#f1f3f9; --m-surface-3:#eef2ff;
+  --m-fg1:#111827; --m-fg2:#374151; --m-fg3:#6b7280; --m-fg4:#9ca3af;
+  --m-border:#e8eaf1; --m-link:#4338ca; --m-chip-bg:#f1f3f9; --m-chip-fg:#1f2937;
+  --m-shadow-card:0 4px 14px -4px rgb(30 20 70/.10); --m-shadow-float:0 18px 44px -12px rgb(30 20 70/.22);
+  --m-glow:0 12px 30px -10px rgba(124,58,237,.45); --m-nav-bg:rgba(255,255,255,.86);
+  --m-active-bg:#dcfce7; --m-active-fg:#166534; --m-pending-bg:#fef9c3; --m-pending-fg:#854d0e; --m-inactive-bg:#fee2e2; --m-inactive-fg:#b91c1c;
+}
+[data-theme="dark"]{
+  --m-bg:#0b0d1c; --m-surface:#14172b; --m-surface-2:#1b1f38; --m-surface-3:#262a52;
+  --m-fg1:#f4f5fb; --m-fg2:#c8cce0; --m-fg3:#8a90b4; --m-fg4:#5b608a;
+  --m-border:rgba(255,255,255,.07); --m-link:#b9a8ff; --m-chip-bg:#1b1f38; --m-chip-fg:#c8cce0;
+  --m-shadow-card:0 10px 28px -10px rgba(0,0,0,.6); --m-shadow-float:0 22px 50px -14px rgba(0,0,0,.72);
+  --m-nav-bg:rgba(15,17,34,.82);
+  --m-active-bg:rgba(16,185,129,.16); --m-active-fg:#6ee7b7; --m-pending-bg:rgba(245,158,11,.16); --m-pending-fg:#fcd34d; --m-inactive-bg:rgba(239,68,68,.16); --m-inactive-fg:#fca5a5;
+}
+*{box-sizing:border-box;}
+html,body{margin:0; font-family:'Poppins',system-ui,sans-serif; background:var(--m-bg); color:var(--m-fg2);
+  -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; min-height:100vh;}
+a{text-decoration:none; color:inherit;}
+.wrap{max-width:1280px; margin:0 auto; padding:0 24px;}
+.ym-h1{font-size:26px; font-weight:800; color:var(--m-fg1); line-height:1.2; letter-spacing:-.02em;}
+.ym-h2{font-size:18px; font-weight:700; color:var(--m-fg1);}
+.ym-h3{font-size:15px; font-weight:600; color:var(--m-fg1);}
+.ym-body{font-size:15px; color:var(--m-fg2); line-height:1.55;}
+.ym-sub{font-size:13.5px; color:var(--m-fg3);}
+.ym-cap{font-size:12px; color:var(--m-fg3);}
+.ym-btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:0 18px;
+  border-radius:12px; font-family:inherit; font-size:14px; font-weight:600; border:none; cursor:pointer;
+  transition:background .2s,box-shadow .2s,transform .1s,filter .15s; white-space:nowrap;}
+.ym-btn:active{transform:translateY(1px);}
+.ym-btn:disabled{opacity:.6; cursor:not-allowed;}
+.ym-btn-primary{background:var(--m-primary-deep); color:#fff;}
+.ym-btn-primary:hover{background:var(--m-primary-press);}
+[data-theme="dark"] .ym-btn-primary{background:var(--m-grad); box-shadow:var(--m-glow);}
+.ym-btn-outline{background:transparent; color:var(--m-link); border:1.5px solid var(--m-primary-deep);}
+[data-theme="dark"] .ym-btn-outline{border-color:#6366f1;}
+.ym-btn-ghost{background:var(--m-surface-2); color:var(--m-fg1);}
+.ym-btn-ghost:hover{filter:brightness(.96);}
+.ym-btn-mpesa{background:var(--m-mpesa); color:#fff;}
+.ym-btn-sm{min-height:36px; padding:0 14px; font-size:13.5px; border-radius:10px;}
+.ym-card{background:var(--m-surface); border-radius:18px; box-shadow:var(--m-shadow-card);}
+[data-theme="dark"] .ym-card{border:1px solid var(--m-border);}
+.ym-pill{display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:9999px; font-size:11.5px; font-weight:600;}
+.ym-pill-active{background:var(--m-active-bg); color:var(--m-active-fg);}
+.ym-pill-pending{background:var(--m-pending-bg); color:var(--m-pending-fg);}
+.ym-pill-inactive{background:var(--m-inactive-bg); color:var(--m-inactive-fg);}
+.ym-input,.ipt{width:100%; box-sizing:border-box; height:46px; padding:0 14px; border-radius:12px; background:var(--m-surface);
+  color:var(--m-fg1); border:1px solid var(--m-border); font-family:inherit; font-size:14px; outline:none; transition:border-color .2s,box-shadow .2s;}
+.ipt{padding:11px 14px; height:auto;}
+.ym-input::placeholder,.ipt::placeholder{color:var(--m-fg4);}
+.ym-input:focus,.ipt:focus{border-color:var(--m-primary); box-shadow:0 0 0 3px rgba(79,70,229,.2);}
+[data-theme="dark"] .ym-input,[data-theme="dark"] .ipt{background:var(--m-surface-2); border-color:transparent;}
+.ym-label{display:block; font-size:13px; font-weight:500; color:var(--m-fg2); margin-bottom:6px;}
+.icon-btn{width:42px; height:42px; border-radius:9999px; border:none; cursor:pointer; background:var(--m-surface-2);
+  color:var(--m-fg1); font-size:15px; display:flex; align-items:center; justify-content:center; position:relative; transition:filter .15s;}
+.icon-btn:hover{filter:brightness(.95);}
+.ym-img{position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;}
+.ym-img::before{content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,.18) 0 10px, transparent 10px 20px);}
+.scroll-x{display:flex; overflow-x:auto; scrollbar-width:none;}
+.scroll-x::-webkit-scrollbar{display:none;}
+table.ym-table{width:100%; border-collapse:collapse; font-size:14px;}
+table.ym-table thead th{text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--m-fg3); font-weight:600; padding:12px 18px; background:var(--m-surface-2);}
+table.ym-table tbody td{padding:13px 18px; border-top:1px solid var(--m-border); color:var(--m-fg2);}
+table.ym-table tbody tr:hover{background:var(--m-surface-2);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--m-border); border-radius:10px;}
+@keyframes ym-fade-up{from{transform:translateY(12px)}to{transform:translateY(0)}}
+@keyframes ym-spin{to{transform:rotate(360deg)}}
+.anim-up{opacity:1;}
+@media (prefers-reduced-motion: no-preference){ .anim-up{animation:ym-fade-up .3s ease;} }

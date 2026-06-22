@@ -1,0 +1,73 @@
+/* Marketers theme tokens — purple + gold, light & dark.
+   Source for scope-css.mjs; do not import directly (marketers.css is generated). */
+:root{
+  --bg:#F5F1FB; --bg2:#EEE6F8; --surface:#FFFFFF; --surface2:#FAF6FE;
+  --line:#ECE4F6; --line2:#E0D5F0;
+  --t1:#1C1233; --t2:#574B70; --t3:#897EA0;
+  --purple:#7C2BD4; --purple-deep:#5B16A8; --purple-soft:#F4ECFD;
+  --gold:#E89B0C; --gold-bright:#F4B530; --gold-bg:#FFF6E0; --gold-line:#F6E2B0;
+  --green:#059669; --green-bg:#DCFCE7; --green-fg:#166534;
+  --pending-bg:#FEF9C3; --pending-fg:#854D0E;
+  --reject-bg:#FEE2E2; --reject-fg:#B91C1C;
+  --grad: linear-gradient(135deg,#5B16A8 0%,#7C2BD4 55%,#A020F0 100%);
+  --shadow: 0 4px 6px -1px rgb(60 20 110 / .10), 0 2px 4px -2px rgb(60 20 110 / .08);
+  --shadow-lg: 0 18px 40px -12px rgb(60 20 110 / .22);
+  --ring: rgba(124,43,212,.18);
+}
+html.dark{
+  --bg:#120825; --bg2:#1A0E33; --surface:#1E1240; --surface2:#27184F;
+  --line:#33215C; --line2:#3E2A6B;
+  --t1:#F3ECFD; --t2:#C3B2E4; --t3:#8E7CB6;
+  --purple:#B97BFF; --purple-deep:#9B5BF0; --purple-soft:rgba(160,32,240,.16);
+  --gold:#FACC45; --gold-bright:#FBD56B; --gold-bg:rgba(250,204,69,.12); --gold-line:rgba(250,204,69,.30);
+  --green:#34D399; --green-bg:rgba(16,185,129,.16); --green-fg:#6FE0A8;
+  --pending-bg:rgba(251,191,36,.16); --pending-fg:#FCD34D;
+  --reject-bg:rgba(239,68,68,.16); --reject-fg:#FCA5A5;
+  --grad: linear-gradient(135deg,#3A1A78 0%,#5B2C9C 55%,#7C2BD4 100%);
+  --shadow: 0 4px 10px -2px rgb(0 0 0 / .45);
+  --shadow-lg: 0 22px 50px -16px rgb(0 0 0 / .65);
+  --ring: rgba(185,123,255,.28);
+}
+html,body{ font-family:'Poppins','Inter',system-ui,sans-serif; background:var(--bg); color:var(--t2);
+  -webkit-font-smoothing:antialiased; transition:background .25s ease, color .25s ease; min-height:100vh; }
+
+/* semantic helpers (theme-aware) */
+.surface{ background:var(--surface); }
+.surface2{ background:var(--surface2); }
+.bg-page{ background:var(--bg); }
+.bg-page2{ background:var(--bg2); }
+.t1{ color:var(--t1); } .t2{ color:var(--t2); } .t3{ color:var(--t3); }
+.accent{ color:var(--purple); }
+.gold{ color:var(--gold); }
+.b-line{ border-color:var(--line); }
+.card{ background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); }
+.card-flat{ background:var(--surface); border:1px solid var(--line); border-radius:16px; }
+.grad{ background:var(--grad); }
+.mono{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+.num{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px;
+  font-size:12px; font-weight:600; }
+.pill-ok{ background:var(--green-bg); color:var(--green-fg); }
+.pill-pending{ background:var(--pending-bg); color:var(--pending-fg); }
+.pill-reject{ background:var(--reject-bg); color:var(--reject-fg); }
+
+input[type=range]{ -webkit-appearance:none; appearance:none; height:6px; border-radius:6px; background:var(--bg2); outline:none; }
+html.dark input[type=range]{ background:#2B1A55; }
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%;
+  background:var(--gold-bright); cursor:pointer; border:4px solid var(--surface); box-shadow:0 0 0 1px var(--gold), 0 2px 8px rgba(244,181,48,.4); }
+input[type=range]::-moz-range-thumb{ width:22px; height:22px; border-radius:50%; background:var(--gold-bright); cursor:pointer; border:4px solid var(--surface); }
+
+.ym-input{ width:100%; background:var(--surface2); border:1px solid var(--line2); border-radius:10px;
+  padding:11px 14px; font-size:14px; color:var(--t1); font-family:inherit; transition:.15s; outline:none; }
+.ym-input::placeholder{ color:var(--t3); }
+.ym-input:focus{ border-color:var(--purple); box-shadow:0 0 0 3px var(--ring); }
+
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-thumb{ background:var(--line2); border-radius:10px; border:3px solid var(--bg); }
+.no-bar::-webkit-scrollbar{ display:none; }
+.no-bar{ scrollbar-width:none; }
+@keyframes pop{ from{transform:scale(.97)} to{transform:scale(1)} }
+@keyframes fadeUp{ from{transform:translateY(8px)} to{transform:none} }
+.fadeup{ opacity:1; }
+@media (prefers-reduced-motion: no-preference){ .fadeup{ animation:fadeUp .35s ease; } }

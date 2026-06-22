@@ -5,6 +5,7 @@ const navItems = [
   { label: 'Shop', path: '/storefront' },
   { label: 'Sell', path: '/dashboard' },
   { label: 'Earn', path: '/marketers' },
+  { label: 'Get the app', path: '/mobile' },
 ];
 
 function Layout() {

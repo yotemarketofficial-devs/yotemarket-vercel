@@ -1,0 +1,5 @@
+/* Tailwind utilities for the Marketers kit (preflight disabled in tailwind.config.js,
+   so this emits only the utility/component classes the marketers files actually use). */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
