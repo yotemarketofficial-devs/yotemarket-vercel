@@ -1,9 +1,14 @@
 /* extras.jsx — Merchant: Sales, Wallet, Subscription, Settings, Chat (aligned theme). */
 import React from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './primitives.jsx';
 import { OrdersTable } from './overview.jsx';
 import { ORDER_ROWS, WALLET, SUBSCRIPTION, CHATS, SHOP, ksh } from './data.js';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { subscribeMpesa, db, firebaseEnabled } from '../../lib/firebase.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
+
+const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
 
 /* ---------- SALES ---------- */
 export function Sales(){
@@ -64,36 +69,115 @@ export function Wallet({ toast }){
   );
 }
 
-/* ---------- SUBSCRIPTION ---------- */
+/* ---------- SUBSCRIPTION (real M-Pesa subscribe → server activation) ---------- */
 export function Subscription({ toast }){
+  const { user, hasAccount } = useAuth();
+  const uid = user?.uid;
+  const [live, setLive] = useStateX(null);       // real subscriptions/{uid} doc
+  const [picking, setPicking] = useStateX(null);  // tier being subscribed to
+  const [phone, setPhone] = useStateX('');
+  const [stage, setStage] = useStateX('idle');    // idle | sending | waiting
+  const [err, setErr] = useStateX('');
+
+  // live subscription status (activated server-side by the M-Pesa callback)
+  useEffX(() => {
+    if (!firebaseEnabled || !db || !uid) return undefined;
+    const u = onSnapshot(doc(db, 'subscriptions', uid), (s) => setLive(s.data() || null), () => {});
+    return () => u();
+  }, [uid]);
+
+  // when the payment confirms, the subscription flips to active → close the dialog
+  useEffX(() => {
+    if (stage === 'waiting' && live && live.status === 'active') {
+      setStage('idle'); setPicking(null); toast && toast(`${live.plan} subscription active`);
+    }
+  }, [live, stage]);
+
+  const current = live && live.status === 'active' ? live : null;
+  const usedPct = current && current.deliveriesCap ? Math.min(100, (current.deliveriesUsed || 0) / current.deliveriesCap * 100) : 0;
+
+  const startSub = async (tier) => {
+    setErr('');
+    if (!hasAccount || !uid) { setErr('Sign in as a merchant (via the storefront) to subscribe.'); return; }
+    if (!phone.trim()) { setErr('Enter the M-Pesa phone number to bill.'); return; }
+    setStage('sending');
+    try {
+      await subscribeMpesa({ plan: tier.name, phone });
+      setStage('waiting');
+    } catch (e) {
+      setErr(e.message || 'Could not start the subscription. Please try again.');
+      setStage('idle');
+    }
+  };
+
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:6 }}>Subscription</h1>
-      <p className="ym-sub" style={{ marginBottom:20 }}>No sales commission — just a flat monthly plan with bundled hub deliveries.</p>
+      <p className="ym-sub" style={{ marginBottom:20 }}>No sales commission — just a flat monthly plan with bundled hub deliveries, paid with M-Pesa.</p>
+
       <Card style={{ padding:22, marginBottom:22, display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:16, alignItems:'center' }}>
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}><span className="ym-h2">{SUBSCRIPTION.plan} plan</span><Pill tone="active">Current</Pill></div>
-          <div className="ym-sub" style={{ marginTop:4 }}>{ksh(SUBSCRIPTION.price)}/mo · Band {SUBSCRIPTION.band} · renews {SUBSCRIPTION.next}</div>
-        </div>
-        <div style={{ minWidth:200 }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span className="ym-cap">Deliveries used</span><span className="ym-cap" style={{ fontWeight:700, color:'var(--m-fg1)' }}>{SUBSCRIPTION.deliveriesUsed}/{SUBSCRIPTION.deliveriesCap}</span></div>
-          <div style={{ height:8, borderRadius:9999, background:'var(--m-surface-2)', overflow:'hidden' }}><div style={{ width:(SUBSCRIPTION.deliveriesUsed/SUBSCRIPTION.deliveriesCap*100)+'%', height:'100%', background:'var(--m-grad)' }} /></div>
-        </div>
+        {current ? (<>
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}><span className="ym-h2">{current.plan} plan</span><Pill tone="active">Active</Pill></div>
+            <div className="ym-sub" style={{ marginTop:4 }}>{ksh(current.price)}/mo · {current.deliveriesCap} bundled deliveries{current.renewsAt ? ` · renews ${fmtTs(current.renewsAt)}` : ''}</div>
+          </div>
+          <div style={{ minWidth:200 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span className="ym-cap">Deliveries used</span><span className="ym-cap" style={{ fontWeight:700, color:'var(--m-fg1)' }}>{current.deliveriesUsed || 0}/{current.deliveriesCap}</span></div>
+            <div style={{ height:8, borderRadius:9999, background:'var(--m-surface-2)', overflow:'hidden' }}><div style={{ width:usedPct+'%', height:'100%', background:'var(--m-grad)' }} /></div>
+          </div>
+        </>) : (
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}><span className="ym-h2">No active plan</span><Pill tone="pending">Inactive</Pill></div>
+            <div className="ym-sub" style={{ marginTop:4 }}>Choose a plan below and pay with M-Pesa to start selling with bundled deliveries.</div>
+          </div>
+        )}
       </Card>
+
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:18 }}>
-        {SUBSCRIPTION.tiers.map(t=>(
-          <Card key={t.name} style={{ padding:22, border: t.current?'2px solid var(--m-primary)':undefined, position:'relative' }}>
-            {t.current && <span style={{ position:'absolute', top:16, right:16 }} className="ym-pill ym-pill-active">Current</span>}
-            <div className="ym-h2" style={{ fontSize:17 }}>{t.name}</div>
-            <div style={{ margin:'8px 0 4px' }}><span style={{ fontSize:28, fontWeight:800, color:'var(--m-fg1)' }}>{ksh(t.price)}</span><span className="ym-cap">/mo</span></div>
-            <div className="ym-cap" style={{ marginBottom:16 }}>{t.deliveries} bundled deliveries</div>
-            <div style={{ display:'flex', flexDirection:'column', gap:9, marginBottom:18 }}>
-              {t.features.map(f=><div key={f} style={{ display:'flex', gap:9, fontSize:13.5, color:'var(--m-fg2)' }}><FA i="fa-check" style={{ color:'var(--m-success)', marginTop:3 }} /><span>{f}</span></div>)}
-            </div>
-            <Btn kind={t.current?'ghost':'primary'} style={{ width:'100%' }} disabled={t.current} onClick={()=>toast&&toast('Switched to '+t.name)}>{t.current?'Current plan':'Switch to '+t.name}</Btn>
-          </Card>
-        ))}
+        {SUBSCRIPTION.tiers.map(t=>{
+          const isCurrent = current && current.plan === t.name;
+          return (
+            <Card key={t.name} style={{ padding:22, border: isCurrent?'2px solid var(--m-primary)':undefined, position:'relative' }}>
+              {isCurrent && <span style={{ position:'absolute', top:16, right:16 }} className="ym-pill ym-pill-active">Current</span>}
+              <div className="ym-h2" style={{ fontSize:17 }}>{t.name}</div>
+              <div style={{ margin:'8px 0 4px' }}><span style={{ fontSize:28, fontWeight:800, color:'var(--m-fg1)' }}>{ksh(t.price)}</span><span className="ym-cap">/mo</span></div>
+              <div className="ym-cap" style={{ marginBottom:16 }}>{t.deliveries} bundled deliveries</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:9, marginBottom:18 }}>
+                {t.features.map(f=><div key={f} style={{ display:'flex', gap:9, fontSize:13.5, color:'var(--m-fg2)' }}><FA i="fa-check" style={{ color:'var(--m-success)', marginTop:3 }} /><span>{f}</span></div>)}
+              </div>
+              <Btn kind={isCurrent?'ghost':'primary'} style={{ width:'100%' }} disabled={isCurrent} onClick={()=>{ setPicking(t); setErr(''); setStage('idle'); }}>{isCurrent?'Current plan':`Subscribe · ${ksh(t.price)}/mo`}</Btn>
+            </Card>
+          );
+        })}
       </div>
+
+      {/* subscribe / pay dialog */}
+      {picking && (
+        <div style={{ position:'fixed', inset:0, zIndex:120, background:'rgba(17,24,39,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={e=>{ if(e.target===e.currentTarget && stage!=='waiting'){ setPicking(null); } }}>
+          <Card style={{ width:'100%', maxWidth:440, padding:26, boxShadow:'var(--m-shadow-float)' }}>
+            {stage==='waiting' ? (
+              <div style={{ textAlign:'center', padding:'14px 4px' }}>
+                <div style={{ width:72, height:72, borderRadius:9999, margin:'0 auto 16px', background:'var(--m-mpesa)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30 }}><FA i="fa-mobile-screen" /></div>
+                <div className="ym-h2">Check your phone</div>
+                <p className="ym-sub" style={{ marginTop:8 }}>Enter your M-Pesa PIN to pay <b style={{ color:'var(--m-fg1)' }}>{ksh(picking.price)}</b> for the <b style={{ color:'var(--m-fg1)' }}>{picking.name}</b> plan.</p>
+                <div style={{ display:'inline-flex', alignItems:'center', gap:9, marginTop:16, color:'var(--m-fg3)' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /> Waiting for confirmation…</div>
+                <Btn kind="ghost" size="sm" style={{ marginTop:18 }} onClick={()=>{ setPicking(null); setStage('idle'); }}>Close</Btn>
+              </div>
+            ) : (<>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                <h2 className="ym-h2">Subscribe to {picking.name}</h2>
+                <button onClick={()=>setPicking(null)} className="icon-btn" aria-label="Close"><FA i="fa-xmark" /></button>
+              </div>
+              <p className="ym-sub" style={{ marginBottom:18 }}>{ksh(picking.price)}/mo · {picking.deliveries} bundled deliveries. Billed monthly via M-Pesa.</p>
+              <label className="ym-label">M-Pesa phone number</label>
+              <input className="ipt" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" />
+              {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'11px 14px', fontSize:13, fontWeight:500, marginTop:14 }}><FA i="fa-circle-exclamation" /> {err}</div>}
+              <Btn kind="mpesa" style={{ width:'100%', marginTop:16 }} disabled={stage==='sending'} onClick={()=>startSub(picking)}>{stage==='sending' ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Sending…</> : <><FA i="fa-bolt" /> Pay {ksh(picking.price)} with M-Pesa</>}</Btn>
+              <div className="ym-cap" style={{ textAlign:'center', marginTop:10 }}>Secure · server-verified · cancel anytime</div>
+            </>)}
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

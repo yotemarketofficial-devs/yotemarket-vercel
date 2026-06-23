@@ -1,11 +1,11 @@
 /* commerce.jsx — Storefront: Checkout (real M-Pesa STK push), Orders. */
 import React from 'react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
 import { YM_ORDERS, YM_USER, ymProduct, ymStore, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { mpesaStkPush, db, firebaseEnabled, auth } from '../../lib/firebase.js';
-const { useState: useSCm } = React;
+const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
 const ORDER_STEPS = ['Order placed','Confirmed by store','Rider picked up','En route to your hub','Ready for pickup'];
@@ -18,10 +18,16 @@ export function CheckoutScreen(){
   const total = subtotal + (items.length?DELIVERY_FEE:0);
   const [pay, setPay] = useSCm('mpesa');
   const [phone, setPhone] = useSCm('');
-  const [done, setDone] = useSCm(false);
+  const [phase, setPhase] = useSCm('form'); // form | waiting | timeout | paid
   const [busy, setBusy] = useSCm(false);
   const [err, setErr] = useSCm('');
   const [receipt, setReceipt] = useSCm('');
+  const unsubRef = useRefCm(null);
+  const timerRef = useRefCm(null);
+
+  useEffCm(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); }, []);
+  const stopWatching = () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } clearTimeout(timerRef.current); };
+  const settle = (rcpt) => { stopWatching(); setReceipt(rcpt); setPhase('paid'); clearCart(); };
 
   // Reached only once signed in (checkout requires an account). Reads the LIVE firebase
   // user so it's correct even when invoked immediately after sign-in via requireAuth().
@@ -29,8 +35,7 @@ export function CheckoutScreen(){
     setErr('');
     const uid = auth?.currentUser?.uid;
     if (pay !== 'mpesa' || !firebaseEnabled || !db || !uid) {
-      setReceipt('YM-' + Math.floor(58300 + Math.random() * 99));
-      setDone(true);
+      settle('YM-' + Math.floor(58300 + Math.random() * 99));
       return;
     }
     setBusy(true);
@@ -49,32 +54,72 @@ export function CheckoutScreen(){
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      await mpesaStkPush({ orderId: ref.id, phone, amount: total });
-      setReceipt(ref.id.slice(0, 6).toUpperCase());
-      setDone(true);
+      const fallbackRcpt = ref.id.slice(0, 6).toUpperCase();
+      const res = await mpesaStkPush({ orderId: ref.id, phone, amount: total });
+      const checkoutRequestId = res && res.checkoutRequestId;
+      setBusy(false);
+      if (!checkoutRequestId) { settle(fallbackRcpt); return; }
+      setPhase('waiting');
+      // Watch the payment doc the Daraja callback flips to paid/failed (mirrors the app).
+      unsubRef.current = onSnapshot(doc(db, 'mpesa_payments', checkoutRequestId), (snap) => {
+        const d = snap.data();
+        if (!d) return;
+        if (d.status === 'paid') settle(d.mpesaReceipt || fallbackRcpt);
+        else if (d.status === 'failed') { stopWatching(); setErr(d.resultDesc || 'Payment was cancelled or failed. Please try again.'); setPhase('form'); }
+      }, () => {});
+      // After 90s, stop blocking the UI but leave the order to settle server-side.
+      timerRef.current = setTimeout(() => setPhase((p) => (p === 'waiting' ? 'timeout' : p)), 90000);
     } catch (e) {
+      setBusy(false);
       setErr(e.message || 'Payment could not be started. Please try again.');
       toast('Payment failed', 'fa-triangle-exclamation');
-    } finally {
-      setBusy(false);
     }
   };
   // Guests must sign in to check out; signed-in users pay immediately.
   const startCheckout = () => requireAuth(payNow);
 
-  if(done){
+  if(phase==='waiting'){
+    return (
+      <div className="wrap anim-up" style={{ paddingTop:60, maxWidth:520, textAlign:'center', paddingBottom:60, margin:'0 auto' }}>
+        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-mpesa)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:34, margin:'0 auto 20px' }}><FA i="fa-mobile-screen" /></div>
+        <h1 className="ym-h1">Check your phone</h1>
+        <p className="ym-body" style={{ marginTop:10 }}>We've sent an M-Pesa request to <b style={{ color:'var(--m-fg1)' }}>{phone}</b>. Enter your PIN to pay <b style={{ color:'var(--m-fg1)' }}>{ymPrice(total)}</b>.</p>
+        <div style={{ display:'inline-flex', alignItems:'center', gap:10, marginTop:22, color:'var(--m-fg3)' }}>
+          <FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /> Waiting for confirmation…
+        </div>
+        <div className="ym-cap" style={{ marginTop:18 }}>Keep this page open — it updates automatically once you pay.</div>
+        <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:22 }} onClick={()=>{ stopWatching(); setPhase('timeout'); }}>I'll track it later</button>
+      </div>
+    );
+  }
+
+  if(phase==='timeout'){
+    return (
+      <div className="wrap anim-up" style={{ paddingTop:60, maxWidth:520, textAlign:'center', paddingBottom:60, margin:'0 auto' }}>
+        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-pending-bg)', color:'var(--m-pending-fg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:32, margin:'0 auto 20px' }}><FA i="fa-clock" /></div>
+        <h1 className="ym-h1">Almost there</h1>
+        <p className="ym-body" style={{ marginTop:10 }}>Your M-Pesa request was sent to <b style={{ color:'var(--m-fg1)' }}>{phone}</b>. If you complete it, your order confirms automatically — follow it in <b style={{ color:'var(--m-fg1)' }}>My orders</b>.</p>
+        <div style={{ display:'flex', gap:12, justifyContent:'center', marginTop:22 }}>
+          <button className="ym-btn ym-btn-primary" onClick={()=>{ clearCart(); nav('orders'); }}><FA i="fa-box" /> Go to my orders</button>
+          <button className="ym-btn ym-btn-ghost" onClick={()=>{ clearCart(); reset('home'); }}>Keep shopping</button>
+        </div>
+      </div>
+    );
+  }
+
+  if(phase==='paid'){
     return (
       <div className="wrap anim-up" style={{ paddingTop:48, maxWidth:560, textAlign:'center', paddingBottom:40, margin:'0 auto' }}>
-        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-mpesa)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i="fa-check" /></div>
-        <h1 className="ym-h1">Order placed!</h1>
-        <p className="ym-body" style={{ marginTop:8 }}>We've sent an M-Pesa request to <b style={{ color:'var(--m-fg1)' }}>{phone}</b>. Enter your PIN to confirm. You'll collect at <b style={{ color:'var(--m-fg1)' }}>{YM_USER.hub}</b>.</p>
+        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i="fa-check" /></div>
+        <h1 className="ym-h1">Payment confirmed!</h1>
+        <p className="ym-body" style={{ marginTop:8 }}>Your order is confirmed and being prepared. You'll collect at <b style={{ color:'var(--m-fg1)' }}>{YM_USER.hub}</b>.</p>
         <div className="ym-card" style={{ padding:20, margin:'24px 0', textAlign:'left' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">Order</span><span className="ym-h3">YM-{receipt || Math.floor(58300+Math.random()*99)}</span></div>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">M-Pesa receipt</span><span className="ym-h3">{receipt}</span></div>
           <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">Total paid</span><span className="ym-h3">{ymPrice(total)}</span></div>
         </div>
         <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
-          <button className="ym-btn ym-btn-primary" onClick={()=>{ clearCart(); nav('orders'); }}><FA i="fa-box" /> Track order</button>
-          <button className="ym-btn ym-btn-ghost" onClick={()=>{ clearCart(); reset('home'); }}>Keep shopping</button>
+          <button className="ym-btn ym-btn-primary" onClick={()=>nav('orders')}><FA i="fa-box" /> Track order</button>
+          <button className="ym-btn ym-btn-ghost" onClick={()=>reset('home')}>Keep shopping</button>
         </div>
       </div>
     );
