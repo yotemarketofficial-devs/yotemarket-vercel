@@ -2,6 +2,7 @@
 import React from 'react';
 import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, SectionTitle, QtyStepper } from './ui.jsx';
 import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, YM_ORDERS, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
+import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
 const { useState: useSS } = React;
 
 /* ---------- HOME ---------- */
@@ -73,10 +74,21 @@ export function SearchScreen({ params }){
   const [q, setQ] = useSS('');
   const [cat, setCat] = useSS(params.cat || 'all');
   const [tab, setTab] = useSS(params.tab || 'products');
-  const prods = YM_PRODUCTS.filter(p=>(cat==='all'||p.cat===cat)&&(!q||p.name.toLowerCase().includes(q.toLowerCase())));
+  const ids = catalogIdsFor(cat);
+  const prods = YM_PRODUCTS.filter(p=>(cat==='all'||ids.includes(p.cat))&&(!q||p.name.toLowerCase().includes(q.toLowerCase())));
   const stores = YM_STORES.filter(s=>!q||s.name.toLowerCase().includes(q.toLowerCase()));
+  const catTitle = (CATEGORY_TREE.find(c=>c.id===cat)||ymCat(cat)||{}).label || '';
+  const showSub = params.sub && cat===(params.cat||'all');
   return (
     <div className="wrap anim-up" style={{ paddingTop:28 }}>
+      {cat!=='all' && (
+        <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:7, marginBottom:14, flexWrap:'wrap' }}>
+          <button onClick={()=>setCat('all')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12, color:'var(--m-fg3)', padding:0 }}>All categories</button>
+          <FA i="fa-chevron-right" style={{ fontSize:9 }} />
+          <span style={{ color: showSub?'var(--m-fg3)':'var(--m-fg1)', fontWeight:600 }}>{catTitle}</span>
+          {showSub && <><FA i="fa-chevron-right" style={{ fontSize:9 }} /><span style={{ color:'var(--m-primary)', fontWeight:600 }}>{params.sub}</span></>}
+        </div>
+      )}
       <div style={{ position:'relative', maxWidth:620, marginBottom:20 }}>
         <FA i="fa-magnifying-glass" style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', color:'var(--m-fg4)' }} />
         <input className="ym-input" autoFocus placeholder="Search products & stores…" value={q} onChange={e=>setQ(e.target.value)} style={{ paddingLeft:46, height:54 }} />
@@ -98,7 +110,7 @@ export function SearchScreen({ params }){
       )}
       {tab==='products' ? (
         prods.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
-        : <Empty icon="fa-magnifying-glass" t={`No results for “${q}”`} s="Try a different word or browse categories." />
+        : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${catTitle||'this category'} yet`} s={q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.'} />
       ) : (
         stores.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
         : <Empty icon="fa-store" t={`No stores for “${q}”`} s="Try a different name." />

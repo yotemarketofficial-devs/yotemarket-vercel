@@ -2,11 +2,13 @@
 import React from 'react';
 import { useYM, FA, Thumb, QtyStepper } from './ui.jsx';
 import { YM_CATEGORIES, ymProduct, ymPrice } from './data.js';
+import { CATEGORY_TREE } from './categories.js';
 const { useState: useSC } = React;
 
 export function Header(){
   const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut } = useYM();
   const [acct, setAcct] = useSC(false);
+  const [menu, setMenu] = useSC(false);
   return (
     <header style={{ position:'sticky', top:0, zIndex:60, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
       <div className="wrap" style={{ height:68, display:'flex', alignItems:'center', gap:20 }}>
@@ -55,9 +57,12 @@ export function Header(){
           <button onClick={openAuth} className="ym-btn ym-btn-primary ym-btn-sm" style={{ flexShrink:0 }}><FA i="fa-right-to-bracket" /> Sign in</button>
         )}
       </div>
-      {/* category nav */}
+      {/* category nav + multilevel mega-menu */}
       <div style={{ borderTop:'1px solid var(--m-border)' }}>
         <div className="wrap scroll-x" style={{ gap:8, padding:'10px 24px' }}>
+          <button onClick={()=>setMenu(m=>!m)} className="ym-chip ym-btn-sm" style={{ height:36, flexShrink:0, background:'var(--m-primary-deep)', color:'#fff' }}>
+            <FA i={menu?'fa-xmark':'fa-bars-staggered'} /> All categories
+          </button>
           {YM_CATEGORIES.map(c=>(
             <button key={c.id} onClick={()=>nav('search',{cat:c.id})} className="ym-chip ym-btn-sm" style={{ height:36, flexShrink:0 }}>
               <FA i={c.icon} style={{ fontSize:13, color:c.id==='all'?'var(--m-primary)':c.tint }} /> {c.label}
@@ -65,7 +70,27 @@ export function Header(){
           ))}
         </div>
       </div>
-      <style>{`@media (max-width:640px){ .acct-name{ display:none; } }`}</style>
+      {menu && (<>
+        <div onClick={()=>setMenu(false)} style={{ position:'fixed', inset:0, zIndex:55 }} />
+        <div className="ym-card anim-fade" style={{ position:'absolute', left:0, right:0, top:'100%', zIndex:56, margin:'0 16px', padding:'22px 24px', boxShadow:'var(--m-shadow-float)', maxHeight:'72vh', overflowY:'auto', borderRadius:'0 0 18px 18px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px,1fr))', gap:'22px 28px' }}>
+            {CATEGORY_TREE.map(c=>(
+              <div key={c.id}>
+                <button onClick={()=>{ setMenu(false); nav('search',{cat:c.id}); }} style={{ display:'flex', alignItems:'center', gap:10, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', padding:0, marginBottom:10, width:'100%', textAlign:'left' }}>
+                  <span style={{ width:32, height:32, borderRadius:10, flexShrink:0, background:c.tint+'22', color:c.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}><FA i={c.icon} /></span>
+                  <span className="ym-h3" style={{ fontSize:14 }}>{c.label}</span>
+                </button>
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {c.subs.map(s=>(
+                    <button key={s} onClick={()=>{ setMenu(false); nav('search',{cat:c.id, sub:s}); }} className="cat-sub" style={{ textAlign:'left', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, color:'var(--m-fg3)', padding:'5px 0 5px 42px' }}>{s}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>)}
+      <style>{`@media (max-width:640px){ .acct-name{ display:none; } } .cat-sub:hover{ color:var(--m-primary) !important; }`}</style>
     </header>
   );
 }
