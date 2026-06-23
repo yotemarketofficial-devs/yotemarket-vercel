@@ -1,6 +1,7 @@
 /* auth.jsx — Role-based sign-in / sign-up for the YoteMarket web storefront.
-   Wired to real Firebase Auth (email + Google) via useAuth(), with a guest
-   fallback. Shoppers enter the storefront; merchants/riders route to their app. */
+   Rendered as a dismissible overlay: the mall is open to guests, so signing in is
+   optional (required only to check out). Wired to real Firebase Auth (email + Google).
+   Shoppers stay in the storefront; merchants/riders route to their app. */
 import React from 'react';
 import { FA } from './ui.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -37,20 +38,20 @@ function BrandPanel({ theme, onTheme }){
   );
 }
 
-export function Auth({ onShopper, theme, onTheme }){
-  const { signInEmail, registerEmail, signInGoogle, continueAsGuest } = useAuth();
+export function Auth({ onShopper, onGuest, onClose, overlay=false, theme, onTheme }){
+  const { signInEmail, registerEmail, signInGoogle } = useAuth();
   const [mode, setMode] = useSA('signin');
   const [role, setRole] = useSA('shopper');
   const [busy, setBusy] = useSA(false);
   const [err, setErr] = useSA('');
-  const [name, setName] = useSA('Wanjiru Kamau');
-  const [email, setEmail] = useSA('wanjiru.k@gmail.com');
-  const [phone, setPhone] = useSA('0720 730 861');
-  const [password, setPassword] = useSA('shopper1234');
+  const [name, setName] = useSA('');
+  const [email, setEmail] = useSA('');
+  const [phone, setPhone] = useSA('');
+  const [password, setPassword] = useSA('');
 
   const finish = () => {
     if (ROLE_DEST[role]) { window.location.assign(ROLE_DEST[role]); return; }
-    onShopper();
+    onShopper && onShopper();
   };
 
   const submit = async (provider) => {
@@ -58,7 +59,6 @@ export function Auth({ onShopper, theme, onTheme }){
     setBusy(true);
     try {
       if (provider === 'google') await signInGoogle();
-      else if (provider === 'guest') continueAsGuest();
       else if (mode === 'register') await registerEmail(name, email, password);
       else await signInEmail(email, password);
       finish();
@@ -69,14 +69,21 @@ export function Auth({ onShopper, theme, onTheme }){
     }
   };
 
+  const wrapStyle = overlay
+    ? { position:'fixed', inset:0, zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:24, background:'rgba(10,6,30,.55)', backdropFilter:'blur(4px)', overflowY:'auto' }
+    : { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:24, background:'var(--m-bg)' };
+
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:24, background:'var(--m-bg)' }}>
-      <div className="ym-card" style={{ width:'100%', maxWidth:980, minHeight:600, display:'grid', gridTemplateColumns:'1fr 1fr', overflow:'hidden', boxShadow:'var(--m-shadow-float)' }}>
+    <div style={wrapStyle} onClick={(e)=>{ if(overlay && onClose && e.target===e.currentTarget) onClose(); }}>
+      <div className="ym-card anim-up" style={{ position:'relative', width:'100%', maxWidth:980, minHeight:600, display:'grid', gridTemplateColumns:'1fr 1fr', overflow:'hidden', boxShadow:'var(--m-shadow-float)' }}>
+        {onClose && (
+          <button onClick={onClose} aria-label="Close" className="icon-btn" style={{ position:'absolute', top:14, right:14, zIndex:5, background:'rgba(255,255,255,.16)', color:'#fff' }}><FA i="fa-xmark" /></button>
+        )}
         <div className="auth-brand"><BrandPanel theme={theme} onTheme={onTheme} /></div>
         <div style={{ padding:'44px 44px', display:'flex', flexDirection:'column', justifyContent:'center', overflowY:'auto' }}>
-          <div style={{ maxWidth:380, width:'100%', margin:'0 auto' }} className="anim-up">
+          <div style={{ maxWidth:380, width:'100%', margin:'0 auto' }}>
             <h2 className="ym-h1" style={{ fontSize:26 }}>{mode==='signin'?'Welcome back':'Create your account'}</h2>
-            <p className="ym-sub" style={{ marginTop:6 }}>{mode==='signin'?'Sign in to continue shopping the mall.':'Join Kenya’s virtual mall in a few taps.'}</p>
+            <p className="ym-sub" style={{ marginTop:6 }}>{mode==='signin'?'Sign in to check out, track orders, and chat with sellers.':'Join Kenya’s virtual mall in a few taps.'}</p>
 
             {/* mode tabs */}
             <div style={{ display:'flex', gap:4, background:'var(--m-surface-2)', borderRadius:9999, padding:4, margin:'22px 0' }}>
@@ -107,10 +114,10 @@ export function Auth({ onShopper, theme, onTheme }){
 
             {/* fields */}
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-              {mode==='register' && <div><label className="ym-label">Full name</label><input className="ym-input" value={name} onChange={e=>setName(e.target.value)} /></div>}
-              <div><label className="ym-label">Email</label><input className="ym-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} inputMode="email" autoComplete="email" /></div>
-              {mode==='register' && <div><label className="ym-label">Phone number (M-Pesa)</label><input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" /></div>}
-              <div><label className="ym-label">Password</label><input className="ym-input" type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={mode==='signin'?'current-password':'new-password'} /></div>
+              {mode==='register' && <div><label className="ym-label">Full name</label><input className="ym-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Wanjiru Kamau" /></div>}
+              <div><label className="ym-label">Email</label><input className="ym-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" /></div>
+              {mode==='register' && <div><label className="ym-label">Phone number (M-Pesa)</label><input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></div>}
+              <div><label className="ym-label">Password</label><input className="ym-input" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={mode==='register'?'Min. 6 characters':'••••••••'} autoComplete={mode==='signin'?'current-password':'new-password'} /></div>
               {mode==='signin' && <button type="button" style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13.5, fontWeight:600, color:'var(--m-link)', alignSelf:'flex-end' }}>Forgot password?</button>}
 
               {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'11px 14px', fontSize:13.5, fontWeight:500 }}><FA i="fa-circle-exclamation" /> {err}</div>}
@@ -127,7 +134,7 @@ export function Auth({ onShopper, theme, onTheme }){
                 <svg width="19" height="19" viewBox="0 0 48 48" style={{ flexShrink:0 }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                 {mode==='signin'?'Sign in with Google':'Sign up with Google'}
               </button>
-              <button className="ym-btn ym-btn-ghost" disabled={busy} onClick={()=>submit('guest')}>Continue as guest</button>
+              <button className="ym-btn ym-btn-ghost" disabled={busy} onClick={()=>{ (onGuest||onClose||(()=>{}))(); }}>Continue browsing as guest</button>
             </div>
           </div>
         </div>

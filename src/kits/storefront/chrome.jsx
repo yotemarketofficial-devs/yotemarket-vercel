@@ -1,11 +1,11 @@
 /* chrome.jsx — Storefront header, category nav, footer, cart drawer. */
 import React from 'react';
 import { useYM, FA, Thumb, QtyStepper } from './ui.jsx';
-import { YM_CATEGORIES, YM_USER, ymProduct, ymPrice } from './data.js';
+import { YM_CATEGORIES, ymProduct, ymPrice } from './data.js';
 const { useState: useSC } = React;
 
 export function Header(){
-  const { nav, reset, cartCount, theme, setTheme, openCart } = useYM();
+  const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut } = useYM();
   const [acct, setAcct] = useSC(false);
   return (
     <header style={{ position:'sticky', top:0, zIndex:60, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
@@ -28,28 +28,32 @@ export function Header(){
           <FA i="fa-cart-shopping" />
           {cartCount>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:20, height:20, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{cartCount}</span>}
         </button>
-        <div style={{ position:'relative' }}>
-          <button onClick={()=>setAcct(a=>!a)} style={{ display:'flex', alignItems:'center', gap:8, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit' }}>
-            <div style={{ width:38, height:38, borderRadius:9999, background:'var(--m-grad)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>{YM_USER.initials}</div>
-            <span className="ym-h3 acct-name" style={{ fontSize:14 }}>{YM_USER.first}</span>
-          </button>
-          {acct && (<>
-            <div onClick={()=>setAcct(false)} style={{ position:'fixed', inset:0, zIndex:70 }} />
-            <div className="ym-card anim-fade" style={{ position:'absolute', right:0, top:48, width:230, zIndex:71, padding:8, boxShadow:'var(--m-shadow-float)' }}>
-              <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--m-border)', marginBottom:6 }}>
-                <div className="ym-h3">{YM_USER.name}</div><div className="ym-cap">{YM_USER.phone}</div>
-              </div>
-              {[['fa-user','My profile','profile'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
-                <button key={l} onClick={()=>{ setAcct(false); if(scr) nav(scr); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
-                  <FA i={ic} style={{ width:18, color:'var(--m-fg3)' }} /> {l}
+        {account.hasAccount ? (
+          <div style={{ position:'relative' }}>
+            <button onClick={()=>setAcct(a=>!a)} style={{ display:'flex', alignItems:'center', gap:8, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit' }}>
+              <div style={{ width:38, height:38, borderRadius:9999, background:'var(--m-grad)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>{account.initials}</div>
+              <span className="ym-h3 acct-name" style={{ fontSize:14 }}>{account.first}</span>
+            </button>
+            {acct && (<>
+              <div onClick={()=>setAcct(false)} style={{ position:'fixed', inset:0, zIndex:70 }} />
+              <div className="ym-card anim-fade" style={{ position:'absolute', right:0, top:48, width:230, zIndex:71, padding:8, boxShadow:'var(--m-shadow-float)' }}>
+                <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--m-border)', marginBottom:6 }}>
+                  <div className="ym-h3">{account.name}</div><div className="ym-cap">{account.email || account.phone || 'Signed in'}</div>
+                </div>
+                {[['fa-user','My profile','profile'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
+                  <button key={l} onClick={()=>{ setAcct(false); if(scr) nav(scr); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
+                    <FA i={ic} style={{ width:18, color:'var(--m-fg3)' }} /> {l}
+                  </button>
+                ))}
+                <button onClick={()=>{ setAcct(false); signOut(); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-inactive-fg)', borderRadius:10, marginTop:4, borderTop:'1px solid var(--m-border)' }}>
+                  <FA i="fa-arrow-right-from-bracket" style={{ width:18 }} /> Sign out
                 </button>
-              ))}
-              <button onClick={()=>{ setAcct(false); reset('auth'); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-inactive-fg)', borderRadius:10, marginTop:4, borderTop:'1px solid var(--m-border)' }}>
-                <FA i="fa-arrow-right-from-bracket" style={{ width:18 }} /> Sign out
-              </button>
-            </div>
-          </>)}
-        </div>
+              </div>
+            </>)}
+          </div>
+        ) : (
+          <button onClick={openAuth} className="ym-btn ym-btn-primary ym-btn-sm" style={{ flexShrink:0 }}><FA i="fa-right-to-bracket" /> Sign in</button>
+        )}
       </div>
       {/* category nav */}
       <div style={{ borderTop:'1px solid var(--m-border)' }}>

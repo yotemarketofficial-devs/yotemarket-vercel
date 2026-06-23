@@ -6,8 +6,8 @@ const { useState: useSS } = React;
 
 /* ---------- HOME ---------- */
 export function HomeScreen(){
-  const { nav } = useYM();
-  const activeOrder = YM_ORDERS.find(o=>o.status==='out');
+  const { nav, account } = useYM();
+  const activeOrder = account.hasAccount ? YM_ORDERS.find(o=>o.status==='out') : null;
   return (
     <div className="anim-up">
       {/* hero */}

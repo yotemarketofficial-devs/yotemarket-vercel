@@ -88,11 +88,17 @@ export function AuthProvider({ children }) {
     if (firebaseEnabled && auth?.currentUser) await sendEmailVerification(auth.currentUser);
   }, []);
 
+  // A "real account" is a signed-in user that isn't an anonymous/local guest.
+  const isGuest = Boolean(user?.isGuest) || Boolean(user?.isAnonymous);
+  const hasAccount = Boolean(user) && !isGuest;
+
   const value = useMemo(
     () => ({
       user,
       loading,
       isAuthed: Boolean(user),
+      hasAccount,
+      isGuest,
       emailVerified: user?.emailVerified ?? true,
       signInEmail,
       registerEmail,
@@ -101,7 +107,7 @@ export function AuthProvider({ children }) {
       signOutUser,
       resendVerification,
     }),
-    [user, loading, signInEmail, registerEmail, signInGoogle, continueAsGuest, signOutUser, resendVerification],
+    [user, loading, hasAccount, isGuest, signInEmail, registerEmail, signInGoogle, continueAsGuest, signOutUser, resendVerification],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

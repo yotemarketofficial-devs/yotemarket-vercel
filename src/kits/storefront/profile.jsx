@@ -1,6 +1,6 @@
 /* profile.jsx — Storefront account dashboard. */
 import React from 'react';
-import { useYM, FA, Thumb } from './ui.jsx';
+import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
 import { YM_USER, YM_POINTS, YM_WALLET, YM_ADDRESSES, YM_ORDERS, ymStore, ymProduct, ymPrice } from './data.js';
 const { useState: useSP } = React;
 
@@ -23,10 +23,12 @@ function Toggle({ on, onClick }){
 }
 
 export function ProfileScreen(){
-  const { nav, reset, theme, setTheme, toast } = useYM();
+  const { nav, reset, theme, setTheme, toast, account } = useYM();
   const [notif, setNotif] = useSP({ orders:true, deliveries:true, promos:false, chat:true });
   const tg = k => setNotif(n=>({ ...n, [k]:!n[k] }));
   const ptsPct = Math.round((YM_POINTS.lifetime/(YM_POINTS.lifetime+YM_POINTS.toNext))*100);
+
+  if (!account.hasAccount) return <GuestGate icon="fa-user" title="Your account" sub="Sign in to manage your profile, addresses, wallet, and YotePoints rewards." />;
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
@@ -34,13 +36,13 @@ export function ProfileScreen(){
 
       {/* header */}
       <div className="ym-card" style={{ padding:24, marginBottom:20, display:'flex', alignItems:'center', gap:18, flexWrap:'wrap', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
-        <div style={{ width:74, height:74, borderRadius:9999, background:'rgba(255,255,255,.16)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:26, flexShrink:0 }}>{YM_USER.initials}</div>
+        <div style={{ width:74, height:74, borderRadius:9999, background:'rgba(255,255,255,.16)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:26, flexShrink:0 }}>{account.initials}</div>
         <div style={{ flex:1, minWidth:200 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            <span style={{ color:'#fff', fontSize:24, fontWeight:800 }}>{YM_USER.name}</span>
+            <span style={{ color:'#fff', fontSize:24, fontWeight:800 }}>{account.name}</span>
             <span style={{ background:'rgba(255,255,255,.18)', color:'#fff', fontSize:12, fontWeight:700, padding:'4px 11px', borderRadius:9999, display:'inline-flex', gap:6, alignItems:'center' }}><FA i="fa-medal" style={{ color:'var(--m-amber)' }} /> {YM_POINTS.tier} member</span>
           </div>
-          <div style={{ color:'rgba(255,255,255,.85)', fontSize:14, marginTop:4 }}>{YM_USER.email} · {YM_USER.phone}</div>
+          <div style={{ color:'rgba(255,255,255,.85)', fontSize:14, marginTop:4 }}>{account.email || YM_USER.email} · {account.phone || YM_USER.phone}</div>
           <div style={{ color:'rgba(255,255,255,.85)', fontSize:13, marginTop:4, display:'flex', alignItems:'center', gap:7 }}><FA i="fa-location-dot" /> {YM_USER.hub}</div>
         </div>
         <button className="ym-btn ym-btn-onbrand ym-btn-sm" onClick={()=>toast('Edit profile','fa-pen')}><FA i="fa-pen" /> Edit profile</button>

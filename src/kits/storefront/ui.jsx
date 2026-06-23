@@ -125,3 +125,19 @@ export function Toast({ toast }){
     </div>
   );
 }
+
+/* Sign-in prompt shown on account-only screens when browsing as a guest. */
+export function GuestGate({ icon='fa-lock', title, sub }){
+  const { openAuth, reset } = useYM();
+  return (
+    <div className="wrap anim-up" style={{ paddingTop:64, paddingBottom:64, maxWidth:480, margin:'0 auto', textAlign:'center' }}>
+      <div style={{ width:76, height:76, borderRadius:9999, margin:'0 auto 18px', background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30 }}><FA i={icon} /></div>
+      <h1 className="ym-h1" style={{ fontSize:24 }}>{title}</h1>
+      <p className="ym-body" style={{ marginTop:8 }}>{sub}</p>
+      <div style={{ display:'flex', gap:12, justifyContent:'center', marginTop:24, flexWrap:'wrap' }}>
+        <button className="ym-btn ym-btn-primary" onClick={openAuth}><FA i="fa-right-to-bracket" /> Sign in or create account</button>
+        <button className="ym-btn ym-btn-ghost" onClick={()=>reset('home')}>Keep shopping</button>
+      </div>
+    </div>
+  );
+}

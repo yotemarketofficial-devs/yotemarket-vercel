@@ -1,32 +1,34 @@
 /* commerce.jsx — Storefront: Checkout (real M-Pesa STK push), Orders. */
 import React from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { useYM, FA, Thumb } from './ui.jsx';
+import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
 import { YM_ORDERS, YM_USER, ymProduct, ymStore, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, db, firebaseEnabled } from '../../lib/firebase.js';
+import { mpesaStkPush, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm } = React;
 
 const DELIVERY_FEE = 150;
 const ORDER_STEPS = ['Order placed','Confirmed by store','Rider picked up','En route to your hub','Ready for pickup'];
 
 export function CheckoutScreen(){
-  const { cart, clearCart, reset, nav, toast } = useYM();
-  const { user } = useAuth();
+  const { cart, clearCart, reset, nav, toast, requireAuth, account } = useYM();
+  const { hasAccount } = useAuth();
   const items = cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
   const subtotal = items.reduce((s,x)=>s+x.p.price*x.qty,0);
   const total = subtotal + (items.length?DELIVERY_FEE:0);
   const [pay, setPay] = useSCm('mpesa');
-  const [phone, setPhone] = useSCm(YM_USER.phone);
+  const [phone, setPhone] = useSCm('');
   const [done, setDone] = useSCm(false);
   const [busy, setBusy] = useSCm(false);
   const [err, setErr] = useSCm('');
   const [receipt, setReceipt] = useSCm('');
 
+  // Reached only once signed in (checkout requires an account). Reads the LIVE firebase
+  // user so it's correct even when invoked immediately after sign-in via requireAuth().
   const payNow = async () => {
     setErr('');
-    // Non-card rails or demo/guest mode → confirm locally.
-    if (pay !== 'mpesa' || !firebaseEnabled || !user || user.isGuest || !db) {
+    const uid = auth?.currentUser?.uid;
+    if (pay !== 'mpesa' || !firebaseEnabled || !db || !uid) {
       setReceipt('YM-' + Math.floor(58300 + Math.random() * 99));
       setDone(true);
       return;
@@ -34,7 +36,7 @@ export function CheckoutScreen(){
     setBusy(true);
     try {
       const ref = await addDoc(collection(db, 'orders'), {
-        buyerId: user.uid,
+        buyerId: uid,
         items: items.map(x => ({ pid: x.pid, qty: x.qty, price: x.p.price, name: x.p.name })),
         subtotal,
         deliveryFee: DELIVERY_FEE,
@@ -57,6 +59,8 @@ export function CheckoutScreen(){
       setBusy(false);
     }
   };
+  // Guests must sign in to check out; signed-in users pay immediately.
+  const startCheckout = () => requireAuth(payNow);
 
   if(done){
     return (
@@ -132,9 +136,12 @@ export function CheckoutScreen(){
             <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3">Total</span><span className="ym-h2" style={{ fontSize:22 }}>{ymPrice(total)}</span></div>
           </div>
           {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'11px 14px', fontSize:13, fontWeight:500, marginTop:14 }}><FA i="fa-circle-exclamation" /> {err}</div>}
-          <button className="ym-btn ym-btn-mpesa" disabled={busy} style={{ width:'100%', marginTop:18 }} onClick={payNow}>
-            {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Sending request…</> : <><FA i="fa-bolt" /> {pay==='mpesa'?`Pay ${ymPrice(total)} with M-Pesa`:`Place order · ${ymPrice(total)}`}</>}
-          </button>
+          {!hasAccount
+            ? <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:18 }} onClick={startCheckout}><FA i="fa-right-to-bracket" /> Sign in to check out · {ymPrice(total)}</button>
+            : <button className="ym-btn ym-btn-mpesa" disabled={busy} style={{ width:'100%', marginTop:18 }} onClick={startCheckout}>
+                {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Sending request…</> : <><FA i="fa-bolt" /> {pay==='mpesa'?`Pay ${ymPrice(total)} with M-Pesa`:`Place order · ${ymPrice(total)}`}</>}
+              </button>}
+          {!hasAccount && <div className="ym-cap" style={{ textAlign:'center', marginTop:8 }}>Browse freely as a guest — an account is only needed to pay &amp; track orders.</div>}
           <div className="ym-cap" style={{ textAlign:'center', marginTop:10, display:'flex', gap:6, justifyContent:'center' }}><FA i="fa-lock" /> Secure payment · escrow protected</div>
         </div>
       </div>
@@ -146,7 +153,8 @@ function Row({ l, v }){ return <div style={{ display:'flex', justifyContent:'spa
 
 /* ---------- ORDERS ---------- */
 export function OrdersScreen(){
-  const { reset } = useYM();
+  const { reset, account } = useYM();
+  if (!account.hasAccount) return <GuestGate icon="fa-box" title="Your orders" sub="Sign in to view and track your orders, deliveries, and hub pickups." />;
   const tone = { placed:'pending', out:'pending', awaiting:'pending', delivered:'active' };
   const label = { placed:'Order placed', out:'Out for delivery', awaiting:'Awaiting pickup', delivered:'Collected' };
   return (
