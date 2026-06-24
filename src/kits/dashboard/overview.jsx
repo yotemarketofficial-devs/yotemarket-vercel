@@ -1,20 +1,22 @@
 /* overview.jsx — Merchant dashboard overview (aligned theme). */
 import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
-import { SHOP, KPIS, WEEK, PROD_ROWS, ORDER_ROWS, INSIGHTS, ksh } from './data.js';
+import { INSIGHTS, ksh } from './data.js';
+import { useShop, useStoreOverview } from './merchant.jsx';
 const { useState: useStateO } = React;
 
 function WelcomeBanner({ onCopy }){
+  const shop = useShop();
   const [copied, setCopied] = useStateO(false);
-  const link = `yotemarket.com/store/${SHOP.shopId}`;
+  const link = `yotemarket.com/store/${shop.shopId}`;
   const copy = ()=>{ navigator.clipboard && navigator.clipboard.writeText('https://'+link); setCopied(true); onCopy&&onCopy(); setTimeout(()=>setCopied(false),1600); };
   return (
     <div className="ym-card" style={{ padding:26, marginBottom:22, color:'#fff', position:'relative', overflow:'hidden', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
       <div style={{ position:'absolute', right:-30, top:-40, width:220, height:220, borderRadius:'50%', background:'radial-gradient(circle, rgba(252,211,77,.4), transparent 70%)' }} />
       <div style={{ display:'flex', justifyContent:'space-between', gap:24, flexWrap:'wrap', alignItems:'center', position:'relative' }}>
         <div>
-          <h1 style={{ fontSize:24, fontWeight:800, margin:0 }}>Karibu, {SHOP.first}! 👋</h1>
-          <p style={{ color:'rgba(255,255,255,.85)', fontSize:14.5, marginTop:6, maxWidth:420 }}>Your store grew <b style={{ color:'var(--m-amber)' }}>18%</b> this week. Share your storefront and keep customers coming back.</p>
+          <h1 style={{ fontSize:24, fontWeight:800, margin:0 }}>Karibu, {shop.first}! 👋</h1>
+          <p style={{ color:'rgba(255,255,255,.85)', fontSize:14.5, marginTop:6, maxWidth:420 }}>Share your storefront link and keep customers coming back.</p>
         </div>
         <div style={{ background:'rgba(255,255,255,.14)', borderRadius:14, padding:14, minWidth:320, border:'1px solid rgba(255,255,255,.2)' }}>
           <div style={{ color:'rgba(255,255,255,.75)', fontSize:12, marginBottom:8 }}>Your store link</div>
@@ -28,8 +30,9 @@ function WelcomeBanner({ onCopy }){
   );
 }
 
-function WeekChart(){
-  const max = Math.max(...WEEK.map(d=>d.v));
+function WeekChart({ data }){
+  const week = data && data.length ? data : [];
+  const max = Math.max(1, ...week.map(d=>d.v));
   return (
     <Card style={{ padding:22, marginBottom:22 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
@@ -39,11 +42,11 @@ function WeekChart(){
         </div>
       </div>
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, height:180 }}>
-        {WEEK.map((d,i)=>(
+        {week.map((d,i)=>(
           <div key={i} style={{ flex:1, height:'100%', display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
             <div className="ym-cap" style={{ fontWeight:700, color:'var(--m-fg2)' }}>{d.v}</div>
             <div style={{ flex:1, width:'100%', display:'flex', alignItems:'flex-end' }}>
-              <div style={{ width:'100%', borderRadius:'8px 8px 0 0', height:`${(d.v/max)*100}%`, minHeight:6, background: i===WEEK.length-1?'var(--m-grad)':'var(--m-surface-3)', boxShadow: i===WEEK.length-1?'var(--m-glow)':'none' }} />
+              <div style={{ width:'100%', borderRadius:'8px 8px 0 0', height:`${(d.v/max)*100}%`, minHeight:6, background: i===week.length-1?'var(--m-grad)':'var(--m-surface-3)', boxShadow: i===week.length-1?'var(--m-glow)':'none' }} />
             </div>
             <div className="ym-cap">{d.l}</div>
           </div>
@@ -69,10 +72,15 @@ function Insights(){
   );
 }
 
+function EmptyRow({ icon, text }){
+  return <div style={{ padding:'34px 18px', textAlign:'center', color:'var(--m-fg3)' }}><FA i={icon} style={{ fontSize:26, color:'var(--m-fg4)' }} /><div style={{ marginTop:10, fontSize:13.5 }}>{text}</div></div>;
+}
+
 export function ProductsTable({ rows, onAdd, onOpenProducts }){
   return (
-    <SectionCard title="Recent products" sub={`${rows.length} of 47 products`}
+    <SectionCard title="Recent products" sub={`${rows.length} product${rows.length!==1?'s':''}`}
       action={<div style={{ display:'flex', gap:8 }}><Btn kind="ghost" size="sm" onClick={onOpenProducts}>View all</Btn><Btn kind="primary" size="sm" icon="fa-plus" onClick={onAdd}>Add product</Btn></div>}>
+      {rows.length === 0 ? <EmptyRow icon="fa-box-open" text="No products yet — add your first product to start selling." /> : (
       <div style={{ overflowX:'auto' }}>
         <table className="ym-table" style={{ minWidth:640 }}>
           <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Sales</th><th>Status</th></tr></thead>
@@ -90,6 +98,7 @@ export function ProductsTable({ rows, onAdd, onOpenProducts }){
           </tbody>
         </table>
       </div>
+      )}
     </SectionCard>
   );
 }
@@ -97,7 +106,8 @@ export function ProductsTable({ rows, onAdd, onOpenProducts }){
 export function OrdersTable({ rows }){
   const lbl = { active:'Paid', pending:'Processing', inactive:'Refunded' };
   return (
-    <SectionCard title="Recent orders" sub={`${rows.length} of 248 orders`} action={<Btn kind="ghost" size="sm" iconRight="fa-arrow-right">View all sales</Btn>}>
+    <SectionCard title="Recent orders" sub={`${rows.length} order${rows.length!==1?'s':''}`} action={<Btn kind="ghost" size="sm" iconRight="fa-arrow-right">View all sales</Btn>}>
+      {rows.length === 0 ? <EmptyRow icon="fa-receipt" text="No orders yet — they'll appear here once customers buy." /> : (
       <div style={{ overflowX:'auto' }}>
         <table className="ym-table" style={{ minWidth:680 }}>
           <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Hub</th><th>Status</th><th>When</th></tr></thead>
@@ -116,21 +126,23 @@ export function OrdersTable({ rows }){
           </tbody>
         </table>
       </div>
+      )}
     </SectionCard>
   );
 }
 
 export function Overview({ onAdd, onCopyLink, onOpenProducts }){
+  const ov = useStoreOverview();
   return (
     <div className="anim-up">
       <WelcomeBanner onCopy={onCopyLink} />
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
-        {KPIS.map(k=><Stat key={k.label} {...k} delta={k.delta} up={k.up} />)}
+        {ov.kpis.map(k=><Stat key={k.label} {...k} delta={k.delta} up={k.up} />)}
       </div>
-      <WeekChart />
-      <Insights />
-      <div style={{ marginBottom:22 }}><ProductsTable rows={PROD_ROWS.slice(0,5)} onAdd={onAdd} onOpenProducts={onOpenProducts} /></div>
-      <OrdersTable rows={ORDER_ROWS} />
+      <WeekChart data={ov.week} />
+      {!ov.live && <Insights />}
+      <div style={{ marginBottom:22 }}><ProductsTable rows={ov.products.slice(0,5)} onAdd={onAdd} onOpenProducts={onOpenProducts} /></div>
+      <OrdersTable rows={ov.orders} />
     </div>
   );
 }

@@ -3,8 +3,9 @@ import React from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './primitives.jsx';
 import { OrdersTable } from './overview.jsx';
-import { ORDER_ROWS, WALLET, SUBSCRIPTION, CHATS, SHOP, ksh } from './data.js';
+import { ORDER_ROWS, WALLET, SUBSCRIPTION, CHATS, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
+import { useMerchant, useShop } from './merchant.jsx';
 import { subscribeMerchant, db, firebaseEnabled } from '../../lib/firebase.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
@@ -28,7 +29,10 @@ export function Sales(){
 
 /* ---------- WALLET ---------- */
 export function Wallet({ toast }){
+  const { merchant, live } = useMerchant();
   const total = WALLET.flow.reduce((s,f)=>s+(f.neg?0:f.value),0);
+  const balance = live ? (merchant?.balanceAvailable || 0) : WALLET.balance;
+  const txs = live ? [] : WALLET.tx;
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Wallet</h1>
@@ -37,13 +41,14 @@ export function Wallet({ toast }){
           <Card style={{ padding:24, color:'#fff', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', position:'relative', overflow:'hidden' }}>
             <FA i="fa-wallet" style={{ position:'absolute', right:14, bottom:-10, fontSize:96, color:'rgba(255,255,255,.1)' }} />
             <div style={{ color:'rgba(255,255,255,.78)', fontSize:13 }}>Available payout</div>
-            <div style={{ fontSize:40, fontWeight:800, margin:'4px 0' }}>{ksh(WALLET.balance)}</div>
+            <div style={{ fontSize:40, fontWeight:800, margin:'4px 0' }}>{ksh(balance)}</div>
             <div style={{ color:'rgba(255,255,255,.78)', fontSize:13, marginBottom:18 }}>Next auto-payout {WALLET.nextPayout} · via M-Pesa</div>
             <button className="ym-btn ym-btn-mpesa" style={{ width:'auto' }} onClick={()=>toast&&toast('Withdrawal requested')}><FA i="fa-mobile-screen" /> Withdraw to M-Pesa</button>
           </Card>
           <SectionCard title="Recent transactions">
             <div>
-              {WALLET.tx.map((t,i)=>(
+              {txs.length === 0 && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No transactions yet.</div>}
+              {txs.map((t,i)=>(
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
                   <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:t.dir==='in'?'var(--m-active-bg)':'var(--m-surface-2)', color:t.dir==='in'?'var(--m-active-fg)':'var(--m-fg3)' }}><FA i={t.icon} /></div>
                   <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{t.t}</div><div className="ym-cap">{t.when}</div></div>
@@ -186,6 +191,7 @@ export function Subscription({ toast }){
 function Toggle({ on, onClick }){ return <button onClick={onClick} aria-pressed={on} style={{ width:46, height:27, borderRadius:9999, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background:on?'var(--m-primary)':'var(--m-border)' }}><span style={{ position:'absolute', top:3, left:on?23:3, width:21, height:21, borderRadius:9999, background:'#fff', transition:'left .2s' }} /></button>; }
 export function Settings(){
   const { theme, setTheme } = useTheme();
+  const shop = useShop();
   const [n, setN] = useStateX({ orders:true, payouts:true, chat:true, promos:false });
   const tg = k=>setN(s=>({ ...s, [k]:!s[k] }));
   return (
@@ -194,7 +200,7 @@ export function Settings(){
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="set-grid">
         <SectionCard title="Shop profile">
           <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16 }}>
-            <F label="Shop name" v={SHOP.name} /><F label="Owner" v={SHOP.owner} /><F label="Area" v={SHOP.area} /><F label="M-Pesa till" v="174379" last />
+            <F label="Shop name" v={shop.name} /><F label="Owner" v={shop.owner} /><F label="Area" v={shop.area} /><F label="M-Pesa till" v="174379" last />
             <Btn kind="primary" icon="fa-check" style={{ alignSelf:'flex-start' }}>Save changes</Btn>
           </div>
         </SectionCard>

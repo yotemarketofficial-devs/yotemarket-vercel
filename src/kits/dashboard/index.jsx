@@ -3,6 +3,7 @@
 import React from 'react';
 import './dashboard.css';
 import { ThemeCtx, FA } from './primitives.jsx';
+import { MerchantProvider } from './merchant.jsx';
 import { Sidebar, TopBar, Footer } from './layout.jsx';
 import { Overview } from './overview.jsx';
 import { Products, AddProductModal } from './products.jsx';
@@ -32,6 +33,7 @@ export default function DashboardApp(){
   const props = { onAdd:()=>setAddOpen(true), onCopyLink:()=>toastFn('Store link copied to clipboard!'), onOpenProducts:()=>setActive('products'), toast:toastFn };
 
   return (
+    <MerchantProvider>
     <ThemeCtx.Provider value={{ theme, setTheme }}>
       <div data-screen-label={'Dashboard — '+LABELS[active]} style={{ minHeight:'100vh', display:'flex', flexDirection:'column' }}>
         <TopBar onMenu={()=>setMenu(true)} onChange={setActive} />
@@ -58,5 +60,6 @@ export default function DashboardApp(){
       </div>
       <style>{`@media (max-width:900px){ .dash-shell{ grid-template-columns:1fr !important; } .dash-aside{ display:none !important; } }`}</style>
     </ThemeCtx.Provider>
+    </MerchantProvider>
   );
 }

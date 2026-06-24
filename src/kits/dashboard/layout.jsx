@@ -1,7 +1,8 @@
 /* layout.jsx — Merchant dashboard sidebar, topbar, footer (aligned theme). */
 import React from 'react';
 import { FA, Avatar, Logo, ThemeToggle } from './primitives.jsx';
-import { SHOP, ksh, SUBSCRIPTION } from './data.js';
+import { ksh } from './data.js';
+import { useShop, useSubCard } from './merchant.jsx';
 
 export const NAV = [
   { key:'overview', icon:'fa-gauge-high', label:'Dashboard' },
@@ -14,14 +15,16 @@ export const NAV = [
 ];
 
 export function Sidebar({ active, onChange, onClose }){
+  const shop = useShop();
+  const subc = useSubCard();
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
       <div className="ym-card" style={{ padding:18 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, paddingBottom:16, borderBottom:'1px solid var(--m-border)' }}>
-          <Avatar src={SHOP.photo} name={SHOP.owner} size={52} />
+          <Avatar src={shop.photo} name={shop.owner} size={52} />
           <div style={{ minWidth:0 }}>
-            <div className="ym-h3" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{SHOP.name}</div>
-            <div className="ym-cap">{SHOP.role} · {SHOP.area}</div>
+            <div className="ym-h3" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{shop.name}</div>
+            <div className="ym-cap">{shop.role}{shop.area ? ' · ' + shop.area : ''}</div>
           </div>
         </div>
         <nav style={{ display:'flex', flexDirection:'column', gap:4, marginTop:14 }}>
@@ -42,17 +45,18 @@ export function Sidebar({ active, onChange, onClose }){
       </div>
 
       {/* subscription card — brand gradient */}
-      <div className="ym-card" style={{ padding:18, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, color:'#fff', fontWeight:700, fontSize:14 }}><FA i="fa-crown" style={{ color:'var(--m-amber)' }} /> {SUBSCRIPTION.plan} plan</div>
-        <div style={{ color:'rgba(255,255,255,.8)', fontSize:12.5, margin:'6px 0 12px' }}>{ksh(SUBSCRIPTION.price)}/mo · renews {SUBSCRIPTION.next}</div>
-        <div style={{ height:7, borderRadius:9999, background:'rgba(255,255,255,.18)', overflow:'hidden' }}><div style={{ width:(SUBSCRIPTION.deliveriesUsed/SUBSCRIPTION.deliveriesCap*100)+'%', height:'100%', background:'linear-gradient(90deg,var(--m-amber),#fff)' }} /></div>
-        <div style={{ color:'rgba(255,255,255,.8)', fontSize:11.5, marginTop:7 }}>{SUBSCRIPTION.deliveriesUsed}/{SUBSCRIPTION.deliveriesCap} bundled deliveries used</div>
+      <div className="ym-card" style={{ padding:18, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', cursor:'pointer' }} onClick={()=>onChange&&onChange('subscription')}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, color:'#fff', fontWeight:700, fontSize:14 }}><FA i="fa-crown" style={{ color:'var(--m-amber)' }} /> {subc.active ? subc.plan + ' plan' : 'No active plan'}</div>
+        <div style={{ color:'rgba(255,255,255,.8)', fontSize:12.5, margin:'6px 0 12px' }}>{subc.active ? `${ksh(subc.price)}/mo · renews ${subc.next}` : 'Choose a plan to start selling'}</div>
+        <div style={{ height:7, borderRadius:9999, background:'rgba(255,255,255,.18)', overflow:'hidden' }}><div style={{ width:(subc.deliveriesCap ? subc.deliveriesUsed/subc.deliveriesCap*100 : 0)+'%', height:'100%', background:'linear-gradient(90deg,var(--m-amber),#fff)' }} /></div>
+        <div style={{ color:'rgba(255,255,255,.8)', fontSize:11.5, marginTop:7 }}>{subc.active ? `${subc.deliveriesUsed}/${subc.deliveriesCap} bundled deliveries used` : 'Tap to subscribe'}</div>
       </div>
     </div>
   );
 }
 
 export function TopBar({ onMenu, onChange }){
+  const shop = useShop();
   return (
     <header style={{ position:'sticky', top:0, zIndex:40, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
       <div className="wrap" style={{ height:64, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
@@ -66,8 +70,8 @@ export function TopBar({ onMenu, onChange }){
           <button className="icon-btn" aria-label="Notifications"><FA i="fa-bell" /><span style={{ position:'absolute', top:8, right:8, width:8, height:8, borderRadius:9999, background:'var(--m-danger)', border:'2px solid var(--m-surface)' }} /></button>
           <ThemeToggle />
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-            <Avatar src={SHOP.photo} name={SHOP.owner} size={36} />
-            <div className="acct" style={{ lineHeight:1.2 }}><div className="ym-h3" style={{ fontSize:13.5 }}>{SHOP.first}</div><div className="ym-cap">{SHOP.role}</div></div>
+            <Avatar src={shop.photo} name={shop.owner} size={36} />
+            <div className="acct" style={{ lineHeight:1.2 }}><div className="ym-h3" style={{ fontSize:13.5 }}>{shop.first}</div><div className="ym-cap">{shop.role}</div></div>
           </div>
         </div>
       </div>
