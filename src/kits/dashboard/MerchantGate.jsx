@@ -1,12 +1,13 @@
 /* MerchantGate.jsx — gates the merchant dashboard:
    not signed in → sign-in panel; signed in but no store → self-serve store
-   signup (registerStore); merchant → the dashboard. Demo mode (no backend)
-   shows the dashboard directly. */
+   signup (registerStore); store but no active subscription → subscribe paywall;
+   active subscriber → the dashboard. Demo mode (no backend) shows it directly. */
 import React from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
 import { FA, Card, Btn } from './primitives.jsx';
+import SubscribeFlow from './SubscribeFlow.jsx';
 const { useState, useEffect } = React;
 
 const CATS = [
@@ -23,10 +24,10 @@ const ipt = { width: '100%', padding: '12px 14px', borderRadius: 11, border: '1p
 const errBox = { display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13, fontWeight: 500, margin: '14px 0 0' };
 const linkBtn = { background: 'none', border: 'none', padding: 0, color: 'var(--m-primary)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 };
 
-function Shell({ children }) {
+function Shell({ children, wide }) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--m-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 16px' }}>
-      <div style={{ width: '100%', maxWidth: 460 }}>{children}</div>
+      <div style={{ width: '100%', maxWidth: wide ? 760 : 460 }}>{children}</div>
     </div>
   );
 }
@@ -37,6 +38,17 @@ function Field({ label, children }) {
       <label className="ym-label" style={{ display: 'block', marginBottom: 6 }}>{label}</label>
       {children}
     </div>
+  );
+}
+
+function Loading() {
+  return (
+    <Shell>
+      <div style={{ textAlign: 'center', color: 'var(--m-fg3)' }}>
+        <FA i="fa-circle-notch" style={{ fontSize: 28, color: 'var(--m-primary)', animation: 'ym-spin 1s linear infinite' }} />
+        <div style={{ marginTop: 12, fontSize: 14 }}>Loading your dashboard…</div>
+      </div>
+    </Shell>
   );
 }
 
@@ -89,7 +101,7 @@ function SignInPanel() {
 }
 
 /* ---------- store signup ---------- */
-function StoreSignupPanel({ onDone }) {
+function StoreSignupPanel() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('electronics');
   const [area, setArea] = useState('');
@@ -105,7 +117,7 @@ function StoreSignupPanel({ onDone }) {
     try {
       const payout = phone.trim() ? { method: 'b2c', phone: phone.trim() } : undefined;
       await registerStore({ name: name.trim(), category, area: area.trim(), tagline: tagline.trim(), ...(payout ? { payout } : {}) });
-      onDone();
+      // The merchants/{uid} listener in the gate advances to the paywall; keep busy.
     } catch (e) { setErr(e.message || 'Could not create your store.'); setBusy(false); }
   };
 
@@ -127,8 +139,26 @@ function StoreSignupPanel({ onDone }) {
         <Field label="M-Pesa payout number (optional)"><input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></Field>
         {err && <div role="alert" style={errBox}><FA i="fa-circle-exclamation" /> {err}</div>}
         <Btn kind="primary" style={{ width: '100%', marginTop: 16 }} disabled={busy} onClick={submit}>{busy ? 'Creating your store…' : 'Create my store'}</Btn>
-        <p className="ym-cap" style={{ textAlign: 'center', marginTop: 10 }}>You can edit these and add products from your dashboard.</p>
+        <p className="ym-cap" style={{ textAlign: 'center', marginTop: 10 }}>Next: choose a plan to activate your dashboard.</p>
       </Card>
+    </Shell>
+  );
+}
+
+/* ---------- subscription paywall ---------- */
+function SubscribePanel({ expired }) {
+  const { signOutUser } = useAuth();
+  return (
+    <Shell wide>
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ width: 54, height: 54, borderRadius: 16, margin: '0 auto 14px', background: 'var(--m-grad-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--m-glow)' }}><FA i="fa-crown" style={{ color: 'var(--m-amber)', fontSize: 22 }} /></div>
+        <h1 className="ym-h1" style={{ fontSize: 24 }}>{expired ? 'Renew your plan' : 'Choose your plan'}</h1>
+        <p className="ym-sub" style={{ marginTop: 6 }}>{expired ? 'Your subscription has lapsed. Re-subscribe to reopen your dashboard.' : 'A subscription activates your dashboard. No sales commission — keep 100% of every sale.'}</p>
+      </div>
+      <SubscribeFlow />
+      <div style={{ textAlign: 'center', marginTop: 20 }}>
+        <button style={linkBtn} onClick={signOutUser}>Sign out</button>
+      </div>
     </Shell>
   );
 }
@@ -136,29 +166,23 @@ function StoreSignupPanel({ onDone }) {
 export default function MerchantGate({ children }) {
   const { user, hasAccount, loading } = useAuth();
   const uid = user?.uid;
-  const [status, setStatus] = useState('checking'); // checking | needAuth | needStore | ready
+  const [merchant, setMerchant] = useState(undefined); // undefined=loading, null=none
+  const [sub, setSub] = useState(undefined);
 
   useEffect(() => {
-    if (!firebaseEnabled) { setStatus('ready'); return undefined; } // demo mode
-    if (loading) { setStatus('checking'); return undefined; }
-    if (!hasAccount || !uid) { setStatus('needAuth'); return undefined; }
-    let active = true;
-    setStatus('checking');
-    getDoc(doc(db, 'merchants', uid))
-      .then((s) => { if (active) setStatus(s.exists() && s.data().storeId ? 'ready' : 'needStore'); })
-      .catch(() => { if (active) setStatus('needStore'); });
-    return () => { active = false; };
+    if (!firebaseEnabled || !db || loading) return undefined;
+    if (!hasAccount || !uid) { setMerchant(null); setSub(null); return undefined; }
+    setMerchant(undefined); setSub(undefined);
+    const u1 = onSnapshot(doc(db, 'merchants', uid), (s) => setMerchant(s.exists() ? s.data() : null), () => setMerchant(null));
+    const u2 = onSnapshot(doc(db, 'subscriptions', uid), (s) => setSub(s.exists() ? s.data() : null), () => setSub(null));
+    return () => { u1(); u2(); };
   }, [uid, hasAccount, loading]);
 
-  if (status === 'ready') return children;
-  if (status === 'needAuth') return <SignInPanel />;
-  if (status === 'needStore') return <StoreSignupPanel onDone={() => setStatus('ready')} />;
-  return (
-    <Shell>
-      <div style={{ textAlign: 'center', color: 'var(--m-fg3)' }}>
-        <FA i="fa-circle-notch" style={{ fontSize: 28, color: 'var(--m-primary)', animation: 'ym-spin 1s linear infinite' }} />
-        <div style={{ marginTop: 12, fontSize: 14 }}>Loading your dashboard…</div>
-      </div>
-    </Shell>
-  );
+  if (!firebaseEnabled) return children; // demo mode → dashboard directly
+  if (loading) return <Loading />;
+  if (!hasAccount || !uid) return <SignInPanel />;
+  if (merchant === undefined || sub === undefined) return <Loading />;
+  if (!merchant || !merchant.storeId) return <StoreSignupPanel />;
+  if (!sub || sub.status !== 'active') return <SubscribePanel expired={sub && sub.status === 'expired'} />;
+  return children;
 }

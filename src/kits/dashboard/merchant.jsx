@@ -85,11 +85,11 @@ export function useShop() {
 /** Sidebar subscription card view (live or demo fallback). */
 export function useSubCard() {
   const { live, sub } = useMerchant();
-  if (!live) return { ...SUBSCRIPTION, next: SUBSCRIPTION.next, active: true };
+  if (!live) return { ...SUBSCRIPTION, kind: 'delivery', range: '', next: SUBSCRIPTION.next, active: true };
   if (sub && sub.status === 'active') {
-    return { plan: sub.plan, price: sub.price || 0, deliveriesUsed: sub.deliveriesUsed || 0, deliveriesCap: sub.deliveriesCap || 0, next: sub.renewsAt ? fmtTs(sub.renewsAt) : '—', active: true };
+    return { plan: sub.plan, kind: sub.kind || 'delivery', range: sub.range || '', price: sub.price || 0, deliveriesUsed: sub.deliveriesUsed || 0, deliveriesCap: sub.deliveriesCap || 0, next: sub.renewsAt ? fmtTs(sub.renewsAt) : '—', active: true };
   }
-  return { plan: 'No active plan', price: 0, deliveriesUsed: 0, deliveriesCap: 0, next: '—', active: false };
+  return { plan: 'No active plan', kind: 'delivery', range: '', price: 0, deliveriesUsed: 0, deliveriesCap: 0, next: '—', active: false };
 }
 
 /** Overview data: KPI cards, weekly buckets, product + order tables. */
