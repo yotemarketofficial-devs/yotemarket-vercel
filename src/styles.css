@@ -322,3 +322,16 @@ h1{font-size:clamp(36px,5.2vw,58px); line-height:1.03; font-weight:800; margin-t
 .callout p{font-size:15px; color:var(--t3); margin:0 0 18px;}
 @media (max-width:880px){ .dept-grid{grid-template-columns:1fr 1fr;} }
 @media (max-width:560px){ .dept-grid{grid-template-columns:1fr;} }
+
+/* ============ pricing table (delivery bands) ============ */
+.ptable-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); background:var(--surface); -webkit-overflow-scrolling:touch;}
+.ptable{width:100%; border-collapse:collapse; min-width:560px;}
+.ptable th, .ptable td{padding:13px 18px; text-align:left;}
+.ptable thead th{background:var(--surface2); color:var(--t1); font-weight:700; font-size:13px; border-bottom:1px solid var(--line); white-space:nowrap;}
+.ptable thead th span{display:block; font-size:11px; font-weight:500; color:var(--t3); margin-top:2px;}
+.ptable tbody td{border-top:1px solid var(--line); color:var(--t2); font-size:14.5px;}
+.ptable td:first-child{font-weight:600; color:var(--t1); white-space:nowrap;}
+.ptable .amt{font-weight:700; color:var(--t1); white-space:nowrap;}
+.ptable .bandrow td{background:color-mix(in srgb, var(--purple) 8%, var(--surface)); font-weight:700; color:var(--purple); font-size:12px; text-transform:uppercase; letter-spacing:.09em; border-top:1px solid var(--line2);}
+.plan-legend{display:flex; gap:18px; flex-wrap:wrap; justify-content:center; margin:0 0 18px; font-size:13.5px; color:var(--t3);}
+.plan-legend b{color:var(--t1);}
