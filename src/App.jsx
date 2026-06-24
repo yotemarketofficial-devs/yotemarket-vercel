@@ -7,6 +7,7 @@ import RiderPage from './pages/RiderPage.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 import Pricing from './pages/Pricing.jsx';
+import Careers from './pages/Careers.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
@@ -33,6 +34,7 @@ function App() {
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
           <Route path="pricing" element={<Pricing />} />
+          <Route path="careers" element={<Careers />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

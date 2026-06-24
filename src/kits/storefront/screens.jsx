@@ -124,7 +124,7 @@ function Empty({ icon, t, s }){
 
 /* ---------- PRODUCT ---------- */
 export function ProductScreen({ params }){
-  const { back, nav, addToCart, toast, requireAuth } = useYM();
+  const { back, nav, addToCart, requireAuth } = useYM();
   const p = ymProduct(params.pid) || YM_PRODUCTS[0];
   const store = ymStore(p.store);
   const tint = (ymCat(p.cat)||{}).tint || '#4f46e5';

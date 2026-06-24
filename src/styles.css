@@ -304,3 +304,21 @@ h1{font-size:clamp(36px,5.2vw,58px); line-height:1.03; font-weight:800; margin-t
   .trust-strip-in{grid-template-columns:1fr 1fr;}
   .sec-cta{flex-direction:column; gap:12px;}
 }
+
+/* ============ segmented toggle (pricing) ============ */
+.seg-wrap{text-align:center; margin-bottom:30px;}
+.seg{display:inline-flex; gap:4px; background:var(--surface2); border:1px solid var(--line); border-radius:13px; padding:5px;}
+.seg button{padding:10px 22px; border-radius:9px; border:none; background:transparent; color:var(--t3); font-weight:600; font-size:14.5px; cursor:pointer; font-family:inherit; transition:.15s;}
+.seg button.on{background:var(--surface); color:var(--purple); box-shadow:var(--shadow);}
+
+/* ============ careers ============ */
+.dept-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+.dept-card{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:24px; box-shadow:var(--shadow);}
+.dept-card .di{width:46px; height:46px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; margin-bottom:14px;}
+.dept-card h4{font-size:16px; font-weight:700; color:var(--t1); margin:0 0 6px;}
+.dept-card p{font-size:14px; color:var(--t3); margin:0;}
+.callout{background:var(--surface2); border:1px solid var(--line); border-radius:20px; padding:28px; text-align:center; margin-top:34px;}
+.callout h3{font-size:20px; color:var(--t1); margin:0 0 8px;}
+.callout p{font-size:15px; color:var(--t3); margin:0 0 18px;}
+@media (max-width:880px){ .dept-grid{grid-template-columns:1fr 1fr;} }
+@media (max-width:560px){ .dept-grid{grid-template-columns:1fr;} }
