@@ -78,6 +78,8 @@ export const aiChat = callable('aiChat');
 export const mpesaStkPush = callable('mpesaStkPush');
 /** Merchant subscription STK push → { checkoutRequestId, merchantRequestId }. */
 export const subscribeMerchant = callable('subscribeMerchant');
+/** Self-serve merchant signup → { storeId, already }. Creates the store + merchant account. */
+export const registerStore = callable('registerStore');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
 

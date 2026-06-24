@@ -11,7 +11,7 @@ import KitFrame from './components/KitFrame.jsx';
 // Imported design kits are full-bleed apps with their own chrome — code-split so the
 // marketing landing stays lean and each kit's scoped CSS only loads on its route.
 const StorefrontApp = lazy(() => import('./kits/storefront/index.jsx'));
-const DashboardApp = lazy(() => import('./kits/dashboard/index.jsx'));
+const DashboardApp = lazy(() => import('./kits/dashboard/gated.jsx'));
 const MarketersApp = lazy(() => import('./kits/marketers/index.jsx'));
 const EarnLanding = lazy(() => import('./kits/earn/index.jsx'));
 const StaffApp = lazy(() => import('./kits/staff/index.jsx'));
