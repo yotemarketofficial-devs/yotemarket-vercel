@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 const DEPARTMENTS = [
   { icon: 'fa-code', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Engineering', desc: 'Build the apps, dashboards and platform that power the mall.' },
-  { icon: 'fa-truck-ramp-box', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Operations & Logistics', desc: 'Run the hubs, batching and last-mile network across counties.' },
+  { icon: 'fa-truck-ramp-box', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Operations & Logistics', desc: 'Run the hubs and last-mile delivery network across counties.' },
   { icon: 'fa-headset', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Customer Support', desc: 'Help shoppers, merchants and riders get the most out of YoteMarket.' },
   { icon: 'fa-handshake', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Growth & Partnerships', desc: 'Onboard merchants and grow the YoteMarket ecosystem.' },
   { icon: 'fa-calculator', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Finance & Admin', desc: 'Keep payouts, compliance and the office running smoothly.' },

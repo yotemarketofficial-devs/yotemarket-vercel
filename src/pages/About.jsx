@@ -24,7 +24,7 @@ function About() {
             <p>
               Shoppers browse hundreds of stores like a physical mall, chat &amp; negotiate in the app messenger,
               pay with M-Pesa escrow, and collect at their nearest pickup hub. A network of zero-hour riders
-              batches deliveries by distance band to keep costs low and earnings fair.
+              delivers from local hubs to keep costs low and earnings fair.
             </p>
             <h3>Join the team</h3>
             <p>

@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 
 const FEATURES = [
-  { icon: 'fa-layer-group', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Batched routes', desc: 'Pick up several orders on one run — more drops, more earnings per trip.' },
-  { icon: 'fa-coins', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Per-run payouts', desc: 'Transparent pay: base + multi-drop + distance. See it before you accept.' },
+  { icon: 'fa-route', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Smart routes', desc: 'We route you efficiently so every run is worth your time.' },
+  { icon: 'fa-coins', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Per-run payouts', desc: 'Transparent pay shown up front — see exactly what you\'ll earn before you accept.' },
   { icon: 'fa-mobile-screen', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Cash out to M-Pesa', desc: 'Earnings settle straight to your M-Pesa — no fees, no waiting.' },
-  { icon: 'fa-clock', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Flexible hours', desc: 'Zero-hour contract — ride when it suits you across urban, regional & long-haul bands.' },
+  { icon: 'fa-clock', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Flexible hours', desc: 'Zero-hour contract — ride when it suits you, wherever you are.' },
 ];
 
 function RiderPage() {
@@ -15,8 +15,8 @@ function RiderPage() {
           <span className="eyebrow"><i className="fas fa-motorcycle"></i> YoteMarket Rider</span>
           <h1>Ride with us. <span className="g">Earn more.</span></h1>
           <p className="lead">
-            Deliver batched orders from local hubs and get paid per run — straight to M-Pesa. Choose your band,
-            stack your drops, and keep every shilling of your payout.
+            Deliver orders from local hubs and get paid per run — straight to M-Pesa. Ride when it suits you and
+            keep every shilling of your payout.
           </p>
           <div className="app-badges">
             <a className="store" href="#" aria-label="Get it on Google Play">
@@ -47,7 +47,7 @@ function RiderPage() {
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-              {[['Ksh 70+', 'Base per urban run'], ['Ksh 25', 'Per paid km'], ['5–20', 'Drops per run'], ['Same day', 'M-Pesa payout']].map(([v, l]) => (
+              {[['Per run', 'Transparent pay'], ['M-Pesa', 'Instant payouts'], ['Flexible', 'Your own hours'], ['No fuel', 'No deductions']].map(([v, l]) => (
                 <div key={l} style={{ background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)', borderRadius: '14px', padding: '16px' }}>
                   <div style={{ color: 'var(--gold-bright)', fontSize: '22px', fontWeight: 800 }}>{v}</div>
                   <div style={{ color: 'rgba(255,255,255,.78)', fontSize: '13px', marginTop: '2px' }}>{l}</div>

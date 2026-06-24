@@ -174,7 +174,7 @@ function HomePage() {
                 <i className="fas fa-motorcycle"></i>
               </div>
               <h3>Rider Program</h3>
-              <p>Deliver on your own schedule. Pick up batched runs, drop at hubs, and grow your earnings.</p>
+              <p>Deliver on your own schedule. Pick up delivery runs, drop at hubs, and grow your earnings.</p>
               <ul className="feats">
                 <li><i className="fas fa-check"></i> Flexible runs — work your own hours</li>
                 <li><i className="fas fa-check"></i> Get paid per run, straight to M-Pesa</li>
