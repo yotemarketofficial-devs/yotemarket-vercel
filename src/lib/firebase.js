@@ -77,7 +77,7 @@ export const aiChat = callable('aiChat');
 /** Lipa na M-Pesa STK push → { checkoutRequestId, merchantRequestId }. */
 export const mpesaStkPush = callable('mpesaStkPush');
 /** Merchant subscription STK push → { checkoutRequestId, merchantRequestId }. */
-export const subscribeMpesa = callable('subscribeMpesa');
+export const subscribeMerchant = callable('subscribeMerchant');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
 

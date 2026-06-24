@@ -5,7 +5,7 @@ import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './prim
 import { OrdersTable } from './overview.jsx';
 import { ORDER_ROWS, WALLET, SUBSCRIPTION, CHATS, SHOP, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { subscribeMpesa, db, firebaseEnabled } from '../../lib/firebase.js';
+import { subscribeMerchant, db, firebaseEnabled } from '../../lib/firebase.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
@@ -102,7 +102,7 @@ export function Subscription({ toast }){
     if (!phone.trim()) { setErr('Enter the M-Pesa phone number to bill.'); return; }
     setStage('sending');
     try {
-      await subscribeMpesa({ plan: tier.name, phone });
+      await subscribeMerchant({ plan: tier.name, phone });
       setStage('waiting');
     } catch (e) {
       setErr(e.message || 'Could not start the subscription. Please try again.');
