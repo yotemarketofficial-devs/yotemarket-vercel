@@ -74,6 +74,9 @@ function callable(name) {
 
 /** AI chat completion → { reply, model }. messages:[{role,content}], system? */
 export const aiChat = callable('aiChat');
+/** Grounded YoteAI assistant → { reply, products }. { role?, messages:[{role,content}] }.
+ *  Roles: shopper | search | merchant | support. Reads the caller's real data server-side. */
+export const aiAssistant = callable('aiAssistant');
 /** Lipa na M-Pesa STK push → { checkoutRequestId, merchantRequestId }. */
 export const mpesaStkPush = callable('mpesaStkPush');
 /** Merchant subscription STK push → { checkoutRequestId, merchantRequestId }. */

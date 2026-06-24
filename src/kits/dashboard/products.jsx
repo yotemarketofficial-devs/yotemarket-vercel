@@ -88,7 +88,7 @@ export function AddProductModal({ onClose, onSave }){
             </div>
             <Field label="Quantity in stock"><input className="ipt" type="number" defaultValue={10} /></Field>
             <Field label="SKU" hint="For your inventory tracking"><input className="ipt" placeholder="YM-PHN-A05" /></Field>
-            <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via WhatsApp before confirming.</div></div>
+            <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via the in-app messenger before confirming.</div></div>
           </div>}
           {step===3 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div><label className="ym-label">Cover image</label><div style={{ border:'2px dashed var(--m-border)', borderRadius:14, padding:32, textAlign:'center', cursor:'pointer' }}><FA i="fa-cloud-arrow-up" style={{ fontSize:28, color:'var(--m-primary)', marginBottom:8 }} /><div className="ym-h3" style={{ fontSize:14 }}>Drop image here, or click to browse</div><div className="ym-cap" style={{ marginTop:2 }}>PNG or JPG · up to 5MB</div></div></div>

@@ -3,7 +3,7 @@ import PhoneMockup from '../components/PhoneMockup.jsx';
 
 const FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Shop the mall', desc: 'Browse 200+ local stores like a physical mall, anywhere you are.' },
-  { icon: 'fa-whatsapp', brand: true, tint: 'linear-gradient(135deg,#25D366,#1da851)', title: 'Negotiate in chat', desc: 'Message sellers, make offers, and agree a price before you pay.' },
+  { icon: 'fa-comments', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Negotiate in chat', desc: 'Message sellers in the app messenger, make offers, and agree a price before you pay.' },
   { icon: 'fa-truck-fast', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Track to your hub', desc: 'Follow your rider in real time and collect at your nearest pickup hub.' },
   { icon: 'fa-mobile-screen', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Pay with M-Pesa', desc: 'Secure, escrow-protected checkout — your money is safe until you collect.' },
 ];

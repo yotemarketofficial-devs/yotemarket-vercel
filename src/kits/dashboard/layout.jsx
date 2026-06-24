@@ -6,10 +6,11 @@ import { useShop, useSubCard } from './merchant.jsx';
 
 export const NAV = [
   { key:'overview', icon:'fa-gauge-high', label:'Dashboard' },
+  { key:'assistant', icon:'fa-wand-magic-sparkles', label:'YoteAI' },
   { key:'sales', icon:'fa-cash-register', label:'Sales' },
   { key:'products', icon:'fa-box', label:'My Products' },
   { key:'wallet', icon:'fa-wallet', label:'Wallet' },
-  { key:'chat', icon:'fa-comments', label:'Chats', badge:2 },
+  { key:'chat', icon:'fa-comments', label:'Chats' },
   { key:'subscription', icon:'fa-id-card', label:'Subscription' },
   { key:'settings', icon:'fa-gear', label:'Settings' },
 ];

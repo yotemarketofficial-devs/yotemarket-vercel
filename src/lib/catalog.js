@@ -43,6 +43,7 @@ const normProduct = (d) => ({
 const normStore = (d) => ({
   id: d.id,
   name: d.name,
+  ownerId: d.ownerId || null, // merchant uid — lets a shopper open a live chat thread
   area: d.area,
   rating: d.rating != null ? Number(d.rating) : undefined,
   reviews: d.reviews,

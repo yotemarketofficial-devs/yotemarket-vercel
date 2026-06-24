@@ -1,26 +1,26 @@
 /* engage.jsx — Storefront: Messages (chat inbox + thread) and YoteAI assistant.
-   YoteAI is wired to the real `aiChat` Cloud Function (Ollama Cloud) with a warm
-   local fallback when the backend/auth isn't available. */
+   Messages are real, two-sided in-app chat backed by Firestore (shared model with
+   the merchant dashboard + Flutter apps). Chat requires a signed-in account; guests
+   are prompted to sign in. YoteAI is wired to the real `aiChat` Cloud Function
+   (Ollama Cloud) with a warm local fallback. */
 import React from 'react';
-import { useYM, FA, Thumb } from './ui.jsx';
+import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
 import { YM_STORES, YM_PRODUCTS, ymStore, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { aiChat, firebaseEnabled } from '../../lib/firebase.js';
+import {
+  chatEnabled, conversationId, openStoreConversation, subscribeConversations,
+  subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
+  fmtTime, fmtWhen,
+} from '../../lib/chat.js';
 const { useState: useSE, useRef: useRefE, useEffect: useEffE } = React;
 
-/* conversation seeds (mirrors mobile shopper inbox) */
-const CONVOS = YM_STORES.slice(0,4).map((s,i)=>({
-  id:s.id, store:s,
-  last:['Best price is Ksh 17,500 with free delivery 😊','Yes, in stock! Same-day to your hub.','Karibu! Asante for shopping with us.','New arrivals dropping this Friday 🎉'][i] || 'How can we help today?',
-  when:['3m','1h','Tue','Mon'][i] || 'now', unread: i===0?1:0,
-}));
+const QUICK_CHIPS = ['Is this available?', 'What’s your last price?', 'Do you deliver today?'];
 
-function autoReply(text, store){
-  const l = text.toLowerCase();
-  if (l.includes('last price') || l.includes('offer') || /ksh\s*[\d,]+/.test(l)) return `Best I can do is a small discount plus free hub delivery. Deal?`;
-  if (l.includes('available') || l.includes('stock')) return 'Yes, it’s in stock and ready for same-day delivery to your hub!';
-  if (l.includes('deliver')) return 'We deliver to your nearest YoteMarket hub — usually same day. Which hub works for you?';
-  return 'Sawa! Anything else you’d like to know?';
+function shopperNameOf(account, user) {
+  return account?.name && account.name !== 'Guest'
+    ? account.name
+    : (user?.displayName || (user?.email ? user.email.split('@')[0] : 'Shopper'));
 }
 
 /* Local YoteAI fallback used when the AI backend isn't reachable. */
@@ -38,61 +38,42 @@ function localAiReply(text){
   return 'Karibu! Tell me a category, budget or store and I’ll point you to the best options in the mall.';
 }
 
-function ChatThread({ convo }){
-  const { toast } = useYM();
-  const store = convo.store;
-  const [msgs, setMsgs] = useSE([{ from:'them', text:`Karibu! Thanks for reaching out to ${store.name}. How can we help today?`, at:'10:02 AM' }]);
-  const [draft, setDraft] = useSE('');
-  const [typing, setTyping] = useSE(false);
-  const scrollRef = useRefE(null); const timer = useRefE(null);
-  useEffE(()=>()=>clearTimeout(timer.current),[]);
-  useEffE(()=>{ const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; },[msgs,typing]);
-  // reset thread when switching conversation
-  useEffE(()=>{ setMsgs([{ from:'them', text:`Karibu! Thanks for reaching out to ${store.name}. How can we help today?`, at:'10:02 AM' }]); },[convo.id]);
-
-  const send = (text)=>{
-    const t=(text||draft).trim(); if(!t) return;
-    setMsgs(m=>[...m,{from:'me',text:t,at:'Now'}]); setDraft(''); setTyping(true);
-    timer.current=setTimeout(()=>{ setTyping(false); setMsgs(m=>[...m,{from:'them',text:autoReply(t,store),at:'Now'}]); },1300);
-  };
-  const chips = ['Is this available?','What’s your last price?','Do you deliver today?'];
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
-        <Thumb icon={store.icon} tint={store.tint} size={42} radius={9999} img={store.img} />
-        <div style={{ flex:1, minWidth:0 }}>
-          <div className="ym-h3" style={{ display:'flex', alignItems:'center', gap:6 }}>{store.name} {store.verified && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:12 }} />}</div>
-          <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'var(--m-success)' }} /> Online · replies {store.responds}</div>
-        </div>
-        <button className="icon-btn" aria-label="Call store" onClick={()=>toast('Calling '+store.name+'…','fa-phone')}><FA i="fa-phone" /></button>
-      </div>
-      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
-        {msgs.map((m,i)=>(
-          <div key={i} style={{ maxWidth:'72%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
-            alignSelf: m.from==='me'?'flex-end':'flex-start',
-            background: m.from==='me'?'var(--m-primary-deep)':'var(--m-surface)', color: m.from==='me'?'#fff':'var(--m-fg1)',
-            borderRadius: m.from==='me'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
-            {m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{m.at}</div>
-          </div>
-        ))}
-        {typing && <div style={{ alignSelf:'flex-start', padding:'12px 16px', borderRadius:'16px 16px 16px 4px', background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', gap:5 }}>{[0,1,2].map(d=><span key={d} style={{ width:7, height:7, borderRadius:9999, background:'var(--m-fg4)', animation:`ym-fade 1s ease ${d*0.18}s infinite alternate` }} />)}</div>}
-      </div>
-      <div className="scroll-x" style={{ gap:8, padding:'10px 18px 0' }}>
-        {chips.map(c=><button key={c} className="ym-chip ym-btn-sm" style={{ height:34, flexShrink:0, fontSize:13 }} onClick={()=>send(c)}>{c}</button>)}
-      </div>
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
-        <input className="ym-input" placeholder="Message…" aria-label="Message" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:46, borderRadius:9999, background:'var(--m-surface-2)', border:'none' }} />
-        <button onClick={()=>send()} className="icon-btn" aria-label="Send" style={{ background:'var(--m-primary-deep)', color:'#fff' }}><FA i="fa-paper-plane" /></button>
-      </div>
-    </div>
-  );
+export function MessagesScreen({ params }){
+  const { account } = useYM();
+  const { user } = useAuth();
+  if (chatEnabled(user)) return <LiveMessages params={params} user={user} account={account} />;
+  return <GuestGate icon="fa-comments" title="Sign in to your messages" sub="Chat directly with stores about price, stock and delivery — sign in to start a conversation." />;
 }
 
-export function MessagesScreen(){
-  const { nav, reset } = useYM();
-  const [sel, setSel] = useSE(CONVOS[0].id);
-  const convo = CONVOS.find(c=>c.id===sel) || CONVOS[0];
+/* ---------- LIVE MESSAGES (Firestore, two-sided shopper ↔ store) ---------- */
+function LiveMessages({ params, user, account }){
+  const { nav, reset, toast } = useYM();
+  const [convos, setConvos] = useSE(null); // null = still loading
+  const [sel, setSel] = useSE(null);
+  const myUid = user.uid;
+
+  // Live inbox.
+  useEffE(() => subscribeConversations(myUid, setConvos), [myUid]);
+
+  // Opened from a store/product "Chat with seller" CTA → ensure the thread exists
+  // and select it (we can derive its id synchronously so selection is instant).
+  const paramStore = params?.store;
+  useEffE(() => {
+    if (!paramStore?.id) return;
+    setSel(conversationId(paramStore.id, myUid));
+    openStoreConversation({ store: paramStore, user, shopperName: shopperNameOf(account, user) })
+      .catch((e) => toast(e.message || 'Couldn’t open chat', 'fa-triangle-exclamation'));
+  }, [paramStore?.id, myUid]);
+
+  const list = convos || [];
+  // Fall back to a synthesized thread for a just-opened store not yet in the snapshot.
+  const selConv = list.find((c) => c.id === sel)
+    || (paramStore && sel === conversationId(paramStore.id, myUid)
+      ? { id: sel, participants: [myUid, paramStore.ownerId], info: {
+          [paramStore.ownerId]: { name: paramStore.name, role: 'merchant', icon: paramStore.icon, tint: paramStore.tint, img: paramStore.img },
+        }, unread: {} }
+      : list[0] || null);
+
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
       <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Home</button>
@@ -104,22 +85,95 @@ export function MessagesScreen(){
             <div style={{ flex:1, minWidth:0 }}><div style={{ color:'#fff', fontWeight:700, fontSize:14 }}>YoteAI Assistant</div><div style={{ color:'rgba(255,255,255,.85)', fontSize:12 }}>Find products & best deals</div></div>
             <span style={{ background:'rgba(255,255,255,.18)', color:'#fff', fontSize:10.5, fontWeight:700, padding:'4px 9px', borderRadius:9999 }}>AI</span>
           </button>
-          {CONVOS.map(c=>(
-            <button key={c.id} onClick={()=>setSel(c.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', alignItems:'center', gap:12, background: sel===c.id?'var(--m-surface-3)':'transparent' }}>
-              <div style={{ position:'relative', flexShrink:0 }}>
-                <Thumb icon={c.store.icon} tint={c.store.tint} size={46} radius={9999} img={c.store.img} />
-                {c.unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{c.unread}</span>}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}><span className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.store.name}</span><span className="ym-cap" style={{ flexShrink:0 }}>{c.when}</span></div>
-                <div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:c.unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:c.unread?600:400 }}>{c.last}</div>
-              </div>
-            </button>
-          ))}
+          {convos === null && <div style={{ padding:'22px 16px', color:'var(--m-fg3)', fontSize:13.5 }}>Loading your chats…</div>}
+          {convos !== null && list.length === 0 && (
+            <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>
+              <FA i="fa-comments" style={{ fontSize:30, color:'var(--m-fg4)', marginBottom:12, display:'block' }} />
+              No messages yet. Tap “Chat with seller” on any store to start a conversation.
+            </div>
+          )}
+          {list.map((c) => {
+            const otherId = otherParticipant(c, myUid);
+            const info = (c.info && c.info[otherId]) || {};
+            const unread = (c.unread && c.unread[myUid]) || 0;
+            return (
+              <button key={c.id} onClick={()=>setSel(c.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', alignItems:'center', gap:12, background: sel===c.id?'var(--m-surface-3)':'transparent' }}>
+                <div style={{ position:'relative', flexShrink:0 }}>
+                  <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={46} radius={9999} img={info.img} />
+                  {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}><span className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{info.name || 'Store'}</span><span className="ym-cap" style={{ flexShrink:0 }}>{fmtWhen(c.updatedAt)}</span></div>
+                  <div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:unread?600:400 }}>{c.lastMessage || 'Say hello 👋'}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-        <ChatThread convo={convo} />
+        {selConv
+          ? <LiveChatThread key={selConv.id} conv={selConv} user={user} />
+          : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24, textAlign:'center' }}>Select a conversation to start chatting.</div>}
       </div>
       <style>{`@media (max-width:640px){ .msg-grid{ grid-template-columns:1fr !important; } }`}</style>
+    </div>
+  );
+}
+
+function LiveChatThread({ conv, user }){
+  const { toast } = useYM();
+  const myUid = user.uid;
+  const otherId = otherParticipant(conv, myUid);
+  const info = (conv.info && conv.info[otherId]) || {};
+  const blocked = conv.status === 'blocked';
+  const [msgs, setMsgs] = useSE([]);
+  const [draft, setDraft] = useSE('');
+  const scrollRef = useRefE(null);
+
+  useEffE(() => subscribeMessages(conv.id, setMsgs), [conv.id]);
+  // Clear my unread badge whenever I'm viewing the thread and new messages land.
+  useEffE(() => { markConversationRead(conv.id, myUid); }, [conv.id, msgs.length]);
+  useEffE(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
+
+  const send = (text) => {
+    const t=(text||draft).trim(); if(!t) return;
+    if (blocked) { toast('This conversation is closed.', 'fa-ban'); return; }
+    setDraft('');
+    sendChatMessage({ convId: conv.id, user, text: t, recipientUid: otherId })
+      .catch(() => toast('Message failed to send', 'fa-triangle-exclamation'));
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
+        <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={42} radius={9999} img={info.img} />
+        <div style={{ flex:1, minWidth:0 }}>
+          <div className="ym-h3">{info.name || 'Store'}</div>
+          <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Usually replies quickly'}</div>
+        </div>
+      </div>
+      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+        {msgs.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
+        {msgs.map((m) => {
+          const mine = m.senderId === myUid;
+          return (
+            <div key={m.id} style={{ maxWidth:'72%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
+              alignSelf: mine?'flex-end':'flex-start',
+              background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
+              borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
+              {m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}</div>
+            </div>
+          );
+        })}
+      </div>
+      {msgs.length===0 && !blocked && (
+        <div className="scroll-x" style={{ gap:8, padding:'10px 18px 0' }}>
+          {QUICK_CHIPS.map(c=><button key={c} className="ym-chip ym-btn-sm" style={{ height:34, flexShrink:0, fontSize:13 }} onClick={()=>send(c)}>{c}</button>)}
+        </div>
+      )}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
+        <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Message…'} aria-label="Message" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:46, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
+        <button onClick={()=>send()} disabled={blocked} className="icon-btn" aria-label="Send" style={{ background:'var(--m-primary-deep)', color:'#fff', opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,14 @@
 import { Link } from 'react-router-dom';
 
+const MERCHANT_FEATURES = [
+  { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Branded storefront', desc: 'Your own shopfront in the mall — products, photos and reviews, live in minutes.' },
+  { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 1,500 with bundled hub deliveries. Keep 100% of every sale — we never take a cut.' },
+  { icon: 'fa-wand-magic-sparkles', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'YoteAI merchant tools', desc: 'AI writes your product listings, surfaces demand insights, and answers shopper questions for you.' },
+  { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'In-app messenger', desc: 'Chat and negotiate with buyers inside the app — agree a price, then get paid through escrow.' },
+  { icon: 'fa-wallet', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Wallet & M-Pesa payouts', desc: 'Track earnings and withdraw to M-Pesa or your Paybill on demand. Funds are escrow-protected.' },
+  { icon: 'fa-chart-line', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Demand insights', desc: 'See what shoppers search for and which products trend in your area — and stock the winners.' },
+];
+
 function HomePage() {
   return (
     <main>
@@ -16,7 +25,7 @@ function HomePage() {
             </h1>
             <p className="lead">
               YoteMarket bundles a virtual mall, merchant tools, and last-mile delivery into one ecosystem.
-              Buy, sell, negotiate over WhatsApp, and pay with M-Pesa.
+              Buy, sell, chat &amp; negotiate in the app messenger, and pay with M-Pesa.
             </p>
             <div className="hero-cta">
               <Link className="btn btn-primary btn-lg" to="/storefront">
@@ -43,8 +52,8 @@ function HomePage() {
                 200+ local stores
               </span>
               <span className="mini">
-                <i className="fab fa-whatsapp"></i>
-                Negotiate via WhatsApp
+                <i className="fas fa-comments"></i>
+                Chat in the app
               </span>
               <span className="mini">
                 <i className="fas fa-mobile-alt"></i>
@@ -55,13 +64,23 @@ function HomePage() {
         </div>
       </header>
 
+      {/* trust metrics strip */}
+      <div className="trust-strip">
+        <div className="wrap trust-strip-in">
+          <div className="ts"><b>200+</b><span>Local stores</span></div>
+          <div className="ts"><b>47</b><span>Counties served</span></div>
+          <div className="ts"><b>1,200+</b><span>Active merchants</span></div>
+          <div className="ts"><b>M-Pesa</b><span>Instant checkout</span></div>
+        </div>
+      </div>
+
       <section className="pad" id="roles">
         <div className="wrap">
           <div className="sec-head">
             <div className="kicker">One platform · every role</div>
             <h2>Whoever you are, there's a place for you</h2>
             <p>
-              Shoppers, merchants, and marketers each get a dedicated space — built on one shared design system.
+              Shoppers, merchants, marketers and riders each get a dedicated space — built on one shared design system.
             </p>
           </div>
           <div className="cards">
@@ -71,7 +90,7 @@ function HomePage() {
               </div>
               <h3>Shop the mall</h3>
               <p>
-                Browse hundreds of local stores like a physical mall, negotiate over WhatsApp, and check out with M-Pesa.
+                Browse hundreds of local stores like a physical mall, chat with sellers in the app messenger, and check out with M-Pesa.
               </p>
               <span className="go">Enter storefront <i className="fas fa-arrow-right arrow"></i></span>
             </Link>
@@ -79,9 +98,9 @@ function HomePage() {
               <div className="tile" style={{ background: '#4338CA' }}>
                 <i className="fas fa-store"></i>
               </div>
-              <h3>Sell & grow</h3>
+              <h3>Sell &amp; grow</h3>
               <p>
-                A branded storefront, product management, demand insights, wallet, and subscriptions — from Ksh 500/mo.
+                A branded storefront, product management, AI tools, demand insights, wallet and subscriptions — no sales commission.
               </p>
               <span className="go">Open seller dashboard <i className="fas fa-arrow-right arrow"></i></span>
             </Link>
@@ -89,12 +108,81 @@ function HomePage() {
               <div className="tile" style={{ background: 'linear-gradient(135deg,#E89B0C,#F4B530)' }}>
                 <i className="fas fa-bullhorn"></i>
               </div>
-              <h3>Refer & earn</h3>
+              <h3>Refer &amp; earn</h3>
               <p>
                 Refer merchants, stack checkpoints, climb the leaderboard, and cash out to M-Pesa. Top scouts get hired.
               </p>
               <span className="go">Open marketer program <i className="fas fa-arrow-right arrow"></i></span>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* merchant features — AI tools + subscription benefits */}
+      <section className="pad" id="sell" style={{ paddingTop: '8px' }}>
+        <div className="wrap">
+          <div className="sec-head">
+            <div className="kicker">For merchants</div>
+            <h2>Everything you need to sell &amp; grow</h2>
+            <p>
+              Launch a storefront, reach shoppers across 47 counties, and let AI do the heavy lifting — on a flat monthly plan with no commission.
+            </p>
+          </div>
+          <div className="mfeat-grid">
+            {MERCHANT_FEATURES.map((f) => (
+              <article className="mfeat-card" key={f.title}>
+                <div className="mfeat-ic" style={{ background: f.tint }}>
+                  <i className={`fas ${f.icon}`}></i>
+                </div>
+                <h4>{f.title}</h4>
+                <p>{f.desc}</p>
+              </article>
+            ))}
+          </div>
+          <div className="sec-cta">
+            <Link className="btn btn-primary btn-lg" to="/dashboard">Start selling <i className="fas fa-arrow-right"></i></Link>
+            <span className="sec-cta-note">From Ksh 1,500/mo · bundled deliveries · no commission</span>
+          </div>
+        </div>
+      </section>
+
+      {/* earn with YoteMarket — marketers + riders */}
+      <section className="pad" id="earn" style={{ paddingTop: '8px' }}>
+        <div className="wrap">
+          <div className="sec-head">
+            <div className="kicker">Earn with YoteMarket</div>
+            <h2>Two ways to make money with us</h2>
+            <p>Bring merchants on board, or deliver across town — both pay out to M-Pesa.</p>
+          </div>
+          <div className="earn-grid">
+            <article className="earn-card">
+              <div className="earn-ic" style={{ background: 'linear-gradient(135deg,#E89B0C,#F4B530)' }}>
+                <i className="fas fa-bullhorn"></i>
+              </div>
+              <h3>Marketer Program</h3>
+              <p>Become a YoteMarket scout. Sign up merchants with your referral link and earn as they grow.</p>
+              <ul className="feats">
+                <li><i className="fas fa-check"></i> Unique referral link &amp; QR</li>
+                <li><i className="fas fa-check"></i> Milestone checkpoint payouts</li>
+                <li><i className="fas fa-check"></i> Leaderboard, badges &amp; streaks</li>
+                <li><i className="fas fa-check"></i> Cash out to M-Pesa — top scouts get hired</li>
+              </ul>
+              <Link className="btn btn-gold" to="/marketers">Join the program <i className="fas fa-arrow-right"></i></Link>
+            </article>
+            <article className="earn-card">
+              <div className="earn-ic" style={{ background: 'linear-gradient(135deg,#3b82f6,#2563eb)' }}>
+                <i className="fas fa-motorcycle"></i>
+              </div>
+              <h3>Rider Program</h3>
+              <p>Deliver on your own schedule. Pick up batched runs, drop at hubs, and grow your earnings.</p>
+              <ul className="feats">
+                <li><i className="fas fa-check"></i> Flexible runs — work your own hours</li>
+                <li><i className="fas fa-check"></i> Get paid per run, straight to M-Pesa</li>
+                <li><i className="fas fa-check"></i> Unlock higher delivery tiers with badges</li>
+                <li><i className="fas fa-check"></i> Real-time routes to your nearest hubs</li>
+              </ul>
+              <Link className="btn btn-outline" to="/rider">Ride with us <i className="fas fa-arrow-right"></i></Link>
+            </article>
           </div>
         </div>
       </section>
@@ -233,6 +321,23 @@ function HomePage() {
         </div>
       </section>
 
+      {/* final CTA band */}
+      <section className="pad" style={{ paddingTop: '8px' }}>
+        <div className="wrap">
+          <div className="cta-band">
+            <div className="cta-glow"></div>
+            <div className="cta-inner">
+              <h2>Ready when you are.</h2>
+              <p>Shop the mall, open your store, or earn with us — it all starts here.</p>
+              <div className="cta-actions">
+                <Link className="btn btn-gold btn-lg" to="/storefront">Start shopping <i className="fas fa-arrow-right"></i></Link>
+                <Link className="btn btn-ghost-line btn-lg" to="/dashboard">Become a seller</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer>
         <div className="wrap">
           <div className="foot">
@@ -249,10 +354,10 @@ function HomePage() {
             <div>
               <h4>Company</h4>
               <ul>
-                <li><a href="#">About us</a></li>
-                <li><a href="#">Careers</a></li>
-                <li><a href="#">Blog</a></li>
-                <li><a href="#">Contact</a></li>
+                <li><Link to="/about">About us</Link></li>
+                <li><Link to="/pricing">Pricing</Link></li>
+                <li><Link to="/marketers">Careers</Link></li>
+                <li><Link to="/contact">Contact</Link></li>
               </ul>
             </div>
             <div>
@@ -260,8 +365,8 @@ function HomePage() {
               <ul>
                 <li><Link to="/dashboard">Sell on YoteMarket</Link></li>
                 <li><Link to="/marketers">Marketer program</Link></li>
-                <li><a href="#">Pricing</a></li>
-                <li><a href="#">Logistics</a></li>
+                <li><Link to="/rider">Ride with us</Link></li>
+                <li><Link to="/pricing">Pricing</Link></li>
               </ul>
             </div>
             <div>

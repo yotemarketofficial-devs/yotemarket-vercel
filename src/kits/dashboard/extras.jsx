@@ -3,11 +3,15 @@ import React from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './primitives.jsx';
 import { OrdersTable } from './overview.jsx';
-import { ORDER_ROWS, WALLET, CHATS, ksh } from './data.js';
+import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
-import { db, firebaseEnabled } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant } from '../../lib/firebase.js';
+import {
+  chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
+  markConversationRead, otherParticipant, fmtTime, fmtWhen,
+} from '../../lib/chat.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
@@ -160,43 +164,161 @@ export function Settings(){
 function F({ label, v }){ return <div><label className="ym-label">{label}</label><input className="ipt" defaultValue={v} /></div>; }
 function Row({ label, sub, children, last }){ return <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, padding:'12px 0', borderBottom:last?'none':'1px solid var(--m-border)' }}><div><div className="ym-h3" style={{ fontSize:14 }}>{label}</div><div className="ym-cap">{sub}</div></div>{children}</div>; }
 
-/* ---------- CHAT (merchant ↔ buyer) ---------- */
+/* ---------- CHAT (merchant ↔ buyer) — live Firestore threads ---------- */
 export function Chat(){
-  const [sel, setSel] = useStateX(CHATS[0].id);
-  const c = CHATS.find(x=>x.id===sel) || CHATS[0];
-  const [msgs, setMsgs] = useStateX([{ from:'them', text:c.last, at:'10:02 AM' }]);
-  const [draft, setDraft] = useStateX('');
-  const scrollRef = useRefX(null);
-  useEffX(()=>{ setMsgs([{ from:'them', text:c.last, at:'10:02 AM' }]); },[sel]);
-  useEffX(()=>{ const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; },[msgs]);
-  const send=(t)=>{ const v=(t||draft).trim(); if(!v) return; setMsgs(m=>[...m,{from:'me',text:v,at:'Now'}]); setDraft(''); setTimeout(()=>setMsgs(m=>[...m,{from:'them',text:'Asante! Let me confirm and get back to you.',at:'Now'}]),1100); };
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const live = chatEnabled(user);
+  const [convos, setConvos] = useStateX(null); // null = loading
+  const [sel, setSel] = useStateX(null);
+
+  useEffX(() => { if (live) return subscribeConversations(uid, setConvos); setConvos([]); return undefined; }, [uid, live]);
+
+  const list = convos || [];
+  const selConv = list.find((c) => c.id === sel) || list[0] || null;
+
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Chats</h1>
+      {!live ? (
+        <Card style={{ padding:'40px 24px', textAlign:'center', color:'var(--m-fg3)' }}>
+          <FA i="fa-comments" style={{ fontSize:34, color:'var(--m-fg4)', marginBottom:14 }} />
+          <div className="ym-h3" style={{ marginBottom:4 }}>Sign in to view customer chats</div>
+          <div className="ym-sub">Your buyer conversations appear here once you’re signed in.</div>
+        </Card>
+      ) : (
       <Card style={{ display:'grid', gridTemplateColumns:'300px 1fr', overflow:'hidden', height:540 }} className="chat-grid">
         <div style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
-          {CHATS.map(x=>(
-            <button key={x.id} onClick={()=>setSel(x.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', gap:12, alignItems:'center', background:sel===x.id?'var(--m-surface-3)':'transparent' }}>
-              <div style={{ position:'relative', flexShrink:0 }}><Avatar src={`/assets/avatars/${x.avatar}`} name={x.name} size={44} />{x.unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{x.unread}</span>}</div>
-              <div style={{ flex:1, minWidth:0 }}><div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-h3" style={{ fontSize:14 }}>{x.name}</span><span className="ym-cap">{x.when}</span></div><div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:x.unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:x.unread?600:400 }}>{x.last}</div></div>
-            </button>
-          ))}
+          {convos === null && <div style={{ padding:'22px 16px', color:'var(--m-fg3)', fontSize:13.5 }}>Loading chats…</div>}
+          {convos !== null && list.length === 0 && (
+            <div style={{ padding:'26px 16px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>
+              <FA i="fa-comments" style={{ fontSize:28, color:'var(--m-fg4)', marginBottom:10, display:'block' }} />
+              No customer messages yet.
+            </div>
+          )}
+          {list.map((x) => {
+            const otherId = otherParticipant(x, uid);
+            const info = (x.info && x.info[otherId]) || {};
+            const unread = (x.unread && x.unread[uid]) || 0;
+            return (
+              <button key={x.id} onClick={()=>setSel(x.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', gap:12, alignItems:'center', background:(selConv&&selConv.id===x.id)?'var(--m-surface-3)':'transparent' }}>
+                <div style={{ position:'relative', flexShrink:0 }}><Avatar name={info.name || 'Customer'} size={44} />{unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}</div>
+                <div style={{ flex:1, minWidth:0 }}><div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-h3" style={{ fontSize:14 }}>{info.name || 'Customer'}</span><span className="ym-cap">{fmtWhen(x.updatedAt)}</span></div><div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:unread?600:400 }}>{x.lastMessage || 'New conversation'}</div></div>
+              </button>
+            );
+          })}
         </div>
-        <div style={{ display:'flex', flexDirection:'column' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
-            <Avatar src={`/assets/avatars/${c.avatar}`} name={c.name} size={40} />
-            <div style={{ flex:1 }}><div className="ym-h3">{c.name}</div><div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'var(--m-success)' }} /> Customer</div></div>
+        {selConv
+          ? <MerchantChatThread key={selConv.id} conv={selConv} user={user} />
+          : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24 }}>Select a conversation.</div>}
+      </Card>
+      )}
+      <style>{`@media (max-width:640px){ .chat-grid{ grid-template-columns:1fr !important; } }`}</style>
+    </div>
+  );
+}
+
+function MerchantChatThread({ conv, user }){
+  const uid = user.uid;
+  const otherId = otherParticipant(conv, uid);
+  const info = (conv.info && conv.info[otherId]) || {};
+  const blocked = conv.status === 'blocked';
+  const [msgs, setMsgs] = useStateX([]);
+  const [draft, setDraft] = useStateX('');
+  const scrollRef = useRefX(null);
+
+  useEffX(() => subscribeMessages(conv.id, setMsgs), [conv.id]);
+  useEffX(() => { markConversationRead(conv.id, uid); }, [conv.id, msgs.length]);
+  useEffX(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
+
+  const send = (t) => {
+    const v=(t||draft).trim(); if(!v || blocked) return;
+    setDraft('');
+    sendChatMessage({ convId: conv.id, user, text: v, recipientUid: otherId }).catch(()=>{});
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
+        <Avatar name={info.name || 'Customer'} size={40} />
+        <div style={{ flex:1 }}><div className="ym-h3">{info.name || 'Customer'}</div><div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:blocked?'var(--m-danger)':'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Customer'}</div></div>
+      </div>
+      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+        {msgs.length===0 && <div style={{ margin:'auto', color:'var(--m-fg3)', fontSize:13.5 }}>No messages yet.</div>}
+        {msgs.map((m) => {
+          const mine = m.senderId === uid;
+          return <div key={m.id} style={{ maxWidth:'72%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}</div></div>;
+        })}
+      </div>
+      <div style={{ display:'flex', gap:10, padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
+        <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Reply…'} aria-label="Reply" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
+        <button onClick={()=>send()} disabled={blocked} className="icon-btn" aria-label="Send" style={{ background:'var(--m-primary-deep)', color:'#fff', opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- YOTEAI (merchant growth assistant — grounded in real store data) ---------- */
+const MERCHANT_AI_SUGGESTIONS = [
+  'How is my store performing this month?',
+  'Write a catchy description for my best product',
+  'Which products should I restock or promote?',
+  'Suggest 3 ways to grow my sales',
+];
+
+export function Assistant(){
+  const { user } = useAuth();
+  const { live } = useMerchant();
+  const ready = chatEnabled(user);
+  const [msgs, setMsgs] = useStateX([{ role:'assistant', content:'Habari! I’m YoteAI, your growth assistant. I can read your real store stats and products to write listings and give grounded sales insights. What would you like help with?' }]);
+  const [draft, setDraft] = useStateX('');
+  const [busy, setBusy] = useStateX(false);
+  const scrollRef = useRefX(null);
+  useEffX(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs, busy]);
+
+  const send = async (text) => {
+    const t=(text||draft).trim(); if(!t||busy) return;
+    const next=[...msgs,{ role:'user', content:t }];
+    setMsgs(next); setDraft(''); setBusy(true);
+    try {
+      if (!ready) {
+        setMsgs(m=>[...m,{ role:'assistant', content:'Sign in to your merchant account to get insights grounded in your real store data.' }]);
+      } else {
+        const { reply } = await aiAssistant({ role:'merchant', messages: next.map(m=>({ role:m.role, content:m.content })) });
+        setMsgs(m=>[...m,{ role:'assistant', content:(reply||'').trim() || 'I couldn’t generate a response just now — please try again.' }]);
+      }
+    } catch (e) {
+      setMsgs(m=>[...m,{ role:'assistant', content:'Sorry, I couldn’t reach the AI service. Please try again in a moment.' }]);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="anim-up">
+      <h1 className="ym-h1" style={{ marginBottom:6 }}>YoteAI</h1>
+      <p className="ym-sub" style={{ marginBottom:20 }}>Your AI growth assistant — grounded in your real {live ? 'store stats and products' : 'store data'}. Ask for listing copy or data-backed insights.</p>
+      <Card style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:560 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
+          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:17 }} /></div>
+          <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Growth assistant</div></div>
+        </div>
+        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:'pre-wrap',
+              alignSelf:m.role==='user'?'flex-end':'flex-start', background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
+              color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.content}</div>
+          ))}
+          {busy && <div style={{ alignSelf:'flex-start', padding:'12px 16px', borderRadius:'16px 16px 16px 4px', background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', gap:5 }}>{[0,1,2].map(d=><span key={d} style={{ width:7, height:7, borderRadius:9999, background:'var(--m-fg4)', animation:`ym-fade 1s ease ${d*0.18}s infinite alternate` }} />)}</div>}
+        </div>
+        {msgs.length<=1 && (
+          <div style={{ padding:'0 20px 8px', display:'flex', gap:8, flexWrap:'wrap' }}>
+            {MERCHANT_AI_SUGGESTIONS.map(s=><button key={s} onClick={()=>send(s)} style={{ border:'1px solid var(--m-border)', background:'var(--m-surface)', cursor:'pointer', fontFamily:'inherit', fontSize:13, color:'var(--m-fg2)', borderRadius:12, padding:'9px 13px', display:'flex', alignItems:'center', gap:8 }}><FA i="fa-wand-magic-sparkles" style={{ color:'var(--m-primary)', fontSize:12 }} /> {s}</button>)}
           </div>
-          <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
-            {msgs.map((m,i)=><div key={i} style={{ maxWidth:'72%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:m.from==='me'?'flex-end':'flex-start', background:m.from==='me'?'var(--m-primary-deep)':'var(--m-surface)', color:m.from==='me'?'#fff':'var(--m-fg1)', borderRadius:m.from==='me'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{m.at}</div></div>)}
-          </div>
-          <div style={{ display:'flex', gap:10, padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
-            <input className="ym-input" placeholder="Reply…" aria-label="Reply" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ borderRadius:9999, background:'var(--m-surface-2)', border:'none' }} />
-            <button onClick={()=>send()} className="icon-btn" aria-label="Send" style={{ background:'var(--m-primary-deep)', color:'#fff' }}><FA i="fa-paper-plane" /></button>
-          </div>
+        )}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px', borderTop:'1px solid var(--m-border)' }}>
+          <input className="ym-input" placeholder="Ask YoteAI…" aria-label="Ask YoteAI" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:48, borderRadius:9999, background:'var(--m-surface-2)', border:'none' }} />
+          <button onClick={()=>send()} disabled={busy} className="icon-btn" aria-label="Send" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)', opacity:busy?.6:1 }}><FA i="fa-paper-plane" /></button>
         </div>
       </Card>
-      <style>{`@media (max-width:640px){ .chat-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
   );
 }

@@ -17,7 +17,7 @@ export function HomeScreen(){
           <div style={{ maxWidth:560, position:'relative' }}>
             <div style={{ fontSize:13, letterSpacing:'.18em', textTransform:'uppercase', fontWeight:700, color:'var(--m-amber)' }}>Welcome to our Virtual Mall</div>
             <h1 style={{ fontSize:'clamp(28px,4vw,44px)', fontWeight:800, lineHeight:1.08, margin:'12px 0 0', textShadow:'0 2px 14px rgba(16,6,50,.6)' }}>Shop local. <span style={{ color:'var(--m-amber)' }}>Delivered</span> fast.</h1>
-            <p style={{ fontSize:16, color:'rgba(255,255,255,.9)', marginTop:14, maxWidth:440 }}>Browse 200+ branded storefronts, negotiate over WhatsApp, and collect at your nearest hub.</p>
+            <p style={{ fontSize:16, color:'rgba(255,255,255,.9)', marginTop:14, maxWidth:440 }}>Browse 200+ branded storefronts, chat with sellers in the app messenger, and collect at your nearest hub.</p>
             <div style={{ display:'flex', gap:12, marginTop:26, flexWrap:'wrap' }}>
               <button className="ym-btn ym-btn-onbrand ym-btn-lg" onClick={()=>nav('search')}><FA i="fa-magnifying-glass" /> Browse the mall</button>
               <button className="ym-btn ym-btn-lg" onClick={()=>nav('search',{tab:'stores'})} style={{ background:'rgba(255,255,255,.14)', color:'#fff', border:'1.5px solid rgba(255,255,255,.5)' }}>Explore stores</button>
@@ -124,7 +124,7 @@ function Empty({ icon, t, s }){
 
 /* ---------- PRODUCT ---------- */
 export function ProductScreen({ params }){
-  const { back, nav, addToCart, toast } = useYM();
+  const { back, nav, addToCart, toast, requireAuth } = useYM();
   const p = ymProduct(params.pid) || YM_PRODUCTS[0];
   const store = ymStore(p.store);
   const tint = (ymCat(p.cat)||{}).tint || '#4f46e5';
@@ -164,7 +164,7 @@ export function ProductScreen({ params }){
             <QtyStepper qty={qty} onChange={setQty} />
             <button className="ym-btn ym-btn-primary" style={{ flex:1, minWidth:220 }} disabled={!p.stock} onClick={()=>addToCart(p.id,qty)}><FA i="fa-cart-plus" /> Add to cart · {ymPrice(p.price*qty)}</button>
           </div>
-          <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>toast('Opening chat with '+store.name,'fa-comments')}><FA i="fa-whatsapp" brand style={{ fontSize:17 }} /> Chat with seller · Make an offer</button>
+          <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>requireAuth(()=>nav('messages',{ store }))}><FA i="fa-comments" style={{ fontSize:17 }} /> Chat with seller · Make an offer</button>
         </div>
       </div>
 
@@ -181,7 +181,7 @@ export function ProductScreen({ params }){
 
 /* ---------- STORE ---------- */
 export function StoreScreen({ params }){
-  const { back, toast } = useYM();
+  const { back, nav, toast, requireAuth } = useYM();
   const s = ymStore(params.sid) || YM_STORES[0];
   const all = YM_PRODUCTS.filter(p=>p.store===s.id);
   const [following, setFollowing] = useSS(false);
@@ -205,7 +205,7 @@ export function StoreScreen({ params }){
             </div>
             <div style={{ display:'flex', gap:10 }} className="store-actions">
               <button className={'ym-btn '+(following?'ym-btn-ghost':'ym-btn-onbrand')} onClick={()=>{ const nf=!following; setFollowing(nf); toast(nf?'Following '+s.name:'Unfollowed', nf?'fa-circle-check':'fa-bell'); }}><FA i={following?'fa-check':'fa-plus'} /> {following?'Following':'Follow'}</button>
-              <button className="ym-btn" onClick={()=>toast('Opening chat with '+s.name,'fa-comments')} style={{ background:'rgba(255,255,255,.16)', color:'#fff', border:'1.5px solid rgba(255,255,255,.5)' }}><FA i="fa-comments" /> Chat</button>
+              <button className="ym-btn" onClick={()=>requireAuth(()=>nav('messages',{ store:s }))} style={{ background:'rgba(255,255,255,.16)', color:'#fff', border:'1.5px solid rgba(255,255,255,.5)' }}><FA i="fa-comments" /> Chat</button>
             </div>
           </div>
         </div>

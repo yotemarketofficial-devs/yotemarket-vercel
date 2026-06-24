@@ -3,10 +3,14 @@ import React from 'react';
 import { useYM, FA, Thumb, QtyStepper } from './ui.jsx';
 import { YM_CATEGORIES, ymProduct, ymPrice } from './data.js';
 import { CATEGORY_TREE } from './categories.js';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { useUnreadCount } from '../../lib/chat.js';
 const { useState: useSC } = React;
 
 export function Header(){
   const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut } = useYM();
+  const { user } = useAuth();
+  const unread = useUnreadCount(user);
   const [acct, setAcct] = useSC(false);
   const [menu, setMenu] = useSC(false);
   return (
@@ -23,7 +27,7 @@ export function Header(){
         <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><FA i="fa-wand-magic-sparkles" /></button>
         <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />
-          <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-secondary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>1</span>
+          {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-secondary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{unread>9?'9+':unread}</span>}
         </button>
         <button onClick={()=>setTheme(theme==='dark'?'light':'dark')} className="icon-btn" aria-label="Toggle theme"><FA i={theme==='dark'?'fa-sun':'fa-moon'} /></button>
         <button onClick={openCart} className="icon-btn" aria-label="Cart">
@@ -102,7 +106,7 @@ export function Footer(){
       <div className="wrap" style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr', gap:32, padding:'48px 24px 32px' }}>
         <div>
           <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:26, marginBottom:14 }} />
-          <p className="ym-sub" style={{ maxWidth:300 }}>Kenya's virtual mall — shop hundreds of local stores, negotiate over WhatsApp, pay with M-Pesa, and collect at your nearest hub.</p>
+          <p className="ym-sub" style={{ maxWidth:300 }}>Kenya's virtual mall — shop hundreds of local stores, chat &amp; negotiate in the app messenger, pay with M-Pesa, and collect at your nearest hub.</p>
           <div style={{ display:'flex', gap:10, marginTop:16 }}>
             {['fa-facebook-f','fa-instagram','fa-whatsapp','fa-x-twitter'].map(i=>(
               <a key={i} href="#" className="icon-btn" aria-label={i.replace('fa-','')} style={{ width:36, height:36, fontSize:14 }}><FA i={i} brand /></a>

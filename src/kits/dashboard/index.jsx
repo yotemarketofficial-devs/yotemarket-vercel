@@ -7,11 +7,11 @@ import { MerchantProvider } from './merchant.jsx';
 import { Sidebar, TopBar, Footer } from './layout.jsx';
 import { Overview } from './overview.jsx';
 import { Products, AddProductModal } from './products.jsx';
-import { Sales, Wallet, Subscription, Settings, Chat } from './extras.jsx';
+import { Sales, Wallet, Subscription, Settings, Chat, Assistant } from './extras.jsx';
 const { useState, useEffect, useRef } = React;
 
-const SCREENS = { overview:Overview, products:Products, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, settings:Settings };
-const LABELS = { overview:'Overview', products:'My Products', sales:'Sales', wallet:'Wallet', chat:'Chats', subscription:'Subscription', settings:'Settings' };
+const SCREENS = { overview:Overview, assistant:Assistant, products:Products, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, settings:Settings };
+const LABELS = { overview:'Overview', assistant:'YoteAI', products:'My Products', sales:'Sales', wallet:'Wallet', chat:'Chats', subscription:'Subscription', settings:'Settings' };
 
 function Toast({ toast }){
   if(!toast) return null;

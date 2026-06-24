@@ -4,6 +4,9 @@ import Layout from './Layout.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
 import RiderPage from './pages/RiderPage.jsx';
+import About from './pages/About.jsx';
+import Contact from './pages/Contact.jsx';
+import Pricing from './pages/Pricing.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
@@ -27,6 +30,9 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="mobile" element={<MobilePage />} />
           <Route path="rider" element={<RiderPage />} />
+          <Route path="about" element={<About />} />
+          <Route path="contact" element={<Contact />} />
+          <Route path="pricing" element={<Pricing />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
