@@ -107,8 +107,10 @@ export const subscribeMerchant = callable('subscribeMerchant');
 export const registerStore = callable('registerStore');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
-/** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone }. */
+/** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
+/** Confirm/recover wallet top-ups via Daraja status query → { paid, creditedCount, creditedTotal }. { checkoutRequestId? }. */
+export const confirmTopUp = callable('confirmTopUp');
 /** Redeem YotePoints for wallet credit → { redeemed, credited, balancePoints }. { points }. */
 export const redeemPoints = callable('redeemPoints');
 

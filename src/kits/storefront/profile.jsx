@@ -8,7 +8,7 @@ import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
 import { ymStore, ymProduct, ymPrice } from './data.js';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db, firebaseEnabled, topUpWallet, redeemPoints } from '../../lib/firebase.js';
+import { db, firebaseEnabled, topUpWallet, confirmTopUp, redeemPoints } from '../../lib/firebase.js';
 import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../../lib/account.js';
 const { useState: useSP, useEffect: useEffP, useRef: useRefP } = React;
 
@@ -214,7 +214,7 @@ export function ProfileScreen(){
       {editOpen && <ProfileEditor uid={uid} initial={{ name:prof.name||account.name||'', phone, defaultHubId:prof.defaultHubId }} onClose={()=>setEditOpen(false)} toast={toast} />}
       {hubOpen && <HubPicker selected={prof.defaultHubId} onSelect={changeDefaultHub} onClose={()=>setHubOpen(false)} title="Default pickup hub" />}
       {addrEdit && <AddressEditor uid={uid} initial={addrEdit} onClose={()=>setAddrEdit(null)} toast={toast} />}
-      {topupOpen && <WalletTopUp defaultPhone={phone} onClose={()=>setTopupOpen(false)} toast={toast} />}
+      {topupOpen && <WalletTopUp defaultPhone={phone} holderName={fullName} onClose={()=>setTopupOpen(false)} toast={toast} />}
       {redeemOpen && <RedeemPoints points={prof.points} onClose={()=>setRedeemOpen(false)} toast={toast} />}
 
       <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:1fr !important; } }`}</style>
@@ -303,38 +303,67 @@ function AddressEditor({ uid, initial, onClose, toast }){
 
 const TOPUP_PRESETS = [200, 500, 1000, 2000];
 
-/* Wallet top-up via M-Pesa STK push. Mirrors checkout: call topUpWallet, then
-   watch the payment doc the Daraja callback flips to paid (the wallet balance
-   itself updates live through the profile's onSnapshot). */
-function WalletTopUp({ defaultPhone, onClose, toast }){
+/* Wallet top-up via M-Pesa STK push. The credit is driven by an active Daraja
+   status query (confirmTopUp) — robust even when the async callback never lands.
+   We also listen to the payment doc so a callback-driven credit closes the modal. */
+function WalletTopUp({ defaultPhone, holderName, onClose, toast }){
   const [amount, setAmount] = useSP('500');
   const [phone, setPhone] = useSP(defaultPhone || '');
   const [phase, setPhase] = useSP('form'); // form | waiting | done
   const [busy, setBusy] = useSP(false);
+  const [checking, setChecking] = useSP(false);
   const [err, setErr] = useSP('');
+  const cidRef = useRefP(null);
   const unsubRef = useRefP(null);
   const timerRef = useRefP(null);
   useEffP(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); }, []);
 
   const amt = Math.round(Number(amount)) || 0;
+
+  // Ask Daraja directly whether this STK was paid, then credit. Returns true if paid.
+  const confirmNow = async () => {
+    const id = cidRef.current;
+    setChecking(true);
+    try {
+      const r = await confirmTopUp(id ? { checkoutRequestId: id } : {});
+      if (r && (r.paid || r.creditedCount)) { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); setPhase('done'); return true; }
+      return false;
+    } catch { return false; }
+    finally { setChecking(false); }
+  };
+
   const start = async () => {
     setErr('');
     if (amt < 1) { setErr('Enter at least Ksh 1.'); return; }
     if (!phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
     setBusy(true);
     try {
-      const res = await topUpWallet({ amount: amt, phone: phone.trim() });
+      const res = await topUpWallet({ amount: amt, phone: phone.trim(), name: holderName || '' });
       const id = res && res.checkoutRequestId;
+      cidRef.current = id || null;
       setBusy(false);
       if (!id || !firebaseEnabled || !db) { setPhase('done'); return; }
       setPhase('waiting');
+      // 1) Live callback path (if Daraja delivers it).
       unsubRef.current = onSnapshot(doc(db, 'mpesa_payments', id), (snap) => {
         const d = snap.data(); if (!d) return;
-        if (d.status === 'paid') { if (unsubRef.current) unsubRef.current(); setPhase('done'); }
-        else if (d.status === 'failed') { if (unsubRef.current) unsubRef.current(); setErr(d.resultDesc || 'Payment was cancelled or failed.'); setPhase('form'); }
+        if (d.status === 'paid' || d.credited) { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); setPhase('done'); }
+        else if (d.status === 'failed') { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); setErr(d.resultDesc || 'Payment was cancelled or failed.'); setPhase('form'); }
       }, () => {});
-      timerRef.current = setTimeout(() => setPhase((p) => (p === 'waiting' ? 'done' : p)), 90000);
+      // 2) Active confirmation fallback ~20s in (after the PIN window) — does not rely on the callback.
+      timerRef.current = setTimeout(confirmNow, 20000);
     } catch (e) { setBusy(false); setErr(e.message || 'Could not start the top-up.'); }
+  };
+
+  // Recover a top-up already paid in a past session (no checkoutRequestId on hand).
+  const recover = async () => {
+    setErr(''); setChecking(true);
+    try {
+      const r = await confirmTopUp({});
+      if (r && r.creditedCount) { toast(`Recovered ${ymPrice(r.creditedTotal)} to your wallet`, 'fa-check'); onClose(); }
+      else setErr('No completed top-ups were pending. If money left your account, give it a minute and try again.');
+    } catch (e) { setErr(e.message || 'Could not check pending top-ups.'); }
+    finally { setChecking(false); }
   };
 
   if (phase === 'waiting') return (
@@ -343,15 +372,19 @@ function WalletTopUp({ defaultPhone, onClose, toast }){
         <div style={{ width:72, height:72, borderRadius:9999, background:'var(--m-mpesa)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 16px' }}><FA i="fa-mobile-screen" /></div>
         <p className="ym-body">Enter your M-Pesa PIN on <b style={{ color:'var(--m-fg1)' }}>{phone}</b> to add <b style={{ color:'var(--m-fg1)' }}>{ymPrice(amt)}</b> to your wallet.</p>
         <div style={{ display:'inline-flex', alignItems:'center', gap:9, marginTop:18, color:'var(--m-fg3)' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /> Waiting for confirmation…</div>
-        <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:20, width:'100%' }} onClick={onClose}>I'll check later</button>
+        <button className="ym-btn ym-btn-primary" style={{ marginTop:20, width:'100%' }} disabled={checking} onClick={async()=>{ const ok = await confirmNow(); if (!ok) setErr("Not confirmed yet — if you've paid, give it a few seconds and tap again."); }}>
+          {checking ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Checking…</> : <><FA i="fa-rotate" /> I've paid — confirm now</>}
+        </button>
+        {err && <div className="ym-cap" style={{ marginTop:10, color:'var(--m-inactive-fg)' }}>{err}</div>}
+        <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:10, width:'100%' }} onClick={onClose}>I'll check later</button>
       </div>
     </Modal>
   );
   if (phase === 'done') return (
-    <Modal title="Top-up requested" onClose={onClose}>
+    <Modal title="Wallet topped up" onClose={onClose}>
       <div style={{ textAlign:'center', padding:'10px 0 4px' }}>
         <div style={{ width:72, height:72, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 16px' }}><FA i="fa-check" /></div>
-        <p className="ym-body">Your wallet updates automatically once the M-Pesa payment confirms.</p>
+        <p className="ym-body">Your wallet balance has been updated.</p>
         <button className="ym-btn ym-btn-primary" style={{ marginTop:20, width:'100%' }} onClick={onClose}>Done</button>
       </div>
     </Modal>
@@ -370,6 +403,9 @@ function WalletTopUp({ defaultPhone, onClose, toast }){
       {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'10px 13px', fontSize:13, marginTop:14 }}><FA i="fa-circle-exclamation" /> {err}</div>}
       <button className="ym-btn ym-btn-mpesa" style={{ width:'100%', marginTop:18 }} disabled={busy} onClick={start}>
         {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Sending request…</> : <><FA i="fa-bolt" /> Pay {ymPrice(amt)} with M-Pesa</>}
+      </button>
+      <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ width:'100%', marginTop:10 }} disabled={checking} onClick={recover}>
+        {checking ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Checking…</> : <>Paid earlier but not credited? Recover it</>}
       </button>
       <div className="ym-cap" style={{ textAlign:'center', marginTop:10, display:'flex', gap:6, justifyContent:'center' }}><FA i="fa-lock" /> Secure M-Pesa top-up</div>
     </Modal>
