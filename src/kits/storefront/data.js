@@ -2,17 +2,13 @@
    bindings so real Firestore catalog data can replace the demo arrays at runtime
    via applyCatalog(); consumers pick up the new data on their next render. */
 
+import { CATEGORY_CHIPS } from './categories.js';
+
 const UIMG = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=640&q=70`;
 
-export let YM_CATEGORIES = [
-  { id:'all', label:'All', icon:'fa-border-all', tint:'#7c3aed' },
-  { id:'electronics', label:'Electronics', icon:'fa-mobile-screen', tint:'#3b82f6' },
-  { id:'fashion', label:'Fashion', icon:'fa-shirt', tint:'#a020f0' },
-  { id:'groceries', label:'Groceries', icon:'fa-basket-shopping', tint:'#10b981' },
-  { id:'home', label:'Home & Living', icon:'fa-couch', tint:'#f59e0b' },
-  { id:'beauty', label:'Beauty', icon:'fa-spa', tint:'#ec4899' },
-  { id:'kids', label:'Kids & Toys', icon:'fa-shapes', tint:'#06b6d4' },
-];
+// Category chips come from the single taxonomy source (categories.js) so the chip
+// row always matches the "All categories" mega-menu.
+export let YM_CATEGORIES = CATEGORY_CHIPS;
 
 export let YM_STORES = [
   { id:'s1', name:'Wanjiku Electronics', area:'Nairobi CBD', rating:4.8, reviews:642, products:124, followers:3120, responds:'~10 min', since:'2022', isHub:true, verified:true, tint:'#3b82f6', icon:'fa-store', tagline:'Phones, accessories & repairs', img:UIMG('1441986300917-64674bd600d8') },
@@ -69,8 +65,9 @@ export function ymCat(id){ return YM_CATEGORIES.find((c) => c.id === id); }
 
 /* Swap demo arrays for real Firestore data. ESM live bindings mean any component
    that re-renders after this runs will read the real catalog. */
-export function applyCatalog({ categories, stores, products } = {}){
-  if (categories?.length) YM_CATEGORIES = categories;
+export function applyCatalog({ stores, products } = {}){
+  // The category taxonomy is owned by categories.js (canonical CATEGORY_TREE);
+  // only swap live stores + products so the chips/mega-menu stay aligned.
   if (stores?.length) YM_STORES = stores;
   if (products?.length) YM_PRODUCTS = products;
 }

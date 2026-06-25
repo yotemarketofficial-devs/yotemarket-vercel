@@ -7,6 +7,7 @@ import { useShop, useSubCard } from './merchant.jsx';
 export const NAV = [
   { key:'overview', icon:'fa-gauge-high', label:'Dashboard' },
   { key:'assistant', icon:'fa-wand-magic-sparkles', label:'YoteAI' },
+  { key:'insight', icon:'fa-lightbulb', label:'YoteMarket Insight' },
   { key:'sales', icon:'fa-cash-register', label:'Sales' },
   { key:'products', icon:'fa-box', label:'My Products' },
   { key:'wallet', icon:'fa-wallet', label:'Wallet' },

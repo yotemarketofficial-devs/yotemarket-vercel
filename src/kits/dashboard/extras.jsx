@@ -342,3 +342,91 @@ export function Assistant(){
     </div>
   );
 }
+
+/* ---------- YOTEMARKET INSIGHT (tips & business intelligence) ---------- */
+const INSIGHT_SUGGESTIONS = [
+  'How is my store performing this month?',
+  'Which of my products underperform — and why?',
+  'How do my prices compare to similar products in the market?',
+  'Give me 3 tips to grow my sales this week',
+];
+
+/* A market product the assistant surfaced → links to its storefront page. */
+function InsightResultCard({ r }){
+  return (
+    <a href={`/storefront?store=${encodeURIComponent(r.storeId || '')}`} target="_blank" rel="noreferrer"
+      style={{ display:'flex', alignItems:'center', gap:12, textDecoration:'none', border:'1px solid var(--m-border)', background:'var(--m-surface)', borderRadius:14, padding:10 }}>
+      <div style={{ width:42, height:42, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i="fa-store" /></div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div className="ym-h3" style={{ fontSize:13.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.name}</div>
+        <div className="ym-cap">{ksh(r.price)}{r.rating ? ' · ' + r.rating + '★' : ''}</div>
+      </div>
+      <span style={{ fontSize:12.5, fontWeight:600, color:'var(--m-link)', flexShrink:0, display:'flex', alignItems:'center', gap:5 }}>View store <FA i="fa-arrow-up-right-from-square" style={{ fontSize:10 }} /></span>
+    </a>
+  );
+}
+
+export function Insight(){
+  const { user } = useAuth();
+  const { live } = useMerchant();
+  const ready = chatEnabled(user);
+  const [msgs, setMsgs] = useStateX([{ role:'assistant', content:'Habari! I’m YoteMarket Insight — your business-intelligence companion. I read your real store stats, products and the wider market to surface trends, price benchmarks and practical tips. Ask me anything about your performance.' }]);
+  const [draft, setDraft] = useStateX('');
+  const [busy, setBusy] = useStateX(false);
+  const scrollRef = useRefX(null);
+  useEffX(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs, busy]);
+
+  const send = async (text) => {
+    const t=(text||draft).trim(); if(!t||busy) return;
+    const next=[...msgs,{ role:'user', content:t }];
+    setMsgs(next); setDraft(''); setBusy(true);
+    try {
+      if (!ready) {
+        setMsgs(m=>[...m,{ role:'assistant', content:'Sign in to your merchant account to get insights grounded in your real store data.' }]);
+      } else {
+        const { reply, products } = await aiAssistant({ role:'merchant', messages: next.map(m=>({ role:m.role, content:m.content })) });
+        setMsgs(m=>[...m,{ role:'assistant', content:(reply||'').trim() || 'I couldn’t generate insights just now — please try again.', products: Array.isArray(products) ? products : [] }]);
+      }
+    } catch (e) {
+      setMsgs(m=>[...m,{ role:'assistant', content:'Sorry, I couldn’t reach the AI service. Please try again in a moment.' }]);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="anim-up">
+      <h1 className="ym-h1" style={{ marginBottom:6 }}>YoteMarket Insight</h1>
+      <p className="ym-sub" style={{ marginBottom:20 }}>Tips & business intelligence — grounded in your real {live ? 'store stats and products' : 'store data'} and live market prices.</p>
+      <Card style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:560 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
+          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-lightbulb" style={{ color:'#fff', fontSize:17 }} /></div>
+          <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteMarket Insight</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Tips & business intelligence</div></div>
+        </div>
+        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{ display:'flex', flexDirection:'column', gap:8, alignItems:m.role==='user'?'flex-end':'flex-start' }}>
+              <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:'pre-wrap',
+                background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
+                color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.content}</div>
+              {m.role==='assistant' && m.products && m.products.length>0 && (
+                <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:'92%' }}>
+                  <div className="ym-cap" style={{ fontWeight:600 }}>Comparable products in the market</div>
+                  {m.products.slice(0,5).map(r=><InsightResultCard key={r.id} r={r} />)}
+                </div>
+              )}
+            </div>
+          ))}
+          {busy && <div style={{ alignSelf:'flex-start', padding:'12px 16px', borderRadius:'16px 16px 16px 4px', background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', gap:5 }}>{[0,1,2].map(d=><span key={d} style={{ width:7, height:7, borderRadius:9999, background:'var(--m-fg4)', animation:`ym-fade 1s ease ${d*0.18}s infinite alternate` }} />)}</div>}
+        </div>
+        {msgs.length<=1 && (
+          <div style={{ padding:'0 20px 8px', display:'flex', gap:8, flexWrap:'wrap' }}>
+            {INSIGHT_SUGGESTIONS.map(s=><button key={s} onClick={()=>send(s)} style={{ border:'1px solid var(--m-border)', background:'var(--m-surface)', cursor:'pointer', fontFamily:'inherit', fontSize:13, color:'var(--m-fg2)', borderRadius:12, padding:'9px 13px', display:'flex', alignItems:'center', gap:8 }}><FA i="fa-lightbulb" style={{ color:'var(--m-primary)', fontSize:12 }} /> {s}</button>)}
+          </div>
+        )}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px', borderTop:'1px solid var(--m-border)' }}>
+          <input className="ym-input" placeholder="Ask for an insight…" aria-label="Ask YoteMarket Insight" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:48, borderRadius:9999, background:'var(--m-surface-2)', border:'none' }} />
+          <button onClick={()=>send()} disabled={busy} className="icon-btn" aria-label="Send" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)', opacity:busy?.6:1 }}><FA i="fa-paper-plane" /></button>
+        </div>
+      </Card>
+    </div>
+  );
+}

@@ -5,9 +5,9 @@
    (Ollama Cloud) with a warm local fallback. */
 import React from 'react';
 import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
-import { YM_STORES, YM_PRODUCTS, ymStore, ymPrice } from './data.js';
+import { YM_PRODUCTS, ymStore, ymProduct, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { aiChat, firebaseEnabled } from '../../lib/firebase.js';
+import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
@@ -198,13 +198,28 @@ function LiveChatThread({ conv, user }){
   );
 }
 
+/* A product the AI surfaced, shown as a card that links straight to its store. */
+function AIResultCard({ r }){
+  const { nav } = useYM();
+  const prod = ymProduct(r.id) || {};
+  const store = ymStore(r.storeId);
+  const open = () => store ? nav('store', { sid: r.storeId }) : nav('product', { pid: r.id });
+  return (
+    <button onClick={open} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left', border:'1px solid var(--m-border)', background:'var(--m-surface)', cursor:'pointer', fontFamily:'inherit', borderRadius:14, padding:10 }}>
+      <Thumb icon={prod.icon || 'fa-box'} tint={store?.tint || '#7c3aed'} size={48} radius={11} img={prod.img} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div className="ym-h3" style={{ fontSize:13.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.name}</div>
+        <div className="ym-cap" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{ymPrice(r.price)}{store ? ' · ' + store.name : ''}</div>
+      </div>
+      <span style={{ fontSize:12.5, fontWeight:600, color:'var(--m-link)', flexShrink:0, display:'flex', alignItems:'center', gap:5 }}>{store ? 'Visit store' : 'View'} <FA i="fa-arrow-right" style={{ fontSize:10 }} /></span>
+    </button>
+  );
+}
+
 /* ---------- YOTE AI ---------- */
 export function AIScreen(){
   const { reset } = useYM();
   const { user } = useAuth();
-  const stores = YM_STORES.map(s=>`${s.name} (${s.area}, ${s.tagline})`).join('; ');
-  const prods = YM_PRODUCTS.slice(0,10).map(p=>`${p.name} — ${ymPrice(p.price)} at ${ymStore(p.store).name}`).join('; ');
-  const primer = `You are YoteAI, the friendly shopping assistant inside the YoteMarket web storefront — a Kenyan virtual mall where merchants run storefronts and orders are collected from nearby pickup hubs. Prices are in Kenyan Shillings (Ksh). Help the shopper discover STORES first, then products, compare options and find the best deals. Be concise and warm (2-4 sentences), a little Swahili/Sheng is welcome. Stores in the mall: ${stores}. Some products: ${prods}.`;
   const suggestions = ['Find me a phone under Ksh 20,000','Which stores sell fresh produce?','Best deals right now','What can I gift under Ksh 1,500?'];
   const [msgs, setMsgs] = useSE([{ role:'assistant', content:'Karibu! I’m YoteAI — your shopping assistant. Tell me what you’re looking for and I’ll point you to the right stores and deals.' }]);
   const [draft, setDraft] = useSE(''); const [busy, setBusy] = useSE(false);
@@ -219,8 +234,9 @@ export function AIScreen(){
         await new Promise(r=>setTimeout(r, 500));
         setMsgs(m=>[...m,{role:'assistant',content:localAiReply(t)}]);
       } else {
-        const { reply } = await aiChat({ messages: next.map(m=>({ role:m.role, content:m.content })), system: primer });
-        setMsgs(m=>[...m,{role:'assistant',content:(reply||'').trim()||localAiReply(t)}]);
+        // Grounded assistant returns real catalog matches → render store links.
+        const { reply, products } = await aiAssistant({ role:'shopper', messages: next.map(m=>({ role:m.role, content:m.content })) });
+        setMsgs(m=>[...m,{role:'assistant',content:(reply||'').trim()||localAiReply(t),products:Array.isArray(products)?products:[]}]);
       }
     }catch(e){ setMsgs(m=>[...m,{role:'assistant',content:localAiReply(t)}]); }
     finally{ setBusy(false); }
@@ -236,9 +252,16 @@ export function AIScreen(){
         </div>
         <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
           {msgs.map((m,i)=>(
-            <div key={i} style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:'pre-wrap',
-              alignSelf:m.role==='user'?'flex-end':'flex-start', background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
-              color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.content}</div>
+            <div key={i} style={{ display:'flex', flexDirection:'column', gap:8, alignItems:m.role==='user'?'flex-end':'flex-start' }}>
+              <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:'pre-wrap',
+                background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
+                color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.content}</div>
+              {m.role==='assistant' && m.products && m.products.length>0 && (
+                <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:'92%' }}>
+                  {m.products.slice(0,5).map(r=><AIResultCard key={r.id} r={r} />)}
+                </div>
+              )}
+            </div>
           ))}
           {busy && <div style={{ alignSelf:'flex-start', padding:'12px 16px', borderRadius:'16px 16px 16px 4px', background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', gap:5 }}>{[0,1,2].map(d=><span key={d} style={{ width:7, height:7, borderRadius:9999, background:'var(--m-fg4)', animation:`ym-fade 1s ease ${d*0.18}s infinite alternate` }} />)}</div>}
         </div>

@@ -2,7 +2,7 @@
 import React from 'react';
 import { addDoc, collection, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
-import { YM_ORDERS, YM_USER, ymProduct, ymStore, ymPrice } from './data.js';
+import { YM_USER, ymProduct, ymStore, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { mpesaStkPush, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
@@ -42,6 +42,7 @@ export function CheckoutScreen(){
     try {
       const ref = await addDoc(collection(db, 'orders'), {
         buyerId: uid,
+        storeId: items[0]?.p?.store || null,
         items: items.map(x => ({ pid: x.pid, qty: x.qty, price: x.p.price, name: x.p.name })),
         subtotal,
         deliveryFee: DELIVERY_FEE,
@@ -197,32 +198,65 @@ export function CheckoutScreen(){
 function Row({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
 
 /* ---------- ORDERS ---------- */
+const fmtPlaced = (o) => o.placed
+  || (o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleString('en-KE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '');
+
+// Normalise a demo or live order doc to the shape this screen renders.
+function orderView(o){
+  const items = Array.isArray(o.items) ? o.items : [];
+  const first = items[0] ? ymProduct(items[0].pid) : null;
+  const code = (typeof o.id === 'string' && o.id.length > 12) ? 'YM-' + o.id.slice(-6).toUpperCase() : o.id;
+  return {
+    raw:o, code, items, first,
+    firstName: items[0]?.name,
+    store: o.store || o.storeId || first?.store || null,
+    total: o.total || 0,
+    status: o.status || 'placed',
+    steps: Array.isArray(o.steps) && o.steps.length ? o.steps : ORDER_STEPS,
+    step: o.step || 0,
+    hub: o.hub || '',
+    placedTxt: fmtPlaced(o),
+    eta: o.eta, rider: o.rider,
+  };
+}
+
 export function OrdersScreen(){
-  const { reset, account } = useYM();
+  const { reset, account, liveOrders } = useYM();
   if (!account.hasAccount) return <GuestGate icon="fa-box" title="Your orders" sub="Sign in to view and track your orders, deliveries, and hub pickups." />;
+  const orders = (liveOrders || []).map(orderView); // live-only — no mock fallback
   const tone = { placed:'pending', out:'pending', awaiting:'pending', delivered:'active' };
-  const label = { placed:'Order placed', out:'Out for delivery', awaiting:'Awaiting pickup', delivered:'Collected' };
+  const label = { placed:'Order placed', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Awaiting pickup', delivered:'Collected' };
+
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:840 }}>
       <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Home</button>
       <h1 className="ym-h1" style={{ marginBottom:24 }}>My orders</h1>
+      {orders.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'70px 20px' }}>
+          <FA i="fa-box-open" style={{ fontSize:44, color:'var(--m-fg4)', marginBottom:14 }} />
+          <div className="ym-h2">No orders yet</div>
+          <div className="ym-sub" style={{ marginTop:4 }}>When you check out, your orders and hub pickups show up here.</div>
+          <button className="ym-btn ym-btn-primary" style={{ margin:'18px auto 0', width:200 }} onClick={()=>reset('home')}>Browse the mall</button>
+        </div>
+      ) : (
       <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-        {YM_ORDERS.map(o=>{
-          const store = ymStore(o.store); const first = ymProduct(o.items[0].pid);
-          const pct = Math.round(((o.step+1)/o.steps.length)*100);
+        {orders.map(o=>{
+          const store = o.store ? ymStore(o.store) : null;
+          const first = o.first;
+          const name = store?.name || o.firstName || 'YoteMarket order';
           return (
-            <div key={o.id} className="ym-card" style={{ padding:20 }}>
+            <div key={o.raw.id} className="ym-card" style={{ padding:20 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:8 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span className="ym-h3">{o.id}</span><span className={'ym-pill ym-pill-'+(tone[o.status]||'pending')}>{label[o.status]||o.status}</span>
+                  <span className="ym-h3">{o.code}</span><span className={'ym-pill ym-pill-'+(tone[o.status]||'pending')}>{label[o.status]||o.status}</span>
                 </div>
-                <span className="ym-cap">{o.placed}</span>
+                <span className="ym-cap">{o.placedTxt}</span>
               </div>
               <div style={{ display:'flex', gap:14, alignItems:'center', marginBottom:16 }}>
-                <Thumb icon={first?.icon} tint={store?.tint} size={56} radius={14} img={first?.img} />
+                <Thumb icon={first?.icon || 'fa-box'} tint={store?.tint || '#7c3aed'} size={56} radius={14} img={first?.img} />
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div className="ym-h3" style={{ fontSize:14 }}>{store?.name}</div>
-                  <div className="ym-cap">{o.items.reduce((n,i)=>n+i.qty,0)} item{o.items.length>1?'s':''} · {o.hub.split(' · ')[0]}</div>
+                  <div className="ym-h3" style={{ fontSize:14 }}>{name}</div>
+                  <div className="ym-cap">{o.items.reduce((n,i)=>n+(i.qty||1),0)} item{o.items.length!==1?'s':''}{o.hub?` · ${o.hub.split(' · ')[0]}`:''}</div>
                 </div>
                 <div style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ymPrice(o.total)}</div>
               </div>
@@ -236,13 +270,14 @@ export function OrdersScreen(){
                 ))}
               </div>
               <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
-                <span className="ym-cap">{o.steps[o.step]}</span>
-                {o.status==='out' && <span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:600 }}>{o.rider} · {o.eta} away</span>}
+                <span className="ym-cap">{o.steps[o.step] || o.steps[0]}</span>
+                {o.status==='out' && o.rider && <span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:600 }}>{o.rider}{o.eta?` · ${o.eta} away`:''}</span>}
               </div>
             </div>
           );
         })}
       </div>
+      )}
     </div>
   );
 }

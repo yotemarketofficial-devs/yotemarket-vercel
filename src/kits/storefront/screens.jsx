@@ -1,14 +1,14 @@
 /* screens.jsx — Storefront: Home, Search, Product, Store. */
 import React from 'react';
 import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, SectionTitle, QtyStepper } from './ui.jsx';
-import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, YM_ORDERS, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
+import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
 import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
 const { useState: useSS } = React;
 
 /* ---------- HOME ---------- */
 export function HomeScreen(){
-  const { nav, account } = useYM();
-  const activeOrder = account.hasAccount ? YM_ORDERS.find(o=>o.status==='out') : null;
+  const { nav, account, liveOrders } = useYM();
+  const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>o.status==='out') : null;
   return (
     <div className="anim-up">
       {/* hero */}
@@ -28,20 +28,20 @@ export function HomeScreen(){
 
       {/* active order */}
       {activeOrder && (()=>{
-        const store = ymStore(activeOrder.store); const first = ymProduct(activeOrder.items[0].pid);
-        const pct = Math.round(((activeOrder.step+1)/activeOrder.steps.length)*100);
+        const store = ymStore(activeOrder.store || activeOrder.storeId); const first = activeOrder.items?.[0] ? ymProduct(activeOrder.items[0].pid) : null;
+        const steps = activeOrder.steps || []; const pct = steps.length ? Math.round(((activeOrder.step+1)/steps.length)*100) : 0;
         return (
           <div className="wrap" style={{ marginTop:20 }}>
             <button onClick={()=>nav('orders')} style={{ width:'100%', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', borderRadius:18, padding:'18px 22px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', position:'relative', overflow:'hidden', color:'#fff' }}>
               <FA i="fa-truck-fast" style={{ position:'absolute', right:10, bottom:-12, fontSize:96, color:'rgba(255,255,255,.09)' }} />
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:13.5, fontWeight:600 }}><span style={{ width:9, height:9, borderRadius:9999, background:'var(--m-amber)' }} /> Arriving · {activeOrder.eta} away</span>
-                <span style={{ fontSize:12.5, fontWeight:600, color:'rgba(255,255,255,.85)' }}>{activeOrder.id}</span>
+                <span style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:13.5, fontWeight:600 }}><span style={{ width:9, height:9, borderRadius:9999, background:'var(--m-amber)' }} /> Arriving{activeOrder.eta ? ` · ${activeOrder.eta} away` : ' soon'}</span>
+                <span style={{ fontSize:12.5, fontWeight:600, color:'rgba(255,255,255,.85)' }}>{(activeOrder.id||'').length>12 ? 'YM-'+activeOrder.id.slice(-6).toUpperCase() : activeOrder.id}</span>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                <Thumb icon={first.icon} tint={'#fff'} size={48} radius={12} img={first.img} />
+                <Thumb icon={first?.icon || 'fa-box'} tint={'#fff'} size={48} radius={12} img={first?.img} />
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>{activeOrder.rider} → {activeOrder.hub.split(' · ')[0]}</div>
+                  <div style={{ fontSize:14, fontWeight:700, marginBottom:8 }}>{activeOrder.rider || 'Your rider'} → {(activeOrder.hub||'').split(' · ')[0]}</div>
                   <div style={{ height:6, borderRadius:9999, background:'rgba(255,255,255,.2)', overflow:'hidden' }}><div style={{ width:pct+'%', height:'100%', background:'linear-gradient(90deg,var(--m-amber),#fff)' }} /></div>
                 </div>
               </div>

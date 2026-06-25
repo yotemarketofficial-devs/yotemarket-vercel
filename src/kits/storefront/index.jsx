@@ -11,7 +11,7 @@ import { CheckoutScreen, OrdersScreen } from './commerce.jsx';
 import { MessagesScreen, AIScreen } from './engage.jsx';
 import { ProfileScreen } from './profile.jsx';
 import { applyCatalog } from './data.js';
-import { useCatalogSync } from '../../lib/catalog.js';
+import { useCatalogSync, subscribeUserOrders } from '../../lib/catalog.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
 const { useState, useEffect, useRef } = React;
@@ -23,7 +23,17 @@ const initialsFrom = (s) => (s || 'A').split(/[ @._-]/).filter(Boolean).map((w) 
 export default function StorefrontApp(){
   const { user, hasAccount, signOutUser } = useAuth();
   const [theme, setThemeS] = useState(() => localStorage.getItem('ym_store_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'));
-  const [stack, setStack] = useState([{ screen:'home', params:{} }]);
+  // Deep-link support: /storefront?store=<id> or ?product=<id> (e.g. links from
+  // the merchant dashboard's YoteMarket Insight) open straight onto that screen.
+  const [stack, setStack] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const sid = q.get('store'); const pid = q.get('product');
+      if (sid) return [{ screen:'home', params:{} }, { screen:'store', params:{ sid } }];
+      if (pid) return [{ screen:'home', params:{} }, { screen:'product', params:{ pid } }];
+    } catch { /* no-op */ }
+    return [{ screen:'home', params:{} }];
+  });
   const [cart, setCart] = useState([{ pid:'p3', qty:2 }]);
   const [cartOpen, setCartOpen] = useState(false);
   const [toastState, setToast] = useState(null);
@@ -33,6 +43,13 @@ export default function StorefrontApp(){
 
   // Pull real Firestore catalog (no-op in demo mode); re-renders this tree when it lands.
   useCatalogSync(applyCatalog);
+
+  // Live orders for the signed-in shopper (null = demo/guest → bundled sample orders).
+  const [liveOrders, setLiveOrders] = useState(null);
+  useEffect(() => {
+    if (!hasAccount || !user?.uid) { setLiveOrders(null); return undefined; }
+    return subscribeUserOrders(user.uid, setLiveOrders);
+  }, [user?.uid, hasAccount]);
 
   useEffect(()=>{ document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('ym_store_theme', theme); }, [theme]);
   useEffect(()=>()=>clearTimeout(toastTimer.current), []);
@@ -79,7 +96,7 @@ export default function StorefrontApp(){
 
   const ctx = { nav, back, reset, theme, setTheme, cart, cartCount, addToCart, setCartQty, removeFromCart, clearCart,
     cartOpen, openCart:()=>setCartOpen(true), closeCart:()=>setCartOpen(false), toast,
-    account, openAuth, requireAuth, signOut: doSignOut };
+    account, openAuth, requireAuth, signOut: doSignOut, liveOrders };
 
   const Screen = SCREENS[top.screen] || HomeScreen;
   return (
