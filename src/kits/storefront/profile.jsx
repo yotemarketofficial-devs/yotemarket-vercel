@@ -319,7 +319,7 @@ function WalletTopUp({ defaultPhone, onClose, toast }){
   const amt = Math.round(Number(amount)) || 0;
   const start = async () => {
     setErr('');
-    if (amt < 50) { setErr('Enter at least Ksh 50.'); return; }
+    if (amt < 1) { setErr('Enter at least Ksh 1.'); return; }
     if (!phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
     setBusy(true);
     try {
