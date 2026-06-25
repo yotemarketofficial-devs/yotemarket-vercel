@@ -131,6 +131,20 @@ export async function sendChatMessage({ convId, user, text, recipientUid }) {
   updateDoc(doc(db, 'conversations', convId), patch).catch(() => {});
 }
 
+/** File an abuse report against a conversation → staff moderation queue. */
+export async function reportConversation({ convId, reporterUid, reporterName, reportedName, reason }) {
+  if (!firebaseEnabled || !db || !convId || !reporterUid) return;
+  await addDoc(collection(db, 'reports'), {
+    convId,
+    reporterId: reporterUid,
+    reporterName: reporterName || '',
+    reportedName: reportedName || '',
+    reason: reason || 'Reported conversation',
+    status: 'open',
+    createdAt: serverTimestamp(),
+  });
+}
+
 /** Clear my unread badge for a thread (called when I open/read it). */
 export function markConversationRead(convId, uid) {
   if (!firebaseEnabled || !db || !convId || !uid) return;

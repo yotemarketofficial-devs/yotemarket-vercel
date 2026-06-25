@@ -44,6 +44,7 @@ const normStore = (d) => ({
   id: d.id,
   name: d.name,
   ownerId: d.ownerId || null, // merchant uid — lets a shopper open a live chat thread
+  suspended: !!d.suspended,   // staff-suspended stores are hidden from the storefront
   area: d.area,
   rating: d.rating != null ? Number(d.rating) : undefined,
   reviews: d.reviews,
@@ -76,8 +77,10 @@ export async function fetchCatalog() {
       getDocs(collection(db, 'stores')),
       getDocs(collection(db, 'products')),
     ]);
-    const products = toArray(prods).map(normProduct);
-    const storeList = toArray(stores).map(normStore);
+    // Staff-suspended stores (and their products) are hidden from shoppers.
+    const storeList = toArray(stores).map(normStore).filter((s) => !s.suspended);
+    const liveIds = new Set(storeList.map((s) => s.id));
+    const products = toArray(prods).map(normProduct).filter((p) => !p.store || liveIds.has(p.store));
     const categories = toArray(cats).map(normCat).sort((a, b) => a.order - b.order);
     if (!products.length && !storeList.length) return null; // empty backend → demo
     return { categories, stores: storeList, products };

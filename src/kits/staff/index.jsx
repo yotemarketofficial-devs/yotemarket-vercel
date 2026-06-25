@@ -4,25 +4,27 @@ import React from 'react';
 import './staff.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
-import { StaffLogin } from './auth.jsx';
-import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet } from './screens.jsx';
+import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
+import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation } from './screens.jsx';
 import { Economics } from './economics.jsx';
-import { STAFF, MERCHANTS, PAYOUT_REQUESTS } from './data.js';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { useStaffClaims } from './service.js';
 const { useState: useSApp } = React;
 
 const NAV = [
   { key:'analytics',    icon:'gauge-high',     label:'Overview' },
-  { key:'approvals',    icon:'user-check',     label:'Merchant approvals', badge: MERCHANTS.filter(m=>m.status==='pending').length },
+  { key:'approvals',    icon:'user-check',     label:'Merchant approvals' },
   { key:'applications', icon:'briefcase',      label:'Marketer applications' },
-  { key:'scouts',       icon:'people-group',   label:'Scouts & payouts', badge: PAYOUT_REQUESTS.length },
+  { key:'scouts',       icon:'people-group',   label:'Scouts & payouts' },
   { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics' },
   { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet' },
+  { key:'moderation',   icon:'comment-slash',  label:'Chat moderation' },
   { key:'economics',    icon:'scale-balanced', label:'Pricing & economics', lock:true },
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, economics:Economics };
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, moderation:Moderation, economics:Economics };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
-function Sidebar({ active, go, onClose }){
+function Sidebar({ active, go, onClose, onSignOut }){
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 py-5 flex items-center justify-between">
@@ -48,7 +50,7 @@ function Sidebar({ active, go, onClose }){
         <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2" style={{background:'var(--surface2)'}}>
           <Icon name="grid-2" className="w-5 text-center t3"/> All subdomains
         </a>
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2 w-full mt-1">
+        <button onClick={onSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2 w-full mt-1">
           <Icon name="right-from-bracket" className="w-5 text-center t3"/> Sign out
         </button>
       </div>
@@ -57,11 +59,17 @@ function Sidebar({ active, go, onClose }){
 }
 
 function App(){
-  const [authed, setAuthed] = useSApp(false);
+  const { user, loading, isStaff, role } = useStaffClaims();
+  const { signOutUser } = useAuth();
   const [active, setActive] = useSApp('analytics');
   const [menu, setMenu] = useSApp(false);
-  if (!authed) return <StaffLogin onLogin={()=>setAuthed(true)} />;
 
+  if (loading) return <StaffSplash />;
+  if (!user) return <StaffLogin />;
+  if (!isStaff) return <StaffDenied email={user.email} onSignOut={signOutUser} />;
+
+  const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
+  const staffRole = role === 'admin' ? 'Operations Admin' : 'Moderator';
   const Screen = SCREENS[active] || Analytics;
   return (
     <div className="min-h-screen bg-page" data-screen-label={'Staff — '+LABELS[active]}>
@@ -72,12 +80,12 @@ function App(){
       </div>
       <div className="flex">
         <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
-          <Sidebar active={active} go={setActive} />
+          <Sidebar active={active} go={setActive} onSignOut={signOutUser} />
         </aside>
 
         {menu && (<div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0" style={{background:'rgba(8,12,24,.5)'}} onClick={()=>setMenu(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} /></div>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} onSignOut={signOutUser} /></div>
         </div>)}
 
         <div className="flex-1 min-w-0">
@@ -98,8 +106,8 @@ function App(){
               </button>
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
-                <Avatar src={STAFF.photo} name={STAFF.name} size={34} />
-                <div className="hidden sm:block leading-tight"><div className="text-sm font-semibold t1">{STAFF.name}</div><div className="text-xs t3">{STAFF.role}</div></div>
+                <Avatar src={user.photoURL} name={staffName} size={34} />
+                <div className="hidden sm:block leading-tight"><div className="text-sm font-semibold t1">{staffName}</div><div className="text-xs t3">{staffRole}</div></div>
               </div>
             </div>
           </header>

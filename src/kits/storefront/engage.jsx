@@ -11,7 +11,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  fmtTime, fmtWhen,
+  reportConversation, fmtTime, fmtWhen,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
 const { useState: useSE, useRef: useRefE, useEffect: useEffE } = React;
@@ -154,12 +154,23 @@ function LiveChatThread({ conv, user }){
   useEffE(() => { markConversationRead(conv.id, myUid); }, [conv.id, msgs.length]);
   useEffE(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
 
+  const [reported, setReported] = useSE(false);
   const send = (text) => {
     const t=(text||draft).trim(); if(!t) return;
     if (blocked) { toast('This conversation is closed.', 'fa-ban'); return; }
     setDraft('');
     sendChatMessage({ convId: conv.id, user, text: t, recipientUid: otherId })
       .catch(() => toast('Message failed to send', 'fa-triangle-exclamation'));
+  };
+  const report = () => {
+    if (reported) return;
+    setReported(true);
+    reportConversation({
+      convId: conv.id, reporterUid: myUid,
+      reporterName: user.displayName || (user.email ? user.email.split('@')[0] : 'Shopper'),
+      reportedName: info.name || 'Store', reason: 'Reported by shopper',
+    }).then(() => toast('Reported — our team will review this chat.', 'fa-flag'))
+      .catch(() => { setReported(false); toast('Couldn’t submit report', 'fa-triangle-exclamation'); });
   };
 
   return (
@@ -170,6 +181,7 @@ function LiveChatThread({ conv, user }){
           <div className="ym-h3">{info.name || 'Store'}</div>
           <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Usually replies quickly'}</div>
         </div>
+        <button className="icon-btn" aria-label="Report conversation" title={reported?'Reported':'Report conversation'} onClick={report} disabled={reported} style={{ color: reported?'var(--m-fg4)':'var(--m-fg3)' }}><FA i="fa-flag" /></button>
       </div>
       <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {msgs.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}

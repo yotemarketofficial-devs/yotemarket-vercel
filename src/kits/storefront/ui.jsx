@@ -1,6 +1,7 @@
 /* ui.jsx — Storefront shared primitives (web, mirrors mobile app visual language). */
 import React from 'react';
 import { ymPrice, ymStore, ymCat } from './data.js';
+import { HUBS } from './hubs.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
 
 export const YMContext = createContext(null);
@@ -123,6 +124,49 @@ export function Toast({ toast }){
       display:'flex', alignItems:'center', gap:10, boxShadow:'var(--m-shadow-float)', maxWidth:380 }}>
       <FA i={toast.icon || 'fa-circle-check'} style={{ color:'#6ee7b7' }} /><span>{toast.msg}</span>
     </div>
+  );
+}
+
+/* Centered modal/sheet used by checkout + profile editors. */
+export function Modal({ title, onClose, children, maxWidth=440 }){
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [onClose]);
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(17,24,39,.55)', backdropFilter:'blur(3px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }} className="ym-modal-wrap">
+      <div onClick={e=>e.stopPropagation()} className="ym-card anim-up ym-modal" role="dialog" aria-modal="true" aria-label={title}
+        style={{ width:'100%', maxWidth, maxHeight:'88vh', display:'flex', flexDirection:'column', borderRadius:'20px 20px 0 0', padding:0, overflow:'hidden' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid var(--m-border)' }}>
+          <span className="ym-h2" style={{ fontSize:18 }}>{title}</span>
+          <button onClick={onClose} aria-label="Close" style={{ width:34, height:34, borderRadius:9999, border:'none', cursor:'pointer', background:'var(--m-surface-2)', color:'var(--m-fg2)', fontSize:14 }}><FA i="fa-xmark" /></button>
+        </div>
+        <div style={{ padding:20, overflowY:'auto' }}>{children}</div>
+      </div>
+      <style>{`@media (min-width:560px){ .ym-modal-wrap{ align-items:center !important; } .ym-modal{ border-radius:20px !important; } }`}</style>
+    </div>
+  );
+}
+
+/* Pickup-hub chooser used at checkout and in the profile editor. */
+export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup hub' }){
+  return (
+    <Modal title={title} onClose={onClose}>
+      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        {HUBS.map(h=>{
+          const on = h.id===selected;
+          return (
+            <button key={h.id} onClick={()=>{ onSelect(h); onClose(); }} style={{ display:'flex', alignItems:'center', gap:13, width:'100%', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', textAlign:'left', background:'var(--m-surface)', border: on?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
+              <div style={{ width:42, height:42, borderRadius:12, flexShrink:0, background: on?'var(--m-primary)':'var(--m-surface-2)', color: on?'#fff':'var(--m-fg3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}><FA i="fa-warehouse" /></div>
+              <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14.5 }}>{h.name}</div><div className="ym-cap">{h.area} · {h.town}</div></div>
+              {on && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />}
+            </button>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
 

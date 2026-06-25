@@ -1,26 +1,29 @@
 /* profile.jsx — Storefront account dashboard. Real data where the backend has it
-   (account identity, YotePoints, wallet + transactions, order count/history);
-   addresses and a default pickup hub show honest "not set" states until those
-   features ship. No mock/demo data. */
+   (account identity, YotePoints, wallet + transactions, order count/history),
+   plus a working profile editor (name / phone / default pickup hub) and an
+   owner-managed address book. No mock/demo data. */
 import React from 'react';
 import { doc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
-import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
+import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
 import { ymStore, ymProduct, ymPrice } from './data.js';
+import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled } from '../../lib/firebase.js';
+import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../../lib/account.js';
 const { useState: useSP, useEffect: useEffP } = React;
 
 const fmtWhen = (t) => t?.when || (t?.createdAt?.seconds ? new Date(t.createdAt.seconds * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short' }) : '');
 
-/* Live shopper profile from users/{uid} (+ meta/wallet, wallet_tx). */
+/* Live shopper profile from users/{uid} (+ meta/wallet, wallet_tx, addresses). */
 function useProfileData(uid){
-  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], hub:'', phone:'', name:'' });
+  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[] });
   useEffP(() => {
     if (!firebaseEnabled || !db || !uid) return undefined;
     const unsubs = [];
-    unsubs.push(onSnapshot(doc(db,'users',uid), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, points:d.points||0, hub:d.hub||'', phone:d.phone||'', name:d.name||'' })); }, ()=>{}));
+    unsubs.push(onSnapshot(doc(db,'users',uid), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, points:d.points||0, defaultHubId:d.defaultHubId||'', phone:d.phone||'', name:d.name||'' })); }, ()=>{}));
     unsubs.push(onSnapshot(doc(db,'users',uid,'meta','wallet'), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, walletBalance:d.balance||0 })); }, ()=>{}));
     unsubs.push(onSnapshot(query(collection(db,'users',uid,'wallet_tx'), orderBy('createdAt','desc'), limit(6)), (s)=>{ setData(p=>({ ...p, walletTx:s.docs.map(d=>({ id:d.id, ...d.data() })) })); }, ()=>{}));
+    unsubs.push(subscribeAddresses(uid, (a)=>setData(p=>({ ...p, addresses:a }))));
     return () => unsubs.forEach(u=>u());
   }, [uid]);
   return data;
@@ -54,15 +57,24 @@ const STATUS_LABEL = { placed:'Order placed', confirmed:'Confirmed', out:'Out fo
 export function ProfileScreen(){
   const { nav, reset, theme, setTheme, toast, account, liveOrders } = useYM();
   const { user } = useAuth();
-  const prof = useProfileData(user?.uid);
+  const uid = user?.uid;
+  const prof = useProfileData(uid);
   const [notif, setNotif] = useSP({ orders:true, deliveries:true, promos:false, chat:true });
+  const [editOpen, setEditOpen] = useSP(false);
+  const [hubOpen, setHubOpen] = useSP(false);   // quick default-hub change from the card
+  const [addrEdit, setAddrEdit] = useSP(null);  // null=closed | {} new | {id,...} edit
   const tg = k => setNotif(n=>({ ...n, [k]:!n[k] }));
 
   if (!account.hasAccount) return <GuestGate icon="fa-user" title="Your account" sub="Sign in to manage your profile, addresses, wallet, and YotePoints rewards." />;
 
   const orders = liveOrders || [];
-  const phone = account.phone || prof.phone || '';
+  const phone = prof.phone || account.phone || '';
   const recent = orders.slice(0, 3);
+  const hub = findHub(prof.defaultHubId);
+
+  const changeDefaultHub = async (h) => { try { await saveProfile(uid, { defaultHubId:h.id }); toast('Default hub updated','fa-check'); } catch { toast('Could not save','fa-triangle-exclamation'); } };
+  const removeAddress = async (id) => { try { await deleteAddress(uid, id); toast('Address removed','fa-trash-can'); } catch { toast('Could not remove','fa-triangle-exclamation'); } };
+  const makeDefault = async (id) => { try { await setDefaultAddress(uid, id); toast('Default address set','fa-check'); } catch { toast('Could not save','fa-triangle-exclamation'); } };
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
@@ -73,13 +85,13 @@ export function ProfileScreen(){
         <div style={{ width:74, height:74, borderRadius:9999, background:'rgba(255,255,255,.16)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:26, flexShrink:0 }}>{account.initials}</div>
         <div style={{ flex:1, minWidth:200 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-            <span style={{ color:'#fff', fontSize:24, fontWeight:800 }}>{account.name}</span>
+            <span style={{ color:'#fff', fontSize:24, fontWeight:800 }}>{prof.name || account.name}</span>
             <span style={{ background:'rgba(255,255,255,.18)', color:'#fff', fontSize:12, fontWeight:700, padding:'4px 11px', borderRadius:9999, display:'inline-flex', gap:6, alignItems:'center' }}><FA i="fa-medal" style={{ color:'var(--m-amber)' }} /> YoteMarket member</span>
           </div>
           <div style={{ color:'rgba(255,255,255,.85)', fontSize:14, marginTop:4 }}>{account.email}{phone ? ` · ${phone}` : ''}</div>
-          <div style={{ color:'rgba(255,255,255,.85)', fontSize:13, marginTop:4, display:'flex', alignItems:'center', gap:7 }}><FA i="fa-location-dot" /> {prof.hub || 'No pickup hub set yet'}</div>
+          <div style={{ color:'rgba(255,255,255,.85)', fontSize:13, marginTop:4, display:'flex', alignItems:'center', gap:7 }}><FA i="fa-location-dot" /> {hub ? hub.name : 'No pickup hub set yet'}</div>
         </div>
-        <button className="ym-btn ym-btn-onbrand ym-btn-sm" onClick={()=>toast('Profile editing coming soon','fa-pen')}><FA i="fa-pen" /> Edit profile</button>
+        <button className="ym-btn ym-btn-onbrand ym-btn-sm" onClick={()=>setEditOpen(true)}><FA i="fa-pen" /> Edit profile</button>
       </div>
 
       {/* quick stats */}
@@ -92,14 +104,40 @@ export function ProfileScreen(){
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="profile-grid">
         {/* left col */}
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-          <Card title="Account details" icon="fa-user">
-            <Field label="Full name" value={account.name} />
+          <Card title="Account details" icon="fa-user" action="Edit" onAction={()=>setEditOpen(true)}>
+            <Field label="Full name" value={prof.name || account.name || 'Not set'} />
             <Field label="Phone (M-Pesa)" value={phone || 'Not set'} />
             <Field label="Email" value={account.email || 'Not set'} last />
           </Card>
 
-          <Card title="Pickup & addresses" icon="fa-location-dot" action="Add" onAction={()=>toast('Address book coming soon','fa-plus')}>
-            <EmptyRow icon="fa-location-dot" text="No saved addresses yet. Add one to speed up checkout and pickups." />
+          <Card title="Pickup & addresses" icon="fa-location-dot" action="Add address" onAction={()=>setAddrEdit({})}>
+            {/* default pickup hub */}
+            <div style={{ display:'flex', alignItems:'center', gap:13, padding:13, borderRadius:13, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', marginBottom:14 }}>
+              <div style={{ width:40, height:40, borderRadius:11, flexShrink:0, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15 }}><FA i="fa-warehouse" /></div>
+              <div style={{ flex:1, minWidth:0 }}><div className="ym-cap" style={{ marginBottom:2 }}>Default pickup hub</div><div className="ym-h3" style={{ fontSize:14 }}>{hub ? hub.name : 'Not set'}</div></div>
+              <button onClick={()=>setHubOpen(true)} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, color:'var(--m-link)' }}>{hub?'Change':'Set'}</button>
+            </div>
+            {/* saved addresses */}
+            {prof.addresses.length === 0 ? (
+              <EmptyRow icon="fa-location-dot" text="No saved addresses yet. Add one to speed up checkout and pickups." />
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {prof.addresses.map(a=>(
+                  <div key={a.id} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:13, borderRadius:13, border:'1px solid var(--m-border)' }}>
+                    <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}><FA i={a.icon || 'fa-location-dot'} /></div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}><span className="ym-h3" style={{ fontSize:14 }}>{a.label || 'Address'}</span>{a.default && <span className="ym-pill ym-pill-active" style={{ fontSize:11 }}>Default</span>}</div>
+                      <div className="ym-cap" style={{ marginTop:2 }}>{a.line}{a.detail ? ` · ${a.detail}` : ''}</div>
+                      <div style={{ display:'flex', gap:14, marginTop:8 }}>
+                        {!a.default && <button onClick={()=>makeDefault(a.id)} style={linkBtn}>Set default</button>}
+                        <button onClick={()=>setAddrEdit(a)} style={linkBtn}>Edit</button>
+                        <button onClick={()=>removeAddress(a.id)} style={{ ...linkBtn, color:'var(--m-inactive-fg)' }}>Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           <Card title="Recent orders" icon="fa-box" action="View all" onAction={()=>nav('orders')}>
@@ -165,8 +203,92 @@ export function ProfileScreen(){
           </Card>
         </div>
       </div>
+
+      {editOpen && <ProfileEditor uid={uid} initial={{ name:prof.name||account.name||'', phone, defaultHubId:prof.defaultHubId }} onClose={()=>setEditOpen(false)} toast={toast} />}
+      {hubOpen && <HubPicker selected={prof.defaultHubId} onSelect={changeDefaultHub} onClose={()=>setHubOpen(false)} title="Default pickup hub" />}
+      {addrEdit && <AddressEditor uid={uid} initial={addrEdit} onClose={()=>setAddrEdit(null)} toast={toast} />}
+
       <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
+  );
+}
+
+const linkBtn = { border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, color:'var(--m-link)', padding:0 };
+
+/* Edit name, phone and default pickup hub → users/{uid}. */
+function ProfileEditor({ uid, initial, onClose, toast }){
+  const [name, setName] = useSP(initial.name || '');
+  const [phone, setPhone] = useSP(initial.phone || '');
+  const [hubId, setHubId] = useSP(initial.defaultHubId || '');
+  const [hubPick, setHubPick] = useSP(false);
+  const [busy, setBusy] = useSP(false);
+  const hub = findHub(hubId);
+  const save = async () => {
+    setBusy(true);
+    try { await saveProfile(uid, { name:name.trim(), phone:phone.trim(), defaultHubId:hubId || '' }); toast('Profile updated','fa-check'); onClose(); }
+    catch { toast('Could not save profile','fa-triangle-exclamation'); setBusy(false); }
+  };
+  return (
+    <>
+      <Modal title="Edit profile" onClose={onClose}>
+        <label className="ym-label">Full name</label>
+        <input className="ym-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" />
+        <label className="ym-label" style={{ marginTop:14 }}>Phone (M-Pesa)</label>
+        <input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="07XX XXX XXX" />
+        <label className="ym-label" style={{ marginTop:14 }}>Default pickup hub</label>
+        <button onClick={()=>setHubPick(true)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:13, borderRadius:13, cursor:'pointer', fontFamily:'inherit', textAlign:'left', background:'var(--m-surface)', border:'1px solid var(--m-border)' }}>
+          <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}><FA i="fa-warehouse" /></div>
+          <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{hub ? hub.name : 'Choose a hub'}</div><div className="ym-cap">{hub ? hub.area : 'Where you usually collect orders'}</div></div>
+          <FA i="fa-chevron-right" style={{ color:'var(--m-fg4)', fontSize:13 }} />
+        </button>
+        <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:20 }} disabled={busy} onClick={save}>
+          {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Saving…</> : <><FA i="fa-check" /> Save changes</>}
+        </button>
+      </Modal>
+      {hubPick && <HubPicker selected={hubId} onSelect={(h)=>setHubId(h.id)} onClose={()=>setHubPick(false)} />}
+    </>
+  );
+}
+
+const ADDR_ICONS = [['fa-house','Home'],['fa-briefcase','Work'],['fa-location-dot','Other']];
+
+/* Add or edit a saved address → users/{uid}/addresses. */
+function AddressEditor({ uid, initial, onClose, toast }){
+  const editing = Boolean(initial.id);
+  const [label, setLabel] = useSP(initial.label || '');
+  const [line, setLine] = useSP(initial.line || '');
+  const [detail, setDetail] = useSP(initial.detail || '');
+  const [icon, setIcon] = useSP(initial.icon || 'fa-house');
+  const [busy, setBusy] = useSP(false);
+  const save = async () => {
+    if (!line.trim()) { toast('Add a street / area','fa-circle-exclamation'); return; }
+    setBusy(true);
+    const payload = { label:label.trim() || 'Address', line:line.trim(), detail:detail.trim(), icon };
+    try {
+      if (editing) await updateAddress(uid, initial.id, payload);
+      else await addAddress(uid, { ...payload, default: false });
+      toast(editing ? 'Address updated' : 'Address saved','fa-check'); onClose();
+    } catch { toast('Could not save address','fa-triangle-exclamation'); setBusy(false); }
+  };
+  return (
+    <Modal title={editing ? 'Edit address' : 'Add address'} onClose={onClose}>
+      <label className="ym-label">Label</label>
+      <div style={{ display:'flex', gap:8, marginBottom:4 }}>
+        {ADDR_ICONS.map(([ic,lb])=>(
+          <button key={ic} onClick={()=>{ setIcon(ic); if(!label) setLabel(lb); }} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:5, padding:'10px 6px', borderRadius:12, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: icon===ic?'2px solid var(--m-primary)':'2px solid var(--m-border)', color: icon===ic?'var(--m-primary)':'var(--m-fg3)' }}>
+            <FA i={ic} style={{ fontSize:16 }} /><span style={{ fontSize:12, fontWeight:600 }}>{lb}</span>
+          </button>
+        ))}
+      </div>
+      <input className="ym-input" style={{ marginTop:10 }} value={label} onChange={e=>setLabel(e.target.value)} placeholder="e.g. Home, Office" />
+      <label className="ym-label" style={{ marginTop:14 }}>Street / area</label>
+      <input className="ym-input" value={line} onChange={e=>setLine(e.target.value)} placeholder="e.g. Mpaka Road, Westlands" />
+      <label className="ym-label" style={{ marginTop:14 }}>Building / details <span style={{ color:'var(--m-fg4)', fontWeight:400 }}>(optional)</span></label>
+      <input className="ym-input" value={detail} onChange={e=>setDetail(e.target.value)} placeholder="Apartment, floor, landmark" />
+      <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:20 }} disabled={busy} onClick={save}>
+        {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Saving…</> : <><FA i="fa-check" /> {editing ? 'Save address' : 'Add address'}</>}
+      </button>
+    </Modal>
   );
 }
 
