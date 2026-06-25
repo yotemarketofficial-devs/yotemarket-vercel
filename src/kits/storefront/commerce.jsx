@@ -2,13 +2,16 @@
 import React from 'react';
 import { addDoc, collection, serverTimestamp, doc, onSnapshot } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
-import { YM_USER, ymProduct, ymStore, ymPrice } from './data.js';
+import { ymProduct, ymStore, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { mpesaStkPush, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
 const ORDER_STEPS = ['Order placed','Confirmed by store','Rider picked up','En route to your hub','Ready for pickup'];
+// Pickup-hub selection isn't wired yet — orders are routed to the shopper's
+// nearest hub at dispatch. Neutral stub (no fake specific address).
+const PICKUP_HUB = 'Nearest YoteMarket hub';
 
 export function CheckoutScreen(){
   const { cart, clearCart, reset, nav, toast, requireAuth, account } = useYM();
@@ -50,7 +53,7 @@ export function CheckoutScreen(){
         status: 'placed',
         step: 0,
         steps: ORDER_STEPS,
-        hub: YM_USER.hub,
+        hub: PICKUP_HUB,
         paid: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -113,7 +116,7 @@ export function CheckoutScreen(){
       <div className="wrap anim-up" style={{ paddingTop:48, maxWidth:560, textAlign:'center', paddingBottom:40, margin:'0 auto' }}>
         <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i="fa-check" /></div>
         <h1 className="ym-h1">Payment confirmed!</h1>
-        <p className="ym-body" style={{ marginTop:8 }}>Your order is confirmed and being prepared. You'll collect at <b style={{ color:'var(--m-fg1)' }}>{YM_USER.hub}</b>.</p>
+        <p className="ym-body" style={{ marginTop:8 }}>Your order is confirmed and being prepared. You'll collect at your <b style={{ color:'var(--m-fg1)' }}>nearest YoteMarket hub</b> — we'll notify you when it's ready.</p>
         <div className="ym-card" style={{ padding:20, margin:'24px 0', textAlign:'left' }}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">M-Pesa receipt</span><span className="ym-h3">{receipt}</span></div>
           <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">Total paid</span><span className="ym-h3">{ymPrice(total)}</span></div>
@@ -145,10 +148,10 @@ export function CheckoutScreen(){
             <div className="ym-h3" style={{ marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> Collect at your hub</div>
             <div style={{ display:'flex', alignItems:'center', gap:14, padding:14, borderRadius:14, border:'2px solid var(--m-primary)', background:'var(--m-surface-3)' }}>
               <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}><FA i="fa-warehouse" /></div>
-              <div style={{ flex:1 }}><div className="ym-h3" style={{ fontSize:14 }}>{YM_USER.hub.split(' · ')[0]}</div><div className="ym-cap">{YM_USER.hub.split(' · ')[1]} · secure pickup</div></div>
+              <div style={{ flex:1 }}><div className="ym-h3" style={{ fontSize:14 }}>{PICKUP_HUB}</div><div className="ym-cap">Routed to your closest hub at dispatch · secure pickup</div></div>
               <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />
             </div>
-            <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:12 }}><FA i="fa-pen" /> Change hub</button>
+            <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:12 }} onClick={()=>toast('Hub selection coming soon','fa-location-dot')}><FA i="fa-pen" /> Change hub</button>
           </div>
           {/* payment */}
           <div className="ym-card" style={{ padding:22 }}>
