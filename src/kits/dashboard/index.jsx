@@ -8,6 +8,8 @@ import { Sidebar, TopBar, Footer } from './layout.jsx';
 import { Overview } from './overview.jsx';
 import { Products, AddProductModal } from './products.jsx';
 import { Sales, Wallet, Subscription, Settings, Chat, Assistant } from './extras.jsx';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { useChatPush } from '../../lib/push.js';
 const { useState, useEffect, useRef } = React;
 
 const SCREENS = { overview:Overview, assistant:Assistant, products:Products, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, settings:Settings };
@@ -19,6 +21,7 @@ function Toast({ toast }){
 }
 
 export default function DashboardApp(){
+  const { user } = useAuth();
   const [theme, setTheme] = useState(()=>localStorage.getItem('ym_dash_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'));
   const [active, setActive] = useState('overview');
   const [addOpen, setAddOpen] = useState(false);
@@ -28,6 +31,9 @@ export default function DashboardApp(){
   useEffect(()=>{ document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('ym_dash_theme', theme); }, [theme]);
   useEffect(()=>()=>clearTimeout(timer.current), []);
   const toastFn = (msg)=>{ clearTimeout(timer.current); setToastS({ msg, key:Date.now() }); timer.current=setTimeout(()=>setToastS(null), 2600); };
+
+  // Register the merchant's browser for chat/order push; toast foreground messages.
+  useChatPush(user, (payload)=>toastFn(payload?.notification?.title || 'New message'));
 
   const Screen = SCREENS[active] || Overview;
   const props = { onAdd:()=>setAddOpen(true), onCopyLink:()=>toastFn('Store link copied to clipboard!'), onOpenProducts:()=>setActive('products'), toast:toastFn };

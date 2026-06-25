@@ -61,6 +61,26 @@ export const googleProvider = firebaseEnabled ? new GoogleAuthProvider() : null;
 
 export { app, auth, db, functions, storage };
 
+// Web Push (FCM) — VAPID public key from Firebase console → Cloud Messaging →
+// Web Push certificates. Without it, push registration no-ops (in-app live chat
+// still works); set VITE_FIREBASE_VAPID_KEY in the env to enable browser push.
+export const FCM_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+
+// Lazily resolve a Messaging instance, or null when the browser/SW can't support
+// it. Cached after the first call.
+let _messaging;
+export async function getMessagingInstance() {
+  if (!app) return null;
+  if (_messaging !== undefined) return _messaging;
+  try {
+    const { isSupported, getMessaging } = await import('firebase/messaging');
+    _messaging = (await isSupported()) ? getMessaging(app) : null;
+  } catch {
+    _messaging = null;
+  }
+  return _messaging;
+}
+
 // ── Callable helpers ─────────────────────────────────────────────────────────
 // Each returns the function payload directly, or throws a friendly Error.
 function callable(name) {

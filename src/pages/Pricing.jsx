@@ -14,26 +14,36 @@ const SOFTWARE = [
 const DELIVERY_BANDS = [
   {
     label: 'Urban', span: '0–30 km', tiers: [
-      { range: '0–5 km', s: 1500, g: 3000, p: 4200 },
-      { range: '5–15 km', s: 2000, g: 3500, p: 5000 },
-      { range: '15–30 km', s: 3500, g: 6000, p: 9000 },
+      { id: 'a05', range: '0–5 km', s: 1500, g: 3000, p: 4200 },
+      { id: 'a515', range: '5–15 km', s: 2000, g: 3500, p: 5000 },
+      { id: 'a1530', range: '15–30 km', s: 3500, g: 6000, p: 9000 },
     ],
   },
   {
     label: 'Regional', span: '30–60 km', tiers: [
-      { range: '30–40 km', s: 6500, g: 11000, p: 16000 },
-      { range: '40–50 km', s: 9000, g: 16000, p: 23500 },
-      { range: '50–60 km', s: 12000, g: 22000, p: 32000 },
+      { id: 'b3040', range: '30–40 km', s: 6500, g: 11000, p: 16000 },
+      { id: 'b4050', range: '40–50 km', s: 9000, g: 16000, p: 23500 },
+      { id: 'b5060', range: '50–60 km', s: 12000, g: 22000, p: 32000 },
     ],
   },
   {
     label: 'Long-haul', span: '60–90 km', tiers: [
-      { range: '60–70 km', s: 20000, g: 36000, p: 52000 },
-      { range: '70–80 km', s: 24000, g: 47000, p: 70000 },
-      { range: '80–90 km', s: 28000, g: 55000, p: 82000 },
+      { id: 'c6070', range: '60–70 km', s: 20000, g: 36000, p: 52000 },
+      { id: 'c7080', range: '70–80 km', s: 24000, g: 47000, p: 70000 },
+      { id: 'c8090', range: '80–90 km', s: 28000, g: 55000, p: 82000 },
     ],
   },
 ];
+
+// Deep-link to the dashboard signup with the chosen plan pre-selected.
+const softwareLink = (name) => `/dashboard?kind=software&plan=${name}`;
+const deliveryLink = (subTier, plan) => `/dashboard?kind=delivery&subTier=${subTier}&plan=${plan}`;
+
+function AmountCell({ to, amount }) {
+  return (
+    <td><Link className="amt-link" to={to}>{ksh(amount)}<small>/mo</small></Link></td>
+  );
+}
 
 function Pricing() {
   const [mode, setMode] = useState('software'); // software (default) | delivery
@@ -47,7 +57,7 @@ function Pricing() {
             <h1>Simple monthly plans. No commission.</h1>
             <p>
               Start with software only, or add bundled hub deliveries. Either way you keep 100% of every sale —
-              we never take a cut.
+              we never take a cut. Pick a plan to start signing up.
             </p>
           </div>
 
@@ -70,7 +80,7 @@ function Pricing() {
                     <ul>
                       {p.items.map((it) => <li key={it}><i className="fas fa-check"></i><span>{it}</span></li>)}
                     </ul>
-                    <Link className={`btn ${p.feat ? 'btn-primary' : 'btn-outline'}`} style={{ justifyContent: 'center' }} to="/dashboard">Choose {p.name}</Link>
+                    <Link className={`btn ${p.feat ? 'btn-primary' : 'btn-outline'}`} style={{ justifyContent: 'center' }} to={softwareLink(p.name)}>Choose {p.name}</Link>
                   </div>
                 ))}
               </div>
@@ -104,11 +114,11 @@ function Pricing() {
                           <td colSpan={4}>{band.label} · {band.span}</td>
                         </tr>
                         {band.tiers.map((t) => (
-                          <tr key={t.range}>
+                          <tr key={t.id}>
                             <td>{t.range}</td>
-                            <td className="amt">{ksh(t.s)}<small style={{ color: 'var(--t3)', fontWeight: 500 }}>/mo</small></td>
-                            <td className="amt">{ksh(t.g)}<small style={{ color: 'var(--t3)', fontWeight: 500 }}>/mo</small></td>
-                            <td className="amt">{ksh(t.p)}<small style={{ color: 'var(--t3)', fontWeight: 500 }}>/mo</small></td>
+                            <AmountCell to={deliveryLink(t.id, 'Starter')} amount={t.s} />
+                            <AmountCell to={deliveryLink(t.id, 'Growth')} amount={t.g} />
+                            <AmountCell to={deliveryLink(t.id, 'Pro')} amount={t.p} />
                           </tr>
                         ))}
                       </Fragment>
@@ -117,8 +127,8 @@ function Pricing() {
                 </table>
               </div>
               <p className="price-note">
-                Your price is set by the distance your deliveries travel — pick your range when you subscribe in
-                the dashboard. All plans include bundled hub deliveries and no sales commission.
+                Tap any price to start signing up with that plan and range pre-selected. All plans include
+                bundled hub deliveries and no sales commission.
               </p>
             </>
           )}

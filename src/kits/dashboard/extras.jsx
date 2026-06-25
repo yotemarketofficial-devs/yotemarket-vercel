@@ -12,6 +12,7 @@ import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, fmtTime, fmtWhen,
 } from '../../lib/chat.js';
+import { usePushPrompt } from '../../lib/push.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
@@ -164,6 +165,24 @@ export function Settings(){
 function F({ label, v }){ return <div><label className="ym-label">{label}</label><input className="ipt" defaultValue={v} /></div>; }
 function Row({ label, sub, children, last }){ return <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, padding:'12px 0', borderBottom:last?'none':'1px solid var(--m-border)' }}><div><div className="ym-h3" style={{ fontSize:14 }}>{label}</div><div className="ym-cap">{sub}</div></div>{children}</div>; }
 
+/* Dismissible opt-in to browser push (only shows when permission is unanswered). */
+function MerchantNotifyBanner({ user }){
+  const { canPrompt, enable } = usePushPrompt(user);
+  const [hidden, setHidden] = useStateX(false);
+  if (!canPrompt || hidden) return null;
+  return (
+    <Card style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', marginBottom:16, background:'var(--m-surface-2)' }}>
+      <FA i="fa-bell" style={{ color:'var(--m-primary)', fontSize:16 }} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div className="ym-h3" style={{ fontSize:13.5 }}>Turn on chat notifications</div>
+        <div className="ym-cap">Get a push when a buyer messages you — even when the dashboard is closed.</div>
+      </div>
+      <Btn kind="primary" onClick={()=>enable()}>Enable</Btn>
+      <button className="icon-btn" aria-label="Dismiss" onClick={()=>setHidden(true)}><FA i="fa-xmark" /></button>
+    </Card>
+  );
+}
+
 /* ---------- CHAT (merchant ↔ buyer) — live Firestore threads ---------- */
 export function Chat(){
   const { user } = useAuth();
@@ -180,6 +199,7 @@ export function Chat(){
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Chats</h1>
+      <MerchantNotifyBanner user={user} />
       {!live ? (
         <Card style={{ padding:'40px 24px', textAlign:'center', color:'var(--m-fg3)' }}>
           <FA i="fa-comments" style={{ fontSize:34, color:'var(--m-fg4)', marginBottom:14 }} />

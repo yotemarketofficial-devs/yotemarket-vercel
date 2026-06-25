@@ -13,7 +13,26 @@ import {
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
   fmtTime, fmtWhen,
 } from '../../lib/chat.js';
+import { usePushPrompt } from '../../lib/push.js';
 const { useState: useSE, useRef: useRefE, useEffect: useEffE } = React;
+
+/* Dismissible opt-in to browser push (only shows when permission is unanswered). */
+function NotifyBanner({ user }){
+  const { canPrompt, enable } = usePushPrompt(user);
+  const [hidden, setHidden] = useSE(false);
+  if (!canPrompt || hidden) return null;
+  return (
+    <div className="ym-card" style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', marginBottom:16, background:'var(--m-surface-2)' }}>
+      <FA i="fa-bell" style={{ color:'var(--m-primary)', fontSize:16 }} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div className="ym-h3" style={{ fontSize:13.5 }}>Turn on message notifications</div>
+        <div className="ym-cap">Get a push when a store replies — even when this tab is closed.</div>
+      </div>
+      <button className="ym-btn ym-btn-primary ym-btn-sm" onClick={()=>enable()}>Enable</button>
+      <button className="icon-btn" aria-label="Dismiss" onClick={()=>setHidden(true)}><FA i="fa-xmark" /></button>
+    </div>
+  );
+}
 
 const QUICK_CHIPS = ['Is this available?', 'What’s your last price?', 'Do you deliver today?'];
 
@@ -78,6 +97,7 @@ function LiveMessages({ params, user, account }){
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
       <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Home</button>
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Messages</h1>
+      <NotifyBanner user={user} />
       <div className="ym-card msg-grid" style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:560 }}>
         <div style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           <button onClick={()=>nav('ai')} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:14, display:'flex', alignItems:'center', gap:12, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>

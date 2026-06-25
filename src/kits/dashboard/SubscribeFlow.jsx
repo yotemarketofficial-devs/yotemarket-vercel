@@ -7,7 +7,7 @@ import { FA, Card, Btn } from './primitives.jsx';
 import { ksh } from './data.js';
 import { subscribeMerchant } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, SOFTWARE_TIERS, PLAN_ORDER, DELIVERY_FEATURES, findDeliveryTier } from './pricing.js';
-const { useState } = React;
+const { useState, useEffect } = React;
 
 const ipt = { width: '100%', padding: '12px 14px', borderRadius: 11, border: '1px solid var(--m-border)', background: 'var(--m-surface)', color: 'var(--m-fg1)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 const errBox = { display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13, fontWeight: 500, margin: '14px 0 0' };
@@ -36,6 +36,23 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
       onStarted && onStarted();
     } catch (e) { setErr(e.message || 'Could not start the subscription.'); setStage('idle'); }
   };
+
+  // Funnel from the /pricing page: ?kind=&plan=&subTier= pre-selects the plan
+  // and opens the M-Pesa dialog so the merchant lands ready to pay.
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const plan = sp.get('plan');
+    if (!plan) return;
+    if (sp.get('kind') === 'software') {
+      const t = SOFTWARE_TIERS.find((x) => x.name === plan);
+      if (t) { setMode('software'); pick({ kind: 'software', plan: t.name, price: t.price }); }
+    } else {
+      const t = findDeliveryTier(sp.get('subTier') || 'a05');
+      const pl = t.plans[plan];
+      if (pl) { setMode('delivery'); setTierId(t.id); pick({ kind: 'delivery', plan, price: pl.price, deliveries: pl.deliveries, subTier: t.id, range: t.range }); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div>

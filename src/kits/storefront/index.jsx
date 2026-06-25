@@ -13,6 +13,7 @@ import { ProfileScreen } from './profile.jsx';
 import { applyCatalog } from './data.js';
 import { useCatalogSync } from '../../lib/catalog.js';
 import { useAuth } from '../../lib/useAuth.jsx';
+import { useChatPush } from '../../lib/push.js';
 const { useState, useEffect, useRef } = React;
 
 const SCREENS = { home:HomeScreen, search:SearchScreen, product:ProductScreen, store:StoreScreen, checkout:CheckoutScreen, orders:OrdersScreen, messages:MessagesScreen, ai:AIScreen, profile:ProfileScreen };
@@ -42,6 +43,12 @@ export default function StorefrontApp(){
   const back = () => setStack(s=> s.length>1 ? s.slice(0,-1) : s);
 
   const toast = (msg, icon) => { clearTimeout(toastTimer.current); setToast({ msg, icon, key:Date.now() }); toastTimer.current = setTimeout(()=>setToast(null), 2200); };
+
+  // Register this browser for chat/order push; show foreground messages as a toast.
+  useChatPush(user, (payload) => {
+    const t = payload?.notification?.title; const b = payload?.notification?.body;
+    toast(t ? (b ? `${t}: ${b}` : t) : 'New message', 'fa-comment-dots');
+  });
   const addToCart = (pid, qty=1) => { setCart(c=>{ const ex=c.find(x=>x.pid===pid); return ex? c.map(x=>x.pid===pid?{...x,qty:x.qty+qty}:x):[...c,{pid,qty}]; }); toast('Added to cart','fa-cart-plus'); };
   const setCartQty = (pid,qty)=> setCart(c=>c.map(x=>x.pid===pid?{...x,qty}:x));
   const removeFromCart = (pid)=> setCart(c=>c.filter(x=>x.pid!==pid));
