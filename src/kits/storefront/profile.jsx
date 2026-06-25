@@ -73,6 +73,8 @@ export function ProfileScreen(){
   const phone = prof.phone || account.phone || '';
   const recent = orders.slice(0, 3);
   const hub = findHub(prof.defaultHubId);
+  const fullName = prof.name || account.name || '';
+  const firstName = fullName.trim().split(/\s+/)[0] || '';
 
   const changeDefaultHub = async (h) => { try { await saveProfile(uid, { defaultHubId:h.id }); toast('Default hub updated','fa-check'); } catch { toast('Could not save','fa-triangle-exclamation'); } };
   const removeAddress = async (id) => { try { await deleteAddress(uid, id); toast('Address removed','fa-trash-can'); } catch { toast('Could not remove','fa-triangle-exclamation'); } };
@@ -175,8 +177,11 @@ export function ProfileScreen(){
             <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:14, width:'100%' }} disabled={prof.points < 100} onClick={()=>setRedeemOpen(true)}><FA i="fa-gift" /> {prof.points < 100 ? 'Earn 100 pts to redeem' : 'Redeem points'}</button>
           </Card>
 
-          <Card title="Wallet" icon="fa-wallet" action="Top up" onAction={()=>setTopupOpen(true)}>
-            <div style={{ fontSize:26, fontWeight:800, color:'var(--m-fg1)', marginBottom:12 }}>{ymPrice(prof.walletBalance)}</div>
+          <Card title={firstName ? `${firstName}’s wallet` : 'Wallet'} icon="fa-wallet" action="Top up" onAction={()=>setTopupOpen(true)}>
+            <div style={{ marginBottom:12 }}>
+              <div style={{ fontSize:26, fontWeight:800, color:'var(--m-fg1)' }}>{ymPrice(prof.walletBalance)}</div>
+              {fullName && <div className="ym-cap" style={{ marginTop:2 }}>YoteMarket wallet · {fullName}</div>}
+            </div>
             {prof.walletTx.length === 0 ? (
               <EmptyRow icon="fa-receipt" text="No wallet activity yet." />
             ) : (
