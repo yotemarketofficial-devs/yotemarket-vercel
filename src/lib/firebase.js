@@ -107,6 +107,10 @@ export const subscribeMerchant = callable('subscribeMerchant');
 export const registerStore = callable('registerStore');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
+/** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone }. */
+export const topUpWallet = callable('topUpWallet');
+/** Redeem YotePoints for wallet credit → { redeemed, credited, balancePoints }. { points }. */
+export const redeemPoints = callable('redeemPoints');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {

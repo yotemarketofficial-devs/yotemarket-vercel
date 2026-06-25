@@ -5,3 +5,4 @@ YoteMarket Web Platform.html
 .env
 .env.*
 .vercel
+*.log

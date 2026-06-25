@@ -8,9 +8,9 @@ import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
 import { ymStore, ymProduct, ymPrice } from './data.js';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db, firebaseEnabled } from '../../lib/firebase.js';
+import { db, firebaseEnabled, topUpWallet, redeemPoints } from '../../lib/firebase.js';
 import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../../lib/account.js';
-const { useState: useSP, useEffect: useEffP } = React;
+const { useState: useSP, useEffect: useEffP, useRef: useRefP } = React;
 
 const fmtWhen = (t) => t?.when || (t?.createdAt?.seconds ? new Date(t.createdAt.seconds * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short' }) : '');
 
@@ -63,6 +63,8 @@ export function ProfileScreen(){
   const [editOpen, setEditOpen] = useSP(false);
   const [hubOpen, setHubOpen] = useSP(false);   // quick default-hub change from the card
   const [addrEdit, setAddrEdit] = useSP(null);  // null=closed | {} new | {id,...} edit
+  const [topupOpen, setTopupOpen] = useSP(false);
+  const [redeemOpen, setRedeemOpen] = useSP(false);
   const tg = k => setNotif(n=>({ ...n, [k]:!n[k] }));
 
   if (!account.hasAccount) return <GuestGate icon="fa-user" title="Your account" sub="Sign in to manage your profile, addresses, wallet, and YotePoints rewards." />;
@@ -169,11 +171,11 @@ export function ProfileScreen(){
               <div><div className="ym-cap" style={{ fontWeight:600 }}>YotePoints balance</div><div style={{ fontSize:30, fontWeight:800, color:'var(--m-fg1)' }}>{prof.points} <span style={{ fontSize:15, fontWeight:600, color:'var(--m-fg3)' }}>pts</span></div></div>
               <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-pending-bg)', color:'var(--m-pending-fg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}><FA i="fa-coins" /></div>
             </div>
-            <div className="ym-cap">Earn points on every YoteMarket order — redeem for discounts at checkout.</div>
-            <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:14, width:'100%' }} onClick={()=>toast('Rewards redemption coming soon','fa-gift')}><FA i="fa-gift" /> Redeem rewards</button>
+            <div className="ym-cap">Earn points on every YoteMarket order — redeem them for wallet credit you can spend at checkout.</div>
+            <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:14, width:'100%' }} disabled={prof.points < 100} onClick={()=>setRedeemOpen(true)}><FA i="fa-gift" /> {prof.points < 100 ? 'Earn 100 pts to redeem' : 'Redeem points'}</button>
           </Card>
 
-          <Card title="Wallet" icon="fa-wallet" action="Top up" onAction={()=>toast('Wallet top-up coming soon','fa-plus')}>
+          <Card title="Wallet" icon="fa-wallet" action="Top up" onAction={()=>setTopupOpen(true)}>
             <div style={{ fontSize:26, fontWeight:800, color:'var(--m-fg1)', marginBottom:12 }}>{ymPrice(prof.walletBalance)}</div>
             {prof.walletTx.length === 0 ? (
               <EmptyRow icon="fa-receipt" text="No wallet activity yet." />
@@ -207,6 +209,8 @@ export function ProfileScreen(){
       {editOpen && <ProfileEditor uid={uid} initial={{ name:prof.name||account.name||'', phone, defaultHubId:prof.defaultHubId }} onClose={()=>setEditOpen(false)} toast={toast} />}
       {hubOpen && <HubPicker selected={prof.defaultHubId} onSelect={changeDefaultHub} onClose={()=>setHubOpen(false)} title="Default pickup hub" />}
       {addrEdit && <AddressEditor uid={uid} initial={addrEdit} onClose={()=>setAddrEdit(null)} toast={toast} />}
+      {topupOpen && <WalletTopUp defaultPhone={phone} onClose={()=>setTopupOpen(false)} toast={toast} />}
+      {redeemOpen && <RedeemPoints points={prof.points} onClose={()=>setRedeemOpen(false)} toast={toast} />}
 
       <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
@@ -287,6 +291,113 @@ function AddressEditor({ uid, initial, onClose, toast }){
       <input className="ym-input" value={detail} onChange={e=>setDetail(e.target.value)} placeholder="Apartment, floor, landmark" />
       <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:20 }} disabled={busy} onClick={save}>
         {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Saving…</> : <><FA i="fa-check" /> {editing ? 'Save address' : 'Add address'}</>}
+      </button>
+    </Modal>
+  );
+}
+
+const TOPUP_PRESETS = [200, 500, 1000, 2000];
+
+/* Wallet top-up via M-Pesa STK push. Mirrors checkout: call topUpWallet, then
+   watch the payment doc the Daraja callback flips to paid (the wallet balance
+   itself updates live through the profile's onSnapshot). */
+function WalletTopUp({ defaultPhone, onClose, toast }){
+  const [amount, setAmount] = useSP('500');
+  const [phone, setPhone] = useSP(defaultPhone || '');
+  const [phase, setPhase] = useSP('form'); // form | waiting | done
+  const [busy, setBusy] = useSP(false);
+  const [err, setErr] = useSP('');
+  const unsubRef = useRefP(null);
+  const timerRef = useRefP(null);
+  useEffP(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); }, []);
+
+  const amt = Math.round(Number(amount)) || 0;
+  const start = async () => {
+    setErr('');
+    if (amt < 50) { setErr('Enter at least Ksh 50.'); return; }
+    if (!phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
+    setBusy(true);
+    try {
+      const res = await topUpWallet({ amount: amt, phone: phone.trim() });
+      const id = res && res.checkoutRequestId;
+      setBusy(false);
+      if (!id || !firebaseEnabled || !db) { setPhase('done'); return; }
+      setPhase('waiting');
+      unsubRef.current = onSnapshot(doc(db, 'mpesa_payments', id), (snap) => {
+        const d = snap.data(); if (!d) return;
+        if (d.status === 'paid') { if (unsubRef.current) unsubRef.current(); setPhase('done'); }
+        else if (d.status === 'failed') { if (unsubRef.current) unsubRef.current(); setErr(d.resultDesc || 'Payment was cancelled or failed.'); setPhase('form'); }
+      }, () => {});
+      timerRef.current = setTimeout(() => setPhase((p) => (p === 'waiting' ? 'done' : p)), 90000);
+    } catch (e) { setBusy(false); setErr(e.message || 'Could not start the top-up.'); }
+  };
+
+  if (phase === 'waiting') return (
+    <Modal title="Check your phone" onClose={onClose}>
+      <div style={{ textAlign:'center', padding:'10px 0 4px' }}>
+        <div style={{ width:72, height:72, borderRadius:9999, background:'var(--m-mpesa)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, margin:'0 auto 16px' }}><FA i="fa-mobile-screen" /></div>
+        <p className="ym-body">Enter your M-Pesa PIN on <b style={{ color:'var(--m-fg1)' }}>{phone}</b> to add <b style={{ color:'var(--m-fg1)' }}>{ymPrice(amt)}</b> to your wallet.</p>
+        <div style={{ display:'inline-flex', alignItems:'center', gap:9, marginTop:18, color:'var(--m-fg3)' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /> Waiting for confirmation…</div>
+        <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:20, width:'100%' }} onClick={onClose}>I'll check later</button>
+      </div>
+    </Modal>
+  );
+  if (phase === 'done') return (
+    <Modal title="Top-up requested" onClose={onClose}>
+      <div style={{ textAlign:'center', padding:'10px 0 4px' }}>
+        <div style={{ width:72, height:72, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 16px' }}><FA i="fa-check" /></div>
+        <p className="ym-body">Your wallet updates automatically once the M-Pesa payment confirms.</p>
+        <button className="ym-btn ym-btn-primary" style={{ marginTop:20, width:'100%' }} onClick={onClose}>Done</button>
+      </div>
+    </Modal>
+  );
+  return (
+    <Modal title="Top up wallet" onClose={onClose}>
+      <label className="ym-label">Amount (Ksh)</label>
+      <input className="ym-input" value={amount} onChange={e=>setAmount(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" />
+      <div style={{ display:'flex', gap:8, marginTop:10 }}>
+        {TOPUP_PRESETS.map(v=>(
+          <button key={v} onClick={()=>setAmount(String(v))} style={{ flex:1, padding:'9px 4px', borderRadius:11, cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, background:'var(--m-surface)', border: amt===v?'2px solid var(--m-primary)':'2px solid var(--m-border)', color: amt===v?'var(--m-primary)':'var(--m-fg2)' }}>{v.toLocaleString()}</button>
+        ))}
+      </div>
+      <label className="ym-label" style={{ marginTop:14 }}>M-Pesa phone number</label>
+      <input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="07XX XXX XXX" />
+      {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'10px 13px', fontSize:13, marginTop:14 }}><FA i="fa-circle-exclamation" /> {err}</div>}
+      <button className="ym-btn ym-btn-mpesa" style={{ width:'100%', marginTop:18 }} disabled={busy} onClick={start}>
+        {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Sending request…</> : <><FA i="fa-bolt" /> Pay {ymPrice(amt)} with M-Pesa</>}
+      </button>
+      <div className="ym-cap" style={{ textAlign:'center', marginTop:10, display:'flex', gap:6, justifyContent:'center' }}><FA i="fa-lock" /> Secure M-Pesa top-up</div>
+    </Modal>
+  );
+}
+
+/* Redeem YotePoints → wallet credit (1 pt = Ksh 1, min 100). Server deducts the
+   points and credits the wallet atomically; both update live via onSnapshot. */
+function RedeemPoints({ points, onClose, toast }){
+  const [pts, setPts] = useSP(String(Math.min(points, 500)));
+  const [busy, setBusy] = useSP(false);
+  const [err, setErr] = useSP('');
+  const n = Math.floor(Number(pts)) || 0;
+  const redeem = async () => {
+    setErr('');
+    if (n < 100) { setErr('Redeem at least 100 points.'); return; }
+    if (n > points) { setErr("You don't have that many points."); return; }
+    setBusy(true);
+    try { const r = await redeemPoints({ points: n }); toast(`Redeemed ${n} pts → ${ymPrice(r.credited)} wallet credit`, 'fa-gift'); onClose(); }
+    catch (e) { setBusy(false); setErr(e.message || 'Could not redeem points.'); }
+  };
+  return (
+    <Modal title="Redeem YotePoints" onClose={onClose}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:14, borderRadius:13, background:'var(--m-surface-2)', marginBottom:16 }}>
+        <div style={{ width:42, height:42, borderRadius:12, background:'var(--m-pending-bg)', color:'var(--m-pending-fg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}><FA i="fa-coins" /></div>
+        <div><div className="ym-cap">Available</div><div className="ym-h3" style={{ fontSize:17 }}>{points} pts</div></div>
+      </div>
+      <label className="ym-label">Points to redeem</label>
+      <input className="ym-input" value={pts} onChange={e=>setPts(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" />
+      <div className="ym-cap" style={{ marginTop:8 }}>You'll get <b style={{ color:'var(--m-fg1)' }}>{ymPrice(n)}</b> in wallet credit · 1 point = Ksh 1</div>
+      {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'10px 13px', fontSize:13, marginTop:14 }}><FA i="fa-circle-exclamation" /> {err}</div>}
+      <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:18 }} disabled={busy || points < 100} onClick={redeem}>
+        {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Redeeming…</> : <><FA i="fa-gift" /> Redeem for wallet credit</>}
       </button>
     </Modal>
   );
