@@ -61,10 +61,12 @@ export const googleProvider = firebaseEnabled ? new GoogleAuthProvider() : null;
 
 export { app, auth, db, functions, storage };
 
-// Web Push (FCM) — VAPID public key from Firebase console → Cloud Messaging →
-// Web Push certificates. Without it, push registration no-ops (in-app live chat
-// still works); set VITE_FIREBASE_VAPID_KEY in the env to enable browser push.
-export const FCM_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || '';
+// Web Push (FCM) — VAPID *public* key from Firebase console → Cloud Messaging →
+// Web Push certificates. Like the rest of the web config it's not a secret (it
+// ships in the client bundle), so it's baked in as a default; VITE_FIREBASE_VAPID_KEY
+// still overrides for other environments. Empty → push no-ops (in-app chat unaffected).
+export const FCM_VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY ||
+  'BLo4iaFPDAG243CWvQPAZ2gBRi86_9e65QnILeieNvVZISX7Ol0wm-hJ0k0OB7K83xSJvPW8u_A1bpIa8Mg1TM4';
 
 // Lazily resolve a Messaging instance, or null when the browser/SW can't support
 // it. Cached after the first call.
