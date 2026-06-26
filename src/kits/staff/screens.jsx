@@ -7,7 +7,7 @@ import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes } from 
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   fetchRuns, fetchSubscriptions, fetchReports, fetchTranscript,
-  moderateConversation, resolveReport,
+  moderateConversation, resolveReport, setStaffRole,
 } from './service.js';
 const { useState: useSS, useEffect: useES } = React;
 
@@ -403,4 +403,47 @@ function TranscriptModal({ view, onClose }){
       </div>
     </div>
   );
+}
+
+/* ============ TEAM & ROLES (admin only) ============ */
+export function Team(){
+  const [email, setEmail] = useSS('');
+  const [role, setRole] = useSS('moderator');
+  const [busy, setBusy] = useSS(false);
+  const [msg, setMsg] = useSS(null); // { ok, text }
+
+  const apply = async () => {
+    const e = email.trim();
+    if (!e || busy) return;
+    setBusy(true); setMsg(null);
+    try {
+      const r = await setStaffRole(e, role);
+      setMsg({ ok:true, text: role==='none' ? `${r.email} removed from staff.` : `${r.email} is now ${role}.` });
+      setEmail('');
+    } catch (ex) {
+      setMsg({ ok:false, text: (ex && ex.message) || 'Could not update role.' });
+    } finally { setBusy(false); }
+  };
+
+  return (<div className="fadeup space-y-6">
+    <SectionHead icon="user-shield" title="Team & roles" sub="Grant or revoke staff access by email — admin only" />
+    <Card className="p-6 space-y-4" style={{maxWidth:560}}>
+      <div>
+        <label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Staff email</label>
+        <input className="ym-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="person@yotemarket.com" />
+        <div className="text-xs t3 mt-1.5">The person must have signed in to the app at least once.</div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Role</label>
+        <Seg value={role} onChange={setRole} options={['admin','moderator','none']} fmt={o=> o==='none' ? 'Remove' : o[0].toUpperCase()+o.slice(1)} />
+        <div className="text-xs t3 mt-1.5">{role==='admin' ? 'Full access incl. team management.' : role==='moderator' ? 'Console access incl. chat moderation; cannot manage the team.' : 'Revokes all staff access.'}</div>
+      </div>
+      {msg && <div className="text-sm flex items-center gap-2" style={{color: msg.ok?'var(--green)':'var(--red)'}}><Icon name={msg.ok?'circle-check':'circle-exclamation'}/>{msg.text}</div>}
+      <Btn kind={role==='none'?'danger':'primary'} size="md" icon={busy?'spinner':(role==='none'?'user-minus':'user-check')} onClick={apply} disabled={busy}>{busy?'Applying…':(role==='none'?'Remove access':'Grant role')}</Btn>
+    </Card>
+    <Card className="p-5 flex items-start gap-3" style={{maxWidth:560,background:'var(--surface2)'}}>
+      <Icon name="circle-info" style={{color:'var(--pri)'}}/>
+      <div className="text-sm t2">Role changes take effect on the person’s next sign-in (or token refresh). Ask them to sign out and back in to the staff console.</div>
+    </Card>
+  </div>);
 }

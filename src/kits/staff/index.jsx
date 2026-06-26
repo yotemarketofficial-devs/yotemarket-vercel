@@ -5,7 +5,7 @@ import './staff.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
-import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation } from './screens.jsx';
+import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, Team } from './screens.jsx';
 import { Economics } from './economics.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims } from './service.js';
@@ -19,12 +19,14 @@ const NAV = [
   { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics' },
   { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet' },
   { key:'moderation',   icon:'comment-slash',  label:'Chat moderation' },
+  { key:'team',         icon:'user-shield',    label:'Team & roles', adminOnly:true },
   { key:'economics',    icon:'scale-balanced', label:'Pricing & economics', lock:true },
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, moderation:Moderation, economics:Economics };
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, moderation:Moderation, team:Team, economics:Economics };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
-function Sidebar({ active, go, onClose, onSignOut }){
+function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
+  const items = NAV.filter(n => !n.adminOnly || isAdmin);
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 py-5 flex items-center justify-between">
@@ -32,7 +34,7 @@ function Sidebar({ active, go, onClose, onSignOut }){
         <button onClick={onClose} className="lg:hidden t3 w-8 h-8" aria-label="Close menu"><Icon name="xmark"/></button>
       </div>
       <nav className="px-3 flex flex-col gap-1 flex-1">
-        {NAV.map(n=>{
+        {items.map(n=>{
           const on = active===n.key;
           return (
             <button key={n.key} onClick={()=>{go(n.key); onClose&&onClose();}}
@@ -70,7 +72,8 @@ function App(){
 
   const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
   const staffRole = role === 'admin' ? 'Operations Admin' : 'Moderator';
-  const Screen = SCREENS[active] || Analytics;
+  const effective = (active === 'team' && role !== 'admin') ? 'analytics' : active;
+  const Screen = SCREENS[effective] || Analytics;
   return (
     <div className="min-h-screen bg-page" data-screen-label={'Staff — '+LABELS[active]}>
       {/* confidential strip */}
@@ -80,12 +83,12 @@ function App(){
       </div>
       <div className="flex">
         <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
-          <Sidebar active={active} go={setActive} onSignOut={signOutUser} />
+          <Sidebar active={active} go={setActive} onSignOut={signOutUser} isAdmin={role==='admin'} />
         </aside>
 
         {menu && (<div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0" style={{background:'rgba(8,12,24,.5)'}} onClick={()=>setMenu(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} onSignOut={signOutUser} /></div>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} onSignOut={signOutUser} isAdmin={role==='admin'} /></div>
         </div>)}
 
         <div className="flex-1 min-w-0">

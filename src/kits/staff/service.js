@@ -18,8 +18,12 @@ function call(name) {
 }
 
 // ── Staff identity (Firebase custom claims: admin | moderator) ────────────────
+// Founding owners get admin by verified email so the first admin needs no
+// claim bootstrap (mirrors the server-side OWNER_EMAILS in functions/index.js).
+const OWNER_EMAILS = ['007arnogichuche@gmail.com', 'yotemarketofficial@gmail.com'];
+
 /**
- * Resolves the signed-in user's staff claims. Returns
+ * Resolves the signed-in user's staff access. Returns
  * { user, loading, isStaff, role, refresh }.
  */
 export function useStaffClaims() {
@@ -31,8 +35,10 @@ export function useStaffClaims() {
     try {
       const token = await u.getIdTokenResult(force);
       const c = token.claims || {};
-      const isStaff = c.admin === true || c.moderator === true;
-      setState({ user: u, loading: false, isStaff, role: c.admin ? 'admin' : (c.moderator ? 'moderator' : null) });
+      const owner = u.emailVerified && OWNER_EMAILS.includes(String(u.email || '').toLowerCase());
+      const isStaff = c.admin === true || c.moderator === true || owner;
+      const role = (c.admin === true || owner) ? 'admin' : (c.moderator === true ? 'moderator' : null);
+      setState({ user: u, loading: false, isStaff, role });
     } catch {
       setState({ user: u, loading: false, isStaff: false, role: null });
     }
@@ -119,6 +125,11 @@ export async function moderateConversation(convId, status, reason = '') {
 
 export async function resolveReport(reportId, action) {
   return call('staffResolveReport')({ reportId, action });
+}
+
+/** Admin-only: grant/revoke a staff role by email. role: 'admin'|'moderator'|'none'. */
+export async function setStaffRole(email, role) {
+  return call('staffSetRole')({ email, role });
 }
 
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
