@@ -132,5 +132,27 @@ export async function setStaffRole(email, role) {
   return call('staffSetRole')({ email, role });
 }
 
+// ── Marketer program (scouts) ─────────────────────────────────────────────────
+export async function fetchMarketers() {
+  const d = await call('staffListMarketers')();
+  if (!d || !Array.isArray(d.applicants) || !Array.isArray(d.scouts)) {
+    throw new Error('staffListMarketers: unexpected shape');
+  }
+  return d;
+}
+/** stage: 'New'|'Review'|'Shortlist'|'Interview'|'active'|'rejected' */
+export async function setMarketerStage(uid, stage) {
+  return call('staffSetMarketerStage')({ uid, stage });
+}
+export async function fetchPayouts() {
+  const d = await call('staffListPayouts')();
+  if (!d || !Array.isArray(d.requests)) throw new Error('staffListPayouts: unexpected shape');
+  return d.requests;
+}
+/** action: 'approve' | 'hold' */
+export async function resolvePayout(id, action) {
+  return call('staffResolvePayout')({ id, action });
+}
+
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };

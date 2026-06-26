@@ -1,7 +1,9 @@
-/* auth.jsx — Marketers login / signup / onboarding. */
+/* auth.jsx — Marketers real Firebase sign-in/up + scout onboarding. */
 import React from 'react';
-import { ME, COUNTIES } from './data.js';
+import { COUNTIES } from './data.js';
 import { Logo, Btn, Icon, ThemeToggle } from './ui.jsx';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { registerMarketer } from './service.js';
 const { useState: useSA } = React;
 
 function BrandPanel(){
@@ -42,90 +44,90 @@ function AuthShell({ children }){
   );
 }
 
-export function Login({ onLogin, onSwitch }){
+/* Real Firebase auth: sign in or create an account (email/password + Google). */
+export function AuthScreen(){
+  const { signInEmail, registerEmail, signInGoogle } = useAuth();
+  const [mode, setMode] = useSA('signin'); // signin | signup
+  const [name, setName] = useSA('');
+  const [email, setEmail] = useSA('');
+  const [password, setPassword] = useSA('');
+  const [busy, setBusy] = useSA(false);
+  const [err, setErr] = useSA('');
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (busy) return;
+    setBusy(true); setErr('');
+    try {
+      if (mode === 'signup') await registerEmail(name, email, password);
+      else await signInEmail(email, password);
+      // The app shell observes auth state and advances to onboarding/dashboard.
+    } catch (ex) { setErr(ex.message || 'Something went wrong.'); }
+    finally { setBusy(false); }
+  };
+  const google = async () => { setErr(''); try { await signInGoogle(); } catch (ex) { if (ex.code !== 'cancelled') setErr(ex.message || 'Google sign-in failed.'); } };
+
   return (
     <AuthShell>
-      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full fadeup">
-        <h2 className="text-2xl font-bold t1">Welcome back, scout</h2>
-        <p className="t3 text-sm mt-1">Sign in to track your referrals and earnings.</p>
+      <form className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full fadeup" onSubmit={submit}>
+        <h2 className="text-2xl font-bold t1">{mode==='signup' ? 'Become a scout' : 'Welcome back, scout'}</h2>
+        <p className="t3 text-sm mt-1">{mode==='signup' ? 'Create your account to start referring merchants.' : 'Sign in to track your referrals and earnings.'}</p>
         <div className="space-y-4 mt-7">
-          <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Phone or email</label>
-            <input className="ym-input" defaultValue={ME.phone} /></div>
+          {mode==='signup' && <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Full name</label>
+            <input className="ym-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" /></div>}
+          <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Email</label>
+            <input className="ym-input" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" /></div>
           <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Password</label>
-            <input type="password" className="ym-input" defaultValue="scout1234" /></div>
+            <input type="password" autoComplete={mode==='signup'?'new-password':'current-password'} className="ym-input" value={password} onChange={e=>setPassword(e.target.value)} placeholder={mode==='signup'?'Min. 6 characters':'••••••••'} /></div>
         </div>
-        <div className="flex items-center justify-between mt-4 text-sm">
-          <label className="flex items-center gap-2 t2"><input type="checkbox" defaultChecked className="accent-[var(--purple)]"/> Remember me</label>
-          <a className="font-semibold accent" href="#">Forgot password?</a>
-        </div>
-        <Btn kind="primary" size="lg" className="w-full mt-6" onClick={onLogin}>Sign in</Btn>
-        <p className="text-center text-sm t3 mt-5">New here? <button onClick={onSwitch} className="font-semibold accent">Become a scout</button></p>
-      </div>
+        {err && <div className="mt-4 text-sm flex items-center gap-2" style={{color:'var(--red)'}}><Icon name="circle-exclamation"/>{err}</div>}
+        <Btn type="submit" kind="primary" size="lg" className="w-full mt-6" icon={busy?'spinner':undefined} disabled={busy}>{busy?'Please wait…':(mode==='signup'?'Create account':'Sign in')}</Btn>
+        <button type="button" onClick={google} className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2" style={{border:'1px solid var(--line2)',color:'var(--t1)'}}><Icon name="google" brand/> Continue with Google</button>
+        <p className="text-center text-sm t3 mt-5">
+          {mode==='signup'
+            ? <>Already a scout? <button type="button" onClick={()=>setMode('signin')} className="font-semibold accent">Sign in</button></>
+            : <>New here? <button type="button" onClick={()=>setMode('signup')} className="font-semibold accent">Become a scout</button></>}
+        </p>
+      </form>
     </AuthShell>
   );
 }
 
-export function Signup({ onDone, onSwitch }){
-  const [step, setStep] = useSA(1);
+/* Signed in but no marketer profile yet → collect scout details + create it. */
+export function OnboardScreen({ defaultName = '', onDone }){
+  const [name, setName] = useSA(defaultName);
+  const [phone, setPhone] = useSA('');
   const [county, setCounty] = useSA('Kisumu');
+  const [busy, setBusy] = useSA(false);
+  const [err, setErr] = useSA('');
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (busy || !name.trim()) return;
+    setBusy(true); setErr('');
+    try {
+      const { marketer } = await registerMarketer({ name: name.trim(), phone: phone.trim(), county });
+      onDone(marketer);
+    } catch (ex) { setErr(ex.message || 'Could not complete signup.'); setBusy(false); }
+  };
+
   return (
     <AuthShell>
-      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full fadeup">
-        {/* progress dots */}
-        <div className="flex items-center gap-2 mb-6">
-          {[1,2,3].map(s=>(
-            <div key={s} className="h-1.5 rounded-full flex-1 transition-all" style={{background: s<=step?'var(--purple)':'var(--line2)'}} />
-          ))}
+      <form className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full fadeup" onSubmit={submit}>
+        <div className="w-14 h-14 rounded-2xl grad flex items-center justify-center text-white text-2xl mb-4"><Icon name="rocket"/></div>
+        <h2 className="text-2xl font-bold t1">Set up your scout profile</h2>
+        <p className="t3 text-sm mt-1">One step to join the founding cohort and get your referral link.</p>
+        <div className="space-y-4 mt-6">
+          <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Full name</label>
+            <input className="ym-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" /></div>
+          <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Phone (M-Pesa)</label>
+            <input className="ym-input num" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XX XXX XXX" /></div>
+          <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Primary county</label>
+            <select className="ym-input" value={county} onChange={e=>setCounty(e.target.value)}>{COUNTIES.map(c=><option key={c}>{c}</option>)}</select></div>
         </div>
-
-        {step===1 && (<div className="fadeup">
-          <h2 className="text-2xl font-bold t1">Become a scout</h2>
-          <p className="t3 text-sm mt-1">Step 1 of 3 · Your details</p>
-          <div className="space-y-4 mt-6">
-            <Two><F label="First name" v="Brian"/><F label="Last name" v="Otieno"/></Two>
-            <F label="Phone (M-Pesa)" v="0720 730 861" />
-            <F label="Email" v="brian.otieno@gmail.com" />
-          </div>
-          <Btn kind="primary" size="lg" className="w-full mt-6" iconRight="arrow-right" onClick={()=>setStep(2)}>Continue</Btn>
-        </div>)}
-
-        {step===2 && (<div className="fadeup">
-          <h2 className="text-2xl font-bold t1">Where do you scout?</h2>
-          <p className="t3 text-sm mt-1">Step 2 of 3 · Your region</p>
-          <div className="space-y-4 mt-6">
-            <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Primary county</label>
-              <select className="ym-input" value={county} onChange={e=>setCounty(e.target.value)}>{COUNTIES.map(c=><option key={c}>{c}</option>)}</select></div>
-            <F label="Create a password" v="" type="password" placeholder="Min. 8 characters" />
-            <label className="flex items-start gap-2.5 text-sm t2"><input type="checkbox" defaultChecked className="mt-0.5 accent-[var(--purple)]"/> I agree to the YoteMarket Marketer terms and the founding-cohort program rules.</label>
-          </div>
-          <div className="flex gap-2 mt-6"><Btn kind="soft" onClick={()=>setStep(1)} icon="arrow-left">Back</Btn>
-            <Btn kind="primary" className="flex-1" iconRight="arrow-right" onClick={()=>setStep(3)}>Continue</Btn></div>
-        </div>)}
-
-        {step===3 && (<div className="fadeup text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl grad flex items-center justify-center text-white text-2xl"><Icon name="rocket"/></div>
-          <h2 className="text-2xl font-bold t1 mt-4">You're in the founding cohort</h2>
-          <p className="t2 text-sm mt-2">Here's how to start earning today:</p>
-          <div className="text-left space-y-3 mt-5">
-            {[['link','Share your referral link','Every shop that joins through it is yours.'],
-              ['store','Get merchants verified','They follow 3 socials + list 2 items.'],
-              ['money-bill-wave','Cash out at KSH 500','Straight to M-Pesa, no fees.']].map(([ic,t,d],i)=>(
-              <div key={i} className="flex items-start gap-3 rounded-xl p-3" style={{background:'var(--surface2)'}}>
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:'var(--purple-soft)',color:'var(--purple)'}}><Icon name={ic}/></div>
-                <div><div className="font-semibold t1 text-sm">{t}</div><div className="text-xs t3">{d}</div></div>
-              </div>
-            ))}
-          </div>
-          <Btn kind="primary" size="lg" className="w-full mt-6" onClick={onDone}>Go to my dashboard</Btn>
-        </div>)}
-
-        {step===1 && <p className="text-center text-sm t3 mt-5">Already a scout? <button onClick={onSwitch} className="font-semibold accent">Sign in</button></p>}
-      </div>
+        {err && <div className="mt-4 text-sm flex items-center gap-2" style={{color:'var(--red)'}}><Icon name="circle-exclamation"/>{err}</div>}
+        <Btn type="submit" kind="primary" size="lg" className="w-full mt-6" icon={busy?'spinner':'rocket'} disabled={busy}>{busy?'Creating…':'Join the program'}</Btn>
+      </form>
     </AuthShell>
   );
-}
-function Two({ children }){ return <div className="grid grid-cols-2 gap-3">{children}</div>; }
-function F({ label, v, type='text', placeholder }){
-  return (<div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">{label}</label>
-    <input type={type} className="ym-input" defaultValue={v} placeholder={placeholder} /></div>);
 }

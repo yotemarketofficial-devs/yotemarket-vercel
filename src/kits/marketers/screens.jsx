@@ -3,6 +3,7 @@ import React from 'react';
 import { ME, REFERRALS, VERIFIED_COUNT, PENDING_COUNT, TOTAL_REFERRED, LEADERBOARD, PAYOUTS, COUNTIES } from './data.js';
 import { calcEarnings, nextCheckpoint, merchantsToWithdrawal, ksh, MK_CONFIG } from './econ.js';
 import { Card, Btn, Pill, Avatar, Stat, Bar, Medal, Icon, useTheme, useEarn } from './ui.jsx';
+import { requestMarketerPayout } from './service.js';
 const { useState: useS, useMemo, useRef, useEffect: useE } = React;
 
 /* ============ shared: page header ============ */
@@ -243,7 +244,7 @@ export function Referrals(){
   const chips = [['all','All'],['verified','Verified'],['pending','Pending'],['rejected','Rejected']];
   return (
     <div className="fadeup space-y-6">
-      <PageHead title="My referrals" sub={`${TOTAL_REFERRED} merchants referred all-time · ${counts.verified+39} verified`}
+      <PageHead title="My referrals" sub={`${TOTAL_REFERRED} merchants referred all-time · ${counts.verified} verified`}
         action={<Btn kind="primary" icon="user-plus">Invite a merchant</Btn>} />
 
       <Card className="p-4 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -367,7 +368,16 @@ export function Payouts(){
   const [amount, setAmount] = useS(earn.withdrawable?earn.total:0);
   const [phone, setPhone] = useS(ME.phone);
   const [done, setDone] = useS(false);
+  const [busy, setBusy] = useS(false);
+  const [err, setErr] = useS('');
   const ok = earn.withdrawable && amount>=MK_CONFIG.minWithdrawal && amount<=earn.total;
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true); setErr('');
+    try { const r = await requestMarketerPayout({ phone }); if (r && r.amount != null) setAmount(r.amount); setDone(true); }
+    catch (ex) { setErr(ex.message || 'Could not request payout.'); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="fadeup space-y-6">
       <PageHead title="Payouts" sub="Cash out your verified earnings straight to M-Pesa." />
@@ -393,7 +403,7 @@ export function Payouts(){
               <div className="text-center py-6 fadeup">
                 <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center text-2xl text-white" style={{background:'#009B3A'}}><Icon name="check"/></div>
                 <div className="font-bold t1 mt-3 text-lg">Withdrawal requested</div>
-                <p className="t2 text-sm mt-1">{ksh(amount)} is on its way to {phone}. You'll get an M-Pesa SMS shortly.</p>
+                <p className="t2 text-sm mt-1">{ksh(amount)} to {phone} is pending staff approval. You'll get an M-Pesa SMS once it's sent.</p>
                 <Btn kind="soft" className="mt-4" onClick={()=>setDone(false)}>Make another withdrawal</Btn>
               </div>
             ) : (<>
@@ -407,10 +417,11 @@ export function Payouts(){
                     style={amount===a?{background:'var(--purple)',color:'#fff'}:{background:'var(--surface2)',color:'var(--t2)',border:'1px solid var(--line)'}}>{ksh(a)}</button>
                 ))}
               </div>
-              <Btn kind="mpesa" size="lg" className="w-full mt-5" disabled={!ok} onClick={()=>setDone(true)} icon="bolt">
-                Withdraw {ksh(amount)}
+              {err && <div className="text-sm mt-3 flex items-center gap-2" style={{color:'var(--red)'}}><Icon name="circle-exclamation"/>{err}</div>}
+              <Btn kind="mpesa" size="lg" className="w-full mt-5" disabled={!ok||busy} onClick={submit} icon={busy?'spinner':'bolt'}>
+                {busy ? 'Requesting…' : `Withdraw ${ksh(amount)}`}
               </Btn>
-              <p className="text-xs t3 mt-3 text-center">Withdrawals process instantly during business hours · no fees.</p>
+              <p className="text-xs t3 mt-3 text-center">Withdrawals are reviewed by staff, then sent to M-Pesa · no fees.</p>
             </>)}
           </Card>
         </div>

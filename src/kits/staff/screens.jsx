@@ -8,6 +8,7 @@ import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   fetchRuns, fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
+  fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
 } from './service.js';
 const { useState: useSS, useEffect: useES } = React;
 
@@ -149,10 +150,25 @@ function Chk({ ok, label }){
 
 /* ============ MARKETER APPLICATIONS (hiring funnel) ============ */
 const STAGES = ['New','Review','Shortlist','Interview'];
+const NEXT_STAGE = { New:'Review', Review:'Shortlist', Shortlist:'Interview', Interview:'active' };
 export function Applications(){
-  const byStage = s => APPLICANTS.filter(a=>a.stage===s);
+  const { data, live } = useStaffResource(fetchMarketers, { applicants: APPLICANTS, scouts: [] });
+  const [rows, setRows] = useSS(null);
+  useES(()=>{ setRows(data.applicants || []); }, [data]);
+  const list = rows || [];
+  const byStage = s => list.filter(a=>a.stage===s);
+
+  const move = async (a, stage) => {
+    setRows(rs => {
+      const rest = (rs||[]).filter(r=>r.id!==a.id);
+      return (stage==='active' || stage==='rejected') ? rest : [...rest, { ...a, stage }];
+    });
+    try { await setMarketerStage(a.id, stage); }
+    catch { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); }
+  };
+
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="briefcase" title="Marketer applications" sub="The hiring funnel — the leaderboard is the application" />
+    <SectionHead icon="briefcase" title="Marketer applications" sub={live ? 'The hiring funnel — advance scouts through to active' : 'Sample funnel — connect the backend for live applicants'} />
     <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
       {STAGES.map(stage=>(
         <div key={stage} className="space-y-3">
@@ -167,15 +183,16 @@ export function Applications(){
                 <div className="min-w-0 flex-1"><div className="font-semibold t1 text-sm truncate">{a.name}</div><div className="text-xs t3">{a.county}</div></div>
               </div>
               <div className="flex items-center justify-between mt-3 pt-3" style={{borderTop:'1px solid var(--line)'}}>
-                <div><div className="num font-bold t1">{a.verified}</div><div className="text-[10px] t3 uppercase">verified</div></div>
+                <div><div className="num font-bold t1">{a.verified||0}</div><div className="text-[10px] t3 uppercase">verified</div></div>
                 <span className="text-xs t3 num">{a.applied}</span>
               </div>
               <div className="flex gap-2 mt-3">
-                <Btn kind="primary" size="sm" className="flex-1">Advance</Btn>
-                <Btn kind="ghost" size="sm"><Icon name="ellipsis"/></Btn>
+                <Btn kind="primary" size="sm" className="flex-1" disabled={a._busy} onClick={()=>move(a, NEXT_STAGE[stage])}>{stage==='Interview'?'Activate':'Advance'}</Btn>
+                <Btn kind="ghost" size="sm" disabled={a._busy} onClick={()=>move(a,'rejected')} title="Reject"><Icon name="xmark"/></Btn>
               </div>
             </Card>
           ))}
+          {byStage(stage).length===0 && <div className="text-xs t3 px-1 py-4 text-center">—</div>}
         </div>
       ))}
     </div>
@@ -184,28 +201,40 @@ export function Applications(){
 
 /* ============ SCOUTS + PAYOUT APPROVALS ============ */
 export function Scouts(){
-  const [reqs,setReqs] = useSS(PAYOUT_REQUESTS);
-  const resolve = id => setReqs(rs=>rs.filter(r=>r.id!==id));
+  const { data: scoutData, live } = useStaffResource(fetchMarketers, { applicants: [], scouts: SCOUTS });
+  const { data: payoutData } = useStaffResource(fetchPayouts, PAYOUT_REQUESTS);
+  const scouts = scoutData.scouts || [];
+  const [reqs,setReqs] = useSS(null);
+  useES(()=>{ setReqs(payoutData); }, [payoutData]);
+  const list = reqs || [];
+
+  const resolve = async (id, action) => {
+    const prev = list;
+    setReqs(rs=>(rs||[]).filter(r=>r.id!==id));
+    try { await resolvePayout(id, action); }
+    catch { setReqs(prev); }
+  };
+
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="people-group" title="Scout management" sub="Monitor scout performance and approve M-Pesa payout requests" />
+    <SectionHead icon="people-group" title="Scout management" sub={live ? 'Monitor scout performance and approve M-Pesa payout requests' : 'Sample data — connect the backend for live scouts'} />
     <div className="grid lg:grid-cols-5 gap-6">
       {/* payout approvals */}
       <div className="lg:col-span-2 space-y-3">
-        <h3 className="font-bold t1 flex items-center gap-2">Payout requests {reqs.length>0 && <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--amber)'}}>{reqs.length}</span>}</h3>
-        {reqs.map(r=>(
+        <h3 className="font-bold t1 flex items-center gap-2">Payout requests {list.length>0 && <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--amber)'}}>{list.length}</span>}</h3>
+        {list.map(r=>(
           <Card key={r.id} className="p-4">
             <div className="flex items-center gap-3 mb-3">
               <Avatar src={r.photo} name={r.scout} size={38} />
-              <div className="flex-1 min-w-0"><div className="font-semibold t1 text-sm">{r.scout}</div><div className="text-xs t3 num">{r.phone} · {r.date}</div></div>
+              <div className="flex-1 min-w-0"><div className="font-semibold t1 text-sm">{r.scout}</div><div className="text-xs t3 num">{r.phone}{r.date?` · ${r.date}`:''}</div></div>
               <div className="num font-bold t1">{kes(r.amount)}</div>
             </div>
             <div className="flex gap-2">
-              <Btn kind="success" size="sm" className="flex-1" icon="mobile-alt" onClick={()=>resolve(r.id)}>Approve & send</Btn>
-              <Btn kind="soft" size="sm" onClick={()=>resolve(r.id)}>Hold</Btn>
+              <Btn kind="success" size="sm" className="flex-1" icon="mobile-alt" onClick={()=>resolve(r.id,'approve')}>Approve &amp; send</Btn>
+              <Btn kind="soft" size="sm" onClick={()=>resolve(r.id,'hold')}>Hold</Btn>
             </div>
           </Card>
         ))}
-        {reqs.length===0 && <Card className="p-8 text-center t3"><Icon name="circle-check" className="text-2xl mb-2" style={{color:'var(--green)'}}/><div>All payouts cleared.</div></Card>}
+        {list.length===0 && <Card className="p-8 text-center t3"><Icon name="circle-check" className="text-2xl mb-2" style={{color:'var(--green)'}}/><div>All payouts cleared.</div></Card>}
       </div>
       {/* scout table */}
       <Card className="p-0 overflow-hidden lg:col-span-3">
@@ -215,13 +244,14 @@ export function Scouts(){
             <th className="px-5 py-2.5 font-semibold">Scout</th><th className="px-4 py-2.5 font-semibold text-right">Verified</th>
             <th className="px-4 py-2.5 font-semibold text-right">Balance</th><th className="px-5 py-2.5 font-semibold text-right">Pending</th>
           </tr></thead>
-          <tbody>{SCOUTS.map(s=>(
+          <tbody>{scouts.map(s=>(
             <tr key={s.id} style={{borderTop:'1px solid var(--line)'}}>
               <td className="px-5 py-3"><div className="flex items-center gap-2.5"><Avatar src={s.photo} name={s.name} size={30}/><div><div className="font-semibold t1">{s.name}</div><div className="text-xs t3">{s.county}</div></div></div></td>
               <td className="px-4 py-3 text-right num font-semibold t1">{s.verified}</td>
               <td className="px-4 py-3 text-right num t2">{kes(s.balance)}</td>
               <td className="px-5 py-3 text-right num" style={{color: s.pending>0?'var(--amber)':'var(--t3)'}}>{s.pending>0?kes(s.pending):'—'}</td>
-            </tr>))}</tbody>
+            </tr>))}
+            {scouts.length===0 && <tr><td colSpan={4} className="px-5 py-8 text-center t3">No active scouts yet.</td></tr>}</tbody>
         </table></div>
       </Card>
     </div>

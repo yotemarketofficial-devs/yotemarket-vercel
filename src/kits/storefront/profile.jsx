@@ -51,8 +51,8 @@ function EmptyRow({ icon, text }){
   return <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'26px 14px', textAlign:'center', color:'var(--m-fg3)' }}><FA i={icon} style={{ fontSize:24, color:'var(--m-fg4)' }} /><div style={{ fontSize:13.5 }}>{text}</div></div>;
 }
 
-const STATUS_TONE = { placed:'pending', confirmed:'pending', out:'pending', awaiting:'pending', delivered:'active' };
-const STATUS_LABEL = { placed:'Order placed', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Awaiting pickup', delivered:'Collected' };
+const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', delivered:'active', confirmed:'pending', out:'pending', awaiting:'pending' };
+const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
 
 export function ProfileScreen(){
   const { nav, reset, theme, setTheme, toast, account, liveOrders } = useYM();

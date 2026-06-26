@@ -4,11 +4,27 @@ import React from 'react';
 import './marketers.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
-import { Login, Signup } from './auth.jsx';
+import { AuthScreen, OnboardScreen } from './auth.jsx';
 import { Dashboard, Referrals, Leaderboard, Payouts, Simulator, Profile } from './screens.jsx';
-import { ME, VERIFIED_COUNT, PENDING_COUNT } from './data.js';
+import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
-const { useState: useSApp } = React;
+import { useAuth } from '../../lib/useAuth.jsx';
+import { marketerEnabled, fetchMyMarketer, fetchMyReferrals, fetchMyPayouts, fetchLeaderboard } from './service.js';
+const { useState: useSApp, useEffect: useEApp, useCallback: useCbApp } = React;
+
+const meFromProfile = (m) => ({
+  name: m.name || 'Scout',
+  first: (m.name || 'Scout').split(' ')[0],
+  handle: '@' + (m.name || 'scout').split(/\s+/)[0].toLowerCase(),
+  county: m.county || '',
+  phone: m.phone || '',
+  email: m.email || '',
+  code: m.code || '',
+});
+
+function Splash(){
+  return <div className="min-h-screen bg-page flex items-center justify-center"><Icon name="spinner" className="fa-spin text-2xl" style={{color:'var(--purple)'}} /></div>;
+}
 
 const NAV = [
   { key:'dashboard',  icon:'gauge-high',  label:'Dashboard' },
@@ -21,7 +37,7 @@ const NAV = [
 const SCREENS = { dashboard:Dashboard, referrals:Referrals, leaderboard:Leaderboard, payouts:Payouts, simulator:Simulator, profile:Profile };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
-function Sidebar({ active, go, onClose }){
+function Sidebar({ active, go, onClose, onSignOut }){
   const earn = calcEarnings(VERIFIED_COUNT);
   return (
     <div className="flex flex-col h-full">
@@ -54,7 +70,7 @@ function Sidebar({ active, go, onClose }){
         <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors t2" style={{background:'var(--surface2)'}}>
           <Icon name="grid-2" className="w-5 text-center t3"/> All subdomains
         </a>
-        <button className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors t2 w-full mt-1">
+        <button onClick={onSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors t2 w-full mt-1">
           <Icon name="right-from-bracket" className="w-5 text-center t3"/> Sign out
         </button>
       </div>
@@ -63,26 +79,56 @@ function Sidebar({ active, go, onClose }){
 }
 
 function App(){
-  const [auth, setAuth] = useSApp('login'); // login | signup | app
+  const { user, hasAccount, loading, signOutUser } = useAuth();
   const [active, setActive] = useSApp('dashboard');
   const [menu, setMenu] = useSApp(false);
+  const [profile, setProfile] = useSApp(undefined); // undefined=unknown · null=none · obj=registered
+  const [ver, setVer] = useSApp(0);
 
-  if (auth==='login')  return <Login onLogin={()=>setAuth('app')} onSwitch={()=>setAuth('signup')} />;
-  if (auth==='signup') return <Signup onDone={()=>setAuth('app')} onSwitch={()=>setAuth('login')} />;
+  const loadAll = useCbApp(async (uid) => {
+    const [refs, pos, lb] = await Promise.all([
+      fetchMyReferrals(uid).catch(() => null),
+      fetchMyPayouts(uid).catch(() => null),
+      fetchLeaderboard().catch(() => null),
+    ]);
+    const leaderboard = Array.isArray(lb)
+      ? lb.map((r, i) => ({ rank: r.rank || i + 1, name: r.name, county: r.county, verified: r.verified, you: r.you, photo: null }))
+      : null;
+    applyMarketer({ referrals: refs, payouts: pos, leaderboard });
+    setVer((v) => v + 1);
+  }, []);
+
+  useEApp(() => {
+    if (!marketerEnabled(user)) { setProfile(null); return undefined; }
+    let on = true;
+    setProfile(undefined);
+    fetchMyMarketer(user.uid).then((m) => {
+      if (!on) return;
+      setProfile(m);
+      if (m) { applyMarketer({ me: meFromProfile(m) }); loadAll(user.uid); }
+    }).catch(() => { if (on) setProfile(null); });
+    return () => { on = false; };
+  }, [user?.uid, loadAll]);
+
+  if (loading || (hasAccount && profile === undefined)) return <Splash />;
+  if (!hasAccount) return <AuthScreen />;
+  if (profile === null) {
+    return <OnboardScreen defaultName={user.displayName || ''} onDone={(m) => { setProfile(m); applyMarketer({ me: meFromProfile(m) }); loadAll(user.uid); }} />;
+  }
 
   const Screen = SCREENS[active] || Dashboard;
   return (
-    <div className="min-h-screen bg-page" data-screen-label={'Marketers — '+LABELS[active]}>
+    <div className="min-h-screen bg-page" data-screen-label={'Marketers — '+LABELS[active]} key={ver}>
       <div className="flex">
         {/* desktop sidebar */}
         <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
-          <Sidebar active={active} go={setActive} />
+          <Sidebar active={active} go={setActive} onSignOut={signOutUser} />
         </aside>
 
         {/* mobile drawer */}
         {menu && (<div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0" style={{background:'rgba(20,8,37,.5)'}} onClick={()=>setMenu(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} /></div>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} onSignOut={signOutUser} /></div>
         </div>)}
 
         <div className="flex-1 min-w-0">

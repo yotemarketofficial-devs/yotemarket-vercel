@@ -114,6 +114,12 @@ export const topUpWallet = callable('topUpWallet');
 export const confirmPayment = callable('confirmPayment');
 /** Redeem YotePoints for wallet credit → { redeemed, credited, balancePoints }. { points }. */
 export const redeemPoints = callable('redeemPoints');
+/** Rider claims an open batched run → { ok, orders }. { runId }. */
+export const claimRun = callable('claimRun');
+/** Confirm a custody handover (leg 1 store→rider, 2 rider→hub, 3 hub→shopper) → { ok, status }. { orderId, leg, code }. */
+export const confirmHandover = callable('confirmHandover');
+/** Fetch the handover code the caller is entitled to show → { code }. { orderId, leg }. */
+export const getHandoverCode = callable('getHandoverCode');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {

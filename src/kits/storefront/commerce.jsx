@@ -9,7 +9,8 @@ import { mpesaStkPush, confirmPayment, db, firebaseEnabled, auth } from '../../l
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
-const ORDER_STEPS = ['Order placed','Confirmed by store','Rider picked up','En route to your hub','Ready for pickup'];
+// Custody lifecycle (index = order.step): placed→queued→accepted→picked_up→at_hub→delivered.
+const ORDER_STEPS = ['Order placed','Paid · finding a rider','Rider assigned','Picked up from store','Arrived at your hub','Collected'];
 
 export function CheckoutScreen(){
   const { cart, clearCart, reset, nav, toast, requireAuth, account } = useYM();
@@ -264,8 +265,8 @@ export function OrdersScreen(){
   const { reset, account, liveOrders } = useYM();
   if (!account.hasAccount) return <GuestGate icon="fa-box" title="Your orders" sub="Sign in to view and track your orders, deliveries, and hub pickups." />;
   const orders = (liveOrders || []).map(orderView); // live-only — no mock fallback
-  const tone = { placed:'pending', out:'pending', awaiting:'pending', delivered:'active' };
-  const label = { placed:'Order placed', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Awaiting pickup', delivered:'Collected' };
+  const tone = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', delivered:'active', out:'pending', awaiting:'pending' };
+  const label = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:840 }}>

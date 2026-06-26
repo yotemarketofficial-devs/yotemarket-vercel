@@ -3,8 +3,11 @@
 
 const AV = (n) => `/assets/avatars/avatar-${n}.png`;
 
+// Exported as live (`let`) bindings so real backend data can replace the demo
+// arrays at runtime via applyMarketer(); screens re-render to pick up the change.
+
 // ---- the signed-in scout ----
-export const ME = {
+export let ME = {
   name: 'Brian Otieno', first: 'Brian', handle: '@brian_yote',
   county: 'Kisumu', photo: AV(2), joined: 'Mar 2026',
   code: 'YOTE-BRIAN', tier: 'Founding cohort', phone: '0720 730 861',
@@ -12,7 +15,7 @@ export const ME = {
 };
 
 // ---- referrals (merchants this scout signed up) ----
-export const REFERRALS = [
+export let REFERRALS = [
   { id:'r01', shop:'Mama Njeri Groceries',  owner:'Grace Njeri',   county:'Kisumu',  date:'18 Jun', socials:4, items:7,  status:'verified' },
   { id:'r02', shop:'Otieno Electronics',    owner:'Peter Otieno',  county:'Kisumu',  date:'17 Jun', socials:5, items:12, status:'verified' },
   { id:'r03', shop:'Lakeside Fashion',      owner:'Mercy Akinyi',  county:'Kisumu',  date:'16 Jun', socials:3, items:5,  status:'verified' },
@@ -28,12 +31,12 @@ export const REFERRALS = [
 ];
 // pad the verified count up to a realistic founding-cohort number (older referrals collapsed)
 export const EXTRA_VERIFIED = 39; // older verified merchants not shown in the recent list
-export const VERIFIED_COUNT = REFERRALS.filter(r => r.status === 'verified').length + EXTRA_VERIFIED;
-export const PENDING_COUNT  = REFERRALS.filter(r => r.status === 'pending').length;
-export const TOTAL_REFERRED = VERIFIED_COUNT + PENDING_COUNT + REFERRALS.filter(r=>r.status==='rejected').length + 4;
+export let VERIFIED_COUNT = REFERRALS.filter(r => r.status === 'verified').length + EXTRA_VERIFIED;
+export let PENDING_COUNT  = REFERRALS.filter(r => r.status === 'pending').length;
+export let TOTAL_REFERRED = VERIFIED_COUNT + PENDING_COUNT + REFERRALS.filter(r=>r.status==='rejected').length + 4;
 
 // ---- public leaderboard (this month) ----
-export const LEADERBOARD = [
+export let LEADERBOARD = [
   { rank:1, name:'Amina Yusuf',    county:'Mombasa', verified:118, photo:AV(4) },
   { rank:2, name:'Kevin Mwangi',   county:'Nairobi', verified:96,  photo:AV(1) },
   { rank:3, name:'Brian Otieno',   county:'Kisumu',  verified:VERIFIED_COUNT, photo:AV(2), you:true },
@@ -45,10 +48,24 @@ export const LEADERBOARD = [
 ].sort((a,b)=>b.verified-a.verified).map((s,i)=>({ ...s, rank:i+1 }));
 
 // ---- withdrawal history (M-Pesa) ----
-export const PAYOUTS = [
+export let PAYOUTS = [
   { id:'p01', date:'01 Jun 2026', amount:900,  method:'M-Pesa', ref:'SF42KL9QX', phone:'0720 ••• 861', status:'paid' },
   { id:'p02', date:'02 May 2026', amount:500,  method:'M-Pesa', ref:'SE18MN3RT', phone:'0720 ••• 861', status:'paid' },
   { id:'p03', date:'05 Apr 2026', amount:500,  method:'M-Pesa', ref:'SD77PQ2WL', phone:'0720 ••• 861', status:'paid' },
 ];
 
 export const COUNTIES = ['Kisumu','Nairobi','Mombasa','Nakuru','Eldoret','Kiambu','Machakos','Kakamega','Vihiga','Siaya','Nyeri','Thika'];
+
+/* Swap demo arrays for the signed-in scout's real backend data. ESM live
+   bindings mean any screen that re-renders afterwards reads the real values. */
+export function applyMarketer({ me, referrals, leaderboard, payouts } = {}) {
+  if (me) ME = { ...ME, ...me };
+  if (Array.isArray(referrals)) {
+    REFERRALS = referrals;
+    VERIFIED_COUNT = referrals.filter((r) => r.status === 'verified').length;
+    PENDING_COUNT = referrals.filter((r) => r.status === 'pending').length;
+    TOTAL_REFERRED = referrals.length;
+  }
+  if (Array.isArray(leaderboard) && leaderboard.length) LEADERBOARD = leaderboard;
+  if (Array.isArray(payouts)) PAYOUTS = payouts;
+}
