@@ -54,7 +54,15 @@ export let PAYOUTS = [
   { id:'p03', date:'05 Apr 2026', amount:500,  method:'M-Pesa', ref:'SD77PQ2WL', phone:'0720 ••• 861', status:'paid' },
 ];
 
-export const COUNTIES = ['Kisumu','Nairobi','Mombasa','Nakuru','Eldoret','Kiambu','Machakos','Kakamega','Vihiga','Siaya','Nyeri','Thika'];
+// The 47 official counties of Kenya (alphabetical).
+export const COUNTIES = [
+  'Baringo','Bomet','Bungoma','Busia','Elgeyo-Marakwet','Embu','Garissa','Homa Bay',
+  'Isiolo','Kajiado','Kakamega','Kericho','Kiambu','Kilifi','Kirinyaga','Kisii','Kisumu',
+  'Kitui','Kwale','Laikipia','Lamu','Machakos','Makueni','Mandera','Marsabit','Meru',
+  'Migori','Mombasa','Murang’a','Nairobi','Nakuru','Nandi','Narok','Nyamira',
+  'Nyandarua','Nyeri','Samburu','Siaya','Taita-Taveta','Tana River','Tharaka-Nithi',
+  'Trans Nzoia','Turkana','Uasin Gishu','Vihiga','Wajir','West Pokot',
+];
 
 /* Swap demo arrays for the signed-in scout's real backend data. ESM live
    bindings mean any screen that re-renders afterwards reads the real values. */

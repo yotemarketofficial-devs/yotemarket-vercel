@@ -40,9 +40,13 @@ export const Icon = ({ name, brand=false, className='', style }) => (
   <i className={`${brand?'fab':'fas'} fa-${name} ${className}`} style={style} aria-hidden="true" />
 );
 
-export const Logo = ({ size=30 }) => {
+export const Logo = ({ size=30, white=false }) => {
   const { dark } = useTheme();
-  return <img src={dark ? '/assets/logo-white.png' : '/assets/logo.png'} alt="YoteMarket" style={{ height:size }} />;
+  const src = (white || dark) ? '/assets/logo-white.png' : '/assets/logo.png';
+  // width:auto + block + shrink-0 keeps the wordmark's aspect ratio and stops
+  // flex parents from stretching it.
+  return <img src={src} alt="YoteMarket" className="block flex-shrink-0 self-start"
+    style={{ height:size, width:'auto' }} />;
 };
 
 export const Card = ({ children, className='', style, flat=false, onClick }) => (

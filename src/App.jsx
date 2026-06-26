@@ -20,6 +20,7 @@ const MarketersApp = lazy(() => import('./kits/marketers/index.jsx'));
 const EarnLanding = lazy(() => import('./kits/earn/index.jsx'));
 const StaffApp = lazy(() => import('./kits/staff/index.jsx'));
 const AdminApp = lazy(() => import('./kits/admin/index.jsx'));
+const HubApp = lazy(() => import('./kits/hub/index.jsx'));
 
 function App() {
   return (
@@ -86,6 +87,14 @@ function App() {
           element={
             <KitFrame scope="kit-admin">
               <AdminApp />
+            </KitFrame>
+          }
+        />
+        <Route
+          path="/hub"
+          element={
+            <KitFrame scope="kit-hub">
+              <HubApp />
             </KitFrame>
           }
         />

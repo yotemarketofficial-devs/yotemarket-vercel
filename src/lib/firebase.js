@@ -120,6 +120,12 @@ export const claimRun = callable('claimRun');
 export const confirmHandover = callable('confirmHandover');
 /** Fetch the handover code the caller is entitled to show → { code }. { orderId, leg }. */
 export const getHandoverCode = callable('getHandoverCode');
+/** Admin: assign/revoke a dedicated hub-store operator → { ok, hubId }. { email, hubId, hubName }. */
+export const assignHubOperator = callable('assignHubOperator');
+/** Staff: list dedicated hub operators → { operators }. */
+export const staffListHubOperators = callable('staffListHubOperators');
+/** Hub operator: active orders at the caller's hub → { hubId, orders, incoming, atHub, enRoute }. */
+export const hubListOrders = callable('hubListOrders');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {
