@@ -7,7 +7,7 @@ import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
-import { db, firebaseEnabled, aiAssistant, updateStoreMedia } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, fmtTime, fmtWhen,
@@ -177,6 +177,43 @@ function StoreBranding({ toast }){
   );
 }
 
+/* Set the store's pickup pin (browser geolocation) + address for the shopper map. */
+function StorePickupLocation({ toast }){
+  const shop = useShop();
+  const [coords, setCoords] = useStateX(shop.location || null);
+  const [addr, setAddr] = useStateX(shop.address || '');
+  const [busy, setBusy] = useStateX(false);
+  const [locating, setLocating] = useStateX(false);
+  const locate = () => {
+    if (!navigator.geolocation) { toast && toast('Geolocation not supported on this device'); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setCoords({ lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) }); setLocating(false); },
+      () => { toast && toast('Could not get your location — allow location access'); setLocating(false); },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+  const save = async () => {
+    if (!coords) { toast && toast('Set the pin first — tap “Use current location”'); return; }
+    setBusy(true);
+    try { await updateStoreLocation({ lat: coords.lat, lng: coords.lng, address: addr.trim() }); toast && toast('Pickup location saved'); }
+    catch (e) { toast && toast(e.message || 'Could not save location'); } finally { setBusy(false); }
+  };
+  return (
+    <SectionCard title="Store pickup location">
+      <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14 }}>
+        <div className="ym-cap">Set your store's spot so shoppers who choose “pick up from store” get a map + directions to you.</div>
+        <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          <Btn kind="soft" icon={locating?'fa-circle-notch':'fa-location-crosshairs'} onClick={locate} disabled={locating}>{locating?'Locating…':'Use current location'}</Btn>
+          {coords && <span className="ym-cap"><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> {coords.lat}, {coords.lng}</span>}
+        </div>
+        <div><label className="ym-label">Address / landmark</label><input className="ipt" value={addr} onChange={e=>setAddr(e.target.value)} placeholder="e.g. Mpaka Rd, Westlands — shop 4" /></div>
+        <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save location'}</Btn>
+      </div>
+    </SectionCard>
+  );
+}
+
 export function Settings({ toast }){
   const { theme, setTheme } = useTheme();
   const shop = useShop();
@@ -194,6 +231,7 @@ export function Settings({ toast }){
           </div>
         </SectionCard>
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+          <StorePickupLocation toast={toast} />
           <SectionCard title="Appearance">
             <div style={{ padding:'8px 20px' }}><Row label="Dark mode" sub="Switch the dashboard theme" last><Toggle on={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')} /></Row></div>
           </SectionCard>

@@ -76,6 +76,8 @@ export function useShop() {
     role: 'Merchant',
     shopId: store.id,
     area: store.area || '',
+    location: store.location || null,
+    address: store.address || '',
     plan: '',
     photo: null,
     initials: initialsOf(owner || name),
@@ -126,7 +128,8 @@ export function useStoreOverview() {
       items: Array.isArray(o.items) ? `${o.items.length} item${o.items.length !== 1 ? 's' : ''}` : '—',
       total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : 'pending',
       rawStatus: o.status, // real custody status for the handover column
-      date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''), hub: o.hub || '—',
+      fulfillment: o.fulfillment || 'hub',
+      date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''), hub: o.fulfillment === 'store_pickup' ? 'Store pickup' : (o.hub || '—'),
     }));
 
     return { live: true, kpis, week, products: prodRows, orders: orderRows };

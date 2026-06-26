@@ -1,7 +1,7 @@
 /* commerce.jsx — Storefront: Checkout (real M-Pesa STK push), Orders. */
 import React from 'react';
 import { addDoc, collection, serverTimestamp, doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { useYM, FA, Thumb, GuestGate, HubPicker } from './ui.jsx';
+import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap } from './ui.jsx';
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -11,13 +11,18 @@ const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 const DELIVERY_FEE = 150;
 // Custody lifecycle (index = order.step): placed→queued→accepted→picked_up→at_hub→delivered.
 const ORDER_STEPS = ['Order placed','Paid · finding a rider','Rider assigned','Picked up from store','Arrived at your hub','Collected'];
+// Store-pickup lifecycle: placed→preparing(paid)→ready_pickup→delivered.
+const STORE_PICKUP_STEPS = ['Order placed','Paid · preparing','Ready for pickup','Collected'];
 
 export function CheckoutScreen(){
   const { cart, clearCart, reset, nav, toast, requireAuth, account } = useYM();
   const { hasAccount } = useAuth();
   const items = cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
   const subtotal = items.reduce((s,x)=>s+x.p.price*x.qty,0);
-  const total = subtotal + (items.length?DELIVERY_FEE:0);
+  const [fulfillment, setFulfillment] = useSCm('hub'); // hub | store_pickup
+  const sellStore = ymStore(items[0]?.p?.store);
+  const fee = (fulfillment === 'hub' && items.length) ? DELIVERY_FEE : 0;
+  const total = subtotal + fee;
   const [pay, setPay] = useSCm('mpesa');
   const [phone, setPhone] = useSCm('');
   const [phase, setPhase] = useSCm('form'); // form | waiting | timeout | paid
@@ -69,18 +74,19 @@ export function CheckoutScreen(){
     }
     setBusy(true);
     try {
+      const isPickup = fulfillment === 'store_pickup';
       const ref = await addDoc(collection(db, 'orders'), {
         buyerId: uid,
         storeId: items[0]?.p?.store || null,
         items: items.map(x => ({ pid: x.pid, qty: x.qty, price: x.p.price, name: x.p.name })),
         subtotal,
-        deliveryFee: DELIVERY_FEE,
+        deliveryFee: fee,
         total,
         status: 'placed',
         step: 0,
-        steps: ORDER_STEPS,
-        hub: hub.name,
-        hubId: hub.id,
+        steps: isPickup ? STORE_PICKUP_STEPS : ORDER_STEPS,
+        fulfillment,
+        ...(isPickup ? {} : { hub: hub.name, hubId: hub.id }),
         paid: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -153,7 +159,7 @@ export function CheckoutScreen(){
       <div className="wrap anim-up" style={{ paddingTop:48, maxWidth:560, textAlign:'center', paddingBottom:40, margin:'0 auto' }}>
         <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i="fa-check" /></div>
         <h1 className="ym-h1">Payment confirmed!</h1>
-        <p className="ym-body" style={{ marginTop:8 }}>Your order is confirmed and being prepared. You'll collect at <b style={{ color:'var(--m-fg1)' }}>{hub.name}</b> — we'll notify you when it's ready.</p>
+        <p className="ym-body" style={{ marginTop:8 }}>Your order is confirmed and being prepared. You'll collect at <b style={{ color:'var(--m-fg1)' }}>{fulfillment==='store_pickup' ? (sellStore?.name || 'the store') : hub.name}</b> — we'll notify you when it's ready.</p>
         <div className="ym-card" style={{ padding:20, margin:'24px 0', textAlign:'left' }}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">M-Pesa receipt</span><span className="ym-h3">{receipt}</span></div>
           <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">Total paid</span><span className="ym-h3">{ymPrice(total)}</span></div>
@@ -180,15 +186,34 @@ export function CheckoutScreen(){
       <h1 className="ym-h1" style={{ marginBottom:24 }}>Checkout</h1>
       <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:28, alignItems:'start' }} className="checkout-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-          {/* pickup hub */}
+          {/* fulfillment */}
           <div className="ym-card" style={{ padding:22 }}>
-            <div className="ym-h3" style={{ marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> Collect at your hub</div>
-            <div style={{ display:'flex', alignItems:'center', gap:14, padding:14, borderRadius:14, border:'2px solid var(--m-primary)', background:'var(--m-surface-3)' }}>
-              <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}><FA i="fa-warehouse" /></div>
-              <div style={{ flex:1 }}><div className="ym-h3" style={{ fontSize:14 }}>{hub.name}</div><div className="ym-cap">{hub.area} · secure pickup</div></div>
-              <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />
+            <div className="ym-h3" style={{ marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-truck-fast" style={{ color:'var(--m-primary)' }} /> How would you like it?</div>
+            <div style={{ display:'flex', gap:10, marginBottom:16 }} className="fulfil-row">
+              {[['hub','fa-warehouse','Hub delivery',`Delivered to a YoteMarket hub · ${ymPrice(DELIVERY_FEE)}`],['store_pickup','fa-store','Pick up from store',`Collect from ${sellStore?.name || 'the store'} · Free`]].map(([id,ic,t,sub])=>(
+                <button key={id} onClick={()=>setFulfillment(id)} style={{ flex:1, textAlign:'left', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: fulfillment===id?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
+                  <FA i={ic} style={{ fontSize:18, color: fulfillment===id?'var(--m-primary)':'var(--m-fg3)' }} />
+                  <div className="ym-h3" style={{ fontSize:14, marginTop:8 }}>{t}</div>
+                  <div className="ym-cap" style={{ marginTop:2 }}>{sub}</div>
+                </button>
+              ))}
             </div>
-            <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:12 }} onClick={()=>setHubOpen(true)}><FA i="fa-pen" /> Change hub</button>
+            {fulfillment==='hub' ? (
+              <>
+                <div style={{ display:'flex', alignItems:'center', gap:14, padding:14, borderRadius:14, border:'2px solid var(--m-primary)', background:'var(--m-surface-3)' }}>
+                  <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}><FA i="fa-warehouse" /></div>
+                  <div style={{ flex:1 }}><div className="ym-h3" style={{ fontSize:14 }}>{hub.name}</div><div className="ym-cap">{hub.area} · secure pickup</div></div>
+                  <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />
+                </div>
+                <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:12 }} onClick={()=>setHubOpen(true)}><FA i="fa-pen" /> Change hub</button>
+              </>
+            ) : (
+              <div>
+                <div className="ym-h3" style={{ fontSize:14, marginBottom:4 }}>Collect from {sellStore?.name || 'the store'}</div>
+                <div className="ym-cap" style={{ marginBottom:12 }}>We'll let you know when it's ready — bring your pickup code.</div>
+                <StoreMap store={sellStore} />
+              </div>
+            )}
           </div>
           {/* payment */}
           <div className="ym-card" style={{ padding:22 }}>
@@ -218,7 +243,7 @@ export function CheckoutScreen(){
           </div>
           <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, display:'flex', flexDirection:'column', gap:8 }}>
             <Row l="Subtotal" v={ymPrice(subtotal)} />
-            <Row l="Hub delivery" v={ymPrice(DELIVERY_FEE)} />
+            {fulfillment==='hub' ? <Row l="Hub delivery" v={ymPrice(fee)} /> : <Row l="Store pickup" v="Free" />}
             <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3">Total</span><span className="ym-h2" style={{ fontSize:22 }}>{ymPrice(total)}</span></div>
           </div>
           {err && <div role="alert" style={{ display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'11px 14px', fontSize:13, fontWeight:500, marginTop:14 }}><FA i="fa-circle-exclamation" /> {err}</div>}
@@ -265,8 +290,8 @@ export function OrdersScreen(){
   const { reset, account, liveOrders } = useYM();
   if (!account.hasAccount) return <GuestGate icon="fa-box" title="Your orders" sub="Sign in to view and track your orders, deliveries, and hub pickups." />;
   const orders = (liveOrders || []).map(orderView); // live-only — no mock fallback
-  const tone = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', delivered:'active', out:'pending', awaiting:'pending' };
-  const label = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
+  const tone = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', preparing:'pending', ready_pickup:'active', delivered:'active', out:'pending', awaiting:'pending' };
+  const label = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:840 }}>
@@ -314,15 +339,19 @@ export function OrdersScreen(){
                 <span className="ym-cap">{o.steps[o.step] || o.steps[0]}</span>
                 {o.status==='out' && o.rider && <span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:600 }}>{o.rider}{o.eta?` · ${o.eta} away`:''}</span>}
               </div>
-              {/* pickup code — shown only when the order is waiting at the hub (handover ③) */}
-              {o.status==='at_hub' && o.raw?.pickupCode && (
+              {/* pickup code — when ready to collect (hub ③ or store-pickup) */}
+              {(o.status==='at_hub' || o.status==='ready_pickup') && o.raw?.pickupCode && (
                 <div style={{ marginTop:16, padding:'15px 18px', borderRadius:14, background:'var(--m-grad-deep)', color:'#fff', display:'flex', alignItems:'center', gap:15, boxShadow:'var(--m-glow)' }}>
                   <FA i="fa-box-open" style={{ fontSize:22, opacity:.9 }} />
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:12.5, opacity:.85 }}>Ready at {o.hub ? o.hub.split(' · ')[0] : 'your hub'} — show this code to collect</div>
+                    <div style={{ fontSize:12.5, opacity:.85 }}>Ready at {o.raw.fulfillment==='store_pickup' ? (store?.name || 'the store') : (o.hub ? o.hub.split(' · ')[0] : 'your hub')} — show this code to collect</div>
                     <div style={{ fontSize:28, fontWeight:800, letterSpacing:5 }}>{o.raw.pickupCode}</div>
                   </div>
                 </div>
+              )}
+              {/* store-pickup: map + directions while the order is in progress */}
+              {o.raw?.fulfillment==='store_pickup' && o.status!=='delivered' && store && (
+                <div style={{ marginTop:16 }}><StoreMap store={store} height={150} /></div>
               )}
             </div>
           );

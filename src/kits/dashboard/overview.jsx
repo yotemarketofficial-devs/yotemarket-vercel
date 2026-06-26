@@ -3,11 +3,34 @@ import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
 import { INSIGHTS, ksh } from './data.js';
 import { useShop, useStoreOverview } from './merchant.jsx';
-import { getHandoverCode } from '../../lib/firebase.js';
+import { getHandoverCode, markOrderReady, confirmStorePickup } from '../../lib/firebase.js';
 const { useState: useStateO } = React;
 
 // Real custody status → merchant-facing label.
-const CUSTODY_LBL = { queued:'Finding rider', accepted:'Rider on the way', picked_up:'Picked up', at_hub:'At hub', delivered:'Collected', placed:'Placed' };
+const CUSTODY_LBL = { queued:'Finding rider', accepted:'Rider on the way', picked_up:'Picked up', at_hub:'At hub', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', placed:'Placed' };
+
+/* Store-pickup actions: mark ready, then confirm collection with the shopper's code. */
+function StorePickupAction({ orderId, status }){
+  const [code, setCode] = useStateO('');
+  const [busy, setBusy] = useStateO(false);
+  const [done, setDone] = useStateO(false);
+  const ready = async () => { setBusy(true); try { await markOrderReady({ orderId }); setDone(true); } catch { /* noop */ } finally { setBusy(false); } };
+  const collect = async () => {
+    if (code.trim().length < 3) return;
+    setBusy(true);
+    try { await confirmStorePickup({ orderId, code: code.trim() }); setDone(true); } catch { /* noop */ } finally { setBusy(false); }
+  };
+  if (done) return <span className="ym-cap" style={{ color:'var(--m-success)' }}>✓ Done</span>;
+  if (status === 'preparing') return <button onClick={ready} disabled={busy} className="ym-btn ym-btn-ghost ym-btn-sm">{busy ? '…' : 'Mark ready'}</button>;
+  if (status === 'ready_pickup') return (
+    <span style={{ display:'inline-flex', gap:6, alignItems:'center' }}>
+      <input value={code} onChange={(e)=>setCode(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" maxLength={6} placeholder="Code"
+        style={{ width:64, textAlign:'center', letterSpacing:1, fontWeight:700, padding:'6px 6px', borderRadius:9, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontFamily:'inherit', fontSize:13 }} />
+      <button onClick={collect} disabled={busy} className="ym-btn ym-btn-primary ym-btn-sm">{busy ? '…' : 'Confirm'}</button>
+    </span>
+  );
+  return <span className="ym-cap">—</span>;
+}
 
 /* Reveals the store's handover code ① to show the rider at pickup (server-gated). */
 function PickupCode({ orderId }){
@@ -137,7 +160,9 @@ export function OrdersTable({ rows }){
                 <td style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ksh(o.total)}</td>
                 <td>{o.hub}</td>
                 <td><Pill tone={o.status}>{CUSTODY_LBL[o.rawStatus] || lbl[o.status]}</Pill></td>
-                <td>{o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>}</td>
+                <td>{o.fulfillment === 'store_pickup'
+                  ? <StorePickupAction orderId={o.id} status={o.rawStatus} />
+                  : (o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>)}</td>
                 <td className="ym-cap">{o.date}</td>
               </tr>
             ))}
