@@ -8,7 +8,8 @@ const { useState: useSS } = React;
 /* ---------- HOME ---------- */
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
-  const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>o.status==='out') : null;
+  const IN_PROGRESS = ['queued','accepted','picked_up','at_hub','out','awaiting'];
+  const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>IN_PROGRESS.includes(o.status)) : null;
   return (
     <div className="anim-up">
       {/* hero */}
