@@ -105,6 +105,10 @@ export const mpesaStkPush = callable('mpesaStkPush');
 export const subscribeMerchant = callable('subscribeMerchant');
 /** Self-serve merchant signup → { storeId, already }. Creates the store + merchant account. */
 export const registerStore = callable('registerStore');
+/** Store owner: set store cover/logo from an uploaded URL → { ok }. { field:'img'|'logo', url }. */
+export const updateStoreMedia = callable('updateStoreMedia');
+/** Store owner: create/update a product (incl. edited image) → { ok, id }. */
+export const saveProduct = callable('saveProduct');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
@@ -126,6 +130,12 @@ export const assignHubOperator = callable('assignHubOperator');
 export const staffListHubOperators = callable('staffListHubOperators');
 /** Hub operator: active orders at the caller's hub → { hubId, orders, incoming, atHub, enRoute }. */
 export const hubListOrders = callable('hubListOrders');
+/** Store owner: set the store's pickup location for the map → { ok }. { lat, lng, address? }. */
+export const updateStoreLocation = callable('updateStoreLocation');
+/** Store owner: mark a store-pickup order ready for collection → { ok }. { orderId }. */
+export const markOrderReady = callable('markOrderReady');
+/** Store owner: confirm a store-pickup collection (enter shopper's code) → { ok }. { orderId, code }. */
+export const confirmStorePickup = callable('confirmStorePickup');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {

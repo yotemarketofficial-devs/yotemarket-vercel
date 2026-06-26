@@ -91,6 +91,7 @@ export default function StorefrontApp(){
     first: hasAccount ? (user.displayName ? user.displayName.split(' ')[0] : 'Account') : 'Guest',
     email: user?.email || '',
     phone: user?.phoneNumber || '',
+    photo: user?.photoURL || null,
     initials: hasAccount ? initialsFrom(user.displayName || user.email || 'A') : 'G',
   };
 

@@ -5,7 +5,8 @@ import {
   doc, setDoc, collection, addDoc, updateDoc, deleteDoc, onSnapshot,
   serverTimestamp, writeBatch, getDocs,
 } from 'firebase/firestore';
-import { db, firebaseEnabled } from './firebase.js';
+import { updateProfile } from 'firebase/auth';
+import { db, auth, firebaseEnabled } from './firebase.js';
 
 const ready = (uid) => Boolean(firebaseEnabled && db && uid);
 
@@ -13,6 +14,13 @@ const ready = (uid) => Boolean(firebaseEnabled && db && uid);
 export function saveProfile(uid, patch) {
   if (!ready(uid)) return Promise.resolve();
   return setDoc(doc(db, 'users', uid), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/** Save a new avatar: users/{uid}.photoUrl + the Firebase Auth photoURL. */
+export async function updateAvatar(uid, url) {
+  if (!ready(uid)) return;
+  await setDoc(doc(db, 'users', uid), { photoUrl: url, updatedAt: serverTimestamp() }, { merge: true });
+  try { if (auth?.currentUser) await updateProfile(auth.currentUser, { photoURL: url }); } catch { /* non-fatal */ }
 }
 
 /** Live address book for the user. cb receives an array; returns an unsubscribe fn. */

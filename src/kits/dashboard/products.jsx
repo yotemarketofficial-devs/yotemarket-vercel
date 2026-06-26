@@ -2,7 +2,14 @@
 import React from 'react';
 import { FA, Card, Btn, Pill, Thumb, Stat } from './primitives.jsx';
 import { PROD_ROWS, ksh } from './data.js';
+import { useMerchant } from './merchant.jsx';
+import ImageUpload from '../../components/ImageUpload.jsx';
+import { productImagePath } from '../../lib/storage.js';
+import { saveProduct } from '../../lib/firebase.js';
 const { useState: useStateP } = React;
+
+// Map the modal's category labels onto the storefront catalog category ids.
+const CAT_MAP = { Phones:'electronics', Electronics:'electronics', Audio:'electronics', Photography:'electronics', Fashion:'fashion', Groceries:'groceries', Beauty:'beauty', 'Home & Living':'home' };
 
 export function Products({ onAdd, toast }){
   const [filter, setFilter] = useStateP('all');
@@ -62,10 +69,30 @@ export function Products({ onAdd, toast }){
 }
 
 export function AddProductModal({ onClose, onSave }){
+  const { store } = useMerchant();
+  const storeId = store?.id;
   const [step, setStep] = useStateP(1);
-  const [form, setForm] = useStateP({ name:'', category:'Phones', summary:'', price:'', discount:'' });
+  const [form, setForm] = useStateP({ name:'', category:'Phones', summary:'', desc:'', price:'', discount:'', img:'' });
+  const [saving, setSaving] = useStateP(false);
+  const [err, setErr] = useStateP('');
   const set = (k,v)=>setForm(f=>({ ...f, [k]:v }));
   const labels = ['Basics','Pricing & inventory','Images'];
+
+  const publish = async () => {
+    if (saving) return;
+    if (!form.name.trim()) { setErr('Add a product name.'); setStep(1); return; }
+    if (!storeId) { setErr('Set up your store before adding products.'); return; }
+    setSaving(true); setErr('');
+    try {
+      await saveProduct({
+        name: form.name.trim(), price: Number(form.price) || 0,
+        was: form.discount ? Number(form.discount) : null,
+        catId: CAT_MAP[form.category] || null, desc: form.desc || form.summary || '',
+        img: form.img || null,
+      });
+      onSave(form);
+    } catch (e) { setErr(e.message || 'Could not publish the product.'); setSaving(false); }
+  };
   return (
     <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(17,24,39,.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="ym-card" style={{ width:'100%', maxWidth:640, maxHeight:'92vh', overflowY:'auto', boxShadow:'var(--m-shadow-float)' }}>
@@ -79,7 +106,7 @@ export function AddProductModal({ onClose, onSave }){
             <Field label="Product name"><input className="ipt" value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Samsung Galaxy A05" /></Field>
             <Field label="Category"><select className="ipt" value={form.category} onChange={e=>set('category',e.target.value)}>{['Phones','Electronics','Fashion','Groceries','Beauty','Home & Living','Photography','Audio'].map(c=><option key={c}>{c}</option>)}</select></Field>
             <Field label="Short summary" hint="One line shown in product listings"><input className="ipt" value={form.summary} onChange={e=>set('summary',e.target.value)} placeholder="6.7&quot; display, 50MP camera, 2-year warranty" /></Field>
-            <Field label="Full description"><textarea rows={4} className="ipt" style={{ resize:'none' }} placeholder="Tell shoppers what makes this product great…" /></Field>
+            <Field label="Full description"><textarea rows={4} className="ipt" style={{ resize:'none' }} value={form.desc} onChange={e=>set('desc',e.target.value)} placeholder="Tell shoppers what makes this product great…" /></Field>
           </div>}
           {step===2 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -91,13 +118,29 @@ export function AddProductModal({ onClose, onSave }){
             <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via the in-app messenger before confirming.</div></div>
           </div>}
           {step===3 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-            <div><label className="ym-label">Cover image</label><div style={{ border:'2px dashed var(--m-border)', borderRadius:14, padding:32, textAlign:'center', cursor:'pointer' }}><FA i="fa-cloud-arrow-up" style={{ fontSize:28, color:'var(--m-primary)', marginBottom:8 }} /><div className="ym-h3" style={{ fontSize:14 }}>Drop image here, or click to browse</div><div className="ym-cap" style={{ marginTop:2 }}>PNG or JPG · up to 5MB</div></div></div>
-            <div><label className="ym-label">Gallery (up to 3 more)</label><div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }}>{[1,2,3].map(i=><div key={i} style={{ aspectRatio:'1', border:'2px dashed var(--m-border)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg4)', cursor:'pointer' }}><FA i="fa-plus" /></div>)}</div></div>
+            <div>
+              <label className="ym-label">Cover image</label>
+              <ImageUpload aspect={1} outputSize={900} title="Product photo"
+                pathFor={()=>productImagePath(storeId)}
+                onUploaded={(url)=>set('img',url)}
+                onError={(e)=>setErr(e.message || 'Upload failed')}>
+                {({ pick, uploading })=>(
+                  <button type="button" onClick={()=>storeId && pick()} disabled={!storeId}
+                    style={{ width:'100%', border:'2px dashed var(--m-border)', borderRadius:14, padding: form.img?6:32, textAlign:'center', cursor: storeId?'pointer':'not-allowed', background:'transparent', overflow:'hidden', fontFamily:'inherit' }}>
+                    {form.img
+                      ? <img src={form.img} alt="" style={{ width:'100%', maxHeight:260, objectFit:'cover', borderRadius:10, display:'block' }} />
+                      : <><FA i={uploading?'fa-circle-notch':'fa-cloud-arrow-up'} style={{ fontSize:28, color:'var(--m-primary)', marginBottom:8, animation: uploading?'ym-spin 1s linear infinite':'none' }} /><div className="ym-h3" style={{ fontSize:14 }}>{uploading?'Uploading…':'Click to upload & crop'}</div><div className="ym-cap" style={{ marginTop:2 }}>{storeId ? 'PNG or JPG · square crop' : 'Set up your store first'}</div></>}
+                  </button>
+                )}
+              </ImageUpload>
+              {form.img && <button type="button" onClick={()=>set('img','')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, color:'var(--m-link)', marginTop:6 }}>Replace / remove photo</button>}
+            </div>
+            {err && <div className="ym-sub" style={{ color:'var(--m-danger)', display:'flex', gap:8, alignItems:'center' }}><FA i="fa-triangle-exclamation" /> {err}</div>}
           </div>}
         </div>
         <div style={{ padding:'16px 24px', borderTop:'1px solid var(--m-border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <button onClick={()=>setStep(s=>Math.max(1,s-1))} disabled={step===1} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, fontWeight:600, color:'var(--m-fg3)', opacity:step===1?.4:1 }}><FA i="fa-arrow-left" /> Back</button>
-          {step<3 ? <Btn kind="primary" iconRight="fa-arrow-right" onClick={()=>setStep(s=>s+1)}>Next</Btn> : <Btn kind="primary" icon="fa-check" onClick={()=>onSave(form)}>Publish product</Btn>}
+          {step<3 ? <Btn kind="primary" iconRight="fa-arrow-right" onClick={()=>setStep(s=>s+1)}>Next</Btn> : <Btn kind="primary" icon={saving?'fa-circle-notch':'fa-check'} onClick={publish} disabled={saving}>{saving?'Publishing…':'Publish product'}</Btn>}
         </div>
       </div>
     </div>

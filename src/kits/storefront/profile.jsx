@@ -9,7 +9,9 @@ import { ymStore, ymProduct, ymPrice } from './data.js';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints } from '../../lib/firebase.js';
-import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../../lib/account.js';
+import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, updateAvatar } from '../../lib/account.js';
+import ImageUpload from '../../components/ImageUpload.jsx';
+import { avatarPath } from '../../lib/storage.js';
 const { useState: useSP, useEffect: useEffP, useRef: useRefP } = React;
 
 const fmtWhen = (t) => t?.when || (t?.createdAt?.seconds ? new Date(t.createdAt.seconds * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short' }) : '');
@@ -20,7 +22,7 @@ function useProfileData(uid){
   useEffP(() => {
     if (!firebaseEnabled || !db || !uid) return undefined;
     const unsubs = [];
-    unsubs.push(onSnapshot(doc(db,'users',uid), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, points:d.points||0, defaultHubId:d.defaultHubId||'', phone:d.phone||'', name:d.name||'' })); }, ()=>{}));
+    unsubs.push(onSnapshot(doc(db,'users',uid), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, points:d.points||0, defaultHubId:d.defaultHubId||'', phone:d.phone||'', name:d.name||'', photoUrl:d.photoUrl||'' })); }, ()=>{}));
     unsubs.push(onSnapshot(doc(db,'users',uid,'meta','wallet'), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, walletBalance:d.balance||0 })); }, ()=>{}));
     unsubs.push(onSnapshot(query(collection(db,'users',uid,'wallet_tx'), orderBy('createdAt','desc'), limit(6)), (s)=>{ setData(p=>({ ...p, walletTx:s.docs.map(d=>({ id:d.id, ...d.data() })) })); }, ()=>{}));
     unsubs.push(subscribeAddresses(uid, (a)=>setData(p=>({ ...p, addresses:a }))));
@@ -86,7 +88,24 @@ export function ProfileScreen(){
 
       {/* header */}
       <div className="ym-card" style={{ padding:24, marginBottom:20, display:'flex', alignItems:'center', gap:18, flexWrap:'wrap', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
-        <div style={{ width:74, height:74, borderRadius:9999, background:'rgba(255,255,255,.16)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:26, flexShrink:0 }}>{account.initials}</div>
+        <ImageUpload aspect={1} round outputSize={512} title="Profile photo"
+          pathFor={()=>avatarPath(uid)}
+          onUploaded={async (url)=>{ try { await updateAvatar(uid, url); toast('Profile photo updated','fa-check'); } catch { toast('Could not save photo','fa-triangle-exclamation'); } }}
+          onError={(e)=>toast(e.message || 'Upload failed','fa-triangle-exclamation')}>
+          {({ pick, uploading })=>{
+            const photo = prof.photoUrl || user?.photoURL || '';
+            return (
+              <button onClick={pick} title="Change photo" style={{ position:'relative', width:74, height:74, borderRadius:9999, border:'none', cursor:'pointer', padding:0, flexShrink:0, background:'rgba(255,255,255,.16)' }}>
+                {photo
+                  ? <img src={photo} alt="" style={{ width:'100%', height:'100%', borderRadius:9999, objectFit:'cover' }} />
+                  : <span style={{ color:'#fff', fontWeight:800, fontSize:26, width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>{account.initials}</span>}
+                <span style={{ position:'absolute', right:-2, bottom:-2, width:26, height:26, borderRadius:9999, background:'#fff', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>
+                  <FA i={uploading?'fa-circle-notch':'fa-camera'} style={{ fontSize:12, animation: uploading?'ym-spin 1s linear infinite':'none' }} />
+                </span>
+              </button>
+            );
+          }}
+        </ImageUpload>
         <div style={{ flex:1, minWidth:200 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <span style={{ color:'#fff', fontSize:24, fontWeight:800 }}>{prof.name || account.name}</span>

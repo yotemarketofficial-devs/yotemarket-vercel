@@ -7,12 +7,14 @@ import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
-import { db, firebaseEnabled, aiAssistant } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant, updateStoreMedia } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, fmtTime, fmtWhen,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
+import ImageUpload from '../../components/ImageUpload.jsx';
+import { coverPath, logoPath } from '../../lib/storage.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
@@ -129,7 +131,53 @@ export function Subscription(){
 
 /* ---------- SETTINGS ---------- */
 function Toggle({ on, onClick }){ return <button onClick={onClick} aria-pressed={on} style={{ width:46, height:27, borderRadius:9999, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background:on?'var(--m-primary)':'var(--m-border)' }}><span style={{ position:'absolute', top:3, left:on?23:3, width:21, height:21, borderRadius:9999, background:'#fff', transition:'left .2s' }} /></button>; }
-export function Settings(){
+/* ---------- STORE BRANDING (cover + logo, with the photo editor) ---------- */
+function StoreBranding({ toast }){
+  const { store, live } = useMerchant();
+  const storeId = store?.id;
+  const [cover, setCover] = useStateX('');
+  const [logo, setLogo] = useStateX('');
+  useEffX(()=>{ setCover(store?.img||''); setLogo(store?.logo||''); }, [store?.img, store?.logo]);
+  const saveMedia = async (field, url, setLocal) => {
+    setLocal(url);
+    try { await updateStoreMedia({ field, url }); toast && toast(field==='img'?'Cover photo updated':'Store logo updated'); }
+    catch (e) { toast && toast(e.message || 'Could not save photo'); }
+  };
+  if (!live || !storeId) return <div style={{ padding:'16px 20px', color:'var(--m-fg3)', fontSize:13 }}>Connect your store to set a cover photo and logo.</div>;
+  return (
+    <div style={{ padding:'16px 20px 0' }}>
+      <div style={{ position:'relative', marginBottom:38 }}>
+        <ImageUpload aspect={16/6} outputSize={1280} title="Cover photo" pathFor={()=>coverPath(storeId)} onUploaded={(u)=>saveMedia('img',u,setCover)} onError={(e)=>toast&&toast(e.message)}>
+          {({ pick, uploading })=>(
+            <button type="button" onClick={pick} aria-label="Change cover photo"
+              style={{ width:'100%', height:130, border:'none', cursor:'pointer', borderRadius:14, overflow:'hidden', position:'relative', padding:0,
+                background: cover?`center/cover no-repeat url(${cover})`:'var(--m-grad-deep)' }}>
+              <span style={{ position:'absolute', right:12, bottom:12, background:'rgba(0,0,0,.5)', color:'#fff', borderRadius:9999, padding:'6px 12px', fontSize:12.5, fontWeight:600, display:'inline-flex', gap:6, alignItems:'center' }}>
+                <FA i={uploading?'fa-circle-notch':'fa-camera'} style={{ animation: uploading?'ym-spin 1s linear infinite':'none' }} /> {cover?'Change cover':'Add cover'}
+              </span>
+            </button>
+          )}
+        </ImageUpload>
+        <div style={{ position:'absolute', left:18, bottom:-28 }}>
+          <ImageUpload aspect={1} round outputSize={400} title="Store logo" pathFor={()=>logoPath(storeId)} onUploaded={(u)=>saveMedia('logo',u,setLogo)} onError={(e)=>toast&&toast(e.message)}>
+            {({ pick, uploading })=>(
+              <button type="button" onClick={pick} title="Change logo"
+                style={{ width:66, height:66, borderRadius:9999, border:'3px solid var(--m-surface)', cursor:'pointer', overflow:'hidden', position:'relative', padding:0,
+                  background: logo?`center/cover no-repeat url(${logo})`:'var(--m-surface-2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {!logo && <FA i="fa-store" style={{ color:'var(--m-primary)', fontSize:22 }} />}
+                <span style={{ position:'absolute', right:-2, bottom:-2, width:22, height:22, borderRadius:9999, background:'#fff', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,.25)' }}>
+                  <FA i={uploading?'fa-circle-notch':'fa-camera'} style={{ fontSize:10, animation: uploading?'ym-spin 1s linear infinite':'none' }} />
+                </span>
+              </button>
+            )}
+          </ImageUpload>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function Settings({ toast }){
   const { theme, setTheme } = useTheme();
   const shop = useShop();
   const [n, setN] = useStateX({ orders:true, payouts:true, chat:true, promos:false });
@@ -139,6 +187,7 @@ export function Settings(){
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Settings</h1>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="set-grid">
         <SectionCard title="Shop profile">
+          <StoreBranding toast={toast} />
           <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16 }}>
             <F label="Shop name" v={shop.name} /><F label="Owner" v={shop.owner} /><F label="Area" v={shop.area} /><F label="M-Pesa till" v="174379" last />
             <Btn kind="primary" icon="fa-check" style={{ alignSelf:'flex-start' }}>Save changes</Btn>
