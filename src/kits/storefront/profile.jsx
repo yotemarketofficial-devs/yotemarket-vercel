@@ -8,7 +8,7 @@ import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
 import { ymStore, ymProduct, ymPrice } from './data.js';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db, firebaseEnabled, topUpWallet, confirmTopUp, redeemPoints } from '../../lib/firebase.js';
+import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints } from '../../lib/firebase.js';
 import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../../lib/account.js';
 const { useState: useSP, useEffect: useEffP, useRef: useRefP } = React;
 
@@ -304,7 +304,7 @@ function AddressEditor({ uid, initial, onClose, toast }){
 const TOPUP_PRESETS = [200, 500, 1000, 2000];
 
 /* Wallet top-up via M-Pesa STK push. The credit is driven by an active Daraja
-   status query (confirmTopUp) — robust even when the async callback never lands.
+   status query (confirmPayment) — robust even when the async callback never lands.
    We also listen to the payment doc so a callback-driven credit closes the modal. */
 function WalletTopUp({ defaultPhone, holderName, onClose, toast }){
   const [amount, setAmount] = useSP('500');
@@ -325,8 +325,8 @@ function WalletTopUp({ defaultPhone, holderName, onClose, toast }){
     const id = cidRef.current;
     setChecking(true);
     try {
-      const r = await confirmTopUp(id ? { checkoutRequestId: id } : {});
-      if (r && (r.paid || r.creditedCount)) { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); setPhase('done'); return true; }
+      const r = await confirmPayment(id ? { checkoutRequestId: id } : {});
+      if (r && (r.paid || r.settledCount)) { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); setPhase('done'); return true; }
       return false;
     } catch { return false; }
     finally { setChecking(false); }
@@ -359,10 +359,11 @@ function WalletTopUp({ defaultPhone, holderName, onClose, toast }){
   const recover = async () => {
     setErr(''); setChecking(true);
     try {
-      const r = await confirmTopUp({});
-      if (r && r.creditedCount) { toast(`Recovered ${ymPrice(r.creditedTotal)} to your wallet`, 'fa-check'); onClose(); }
-      else setErr('No completed top-ups were pending. If money left your account, give it a minute and try again.');
-    } catch (e) { setErr(e.message || 'Could not check pending top-ups.'); }
+      const r = await confirmPayment({});
+      if (r && r.creditedTotal) { toast(`Recovered ${ymPrice(r.creditedTotal)} to your wallet`, 'fa-check'); onClose(); }
+      else if (r && r.settledCount) { toast('Pending payments confirmed', 'fa-check'); onClose(); }
+      else setErr('No completed payments were pending. If money left your account, give it a minute and try again.');
+    } catch (e) { setErr(e.message || 'Could not check pending payments.'); }
     finally { setChecking(false); }
   };
 

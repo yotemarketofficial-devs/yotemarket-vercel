@@ -5,7 +5,7 @@
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { ksh } from './data.js';
-import { subscribeMerchant } from '../../lib/firebase.js';
+import { subscribeMerchant, confirmPayment } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, SOFTWARE_TIERS, PLAN_ORDER, DELIVERY_FEATURES, findDeliveryTier } from './pricing.js';
 const { useState, useEffect } = React;
 
@@ -19,9 +19,11 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
   const [phone, setPhone] = useState('');
   const [stage, setStage] = useState('idle'); // idle | sending | waiting
   const [err, setErr] = useState('');
+  const [cid, setCid] = useState(null);
+  const [checking, setChecking] = useState(false);
 
   const tier = findDeliveryTier(tierId);
-  const pick = (obj) => { setPicking(obj); setPhone(''); setErr(''); setStage('idle'); };
+  const pick = (obj) => { setPicking(obj); setPhone(''); setErr(''); setStage('idle'); setCid(null); };
 
   const pay = async () => {
     setErr('');
@@ -31,11 +33,32 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
       const payload = picking.kind === 'software'
         ? { kind: 'software', plan: picking.plan, phone: phone.trim() }
         : { kind: 'delivery', subTier: picking.subTier, plan: picking.plan, phone: phone.trim() };
-      await subscribeMerchant(payload);
+      const res = await subscribeMerchant(payload);
+      setCid(res && res.checkoutRequestId);
       setStage('waiting');
       onStarted && onStarted();
     } catch (e) { setErr(e.message || 'Could not start the subscription.'); setStage('idle'); }
   };
+
+  // Actively confirm via Daraja (independent of the M-Pesa callback). On success
+  // settlePaid activates subscriptions/{uid}, which the parent listener reflects.
+  const confirmNow = async () => {
+    if (!cid) return;
+    setChecking(true); setErr('');
+    try {
+      const r = await confirmPayment({ checkoutRequestId: cid });
+      if (!(r && (r.paid || r.settledCount))) setErr("Not confirmed yet — if you've paid, wait a few seconds and tap again.");
+    } catch (e) { setErr(e.message || 'Could not confirm the payment.'); }
+    finally { setChecking(false); }
+  };
+
+  // Auto-confirm ~20s after the STK is sent (after the PIN window).
+  useEffect(() => {
+    if (stage !== 'waiting' || !cid) return undefined;
+    const t = setTimeout(() => { confirmNow(); }, 20000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, cid]);
 
   // Funnel from the /pricing page: ?kind=&plan=&subTier= pre-selects the plan
   // and opens the M-Pesa dialog so the merchant lands ready to pay.
@@ -113,7 +136,11 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
                 <div className="ym-h2">Check your phone</div>
                 <p className="ym-sub" style={{ marginTop: 8 }}>Enter your M-Pesa PIN to pay <b style={{ color: 'var(--m-fg1)' }}>{ksh(picking.price)}</b> for the <b style={{ color: 'var(--m-fg1)' }}>{picking.plan}</b> plan{picking.range ? ` (${picking.range})` : ''}. It activates automatically once confirmed.</p>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginTop: 16, color: 'var(--m-fg3)' }}><FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite', color: 'var(--m-primary)' }} /> Waiting for confirmation…</div>
-                <div><Btn kind="ghost" size="sm" style={{ marginTop: 16 }} onClick={() => { setPicking(null); setStage('idle'); }}>Close</Btn></div>
+                {err && <div className="ym-cap" style={{ marginTop: 12, color: 'var(--m-inactive-fg)' }}>{err}</div>}
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+                  <Btn kind="primary" size="sm" disabled={checking} onClick={confirmNow}>{checking ? <><FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite' }} /> Checking…</> : <><FA i="fa-rotate" /> I've paid — confirm now</>}</Btn>
+                  <Btn kind="ghost" size="sm" onClick={() => { setPicking(null); setStage('idle'); }}>Close</Btn>
+                </div>
               </div>
             ) : (
               <>

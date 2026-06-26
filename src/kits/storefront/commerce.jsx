@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker } from './ui.jsx';
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { mpesaStkPush, confirmPayment, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -25,8 +25,11 @@ export function CheckoutScreen(){
   const [receipt, setReceipt] = useSCm('');
   const [hubId, setHubId] = useSCm(DEFAULT_HUB_ID);
   const [hubOpen, setHubOpen] = useSCm(false);
+  const [checking, setChecking] = useSCm(false);
   const unsubRef = useRefCm(null);
   const timerRef = useRefCm(null);
+  const confirmTimerRef = useRefCm(null);
+  const cidRef = useRefCm(null);
   const hub = findHub(hubId) || HUBS[0];
 
   // Default the pickup hub to the shopper's saved choice (users/{uid}.defaultHubId).
@@ -36,9 +39,23 @@ export function CheckoutScreen(){
     getDoc(doc(db, 'users', uid)).then((s) => { const id = s.data()?.defaultHubId; if (id && findHub(id)) setHubId(id); }).catch(() => {});
   }, [hasAccount]);
 
-  useEffCm(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); }, []);
-  const stopWatching = () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } clearTimeout(timerRef.current); };
+  useEffCm(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); }, []);
+  const stopWatching = () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); };
   const settle = (rcpt) => { stopWatching(); setReceipt(rcpt); setPhase('paid'); clearCart(); };
+
+  // Actively confirm the order payment via Daraja (independent of the callback).
+  // On success settlePaid flips the payment doc to 'paid', which the listener below
+  // catches and settles the UI.
+  const confirmNow = async () => {
+    const id = cidRef.current;
+    if (!id) return;
+    setChecking(true); setErr('');
+    try {
+      const r = await confirmPayment({ checkoutRequestId: id });
+      if (!(r && (r.paid || r.settledCount))) setErr("Not confirmed yet — if you've paid, wait a few seconds and tap again.");
+    } catch (e) { setErr(e.message || 'Could not confirm the payment.'); }
+    finally { setChecking(false); }
+  };
 
   // Reached only once signed in (checkout requires an account). Reads the LIVE firebase
   // user so it's correct even when invoked immediately after sign-in via requireAuth().
@@ -68,18 +85,22 @@ export function CheckoutScreen(){
         updatedAt: serverTimestamp(),
       });
       const fallbackRcpt = ref.id.slice(0, 6).toUpperCase();
-      const res = await mpesaStkPush({ orderId: ref.id, phone, amount: total });
+      const storeName = ymStore(items[0]?.p?.store)?.name || '';
+      const res = await mpesaStkPush({ orderId: ref.id, phone, amount: total, storeName });
       const checkoutRequestId = res && res.checkoutRequestId;
       setBusy(false);
       if (!checkoutRequestId) { settle(fallbackRcpt); return; }
+      cidRef.current = checkoutRequestId;
       setPhase('waiting');
-      // Watch the payment doc the Daraja callback flips to paid/failed (mirrors the app).
+      // Watch the payment doc that paid/failed flips (callback OR confirmPayment).
       unsubRef.current = onSnapshot(doc(db, 'mpesa_payments', checkoutRequestId), (snap) => {
         const d = snap.data();
         if (!d) return;
-        if (d.status === 'paid') settle(d.mpesaReceipt || fallbackRcpt);
+        if (d.status === 'paid' || d.settled) settle(d.mpesaReceipt || fallbackRcpt);
         else if (d.status === 'failed') { stopWatching(); setErr(d.resultDesc || 'Payment was cancelled or failed. Please try again.'); setPhase('form'); }
       }, () => {});
+      // ~20s in (after the PIN window), actively confirm via Daraja — don't wait on the callback.
+      confirmTimerRef.current = setTimeout(confirmNow, 20000);
       // After 90s, stop blocking the UI but leave the order to settle server-side.
       timerRef.current = setTimeout(() => setPhase((p) => (p === 'waiting' ? 'timeout' : p)), 90000);
     } catch (e) {
@@ -101,7 +122,13 @@ export function CheckoutScreen(){
           <FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /> Waiting for confirmation…
         </div>
         <div className="ym-cap" style={{ marginTop:18 }}>Keep this page open — it updates automatically once you pay.</div>
-        <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:22 }} onClick={()=>{ stopWatching(); setPhase('timeout'); }}>I'll track it later</button>
+        {err && <div className="ym-cap" style={{ marginTop:14, color:'var(--m-inactive-fg)' }}>{err}</div>}
+        <div style={{ display:'flex', gap:10, justifyContent:'center', marginTop:22, flexWrap:'wrap' }}>
+          <button className="ym-btn ym-btn-primary ym-btn-sm" disabled={checking} onClick={confirmNow}>
+            {checking ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Checking…</> : <><FA i="fa-rotate" /> I've paid — confirm now</>}
+          </button>
+          <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={()=>{ stopWatching(); setPhase('timeout'); }}>I'll track it later</button>
+        </div>
       </div>
     );
   }

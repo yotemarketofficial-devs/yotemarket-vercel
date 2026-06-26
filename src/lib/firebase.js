@@ -109,8 +109,9 @@ export const registerStore = callable('registerStore');
 export const computeRiderPayout = callable('computeRiderPayout');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
-/** Confirm/recover wallet top-ups via Daraja status query → { paid, creditedCount, creditedTotal }. { checkoutRequestId? }. */
-export const confirmTopUp = callable('confirmTopUp');
+/** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query
+ *  → { paid, settledCount, creditedTotal }. { checkoutRequestId? }. */
+export const confirmPayment = callable('confirmPayment');
 /** Redeem YotePoints for wallet credit → { redeemed, credited, balancePoints }. { points }. */
 export const redeemPoints = callable('redeemPoints');
 
