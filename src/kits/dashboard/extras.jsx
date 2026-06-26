@@ -7,7 +7,7 @@ import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
-import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, fmtTime, fmtWhen,
@@ -214,6 +214,30 @@ function StorePickupLocation({ toast }){
   );
 }
 
+/* KRA tax profile: PIN (shown on tax invoices) + VAT-registered toggle. */
+function TaxSettings({ toast }){
+  const { merchant } = useMerchant();
+  const [pin, setPin] = useStateX('');
+  const [vatReg, setVatReg] = useStateX(false);
+  const [busy, setBusy] = useStateX(false);
+  useEffX(() => { if (merchant) { setPin(merchant.kraPin || ''); setVatReg(merchant.vatRegistered === true); } }, [merchant?.kraPin, merchant?.vatRegistered]);
+  const save = async () => {
+    setBusy(true);
+    try { await setMerchantTaxInfo({ kraPin: pin.trim(), vatRegistered: vatReg }); toast && toast('Tax details saved'); }
+    catch (e) { toast && toast(e.message || 'Could not save tax details'); } finally { setBusy(false); }
+  };
+  return (
+    <SectionCard title="Tax · KRA">
+      <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14 }}>
+        <div className="ym-cap">Your KRA PIN appears on customer tax invoices. Turn on VAT only if you're VAT-registered — 16% is then itemised on every invoice.</div>
+        <div><label className="ym-label">KRA PIN</label><input className="ipt" value={pin} onChange={e=>setPin(e.target.value.toUpperCase())} placeholder="A001234567Z" maxLength={11} /></div>
+        <Row label="VAT registered" sub="Itemise 16% VAT on invoices" last><Toggle on={vatReg} onClick={()=>setVatReg(v=>!v)} /></Row>
+        <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save tax details'}</Btn>
+      </div>
+    </SectionCard>
+  );
+}
+
 export function Settings({ toast }){
   const { theme, setTheme } = useTheme();
   const shop = useShop();
@@ -231,6 +255,7 @@ export function Settings({ toast }){
           </div>
         </SectionCard>
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+          <TaxSettings toast={toast} />
           <StorePickupLocation toast={toast} />
           <SectionCard title="Appearance">
             <div style={{ padding:'8px 20px' }}><Row label="Dark mode" sub="Switch the dashboard theme" last><Toggle on={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')} /></Row></div>

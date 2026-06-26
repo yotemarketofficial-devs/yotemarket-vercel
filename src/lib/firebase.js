@@ -136,6 +136,8 @@ export const updateStoreLocation = callable('updateStoreLocation');
 export const markOrderReady = callable('markOrderReady');
 /** Store owner: confirm a store-pickup collection (enter shopper's code) → { ok }. { orderId, code }. */
 export const confirmStorePickup = callable('confirmStorePickup');
+/** Store owner: set tax profile (KRA PIN + VAT-registered) → { ok }. { kraPin, vatRegistered }. */
+export const setMerchantTaxInfo = callable('setMerchantTaxInfo');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {

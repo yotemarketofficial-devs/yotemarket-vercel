@@ -263,6 +263,35 @@ export function CheckoutScreen(){
 }
 function Row({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
 
+/* Lazy-loads the order's tax invoice (invoices/inv_<orderId>) and shows the VAT
+   breakdown + invoice number on demand. */
+function OrderInvoice({ orderId }){
+  const [inv, setInv] = useSCm(null);
+  const [open, setOpen] = useSCm(false);
+  const [loaded, setLoaded] = useSCm(false);
+  const toggle = async () => {
+    setOpen(o=>!o);
+    if (loaded || !firebaseEnabled || !db) return;
+    setLoaded(true);
+    try { const s = await getDoc(doc(db, 'invoices', 'inv_'+orderId)); if (s.exists()) setInv(s.data()); } catch { /* none yet */ }
+  };
+  return (
+    <div style={{ marginTop:14, borderTop:'1px solid var(--m-border)', paddingTop:12 }}>
+      <button onClick={toggle} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, color:'var(--m-link)', display:'inline-flex', gap:7, alignItems:'center', padding:0 }}>
+        <FA i="fa-file-invoice" /> {open ? 'Hide tax invoice' : 'Tax invoice'}
+      </button>
+      {open && (inv ? (
+        <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:6 }}>
+          <div className="ym-cap">{inv.invoiceNo}{inv.kraPin ? ` · KRA PIN ${inv.kraPin}` : ''}</div>
+          <Row l="Taxable amount" v={ymPrice(inv.subtotalTaxable)} />
+          <Row l={inv.vatRegistered ? 'VAT (16%)' : 'VAT'} v={inv.vatRegistered ? ymPrice(inv.vat) : 'Not registered'} />
+          <div style={{ display:'flex', justifyContent:'space-between', paddingTop:6, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3" style={{ fontSize:13.5 }}>Total</span><span className="ym-h3" style={{ fontSize:13.5 }}>{ymPrice(inv.total)}</span></div>
+        </div>
+      ) : <div className="ym-cap" style={{ marginTop:8 }}>{loaded ? 'Your invoice will be ready shortly after payment confirms.' : 'Loading…'}</div>)}
+    </div>
+  );
+}
+
 /* ---------- ORDERS ---------- */
 const fmtPlaced = (o) => o.placed
   || (o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000).toLocaleString('en-KE', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '');
@@ -353,6 +382,7 @@ export function OrdersScreen(){
               {o.raw?.fulfillment==='store_pickup' && o.status!=='delivered' && store && (
                 <div style={{ marginTop:16 }}><StoreMap store={store} height={150} /></div>
               )}
+              {o.status!=='placed' && <OrderInvoice orderId={o.raw.id} />}
             </div>
           );
         })}
