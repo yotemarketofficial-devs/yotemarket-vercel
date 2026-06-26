@@ -197,6 +197,25 @@ function OrderRow({ o, leg, cta, flash, reload }) {
   );
 }
 
+function AssignOperator({ hubId, hubName, flash }) {
+  const [email, setEmail] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
+  const assign = async () => {
+    if (!email.trim()) { setErr('Enter an email'); return; }
+    setBusy(true); setErr('');
+    try { await assignHubOperator({ email: email.trim(), hubId, hubName }); flash(`${email.trim()} assigned to ${hubName}`); setEmail(''); }
+    catch (e) { setErr(e.message || 'Could not assign.'); } finally { setBusy(false); }
+  };
+  return (
+    <Section title="Assign hub operator · staff" sub="Grant a signed-up account access to operate this hub. They must have signed in once first, then re-open /hub." icon="fa-user-plus" empty={false}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <input style={{ ...ipt, flex: 1, minWidth: 200 }} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="operator@email.com" />
+        <button onClick={assign} disabled={busy} style={{ ...btn(C.pri), padding: '11px 16px', whiteSpace: 'nowrap' }}>{busy ? <FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite' }} /> : `Assign to ${hubName || 'hub'}`}</button>
+      </div>
+      {err && <div style={{ color: C.red, fontSize: 12.5, marginTop: 8 }}>{err}</div>}
+    </Section>
+  );
+}
+
 const Stat = ({ label, value, icon, tint }) => (
   <div style={{ flex: 1, minWidth: 150, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16 }}>
     <div style={{ width: 36, height: 36, borderRadius: 10, background: tint + '22', color: tint, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}><FA i={icon} /></div>
