@@ -4,6 +4,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import './earn.css';
+import Calculator from './Calculator.jsx';
 const { useState } = React;
 
 const PROOF_TINTS = ['#7c3aed', '#10b981', '#f59e0b', '#ec4899'];
@@ -42,7 +43,7 @@ export default function EarnLanding() {
             </p>
             <div className="hero-ctas">
               <a className="btn-gold" href="#apply"><i className="fas fa-bolt"></i> Apply to scout</a>
-              <Link className="btn-ghost-light" to="/marketers/app"><i className="fas fa-calculator"></i> Open the calculator</Link>
+              <a className="btn-ghost-light" href="#calculator"><i className="fas fa-calculator"></i> Open the calculator</a>
             </div>
             <div className="hero-proof">
               <div className="avatars">
@@ -156,10 +157,13 @@ export default function EarnLanding() {
             </div>
           </div>
           <div style={{ marginTop: '36px', textAlign: 'center' }}>
-            <Link className="btn-ghost-light" to="/marketers/app"><i className="fas fa-calculator"></i> Open the full payout calculator</Link>
+            <a className="btn-ghost-light" href="#calculator"><i className="fas fa-calculator"></i> Open the full payout calculator</a>
           </div>
         </div>
       </section>
+
+      {/* ===== INTERACTIVE CALCULATOR ===== */}
+      <Calculator />
 
       {/* ===== WHO WE'RE LOOKING FOR ===== */}
       <section className="testimonials">
@@ -261,7 +265,7 @@ export default function EarnLanding() {
           <div className="kit-grid">
             <Link className="kit-tile" to="/marketers/app"><i className="fas fa-chart-line"></i><b>Scout dashboard</b><span>Track referrals &amp; earnings live</span></Link>
             <Link className="kit-tile" to="/marketers/app"><i className="fas fa-trophy"></i><b>Leaderboard</b><span>See where you rank nationwide</span></Link>
-            <Link className="kit-tile" to="/marketers/app"><i className="fas fa-calculator"></i><b>Payout simulator</b><span>Interactive earnings calculator</span></Link>
+            <a className="kit-tile" href="#calculator"><i className="fas fa-calculator"></i><b>Payout simulator</b><span>Interactive earnings calculator</span></a>
             <Link className="kit-tile" to="/marketers/app"><i className="fas fa-wallet"></i><b>M-Pesa payouts</b><span>Cash out from KSH 500</span></Link>
           </div>
           <div className="footer-strip">

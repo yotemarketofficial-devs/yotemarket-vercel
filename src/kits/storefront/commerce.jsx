@@ -314,6 +314,16 @@ export function OrdersScreen(){
                 <span className="ym-cap">{o.steps[o.step] || o.steps[0]}</span>
                 {o.status==='out' && o.rider && <span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:600 }}>{o.rider}{o.eta?` · ${o.eta} away`:''}</span>}
               </div>
+              {/* pickup code — shown only when the order is waiting at the hub (handover ③) */}
+              {o.status==='at_hub' && o.raw?.pickupCode && (
+                <div style={{ marginTop:16, padding:'15px 18px', borderRadius:14, background:'var(--m-grad-deep)', color:'#fff', display:'flex', alignItems:'center', gap:15, boxShadow:'var(--m-glow)' }}>
+                  <FA i="fa-box-open" style={{ fontSize:22, opacity:.9 }} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:12.5, opacity:.85 }}>Ready at {o.hub ? o.hub.split(' · ')[0] : 'your hub'} — show this code to collect</div>
+                    <div style={{ fontSize:28, fontWeight:800, letterSpacing:5 }}>{o.raw.pickupCode}</div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
