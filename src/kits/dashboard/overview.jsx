@@ -3,7 +3,24 @@ import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
 import { INSIGHTS, ksh } from './data.js';
 import { useShop, useStoreOverview } from './merchant.jsx';
+import { getHandoverCode } from '../../lib/firebase.js';
 const { useState: useStateO } = React;
+
+// Real custody status → merchant-facing label.
+const CUSTODY_LBL = { queued:'Finding rider', accepted:'Rider on the way', picked_up:'Picked up', at_hub:'At hub', delivered:'Collected', placed:'Placed' };
+
+/* Reveals the store's handover code ① to show the rider at pickup (server-gated). */
+function PickupCode({ orderId }){
+  const [code, setCode] = useStateO(null);
+  const [busy, setBusy] = useStateO(false);
+  const reveal = async () => {
+    setBusy(true);
+    try { const r = await getHandoverCode({ orderId, leg: 1 }); setCode(r?.code || '—'); }
+    catch { setCode('—'); } finally { setBusy(false); }
+  };
+  if (code) return <span style={{ fontFamily:'ui-monospace,Menlo,monospace', fontWeight:800, letterSpacing:2, color:'var(--m-primary)' }}>{code}</span>;
+  return <button onClick={reveal} disabled={busy} className="ym-btn ym-btn-ghost ym-btn-sm">{busy ? '…' : 'Show code'}</button>;
+}
 
 function WelcomeBanner({ onCopy }){
   const shop = useShop();
@@ -109,8 +126,8 @@ export function OrdersTable({ rows }){
     <SectionCard title="Recent orders" sub={`${rows.length} order${rows.length!==1?'s':''}`} action={<Btn kind="ghost" size="sm" iconRight="fa-arrow-right">View all sales</Btn>}>
       {rows.length === 0 ? <EmptyRow icon="fa-receipt" text="No orders yet — they'll appear here once customers buy." /> : (
       <div style={{ overflowX:'auto' }}>
-        <table className="ym-table" style={{ minWidth:680 }}>
-          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Hub</th><th>Status</th><th>When</th></tr></thead>
+        <table className="ym-table" style={{ minWidth:740 }}>
+          <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Hub</th><th>Status</th><th>Pickup ①</th><th>When</th></tr></thead>
           <tbody>
             {rows.map((o,idx)=>(
               <tr key={o.id+'-'+idx}>
@@ -119,7 +136,8 @@ export function OrdersTable({ rows }){
                 <td>{o.items}</td>
                 <td style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ksh(o.total)}</td>
                 <td>{o.hub}</td>
-                <td><Pill tone={o.status}>{lbl[o.status]}</Pill></td>
+                <td><Pill tone={o.status}>{CUSTODY_LBL[o.rawStatus] || lbl[o.status]}</Pill></td>
+                <td>{o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>}</td>
                 <td className="ym-cap">{o.date}</td>
               </tr>
             ))}

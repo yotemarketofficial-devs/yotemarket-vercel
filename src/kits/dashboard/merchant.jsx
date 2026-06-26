@@ -125,6 +125,7 @@ export function useStoreOverview() {
       id: o.id, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',
       items: Array.isArray(o.items) ? `${o.items.length} item${o.items.length !== 1 ? 's' : ''}` : '—',
       total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : 'pending',
+      rawStatus: o.status, // real custody status for the handover column
       date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''), hub: o.hub || '—',
     }));
 
