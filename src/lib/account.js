@@ -46,6 +46,33 @@ export function deleteAddress(uid, id) {
   return deleteDoc(doc(db, 'users', uid, 'addresses', id));
 }
 
+/** Live list of stores the user follows. cb receives an array; returns unsubscribe. */
+export function subscribeFollows(uid, cb) {
+  if (!ready(uid)) { cb([]); return () => {}; }
+  return onSnapshot(
+    collection(db, 'users', uid, 'follows'),
+    (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    () => cb([]),
+  );
+}
+/** Follow a store (stored at users/{uid}/follows/{storeId}). */
+export function followStore(uid, store) {
+  if (!ready(uid) || !store?.id) return Promise.resolve();
+  return setDoc(doc(db, 'users', uid, 'follows', String(store.id)), {
+    storeId: String(store.id),
+    name: store.name || '',
+    icon: store.icon || 'fa-store',
+    tint: store.tint || '#4f46e5',
+    ...(store.img ? { img: store.img } : {}),
+    followedAt: serverTimestamp(),
+  });
+}
+/** Unfollow a store. */
+export function unfollowStore(uid, storeId) {
+  if (!ready(uid) || !storeId) return Promise.resolve();
+  return deleteDoc(doc(db, 'users', uid, 'follows', String(storeId)));
+}
+
 /** Make one address the default (clears the flag on the others). */
 export async function setDefaultAddress(uid, id) {
   if (!ready(uid)) return;

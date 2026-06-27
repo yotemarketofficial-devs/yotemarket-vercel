@@ -9,7 +9,7 @@ import { ymStore, ymProduct, ymPrice } from './data.js';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints } from '../../lib/firebase.js';
-import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, updateAvatar } from '../../lib/account.js';
+import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, updateAvatar, subscribeFollows, unfollowStore } from '../../lib/account.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { avatarPath } from '../../lib/storage.js';
 const { useState: useSP, useEffect: useEffP, useRef: useRefP } = React;
@@ -18,7 +18,7 @@ const fmtWhen = (t) => t?.when || (t?.createdAt?.seconds ? new Date(t.createdAt.
 
 /* Live shopper profile from users/{uid} (+ meta/wallet, wallet_tx, addresses). */
 function useProfileData(uid){
-  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[], receipts:[] });
+  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[], receipts:[], follows:[] });
   useEffP(() => {
     if (!firebaseEnabled || !db || !uid) return undefined;
     const unsubs = [];
@@ -26,6 +26,7 @@ function useProfileData(uid){
     unsubs.push(onSnapshot(doc(db,'users',uid,'meta','wallet'), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, walletBalance:d.balance||0 })); }, ()=>{}));
     unsubs.push(onSnapshot(query(collection(db,'users',uid,'wallet_tx'), orderBy('createdAt','desc'), limit(6)), (s)=>{ setData(p=>({ ...p, walletTx:s.docs.map(d=>({ id:d.id, ...d.data() })) })); }, ()=>{}));
     unsubs.push(subscribeAddresses(uid, (a)=>setData(p=>({ ...p, addresses:a }))));
+    unsubs.push(subscribeFollows(uid, (f)=>setData(p=>({ ...p, follows:f }))));
     // Digital receipts (equality-only query → no composite index; sorted client-side).
     unsubs.push(onSnapshot(query(collection(db,'receipts'), where('userId','==',uid), limit(30)), (s)=>{ const r=s.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); setData(p=>({ ...p, receipts:r })); }, ()=>{}));
     return () => unsubs.forEach(u=>u());
@@ -183,6 +184,24 @@ export function ProfileScreen(){
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </Card>
+
+          <Card title="Followed stores" icon="fa-heart">
+            {prof.follows.length === 0 ? (
+              <EmptyRow icon="fa-heart" text="Follow stores to keep them handy — tap Follow on any store." />
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {prof.follows.map((f)=>(
+                  <div key={f.id} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <button onClick={()=>nav('store',{ sid:f.storeId })} style={{ flex:1, display:'flex', alignItems:'center', gap:12, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:0 }}>
+                      <Thumb icon={f.icon||'fa-store'} tint={f.tint||'#7c3aed'} size={42} radius={12} img={f.img} />
+                      <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name||'Store'}</div><div className="ym-cap">Tap to visit</div></div>
+                    </button>
+                    <button onClick={()=>{ unfollowStore(uid, f.storeId).then(()=>toast('Unfollowed','fa-bell')).catch(()=>toast('Could not unfollow','fa-triangle-exclamation')); }} style={linkBtn}>Unfollow</button>
+                  </div>
+                ))}
               </div>
             )}
           </Card>

@@ -3,7 +3,9 @@ import React from 'react';
 import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, SectionTitle, QtyStepper } from './ui.jsx';
 import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
 import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
-const { useState: useSS } = React;
+import { useAuth } from '../../lib/useAuth.jsx';
+import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
+const { useState: useSS, useEffect: useEffSS } = React;
 
 /* ---------- HOME ---------- */
 export function HomeScreen(){
@@ -183,9 +185,22 @@ export function ProductScreen({ params }){
 /* ---------- STORE ---------- */
 export function StoreScreen({ params }){
   const { back, nav, toast, requireAuth } = useYM();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const s = ymStore(params.sid) || YM_STORES[0];
   const all = YM_PRODUCTS.filter(p=>p.store===s.id);
   const [following, setFollowing] = useSS(false);
+  useEffSS(() => {
+    if (!uid) { setFollowing(false); return undefined; }
+    return subscribeFollows(uid, (list) => setFollowing(list.some((f) => f.storeId === s.id)));
+  }, [uid, s.id]);
+  const toggleFollow = () => {
+    if (!uid) { requireAuth(() => {}); return; }
+    const nf = !following;
+    (nf ? followStore(uid, s) : unfollowStore(uid, s.id))
+      .then(() => toast(nf ? 'Following ' + s.name : 'Unfollowed', nf ? 'fa-circle-check' : 'fa-bell'))
+      .catch(() => toast('Could not update follow', 'fa-triangle-exclamation'));
+  };
   const [cat, setCat] = useSS('all');
   const cats = ['all', ...Array.from(new Set(all.map(p=>p.cat)))];
   const prods = cat==='all'?all:all.filter(p=>p.cat===cat);
@@ -205,7 +220,7 @@ export function StoreScreen({ params }){
               <div style={{ color:'rgba(255,255,255,.92)', fontSize:14, marginTop:2, textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>{s.tagline}</div>
             </div>
             <div style={{ display:'flex', gap:10 }} className="store-actions">
-              <button className={'ym-btn '+(following?'ym-btn-ghost':'ym-btn-onbrand')} onClick={()=>{ const nf=!following; setFollowing(nf); toast(nf?'Following '+s.name:'Unfollowed', nf?'fa-circle-check':'fa-bell'); }}><FA i={following?'fa-check':'fa-plus'} /> {following?'Following':'Follow'}</button>
+              <button className={'ym-btn '+(following?'ym-btn-ghost':'ym-btn-onbrand')} onClick={toggleFollow}><FA i={following?'fa-check':'fa-plus'} /> {following?'Following':'Follow'}</button>
               <button className="ym-btn" onClick={()=>requireAuth(()=>nav('messages',{ store:s }))} style={{ background:'rgba(255,255,255,.16)', color:'#fff', border:'1.5px solid rgba(255,255,255,.5)' }}><FA i="fa-comments" /> Chat</button>
             </div>
           </div>
