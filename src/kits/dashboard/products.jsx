@@ -47,7 +47,7 @@ export function Products({ onAdd, toast }){
               {rows.map(r=>(
                 <tr key={r.id}>
                   <td><input type="checkbox" aria-label={`Select ${r.name}`} /></td>
-                  <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb icon={r.icon} tint={r.tint} size={44} /><div><div style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</div><div className="ym-cap" style={{ fontFamily:'ui-monospace,Menlo,monospace', marginTop:1 }}>{r.id.toUpperCase()}</div></div></div></td>
+                  <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb icon={r.icon} tint={r.tint} size={44} /><div><div style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</div><div className="ym-cap" style={{ fontFamily:'ui-monospace,Menlo,monospace', marginTop:1 }}>{r.sku || (r.id||'').toUpperCase()}</div></div></div></td>
                   <td>{r.cat}</td>
                   <td style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(r.price)}</td>
                   <td>{r.stock===0 ? <span style={{ color:'var(--m-danger)', fontWeight:600 }}>Out</span> : r.stock}</td>
@@ -114,7 +114,7 @@ export function AddProductModal({ onClose, onSave }){
               <Field label="Discounted price"><input className="ipt" type="number" value={form.discount} onChange={e=>set('discount',e.target.value)} placeholder="12250" /></Field>
             </div>
             <Field label="Quantity in stock"><input className="ipt" type="number" defaultValue={10} /></Field>
-            <Field label="SKU" hint="For your inventory tracking"><input className="ipt" placeholder="YM-PHN-A05" /></Field>
+            <Field label="SKU" hint="Assigned automatically per store on save (e.g. WAN-0001)"><input className="ipt" value="Auto-generated" disabled style={{ opacity:.65 }} /></Field>
             <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via the in-app messenger before confirming.</div></div>
           </div>}
           {step===3 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
