@@ -140,6 +140,16 @@ export const confirmStorePickup = callable('confirmStorePickup');
 export const setMerchantTaxInfo = callable('setMerchantTaxInfo');
 /** Store owner: record an in-store POS sale → { saleId, invoiceNo?, checkoutRequestId?, status }. { items:[{pid,qty}], payMethod, phone?, customerName? }. */
 export const posSale = callable('posSale');
+/** Admin: grant N free months to every merchant → { granted, months }. { months?, campaignId? }. */
+export const grantFreeMonths = callable('grantFreeMonths');
+/** Admin: create a coupon → { id, code }. { code, type, value, name?, maxRedemptions?, expiresAt? }. */
+export const createPromo = callable('createPromo');
+/** Staff: list promotions/coupons → { promos }. */
+export const listPromos = callable('listPromos');
+/** Admin: toggle/delete a promo → { ok }. { id, active } | { id, remove:true }. */
+export const setPromoActive = callable('setPromoActive');
+/** Merchant: redeem a coupon code → { type, months?|value? }. { code }. */
+export const redeemCoupon = callable('redeemCoupon');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {

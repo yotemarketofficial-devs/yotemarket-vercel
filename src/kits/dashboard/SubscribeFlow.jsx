@@ -5,7 +5,7 @@
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { ksh } from './data.js';
-import { subscribeMerchant, confirmPayment } from '../../lib/firebase.js';
+import { subscribeMerchant, confirmPayment, redeemCoupon } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, SOFTWARE_TIERS, PLAN_ORDER, DELIVERY_FEATURES, findDeliveryTier } from './pricing.js';
 const { useState, useEffect } = React;
 
@@ -79,6 +79,7 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
 
   return (
     <div>
+      <CouponField />
       <div style={{ display: 'inline-flex', gap: 4, background: 'var(--m-surface-2)', borderRadius: 10, padding: 4, marginBottom: 18 }}>
         {[['delivery', 'Delivery plans'], ['software', 'Software only']].map(([k, label]) => (
           <button key={k} onClick={() => setMode(k)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: mode === k ? 'var(--m-surface)' : 'transparent', color: mode === k ? 'var(--m-fg1)' : 'var(--m-fg3)', boxShadow: mode === k ? 'var(--m-shadow-card)' : 'none' }}>{label}</button>
@@ -159,6 +160,35 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
           </Card>
         </div>
       )}
+    </div>
+  );
+}
+
+/* Promo code: free-month codes activate instantly; %/KSh codes apply on the next pay. */
+function CouponField(){
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null); // { ok, text }
+  const apply = async () => {
+    if (!code.trim()) return;
+    setBusy(true); setMsg(null);
+    try {
+      const r = await redeemCoupon({ code: code.trim() });
+      if (r.type === 'free_months') setMsg({ ok: true, text: `🎉 ${r.months} free month${r.months > 1 ? 's' : ''} added to your subscription!` });
+      else if (r.type === 'percent') setMsg({ ok: true, text: `${r.value}% off applied — pick a plan below to pay the discounted price.` });
+      else setMsg({ ok: true, text: `KSh ${r.value} off applied — pick a plan below.` });
+      setCode('');
+    } catch (e) { setMsg({ ok: false, text: e.message || 'That code isn’t valid.' }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label className="ym-label" style={{ display: 'block', marginBottom: 6 }}>Have a promo code?</label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input style={{ ...ipt, flex: 1 }} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter code" />
+        <Btn kind="soft" onClick={apply} disabled={busy || !code.trim()}>{busy ? '…' : 'Apply'}</Btn>
+      </div>
+      {msg && <div style={{ marginTop: 8, fontSize: 13, color: msg.ok ? 'var(--m-success)' : 'var(--m-inactive-fg)' }}>{msg.text}</div>}
     </div>
   );
 }

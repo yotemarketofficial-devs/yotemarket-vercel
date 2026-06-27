@@ -3,6 +3,7 @@
 import React from 'react';
 import { Icon, Card, Logo } from './primitives.jsx';
 import { YM_ECON, ymPaidKm, ymRunPayout, ymSubTier, ymRunEconomics } from '../mobile/economics.js';
+import { grantFreeMonths, listPromos, createPromo, setPromoActive } from '../../lib/firebase.js';
 
 const { useState: useS } = React;
 const kes = n => 'KSh ' + Number(Math.round(n)).toLocaleString('en-KE');
@@ -13,6 +14,7 @@ const STAFF = { name: 'Operations · A. Kamau', role: 'Admin', initials: 'AK' };
 
 const NAV = [
   { key: 'overview', icon: 'gauge-high',  label: 'Overview' },
+  { key: 'promos',   icon: 'tags',        label: 'Promotions' },
   { key: 'ratecard', icon: 'table-cells', label: 'Subscription rate card' },
   { key: 'riderpay', icon: 'motorcycle',  label: 'Rider pay models' },
   { key: 'unit',     icon: 'scale-balanced', label: 'Unit economics' },
@@ -402,7 +404,105 @@ function CalcRow({ l, v }) {
 }
 
 /* ---------- SHELL ---------- */
-const SECTIONS = { overview: Overview, ratecard: RateCard, riderpay: RiderPay, unit: UnitEconomics, fees: Fees, calc: Calculator };
+/* ---------- Promotions & offers (admin actions: free months, coupons) ---------- */
+function Promotions() {
+  const [promos, setPromos] = useS([]);
+  const [loading, setLoading] = useS(true);
+  const [msg, setMsg] = useS('');
+  const [months, setMonths] = useS(1);
+  const [granting, setGranting] = useS(false);
+  const [form, setForm] = useS({ code: '', type: 'percent', value: '', name: '', maxRedemptions: '', expiresAt: '' });
+  const [creating, setCreating] = useS(false);
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try { const r = await listPromos(); setPromos(r.promos || []); } catch (e) { setMsg(e.message || 'Could not load promotions.'); } finally { setLoading(false); }
+  }, []);
+  React.useEffect(() => { load(); }, [load]);
+
+  const grant = async () => {
+    if (!window.confirm(`Grant ${months} free month(s) to ALL merchants? This activates or extends every merchant's subscription.`)) return;
+    setGranting(true); setMsg('');
+    try { const r = await grantFreeMonths({ months: Number(months) }); setMsg(`✓ Granted ${months} free month(s) to ${r.granted} merchant(s).`); load(); }
+    catch (e) { setMsg(e.message || 'Grant failed.'); } finally { setGranting(false); }
+  };
+  const create = async () => {
+    setCreating(true); setMsg('');
+    try {
+      await createPromo({
+        code: form.code, type: form.type, value: Number(form.value),
+        name: form.name || undefined,
+        maxRedemptions: form.maxRedemptions ? Number(form.maxRedemptions) : undefined,
+        expiresAt: form.expiresAt ? new Date(form.expiresAt).getTime() : undefined,
+      });
+      setForm({ code: '', type: 'percent', value: '', name: '', maxRedemptions: '', expiresAt: '' });
+      setMsg('✓ Coupon created.'); load();
+    } catch (e) { setMsg(e.message || 'Could not create coupon.'); } finally { setCreating(false); }
+  };
+  const toggle = async (p) => { try { await setPromoActive({ id: p.id, active: !p.active }); load(); } catch (e) { setMsg(e.message || 'Failed.'); } };
+  const remove = async (p) => { if (!window.confirm(`Delete ${p.code || p.name}?`)) return; try { await setPromoActive({ id: p.id, remove: true }); load(); } catch (e) { setMsg(e.message || 'Failed.'); } };
+  const offer = (p) => p.type === 'percent' ? `${p.value}% off` : p.type === 'fixed' ? `${kes(p.value)} off` : `${p.value} free month${p.value > 1 ? 's' : ''}`;
+  const inp = 'border border-gray-200 rounded-lg px-3 py-2 text-sm w-full';
+
+  return (
+    <div>
+      <SectionHead icon="tags" title="Promotions & offers" sub="Subscription discounts, free months and coupon codes for merchants." />
+      {msg && <div className="mb-5 text-sm rounded-lg px-4 py-3 bg-primary-50 text-primary-700">{msg}</div>}
+
+      <Card className="p-5 mb-6">
+        <div className="flex items-center gap-3 mb-2"><div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center"><Icon name="gift" /></div><h3 className="font-bold text-gray-900">Free month campaign</h3></div>
+        <p className="text-sm text-gray-500 mb-4">Activate or extend every merchant's subscription by the chosen number of months — free. Idempotent: re-running the same monthly campaign won't double-grant.</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-gray-600">Months</span>
+          <select value={months} onChange={e => setMonths(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm">{[1, 2, 3, 6].map(m => <option key={m} value={m}>{m}</option>)}</select>
+          <button onClick={grant} disabled={granting} className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"><Icon name={granting ? 'spinner' : 'gift'} className={granting ? 'fa-spin mr-2' : 'mr-2'} />{granting ? 'Granting…' : `Grant ${months} free month${months > 1 ? 's' : ''} to all merchants`}</button>
+        </div>
+      </Card>
+
+      <Card className="p-5 mb-6">
+        <h3 className="font-bold text-gray-900 mb-3">Create a coupon</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="CODE e.g. WELCOME20" className={inp} />
+          <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={inp}>
+            <option value="percent">% off subscription</option>
+            <option value="fixed">KSh off subscription</option>
+            <option value="free_months">Free months</option>
+          </select>
+          <input value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value.replace(/[^0-9.]/g, '') }))} inputMode="numeric" placeholder={form.type === 'percent' ? 'Percent (e.g. 20)' : form.type === 'fixed' ? 'KSh off' : 'Months'} className={inp} />
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Name (optional)" className={inp} />
+          <input value={form.maxRedemptions} onChange={e => setForm(f => ({ ...f, maxRedemptions: e.target.value.replace(/[^0-9]/g, '') }))} inputMode="numeric" placeholder="Max redemptions (optional)" className={inp} />
+          <input type="date" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} className={inp} />
+        </div>
+        <button onClick={create} disabled={creating || !form.code || !form.value} className="mt-4 bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60">{creating ? 'Creating…' : 'Create coupon'}</button>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="font-bold text-gray-900 mb-3">All promotions</h3>
+        {loading ? <div className="text-sm text-gray-400 py-6 text-center"><Icon name="spinner" className="fa-spin mr-2" />Loading…</div>
+          : promos.length === 0 ? <div className="text-sm text-gray-400 py-6 text-center">No promotions yet.</div>
+            : (
+              <div className="overflow-x-auto"><table className="w-full text-sm">
+                <thead><tr className="text-left text-gray-400 border-b border-gray-100"><th className="py-2 pr-3">Code / name</th><th className="py-2 pr-3">Offer</th><th className="py-2 pr-3">Used</th><th className="py-2 pr-3">Status</th><th className="py-2"></th></tr></thead>
+                <tbody>{promos.map(p => (
+                  <tr key={p.id} className="border-b border-gray-50">
+                    <td className="py-2.5 pr-3"><span className="font-semibold text-gray-900">{p.code || p.name}</span>{p.kind === 'campaign' && <span className="ml-2 text-xs bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">campaign</span>}</td>
+                    <td className="py-2.5 pr-3 text-gray-600">{offer(p)}</td>
+                    <td className="py-2.5 pr-3 text-gray-600">{p.kind === 'campaign' ? `${p.grantedCount} granted` : `${p.redemptions}${p.maxRedemptions ? `/${p.maxRedemptions}` : ''}`}</td>
+                    <td className="py-2.5 pr-3">{p.active ? <span className="text-xs bg-green-100 text-green-700 rounded px-2 py-0.5">Active</span> : <span className="text-xs bg-gray-100 text-gray-500 rounded px-2 py-0.5">Off</span>}</td>
+                    <td className="py-2.5 text-right whitespace-nowrap">
+                      {p.kind !== 'campaign' && <button onClick={() => toggle(p)} className="text-xs text-primary font-semibold mr-3">{p.active ? 'Disable' : 'Enable'}</button>}
+                      <button onClick={() => remove(p)} className="text-xs text-red-500 font-semibold">Delete</button>
+                    </td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+            )}
+      </Card>
+    </div>
+  );
+}
+
+const SECTIONS = { overview: Overview, promos: Promotions, ratecard: RateCard, riderpay: RiderPay, unit: UnitEconomics, fees: Fees, calc: Calculator };
 
 export default function AdminConsole() {
   const [active, setActive] = useS('overview');
