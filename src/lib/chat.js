@@ -113,14 +113,37 @@ export async function openStoreConversation({ store, user, shopperName }) {
  * Post a message and update the parent thread's inbox preview + unread counter.
  * `recipientUid` is the participant who should see a new unread badge.
  */
-export async function sendChatMessage({ convId, user, text, recipientUid }) {
+export async function sendChatMessage({ convId, conv, user, text, recipientUid }) {
   const body = String(text || '').trim();
   if (!convId || !body || !chatEnabled(user)) return;
-  await addDoc(collection(db, 'conversations', convId, 'messages'), {
-    senderId: user.uid,
-    text: body,
-    at: serverTimestamp(),
-  });
+  const msgsCol = collection(db, 'conversations', convId, 'messages');
+  const msg = { senderId: user.uid, text: body, at: serverTimestamp() };
+  try {
+    await addDoc(msgsCol, msg);
+  } catch (e) {
+    // The thread doc may not exist yet (just-opened "Chat with seller" → the
+    // create is still in flight, or a synthesized thread). The message-create
+    // rule reads the conversation, so it's denied until the doc lands. Create it
+    // from the participant info we already have, then retry once.
+    const ref = doc(db, 'conversations', convId);
+    const exists = (await getDoc(ref).catch(() => null))?.exists();
+    if (!exists && conv && Array.isArray(conv.participants) && conv.participants.includes(user.uid)) {
+      await setDoc(ref, {
+        participants: conv.participants,
+        storeId: conv.storeId || null,
+        status: 'active',
+        info: conv.info || {},
+        unread: {},
+        lastMessage: '',
+        lastSenderId: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      await addDoc(msgsCol, msg); // retry now that the thread exists
+    } else {
+      throw e;
+    }
+  }
   const patch = {
     lastMessage: body,
     lastSenderId: user.uid,

@@ -88,7 +88,7 @@ function LiveMessages({ params, user, account }){
   // Fall back to a synthesized thread for a just-opened store not yet in the snapshot.
   const selConv = list.find((c) => c.id === sel)
     || (paramStore && sel === conversationId(paramStore.id, myUid)
-      ? { id: sel, participants: [myUid, paramStore.ownerId], info: {
+      ? { id: sel, storeId: paramStore.id, participants: [myUid, paramStore.ownerId], info: {
           [paramStore.ownerId]: { name: paramStore.name, role: 'merchant', icon: paramStore.icon, tint: paramStore.tint, img: paramStore.img },
         }, unread: {} }
       : list[0] || null);
@@ -159,7 +159,7 @@ function LiveChatThread({ conv, user }){
     const t=(text||draft).trim(); if(!t) return;
     if (blocked) { toast('This conversation is closed.', 'fa-ban'); return; }
     setDraft('');
-    sendChatMessage({ convId: conv.id, user, text: t, recipientUid: otherId })
+    sendChatMessage({ convId: conv.id, conv, user, text: t, recipientUid: otherId })
       .catch(() => toast('Message failed to send', 'fa-triangle-exclamation'));
   };
   const report = () => {
