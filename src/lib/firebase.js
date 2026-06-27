@@ -138,6 +138,8 @@ export const markOrderReady = callable('markOrderReady');
 export const confirmStorePickup = callable('confirmStorePickup');
 /** Store owner: set tax profile (KRA PIN + VAT-registered) → { ok }. { kraPin, vatRegistered }. */
 export const setMerchantTaxInfo = callable('setMerchantTaxInfo');
+/** Store owner: record an in-store POS sale → { saleId, invoiceNo?, checkoutRequestId?, status }. { items:[{pid,qty}], payMethod, phone?, customerName? }. */
+export const posSale = callable('posSale');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {
