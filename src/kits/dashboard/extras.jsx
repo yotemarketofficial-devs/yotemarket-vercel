@@ -1,6 +1,6 @@
 /* extras.jsx — Merchant: Sales, Wallet, Subscription, Settings, Chat (aligned theme). */
 import React from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, limit } from 'firebase/firestore';
 import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './primitives.jsx';
 import { OrdersTable } from './overview.jsx';
 import { ORDER_ROWS, WALLET, ksh } from './data.js';
@@ -36,11 +36,22 @@ export function Sales(){
 }
 
 /* ---------- WALLET ---------- */
+const RCPT_ICON = { subscription:'fa-id-card', pos:'fa-store', payout:'fa-money-bill-transfer', order:'fa-bag-shopping', wallet_topup:'fa-wallet', redemption:'fa-gift' };
+
 export function Wallet({ toast }){
   const { merchant, live } = useMerchant();
+  const { user } = useAuth();
+  const [receipts, setReceipts] = useStateX([]);
+  useEffX(() => {
+    if (!firebaseEnabled || !db || !user?.uid) return undefined;
+    const u = onSnapshot(query(collection(db, 'receipts'), where('userId', '==', user.uid), limit(40)),
+      (s) => setReceipts(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))),
+      () => {});
+    return () => u();
+  }, [user?.uid]);
   const total = WALLET.flow.reduce((s,f)=>s+(f.neg?0:f.value),0);
   const balance = live ? (merchant?.balanceAvailable || 0) : WALLET.balance;
-  const txs = live ? [] : WALLET.tx;
+  const fmtRcptWhen = (r) => r.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short' }) : '';
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Wallet</h1>
@@ -53,16 +64,27 @@ export function Wallet({ toast }){
             <div style={{ color:'rgba(255,255,255,.78)', fontSize:13, marginBottom:18 }}>Next auto-payout {WALLET.nextPayout} · via M-Pesa</div>
             <button className="ym-btn ym-btn-mpesa" style={{ width:'auto' }} onClick={()=>toast&&toast('Withdrawal requested')}><FA i="fa-mobile-screen" /> Withdraw to M-Pesa</button>
           </Card>
-          <SectionCard title="Recent transactions">
+          <SectionCard title="Receipts" sub="A digital receipt for every transaction">
             <div>
-              {txs.length === 0 && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No transactions yet.</div>}
-              {txs.map((t,i)=>(
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
-                  <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:t.dir==='in'?'var(--m-active-bg)':'var(--m-surface-2)', color:t.dir==='in'?'var(--m-active-fg)':'var(--m-fg3)' }}><FA i={t.icon} /></div>
-                  <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{t.t}</div><div className="ym-cap">{t.when}</div></div>
-                  <div style={{ fontWeight:700, color:t.dir==='in'?'var(--m-success)':'var(--m-fg1)' }}>{t.dir==='in'?'+':'−'}{ksh(t.amt)}</div>
-                </div>
-              ))}
+              {(live ? receipts.length === 0 : WALLET.tx.length === 0) && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No receipts yet.</div>}
+              {live
+                ? receipts.map((r,i)=>{
+                    const out = r.type === 'payout';
+                    return (
+                      <div key={r.id||i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
+                        <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:out?'var(--m-surface-2)':'var(--m-active-bg)', color:out?'var(--m-fg3)':'var(--m-active-fg)' }}><FA i={RCPT_ICON[r.type]||'fa-receipt'} /></div>
+                        <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.title||'Payment'}</div><div className="ym-cap">{fmtRcptWhen(r)}{r.ref?` · ${r.ref}`:''}</div></div>
+                        <div style={{ fontWeight:700, color:out?'var(--m-fg1)':'var(--m-success)' }}>{out?'−':'+'}{ksh(r.amount||0)}</div>
+                      </div>
+                    );
+                  })
+                : WALLET.tx.map((t,i)=>(
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
+                      <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:t.dir==='in'?'var(--m-active-bg)':'var(--m-surface-2)', color:t.dir==='in'?'var(--m-active-fg)':'var(--m-fg3)' }}><FA i={t.icon} /></div>
+                      <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{t.t}</div><div className="ym-cap">{t.when}</div></div>
+                      <div style={{ fontWeight:700, color:t.dir==='in'?'var(--m-success)':'var(--m-fg1)' }}>{t.dir==='in'?'+':'−'}{ksh(t.amt)}</div>
+                    </div>
+                  ))}
             </div>
           </SectionCard>
         </div>

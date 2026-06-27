@@ -3,7 +3,7 @@
    plus a working profile editor (name / phone / default pickup hub) and an
    owner-managed address book. No mock/demo data. */
 import React from 'react';
-import { doc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
 import { ymStore, ymProduct, ymPrice } from './data.js';
 import { findHub } from './hubs.js';
@@ -18,7 +18,7 @@ const fmtWhen = (t) => t?.when || (t?.createdAt?.seconds ? new Date(t.createdAt.
 
 /* Live shopper profile from users/{uid} (+ meta/wallet, wallet_tx, addresses). */
 function useProfileData(uid){
-  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[] });
+  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[], receipts:[] });
   useEffP(() => {
     if (!firebaseEnabled || !db || !uid) return undefined;
     const unsubs = [];
@@ -26,6 +26,8 @@ function useProfileData(uid){
     unsubs.push(onSnapshot(doc(db,'users',uid,'meta','wallet'), (s)=>{ const d=s.data()||{}; setData(p=>({ ...p, walletBalance:d.balance||0 })); }, ()=>{}));
     unsubs.push(onSnapshot(query(collection(db,'users',uid,'wallet_tx'), orderBy('createdAt','desc'), limit(6)), (s)=>{ setData(p=>({ ...p, walletTx:s.docs.map(d=>({ id:d.id, ...d.data() })) })); }, ()=>{}));
     unsubs.push(subscribeAddresses(uid, (a)=>setData(p=>({ ...p, addresses:a }))));
+    // Digital receipts (equality-only query → no composite index; sorted client-side).
+    unsubs.push(onSnapshot(query(collection(db,'receipts'), where('userId','==',uid), limit(30)), (s)=>{ const r=s.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); setData(p=>({ ...p, receipts:r })); }, ()=>{}));
     return () => unsubs.forEach(u=>u());
   }, [uid]);
   return data;
@@ -53,6 +55,7 @@ function EmptyRow({ icon, text }){
   return <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'26px 14px', textAlign:'center', color:'var(--m-fg3)' }}><FA i={icon} style={{ fontSize:24, color:'var(--m-fg4)' }} /><div style={{ fontSize:13.5 }}>{text}</div></div>;
 }
 
+const RECEIPT_ICON = { order:'fa-bag-shopping', wallet_topup:'fa-wallet', subscription:'fa-id-card', redemption:'fa-gift', pos:'fa-store', payout:'fa-money-bill-transfer' };
 const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', delivered:'active', confirmed:'pending', out:'pending', awaiting:'pending' };
 const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
 
@@ -215,6 +218,22 @@ export function ProfileScreen(){
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </Card>
+
+          <Card title="Receipts" icon="fa-receipt">
+            {prof.receipts.length === 0 ? (
+              <EmptyRow icon="fa-receipt" text="Your digital receipts for every payment will appear here." />
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                {prof.receipts.slice(0,8).map((r,i)=>(
+                  <div key={r.id||i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop:i?'1px solid var(--m-border)':'none' }}>
+                    <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i={RECEIPT_ICON[r.type]||'fa-receipt'} /></div>
+                    <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.title||'Payment'}</div><div className="ym-cap">{fmtWhen(r)}{r.ref?` · ${r.ref}`:''}</div></div>
+                    <div style={{ fontWeight:700, fontSize:14, color:'var(--m-fg1)' }}>{ymPrice(r.amount||0)}</div>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
