@@ -7,6 +7,7 @@ import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
 import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, Team } from './screens.jsx';
 import { Economics } from './economics.jsx';
+import { Promotions } from './promotions.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims } from './service.js';
 const { useState: useSApp } = React;
@@ -18,11 +19,12 @@ const NAV = [
   { key:'scouts',       icon:'people-group',   label:'Scouts & payouts' },
   { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics' },
   { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet' },
+  { key:'promotions',   icon:'tags',           label:'Promotions & offers', adminOnly:true },
   { key:'moderation',   icon:'comment-slash',  label:'Chat moderation' },
   { key:'team',         icon:'user-shield',    label:'Team & roles', adminOnly:true },
   { key:'economics',    icon:'scale-balanced', label:'Pricing & economics', lock:true },
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, moderation:Moderation, team:Team, economics:Economics };
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, moderation:Moderation, team:Team, economics:Economics };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
 function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
@@ -72,7 +74,8 @@ function App(){
 
   const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
   const staffRole = role === 'admin' ? 'Operations Admin' : 'Moderator';
-  const effective = (active === 'team' && role !== 'admin') ? 'analytics' : active;
+  const activeNav = NAV.find(n => n.key === active);
+  const effective = (activeNav && activeNav.adminOnly && role !== 'admin') ? 'analytics' : active;
   const Screen = SCREENS[effective] || Analytics;
   return (
     <div className="min-h-screen bg-page" data-screen-label={'Staff — '+LABELS[active]}>
