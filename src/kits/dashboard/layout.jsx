@@ -69,7 +69,7 @@ export function TopBar({ onMenu, onChange }){
       <div className="wrap" style={{ height:64, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <button onClick={onMenu} className="icon-btn" aria-label="Menu" style={{ display:'none' }} data-menu><FA i="fa-bars" /></button>
-          <Logo size={28} />
+          <button onClick={()=>onChange&&onChange('overview')} aria-label="Go to overview" style={{ border:'none', background:'none', cursor:'pointer', padding:0, display:'flex' }}><Logo size={28} /></button>
           <span className="ym-cap" style={{ borderLeft:'1px solid var(--m-border)', paddingLeft:12, fontWeight:600 }}>Merchant</span>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>

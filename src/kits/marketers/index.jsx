@@ -42,7 +42,7 @@ function Sidebar({ active, go, onClose, onSignOut }){
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 py-5 flex items-center justify-between">
-        <Logo size={28} />
+        <button onClick={()=>{go('dashboard'); onClose&&onClose();}} style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex' }} aria-label="Go to dashboard"><Logo size={28} /></button>
         <button onClick={onClose} className="lg:hidden t3 w-8 h-8" aria-label="Close menu"><Icon name="xmark"/></button>
       </div>
       <div className="px-3">

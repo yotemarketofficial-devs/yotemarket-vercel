@@ -178,6 +178,7 @@ export function HomeScreen(){
 
 /* ---------- SEARCH ---------- */
 export function SearchScreen({ params }){
+  const { reset } = useYM();
   const [q, setQ] = useSS('');
   const [cat, setCat] = useSS(params.cat || 'all');
   const [tab, setTab] = useSS(params.tab || 'products');
@@ -188,6 +189,7 @@ export function SearchScreen({ params }){
   const showSub = params.sub && cat===(params.cat||'all');
   return (
     <div className="wrap anim-up" style={{ paddingTop:28 }}>
+      <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-house" /> Home</button>
       {cat!=='all' && (
         <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:7, marginBottom:14, flexWrap:'wrap' }}>
           <button onClick={()=>setCat('all')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12, color:'var(--m-fg3)', padding:0 }}>All categories</button>

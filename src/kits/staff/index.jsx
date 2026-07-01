@@ -39,7 +39,7 @@ function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5"><Logo size={26} /><span className="text-xs font-semibold t3 border-l pl-2.5 b-line">Ops</span></div>
+        <button onClick={()=>{go('analytics'); onClose&&onClose();}} className="flex items-center gap-2.5" style={{ background:'none', border:'none', cursor:'pointer', padding:0 }} aria-label="Go to overview"><Logo size={26} /><span className="text-xs font-semibold t3 border-l pl-2.5 b-line">Ops</span></button>
         <button onClick={onClose} className="lg:hidden t3 w-8 h-8" aria-label="Close menu"><Icon name="xmark"/></button>
       </div>
       <nav className="px-3 flex flex-col gap-0.5 flex-1 overflow-y-auto pb-3">
