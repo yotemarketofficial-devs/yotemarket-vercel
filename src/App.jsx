@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './Layout.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
@@ -19,7 +19,6 @@ const DashboardApp = lazy(() => import('./kits/dashboard/gated.jsx'));
 const MarketersApp = lazy(() => import('./kits/marketers/index.jsx'));
 const EarnLanding = lazy(() => import('./kits/earn/index.jsx'));
 const StaffApp = lazy(() => import('./kits/staff/index.jsx'));
-const AdminApp = lazy(() => import('./kits/admin/index.jsx'));
 const HubApp = lazy(() => import('./kits/hub/index.jsx'));
 
 function App() {
@@ -82,14 +81,9 @@ function App() {
             </KitFrame>
           }
         />
-        <Route
-          path="/admin"
-          element={
-            <KitFrame scope="kit-admin">
-              <AdminApp />
-            </KitFrame>
-          }
-        />
+        {/* /admin is merged into the staff portal — redirect any old links. */}
+        <Route path="/admin" element={<Navigate to="/staff" replace />} />
+        <Route path="/admin/*" element={<Navigate to="/staff" replace />} />
         <Route
           path="/hub"
           element={

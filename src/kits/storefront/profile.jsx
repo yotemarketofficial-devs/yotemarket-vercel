@@ -71,6 +71,7 @@ export function ProfileScreen(){
   const [addrEdit, setAddrEdit] = useSP(null);  // null=closed | {} new | {id,...} edit
   const [topupOpen, setTopupOpen] = useSP(false);
   const [redeemOpen, setRedeemOpen] = useSP(false);
+  const [receiptOpen, setReceiptOpen] = useSP(null); // selected receipt or null
   const tg = k => setNotif(n=>({ ...n, [k]:!n[k] }));
 
   if (!account.hasAccount) return <GuestGate icon="fa-user" title="Your account" sub="Sign in to manage your profile, addresses, wallet, and YotePoints rewards." />;
@@ -247,11 +248,12 @@ export function ProfileScreen(){
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
                 {prof.receipts.slice(0,8).map((r,i)=>(
-                  <div key={r.id||i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop:i?'1px solid var(--m-border)':'none' }}>
+                  <button key={r.id||i} onClick={()=>setReceiptOpen(r)} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 4px', borderTop:i?'1px solid var(--m-border)':'none', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', width:'100%', borderRadius:8 }}>
                     <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i={RECEIPT_ICON[r.type]||'fa-receipt'} /></div>
                     <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.title||'Payment'}</div><div className="ym-cap">{fmtWhen(r)}{r.ref?` · ${r.ref}`:''}</div></div>
                     <div style={{ fontWeight:700, fontSize:14, color:'var(--m-fg1)' }}>{ymPrice(r.amount||0)}</div>
-                  </div>
+                    <FA i="fa-chevron-right" style={{ color:'var(--m-fg3)', fontSize:12 }} />
+                  </button>
                 ))}
               </div>
             )}
@@ -273,6 +275,7 @@ export function ProfileScreen(){
       {addrEdit && <AddressEditor uid={uid} initial={addrEdit} onClose={()=>setAddrEdit(null)} toast={toast} />}
       {topupOpen && <WalletTopUp defaultPhone={phone} holderName={fullName} onClose={()=>setTopupOpen(false)} toast={toast} />}
       {redeemOpen && <RedeemPoints points={prof.points} onClose={()=>setRedeemOpen(false)} toast={toast} />}
+      {receiptOpen && <ReceiptDetail r={receiptOpen} account={account} onClose={()=>setReceiptOpen(null)} />}
 
       <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
@@ -354,6 +357,63 @@ function AddressEditor({ uid, initial, onClose, toast }){
       <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:20 }} disabled={busy} onClick={save}>
         {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Saving…</> : <><FA i="fa-check" /> {editing ? 'Save address' : 'Add address'}</>}
       </button>
+    </Modal>
+  );
+}
+
+const RECEIPT_TYPE_LABEL = { order:'Order payment', wallet_topup:'Wallet top-up', subscription:'Subscription', redemption:'Points redemption', pos:'In-store sale', payout:'Payout' };
+const RECEIPT_METHOD_LABEL = { mpesa:'M-Pesa', wallet:'YoteWallet', cash:'Cash', points:'YotePoints', card:'Card' };
+const fmtReceiptWhen = (r) => r?.createdAt?.seconds
+  ? new Date(r.createdAt.seconds * 1000).toLocaleString('en-KE', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+  : (r?.when || '—');
+
+/* Full digital-receipt detail. Every receipt row opens this — it shows the payer,
+   method, reference, itemised lines (where present) and the receipt id. */
+function ReceiptDetail({ r, account, onClose }){
+  const lines = Array.isArray(r.lines) ? r.lines : [];
+  const Row = ({ label, value }) => (
+    <div style={{ display:'flex', justifyContent:'space-between', gap:16, padding:'9px 0', borderTop:'1px solid var(--m-border)' }}>
+      <span className="ym-cap" style={{ color:'var(--m-fg3)' }}>{label}</span>
+      <span className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, textAlign:'right', wordBreak:'break-word' }}>{value}</span>
+    </div>
+  );
+  return (
+    <Modal title="Digital receipt" onClose={onClose}>
+      <div style={{ textAlign:'center', marginBottom:6 }}>
+        <div style={{ width:56, height:56, borderRadius:16, margin:'0 auto 12px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i={RECEIPT_ICON[r.type]||'fa-receipt'} /></div>
+        <div className="ym-h2" style={{ fontSize:16 }}>{r.title || RECEIPT_TYPE_LABEL[r.type] || 'Payment'}</div>
+        <div style={{ fontSize:30, fontWeight:800, color:'var(--m-fg1)', marginTop:4 }}>{ymPrice(r.amount||0)}</div>
+        <div className="ym-cap" style={{ color:'var(--m-fg3)', marginTop:4 }}>{fmtReceiptWhen(r)}</div>
+      </div>
+
+      {lines.length > 0 && (
+        <div style={{ margin:'16px 0', padding:'4px 14px', borderRadius:12, background:'var(--m-surface-2)' }}>
+          {lines.map((l,idx)=>(
+            <div key={idx} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'9px 0', borderTop:idx?'1px solid var(--m-border)':'none' }}>
+              <span className="ym-sub" style={{ color:'var(--m-fg2)' }}>{l.label}</span>
+              <span className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap' }}>{ymPrice(l.amount||0)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop:16 }}>
+        <Row label="Type" value={RECEIPT_TYPE_LABEL[r.type] || r.type || 'Payment'} />
+        <Row label="Paid with" value={RECEIPT_METHOD_LABEL[r.method] || r.method || '—'} />
+        {r.ref && <Row label="Reference" value={r.ref} />}
+        {r.meta?.orderId && <Row label="Order" value={`#${String(r.meta.orderId).slice(0,8).toUpperCase()}`} />}
+        {r.meta?.saleId && <Row label="Sale" value={`#${String(r.meta.saleId).slice(0,8).toUpperCase()}`} />}
+        <Row label="Paid by" value={account?.name || account?.email || 'You'} />
+        <Row label="Receipt no." value={<span style={{ fontFamily:'monospace', fontSize:12 }}>{r.id}</span>} />
+        <Row label="Currency" value={r.currency || 'KES'} />
+      </div>
+
+      <div style={{ marginTop:16, padding:'12px 14px', borderRadius:12, background:'var(--m-surface-2)', display:'flex', gap:10, alignItems:'flex-start' }}>
+        <FA i="fa-shield-halved" style={{ color:'var(--m-primary)', marginTop:2 }} />
+        <span className="ym-cap" style={{ color:'var(--m-fg3)', lineHeight:1.5 }}>Official YoteMarket digital receipt. Keep it as proof of payment for this transaction.</span>
+      </div>
+
+      <button className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:16 }} onClick={()=>{ try{ window.print(); }catch(e){} }}><FA i="fa-print" /> Print / save as PDF</button>
     </Modal>
   );
 }

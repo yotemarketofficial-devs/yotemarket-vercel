@@ -152,17 +152,24 @@ export function Finance({ isAdmin }){
   };
   const remove = async (e) => { if (!window.confirm('Delete this entry?')) return; try { await deleteFinanceEntry({ id: e.id }); load(); } catch (err) { setMsg({ ok:false, text:err.message || 'Failed.' }); } };
 
+  const live = data.live || {};
   return (
     <div className="fadeup space-y-6">
-      <SectionHead icon="chart-line" title="Finance" sub="Revenue, expenses and the internal ledger" />
+      <SectionHead icon="chart-line" title="Finance" sub="Live platform revenue and the internal ledger" />
       <Banner msg={msg} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Stat label="Platform revenue (live)" value={kes(live.subscriptionRevenue || 0)} sub={`${live.paidSubscriptions || 0} paid subscriptions`} icon="sack-dollar" tone="green" />
+        <Stat label="This month" value={kes(live.subscriptionRevenueMonth || 0)} sub="Subscription income" icon="calendar-day" tone="pri" />
+        <Stat label="Active subscribers" value={live.activeSubscriptions || 0} sub="Merchants on a live plan" icon="id-card" tone="blue" />
+      </div>
+      <p className="text-xs t3 -mt-2 flex items-center gap-1.5"><Icon name="circle-info" />Platform revenue is subscription-based — merchants keep order value via escrow &amp; release. Figures are live from settled M-Pesa payments.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Stat label="Recorded revenue" value={kes(data.revenue)} icon="arrow-trend-up" tone="green" />
         <Stat label="Recorded expenses" value={kes(data.expenses)} icon="arrow-trend-down" tone="red" />
-        <Stat label="Net" value={kes(data.net)} icon="scale-balanced" tone={data.net >= 0 ? 'pri' : 'amber'} />
+        <Stat label="Recorded net" value={kes(data.net)} icon="scale-balanced" tone={data.net >= 0 ? 'pri' : 'amber'} />
       </div>
-      <p className="text-xs t3 -mt-2 flex items-center gap-1.5"><Icon name="circle-info" />These totals reflect entries recorded here. Live platform revenue (subscriptions, commissions) is wired in a follow-up.</p>
 
       <Card className="p-6 space-y-4">
         <h3 className="font-bold t1">Record an entry</h3>
