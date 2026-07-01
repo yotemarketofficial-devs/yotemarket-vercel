@@ -15,7 +15,7 @@ export function Header(){
   const [menu, setMenu] = useSC(false);
   return (
     <header style={{ position:'sticky', top:0, zIndex:60, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
-      <div className="wrap" style={{ height:68, display:'flex', alignItems:'center', gap:20 }}>
+      <div className="wrap ym-hdr" style={{ height:68, display:'flex', alignItems:'center', gap:20 }}>
         <button onClick={()=>reset('home')} style={{ border:'none', background:'none', cursor:'pointer', flexShrink:0 }}>
           <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:28, display:'block' }} />
         </button>
@@ -23,7 +23,7 @@ export function Header(){
           background:'var(--m-surface-2)', display:'flex', alignItems:'center', gap:11, padding:'0 18px', fontFamily:'inherit', fontSize:14.5, color:'var(--m-fg3)' }}>
           <FA i="fa-magnifying-glass" style={{ color:'var(--m-primary)', fontSize:15 }} /> Search the mall…
         </button>
-        <div style={{ flex:1 }} />
+        <div className="ym-hdr-spacer" style={{ flex:1 }} />
         <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><FA i="fa-wand-magic-sparkles" /></button>
         <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />
@@ -96,7 +96,7 @@ export function Header(){
           </div>
         </div>
       </>)}
-      <style>{`@media (max-width:640px){ .acct-name{ display:none; } } .cat-sub:hover{ color:var(--m-primary) !important; }`}</style>
+      <style>{`.cat-sub:hover{ color:var(--m-primary) !important; } @media (max-width:640px){ .acct-name{ display:none; } .ym-hdr{ gap:10px !important; } .ym-hdr-spacer{ display:none !important; } }`}</style>
     </header>
   );
 }

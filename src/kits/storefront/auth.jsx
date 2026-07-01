@@ -75,12 +75,12 @@ export function Auth({ onShopper, onGuest, onClose, overlay=false, theme, onThem
 
   return (
     <div style={wrapStyle} onClick={(e)=>{ if(overlay && onClose && e.target===e.currentTarget) onClose(); }}>
-      <div className="ym-card anim-up" style={{ position:'relative', width:'100%', maxWidth:980, minHeight:600, display:'grid', gridTemplateColumns:'1fr 1fr', overflow:'hidden', boxShadow:'var(--m-shadow-float)' }}>
+      <div className="ym-card anim-up auth-modal" style={{ position:'relative', width:'100%', maxWidth:980, minHeight:600, display:'grid', gridTemplateColumns:'1fr 1fr', overflow:'hidden', boxShadow:'var(--m-shadow-float)' }}>
         {onClose && (
           <button onClick={onClose} aria-label="Close" className="icon-btn" style={{ position:'absolute', top:14, right:14, zIndex:5, background:'rgba(255,255,255,.16)', color:'#fff' }}><FA i="fa-xmark" /></button>
         )}
         <div className="auth-brand"><BrandPanel theme={theme} onTheme={onTheme} /></div>
-        <div style={{ padding:'44px 44px', display:'flex', flexDirection:'column', justifyContent:'center', overflowY:'auto' }}>
+        <div className="auth-form-panel" style={{ padding:'44px 44px', display:'flex', flexDirection:'column', justifyContent:'center', overflowY:'auto' }}>
           <div style={{ maxWidth:380, width:'100%', margin:'0 auto' }}>
             <h2 className="ym-h1" style={{ fontSize:26 }}>{mode==='signin'?'Welcome back':'Create your account'}</h2>
             <p className="ym-sub" style={{ marginTop:6 }}>{mode==='signin'?'Sign in to check out, track orders, and chat with sellers.':'Join Kenya’s virtual mall in a few taps.'}</p>
@@ -139,7 +139,7 @@ export function Auth({ onShopper, onGuest, onClose, overlay=false, theme, onThem
           </div>
         </div>
       </div>
-      <style>{`@media (max-width:780px){ .auth-brand{ display:none; } }`}</style>
+      <style>{`@media (max-width:780px){ .auth-brand{ display:none; } .auth-modal{ grid-template-columns:1fr !important; min-height:auto !important; } } @media (max-width:480px){ .auth-form-panel{ padding:32px 20px !important; } }`}</style>
     </div>
   );
 }

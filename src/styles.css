@@ -15,10 +15,14 @@ html.dark{
 }
 *{box-sizing:border-box;}
 html{scroll-behavior:smooth;}
+/* Global responsive safety net: never let content force horizontal scrolling, and
+   keep all media fluid. overflow-x:clip (not hidden) so position:sticky still works. */
+html,body{max-width:100%; overflow-x:clip;}
 body{margin:0; font-family:'Poppins','Inter',system-ui,sans-serif; background:var(--bg); color:var(--t2);
   -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; line-height:1.55;}
 a{text-decoration:none; color:inherit;}
-img{max-width:100%; display:block;}
+img,svg,video,canvas,iframe{max-width:100%;}
+img{display:block;}
 button{font:inherit;}
 .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px;}
 .nav{position:sticky; top:0; z-index:50; background:color-mix(in srgb, var(--bg) 82%, transparent);

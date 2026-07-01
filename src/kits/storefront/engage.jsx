@@ -99,8 +99,8 @@ function LiveMessages({ params, user, account }){
       <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Home</button>
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Messages</h1>
       <NotifyBanner user={user} />
-      <div className="ym-card msg-grid" style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:560 }}>
-        <div style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
+      <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:'min(560px, 72vh)', minHeight:400 }}>
+        <div className="msg-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           <button onClick={()=>nav('ai')} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:14, display:'flex', alignItems:'center', gap:12, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
             <div style={{ width:46, height:46, borderRadius:13, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:18 }} /></div>
             <div style={{ flex:1, minWidth:0 }}><div style={{ color:'#fff', fontWeight:700, fontSize:14 }}>YoteAI Assistant</div><div style={{ color:'rgba(255,255,255,.85)', fontSize:12 }}>Find products & best deals</div></div>
@@ -131,16 +131,25 @@ function LiveMessages({ params, user, account }){
             );
           })}
         </div>
-        {selConv
-          ? <LiveChatThread key={selConv.id} conv={selConv} user={user} />
-          : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24, textAlign:'center' }}>Select a conversation to start chatting.</div>}
+        <div className="msg-thread" style={{ minWidth:0, display:'flex', flexDirection:'column' }}>
+          {selConv
+            ? <LiveChatThread key={selConv.id} conv={selConv} user={user} onBack={()=>setSel(null)} />
+            : <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24, textAlign:'center' }}>Select a conversation to start chatting.</div>}
+        </div>
       </div>
-      <style>{`@media (max-width:640px){ .msg-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`
+        @media (max-width:640px){
+          .msg-grid{ grid-template-columns:1fr !important; }
+          .msg-grid[data-view="thread"] .msg-list{ display:none !important; }
+          .msg-grid[data-view="list"] .msg-thread{ display:none !important; }
+          .msg-back{ display:inline-flex !important; }
+        }
+      `}</style>
     </div>
   );
 }
 
-function LiveChatThread({ conv, user }){
+function LiveChatThread({ conv, user, onBack }){
   const { toast } = useYM();
   const myUid = user.uid;
   const otherId = otherParticipant(conv, myUid);
@@ -177,6 +186,7 @@ function LiveChatThread({ conv, user }){
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
+        <button className="msg-back" onClick={onBack} aria-label="Back to conversations" style={{ display:'none', width:34, height:34, borderRadius:9999, border:'none', background:'var(--m-surface-2)', color:'var(--m-fg2)', cursor:'pointer', alignItems:'center', justifyContent:'center', flexShrink:0 }}><FA i="fa-arrow-left" /></button>
         <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={42} radius={9999} img={info.logo || info.img} />
         <div style={{ flex:1, minWidth:0 }}>
           <div className="ym-h3">{info.name || 'Store'}</div>
@@ -258,7 +268,7 @@ export function AIScreen(){
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:760, margin:'0 auto' }}>
       <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Home</button>
-      <div className="ym-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:600 }}>
+      <div className="ym-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:'min(600px, 76vh)', minHeight:420 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
           <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:17 }} /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Shopping assistant</div></div>
