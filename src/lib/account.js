@@ -64,6 +64,7 @@ export function followStore(uid, store) {
     icon: store.icon || 'fa-store',
     tint: store.tint || '#4f46e5',
     ...(store.img ? { img: store.img } : {}),
+    ...(store.logo ? { logo: store.logo } : {}),
     followedAt: serverTimestamp(),
   });
 }

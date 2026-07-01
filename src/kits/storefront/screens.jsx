@@ -5,7 +5,94 @@ import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPri
 import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
+import { subscribeProductReviews } from '../../lib/reviews.js';
+import { submitReview } from '../../lib/firebase.js';
 const { useState: useSS, useEffect: useEffSS } = React;
+
+/* ---------- PRODUCT REVIEWS (live, functional) ---------- */
+function fmtReviewDate(r){ return r?.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short', year:'numeric' }) : ''; }
+
+function StarPicker({ value, onChange }){
+  const [hover, setHover] = useSS(0);
+  return (
+    <span style={{ display:'inline-flex', gap:4 }} onMouseLeave={()=>setHover(0)}>
+      {[1,2,3,4,5].map(n=>(
+        <button key={n} type="button" onClick={()=>onChange(n)} onMouseEnter={()=>setHover(n)} aria-label={`${n} star${n>1?'s':''}`}
+          style={{ background:'none', border:'none', cursor:'pointer', padding:0, fontSize:22, lineHeight:1, color:(hover||value)>=n?'#f5a524':'var(--m-fg4)' }}>
+          <i className={`fa-star ${(hover||value)>=n?'fas':'far'}`} />
+        </button>
+      ))}
+    </span>
+  );
+}
+
+function ProductReviews({ product }){
+  const { toast, requireAuth } = useYM();
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const [reviews, setReviews] = useSS(null); // null = loading
+  const [rating, setRating] = useSS(0);
+  const [text, setText] = useSS('');
+  const [busy, setBusy] = useSS(false);
+
+  useEffSS(() => subscribeProductReviews(product.id, setReviews), [product.id]);
+
+  const list = reviews || [];
+  const mine = uid ? list.find(r => r.userId === uid) : null;
+  useEffSS(() => { if (mine){ setRating(mine.rating||0); setText(mine.text||''); } }, [mine?.id]);
+
+  const count = list.length;
+  const avg = count ? Math.round((list.reduce((s,r)=>s+(r.rating||0),0)/count)*10)/10 : (product.rating || 0);
+
+  const send = () => {
+    if (!uid) { requireAuth(()=>{}); return; }
+    if (!(rating>=1)) { toast('Pick a star rating first', 'fa-star'); return; }
+    setBusy(true);
+    submitReview({ productId: product.id, rating, text: text.trim() || undefined })
+      .then(()=>{ toast(mine ? 'Review updated' : 'Thanks for your review!', 'fa-star'); })
+      .catch(e=>toast(e.message || 'Could not submit review', 'fa-triangle-exclamation'))
+      .finally(()=>setBusy(false));
+  };
+
+  return (
+    <div style={{ marginTop:44 }}>
+      <SectionTitle>Ratings & reviews</SectionTitle>
+      <div className="ym-card" style={{ padding:20, marginBottom:18, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
+        <div style={{ textAlign:'center', minWidth:96 }}>
+          <div style={{ fontSize:38, fontWeight:800, color:'var(--m-fg1)', lineHeight:1 }}>{count ? avg.toFixed(1) : '—'}</div>
+          <div style={{ margin:'6px 0 2px' }}><Stars rating={avg} size={15} /></div>
+          <div className="ym-cap">{count} review{count!==1?'s':''}</div>
+        </div>
+        <div style={{ flex:1, minWidth:220 }}>
+          <div className="ym-h3" style={{ fontSize:15, marginBottom:6 }}>{mine ? 'Update your review' : 'Rate this product'}</div>
+          <StarPicker value={rating} onChange={setRating} />
+          <textarea className="ym-input" value={text} onChange={e=>setText(e.target.value)} placeholder="Share your experience (optional)…" rows={2} style={{ resize:'vertical', marginTop:10, width:'100%' }} />
+          <button className="ym-btn ym-btn-primary ym-btn-sm" style={{ marginTop:10 }} disabled={busy} onClick={send}>
+            <FA i={busy?'fa-circle-notch':'fa-paper-plane'} style={busy?{ animation:'ym-spin 1s linear infinite' }:null} /> {mine ? 'Update review' : 'Submit review'}
+          </button>
+        </div>
+      </div>
+      {reviews === null ? <div className="ym-cap" style={{ padding:'8px 2px' }}>Loading reviews…</div>
+        : count === 0 ? <EmptyBlock icon="fa-star" text="No reviews yet — be the first to review this product." />
+          : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {list.map(r=>(
+                <div key={r.id} className="ym-card" style={{ padding:16 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+                    <div style={{ width:34, height:34, borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:13 }}>{(r.author||'?').slice(0,1).toUpperCase()}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div className="ym-h3" style={{ fontSize:13.5 }}>{r.author || 'Shopper'}{r.userId===uid && <span className="ym-cap" style={{ marginLeft:6 }}>· You</span>}</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}><Stars rating={r.rating} size={12} /><span className="ym-cap">{fmtReviewDate(r)}</span></div>
+                    </div>
+                  </div>
+                  {r.text && <p className="ym-body" style={{ margin:0, fontSize:14 }}>{r.text}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+    </div>
+  );
+}
 
 function NotFound({ back, label }){
   return (
@@ -163,8 +250,10 @@ export function ProductScreen({ params }){
         <div>
           <h1 className="ym-h1" style={{ fontSize:26 }}>{p.name}</h1>
           <div style={{ display:'flex', alignItems:'center', gap:10, margin:'10px 0 14px', flexWrap:'wrap' }}>
-            <Stars rating={p.rating} /><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{p.rating}</span>
-            <span className="ym-cap">({p.reviews} reviews)</span>
+            {p.reviews > 0 ? (
+              <><Stars rating={p.rating} /><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{p.rating}</span>
+              <span className="ym-cap">({p.reviews} review{p.reviews!==1?'s':''})</span></>
+            ) : <span className="ym-cap"><Stars rating={0} /> No reviews yet</span>}
             <span className={'ym-pill '+(p.stock?'ym-pill-active':'ym-pill-inactive')}>{p.stock?'In stock':'Out of stock'}</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
@@ -175,7 +264,7 @@ export function ProductScreen({ params }){
             <Thumb icon={store.icon} tint={store.tint} size={46} radius={9999} img={store.logo || store.img} />
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}><span className="ym-h3" style={{ fontSize:14 }}>{store.name}</span>{store.verified && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:12 }} />}</div>
-              <div className="ym-cap">{store.area} · {store.rating} ★ · replies {store.responds}</div>
+              <div className="ym-cap">{store.area}{store.reviews > 0 ? ` · ${store.rating} ★` : ''}{store.responds ? ` · replies ${store.responds}` : ''}</div>
             </div>
             <span style={{ fontSize:13, fontWeight:600, color:'var(--m-link)' }}>Visit store <FA i="fa-chevron-right" style={{ fontSize:11 }} /></span>
           </div>
@@ -188,6 +277,8 @@ export function ProductScreen({ params }){
           <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>requireAuth(()=>nav('messages',{ store }))}><FA i="fa-comments" style={{ fontSize:17 }} /> Chat with seller · Make an offer</button>
         </div>
       </div>
+
+      <ProductReviews product={p} />
 
       {related.length>0 && (
         <div style={{ marginTop:48 }}>
@@ -251,7 +342,7 @@ export function StoreScreen({ params }){
       </div>
       <div className="wrap" style={{ marginTop:20 }}>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:24 }}>
-          {[[fmtK(s.followers+(following?1:0)),'Followers'],[s.products,'Products'],[s.rating+' ★',`${fmtK(s.reviews)} reviews`],['Since '+s.since,'On YoteMarket'],...(s.isHub?[['Pickup','Hub store']]:[])].map(([v,l])=>(
+          {[[fmtK((s.followers||0)+(following?1:0)),'Followers'],[s.products||0,'Products'],[(s.reviews>0?s.rating:'—')+' ★',`${fmtK(s.reviews||0)} reviews`],['Since '+(s.since||'—'),'On YoteMarket'],...(s.isHub?[['Pickup','Hub store']]:[])].map(([v,l])=>(
             <div key={l} className="ym-card" style={{ padding:'14px 20px', textAlign:'center', flex:'1 1 140px' }}>
               <div style={{ fontWeight:700, fontSize:17, color:'var(--m-fg1)' }}>{v}</div><div className="ym-cap" style={{ marginTop:2 }}>{l}</div>
             </div>

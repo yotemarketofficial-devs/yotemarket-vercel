@@ -156,6 +156,8 @@ export const listPromos = callable('listPromos');
 export const setPromoActive = callable('setPromoActive');
 /** Merchant: redeem a coupon code → { type, months?|value? }. { code }. */
 export const redeemCoupon = callable('redeemCoupon');
+/** Shopper: submit/update a product review → { ok, rating, reviews }. { productId, rating, text? }. */
+export const submitReview = callable('submitReview');
 
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */

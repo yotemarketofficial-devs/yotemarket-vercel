@@ -97,6 +97,7 @@ export async function openStoreConversation({ store, user, shopperName }) {
           icon: store.icon || 'fa-store',
           tint: store.tint || '#4f46e5',
           ...(store.img ? { img: store.img } : {}),
+          ...(store.logo ? { logo: store.logo } : {}),
         },
       },
       unread: { [shopperUid]: 0, [merchantUid]: 0 },

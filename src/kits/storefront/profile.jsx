@@ -197,7 +197,7 @@ export function ProfileScreen(){
                 {prof.follows.map((f)=>(
                   <div key={f.id} style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <button onClick={()=>nav('store',{ sid:f.storeId })} style={{ flex:1, display:'flex', alignItems:'center', gap:12, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:0 }}>
-                      <Thumb icon={f.icon||'fa-store'} tint={f.tint||'#7c3aed'} size={42} radius={12} img={f.img} />
+                      <Thumb icon={f.icon||'fa-store'} tint={f.tint||'#7c3aed'} size={42} radius={12} img={f.logo || f.img} />
                       <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name||'Store'}</div><div className="ym-cap">Tap to visit</div></div>
                     </button>
                     <button onClick={()=>{ unfollowStore(uid, f.storeId).then(()=>toast('Unfollowed','fa-bell')).catch(()=>toast('Could not unfollow','fa-triangle-exclamation')); }} style={linkBtn}>Unfollow</button>

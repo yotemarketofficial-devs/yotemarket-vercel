@@ -5,6 +5,7 @@
    (Ollama Cloud) with a warm local fallback. */
 import React from 'react';
 import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
+import Markdown from '../../components/Markdown.jsx';
 import { YM_PRODUCTS, ymStore, ymProduct, ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
@@ -89,7 +90,7 @@ function LiveMessages({ params, user, account }){
   const selConv = list.find((c) => c.id === sel)
     || (paramStore && sel === conversationId(paramStore.id, myUid)
       ? { id: sel, storeId: paramStore.id, participants: [myUid, paramStore.ownerId], info: {
-          [paramStore.ownerId]: { name: paramStore.name, role: 'merchant', icon: paramStore.icon, tint: paramStore.tint, img: paramStore.img },
+          [paramStore.ownerId]: { name: paramStore.name, role: 'merchant', icon: paramStore.icon, tint: paramStore.tint, img: paramStore.img, logo: paramStore.logo },
         }, unread: {} }
       : list[0] || null);
 
@@ -119,7 +120,7 @@ function LiveMessages({ params, user, account }){
             return (
               <button key={c.id} onClick={()=>setSel(c.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', alignItems:'center', gap:12, background: sel===c.id?'var(--m-surface-3)':'transparent' }}>
                 <div style={{ position:'relative', flexShrink:0 }}>
-                  <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={46} radius={9999} img={info.img} />
+                  <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={46} radius={9999} img={info.logo || info.img} />
                   {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -176,7 +177,7 @@ function LiveChatThread({ conv, user }){
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
-        <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={42} radius={9999} img={info.img} />
+        <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={42} radius={9999} img={info.logo || info.img} />
         <div style={{ flex:1, minWidth:0 }}>
           <div className="ym-h3">{info.name || 'Store'}</div>
           <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Usually replies quickly'}</div>
@@ -265,9 +266,9 @@ export function AIScreen(){
         <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
           {msgs.map((m,i)=>(
             <div key={i} style={{ display:'flex', flexDirection:'column', gap:8, alignItems:m.role==='user'?'flex-end':'flex-start' }}>
-              <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:'pre-wrap',
+              <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:m.role==='user'?'pre-wrap':'normal',
                 background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
-                color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.content}</div>
+                color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.role==='assistant' ? <Markdown text={m.content} /> : m.content}</div>
               {m.role==='assistant' && m.products && m.products.length>0 && (
                 <div style={{ display:'flex', flexDirection:'column', gap:8, width:'100%', maxWidth:'92%' }}>
                   {m.products.slice(0,5).map(r=><AIResultCard key={r.id} r={r} />)}
