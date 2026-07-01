@@ -150,6 +150,8 @@ export const grantFreeMonths = callable('grantFreeMonths');
 export const backfillReceipts = callable('backfillReceipts');
 /** Staff: patch store logos into existing chats + followed-store records → { conversations, follows }. */
 export const backfillStoreLogos = callable('backfillStoreLogos');
+/** Staff: award YotePoints for past delivered orders → { orders, points }. */
+export const backfillPoints = callable('backfillPoints');
 /** Admin: create a coupon → { id, code }. { code, type, value, name?, maxRedemptions?, expiresAt? }. */
 export const createPromo = callable('createPromo');
 /** Staff: list promotions/coupons → { promos }. */
