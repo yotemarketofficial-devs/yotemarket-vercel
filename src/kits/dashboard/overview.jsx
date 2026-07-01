@@ -3,11 +3,29 @@ import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
 import { INSIGHTS, ksh } from './data.js';
 import { useShop, useStoreOverview } from './merchant.jsx';
-import { getHandoverCode, markOrderReady, confirmStorePickup } from '../../lib/firebase.js';
+import { getHandoverCode, markOrderReady, confirmStorePickup, cancelOrder } from '../../lib/firebase.js';
 const { useState: useStateO } = React;
 
 // Real custody status → merchant-facing label.
-const CUSTODY_LBL = { queued:'Finding rider', accepted:'Rider on the way', picked_up:'Picked up', at_hub:'At hub', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', placed:'Placed' };
+const CUSTODY_LBL = { queued:'Finding rider', accepted:'Rider on the way', picked_up:'Picked up', at_hub:'At hub', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', placed:'Placed', cancelled:'Cancelled' };
+// A merchant can cancel until the goods physically move (mirrors the server).
+const CANCELLABLE_M = ['placed','queued','preparing','ready_pickup'];
+
+/* Merchant-side order cancellation (auto-refunds a paid order to the buyer). */
+function CancelOrderBtn({ orderId }){
+  const [busy, setBusy] = useStateO(false);
+  const [done, setDone] = useStateO(false);
+  const cancel = async () => {
+    const reason = window.prompt('Cancel this order? Optionally add a reason for the customer:', '');
+    if (reason === null) return;
+    setBusy(true);
+    try { await cancelOrder({ orderId, reason: reason || undefined }); setDone(true); }
+    catch (e) { window.alert(e.message || 'Could not cancel this order.'); }
+    finally { setBusy(false); }
+  };
+  if (done) return <span className="ym-cap" style={{ color:'var(--m-inactive-fg)' }}>Cancelled</span>;
+  return <button onClick={cancel} disabled={busy} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ color:'var(--m-danger)' }}>{busy ? '…' : 'Cancel'}</button>;
+}
 
 /* Store-pickup actions: mark ready, then confirm collection with the shopper's code. */
 function StorePickupAction({ orderId, status }){
@@ -160,9 +178,12 @@ export function OrdersTable({ rows }){
                 <td style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ksh(o.total)}</td>
                 <td>{o.hub}</td>
                 <td><Pill tone={o.status}>{CUSTODY_LBL[o.rawStatus] || lbl[o.status]}</Pill></td>
-                <td>{o.fulfillment === 'store_pickup'
-                  ? <StorePickupAction orderId={o.id} status={o.rawStatus} />
-                  : (o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>)}</td>
+                <td>
+                  {o.fulfillment === 'store_pickup'
+                    ? <StorePickupAction orderId={o.id} status={o.rawStatus} />
+                    : (o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>)}
+                  {CANCELLABLE_M.includes(o.rawStatus) && <div style={{ marginTop:6 }}><CancelOrderBtn orderId={o.id} /></div>}
+                </td>
                 <td className="ym-cap">{o.date}</td>
               </tr>
             ))}

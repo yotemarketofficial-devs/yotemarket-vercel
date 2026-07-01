@@ -55,7 +55,7 @@ function ProductReviews({ product }){
   };
 
   return (
-    <div style={{ marginTop:44 }}>
+    <div id="product-reviews" style={{ marginTop:44, scrollMarginTop:80 }}>
       <SectionTitle>Ratings & reviews</SectionTitle>
       <div className="ym-card" style={{ padding:20, marginBottom:18, display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
         <div style={{ textAlign:'center', minWidth:96 }}>
@@ -254,6 +254,7 @@ export function ProductScreen({ params }){
               <><Stars rating={p.rating} /><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{p.rating}</span>
               <span className="ym-cap">({p.reviews} review{p.reviews!==1?'s':''})</span></>
             ) : <span className="ym-cap"><Stars rating={0} /> No reviews yet</span>}
+            <button onClick={()=>document.getElementById('product-reviews')?.scrollIntoView({ behavior:'smooth' })} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, color:'var(--m-link)', padding:0, display:'inline-flex', alignItems:'center', gap:5 }}><FA i="fa-star" /> Write a review</button>
             <span className={'ym-pill '+(p.stock?'ym-pill-active':'ym-pill-inactive')}>{p.stock?'In stock':'Out of stock'}</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>

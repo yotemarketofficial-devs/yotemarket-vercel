@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from 
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, submitReview, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -334,18 +334,60 @@ function orderView(o){
   };
 }
 
-const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', preparing:'pending', ready_pickup:'active', delivered:'active', out:'pending', awaiting:'pending' };
-const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
+const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', preparing:'pending', ready_pickup:'active', delivered:'active', out:'pending', awaiting:'pending', cancelled:'inactive' };
+const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup', cancelled:'Cancelled' };
+// A buyer/merchant can cancel until the goods physically move (mirrors the server).
+const CANCELLABLE = ['placed','queued','preparing','ready_pickup'];
+
+/* Inline per-product rating for a delivered order — the natural place to review
+   after receiving your items. Submits via the same submitReview callable. */
+function ItemReview({ productId }){
+  const { toast, requireAuth } = useYM();
+  const { user } = useAuth();
+  const [rating, setRating] = useSCm(0);
+  const [hover, setHover] = useSCm(0);
+  const [busy, setBusy] = useSCm(false);
+  const [done, setDone] = useSCm(false);
+  const pick = (n) => {
+    if (!user?.uid) { requireAuth(()=>{}); return; }
+    setRating(n); setBusy(true);
+    submitReview({ productId, rating:n })
+      .then(()=>{ setDone(true); toast('Thanks for rating!', 'fa-star'); })
+      .catch(e=>toast(e.message || 'Could not submit', 'fa-triangle-exclamation'))
+      .finally(()=>setBusy(false));
+  };
+  if (done) return <span className="ym-cap" style={{ color:'var(--m-success)' }}><FA i="fa-check" /> Rated</span>;
+  return (
+    <span style={{ display:'inline-flex', gap:3, opacity:busy?.5:1 }} onMouseLeave={()=>setHover(0)}>
+      {[1,2,3,4,5].map(n=>(
+        <button key={n} type="button" disabled={busy} onClick={()=>pick(n)} onMouseEnter={()=>setHover(n)} aria-label={`${n} star`}
+          style={{ background:'none', border:'none', cursor:'pointer', padding:0, fontSize:16, lineHeight:1, color:(hover||rating)>=n?'#f5a524':'var(--m-fg4)' }}>
+          <i className={`fa-star ${(hover||rating)>=n?'fas':'far'}`} />
+        </button>
+      ))}
+    </span>
+  );
+}
 
 /* Full order details — every line item with its product picture, the price
    breakdown, fulfilment + directions map, pickup code, points earned and the
    tax invoice. Opened by tapping an order. */
 function OrderDetail({ view, onClose }){
+  const { toast } = useYM();
   const o = view.raw;
   const store = view.store ? ymStore(view.store) : null;
   const hub = o.hubId ? findHub(o.hubId) : null;
   const isPickup = o.fulfillment === 'store_pickup';
   const orderNo = o.orderNo || view.code;
+  const delivered = view.status === 'delivered';
+  const canCancel = CANCELLABLE.includes(view.status);
+  const [cancelling, setCancelling] = useSCm(false);
+  const cancel = async () => {
+    if (!window.confirm(o.paid ? 'Cancel this order? You’ll be refunded to your YoteWallet.' : 'Cancel this order?')) return;
+    setCancelling(true);
+    try { const r = await cancelOrder({ orderId:o.id }); toast(r.refunded>0 ? `Order cancelled · ${ymPrice(r.refunded)} refunded to wallet` : 'Order cancelled', 'fa-circle-check'); onClose(); }
+    catch (e) { toast(e.message || 'Could not cancel', 'fa-triangle-exclamation'); setCancelling(false); }
+  };
   return (
     <Modal title="Order details" onClose={onClose} maxWidth={540}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap', marginBottom:14 }}>
@@ -372,7 +414,7 @@ function OrderDetail({ view, onClose }){
               <Thumb icon={p?.icon || 'fa-box'} tint={store?.tint || '#7c3aed'} size={48} radius={12} img={p?.img} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.name || p?.name || 'Item'}</div>
-                <div className="ym-cap">{ymPrice(it.price||0)} × {it.qty||1}</div>
+                <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>{ymPrice(it.price||0)} × {it.qty||1}{delivered && it.pid && <>· <ItemReview productId={it.pid} /></>}</div>
               </div>
               <div style={{ fontWeight:700, fontSize:14, color:'var(--m-fg1)' }}>{ymPrice((it.price||0)*(it.qty||1))}</div>
             </div>
@@ -395,7 +437,7 @@ function OrderDetail({ view, onClose }){
         </div>
       )}
 
-      {view.status!=='delivered' && (
+      {view.status!=='delivered' && view.status!=='cancelled' && (
         isPickup && store
           ? <div style={{ marginBottom:8 }}><div className="ym-h3" style={{ fontSize:14, marginBottom:8 }}>Collect from store</div><StoreMap store={store} height={170} /></div>
           : hub
@@ -403,7 +445,19 @@ function OrderDetail({ view, onClose }){
             : null
       )}
 
-      {view.status!=='placed' && <OrderInvoice orderId={o.id} />}
+      {view.status==='cancelled' && (
+        <div style={{ marginBottom:12, padding:'12px 14px', borderRadius:12, background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', display:'flex', gap:9, alignItems:'center', fontSize:13 }}>
+          <FA i="fa-ban" /> Order cancelled{o.cancelledBy?` by ${o.cancelledBy==='merchant'?'the store':'you'}`:''}{o.refunded?' · refunded to your wallet':''}.
+        </div>
+      )}
+
+      {view.status!=='placed' && view.status!=='cancelled' && <OrderInvoice orderId={o.id} />}
+
+      {canCancel && (
+        <button onClick={cancel} disabled={cancelling} className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:14, color:'var(--m-danger)' }}>
+          {cancelling ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Cancelling…</> : <><FA i="fa-ban" /> Cancel order{o.paid?' & refund':''}</>}
+        </button>
+      )}
     </Modal>
   );
 }
@@ -474,7 +528,7 @@ export function OrdersScreen(){
                 </div>
               )}
               {/* directions to the store (pickup) or the collection hub while in progress */}
-              {o.status!=='delivered' && (
+              {o.status!=='delivered' && o.status!=='cancelled' && (
                 o.raw?.fulfillment==='store_pickup' && store
                   ? <div style={{ marginTop:16 }}><StoreMap store={store} height={150} /></div>
                   : (o.status==='at_hub' && o.raw?.hubId && findHub(o.raw.hubId))

@@ -56,7 +56,7 @@ function EmptyRow({ icon, text }){
   return <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'26px 14px', textAlign:'center', color:'var(--m-fg3)' }}><FA i={icon} style={{ fontSize:24, color:'var(--m-fg4)' }} /><div style={{ fontSize:13.5 }}>{text}</div></div>;
 }
 
-const RECEIPT_ICON = { order:'fa-bag-shopping', wallet_topup:'fa-wallet', subscription:'fa-id-card', redemption:'fa-gift', pos:'fa-store', payout:'fa-money-bill-transfer' };
+const RECEIPT_ICON = { order:'fa-bag-shopping', wallet_topup:'fa-wallet', subscription:'fa-id-card', redemption:'fa-gift', pos:'fa-store', payout:'fa-money-bill-transfer', refund:'fa-rotate-left' };
 const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', delivered:'active', confirmed:'pending', out:'pending', awaiting:'pending' };
 const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
 
@@ -363,7 +363,7 @@ function AddressEditor({ uid, initial, onClose, toast }){
   );
 }
 
-const RECEIPT_TYPE_LABEL = { order:'Order payment', wallet_topup:'Wallet top-up', subscription:'Subscription', redemption:'Points redemption', pos:'In-store sale', payout:'Payout' };
+const RECEIPT_TYPE_LABEL = { order:'Order payment', wallet_topup:'Wallet top-up', subscription:'Subscription', redemption:'Points redemption', pos:'In-store sale', payout:'Payout', refund:'Order refund' };
 const RECEIPT_METHOD_LABEL = { mpesa:'M-Pesa', wallet:'YoteWallet', cash:'Cash', points:'YotePoints', card:'Card' };
 const fmtReceiptWhen = (r) => r?.createdAt?.seconds
   ? new Date(r.createdAt.seconds * 1000).toLocaleString('en-KE', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })

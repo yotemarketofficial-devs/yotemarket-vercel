@@ -162,6 +162,8 @@ export const setPromoActive = callable('setPromoActive');
 export const redeemCoupon = callable('redeemCoupon');
 /** Shopper: submit/update a product review → { ok, rating, reviews }. { productId, rating, text? }. */
 export const submitReview = callable('submitReview');
+/** Buyer or selling merchant: cancel an order (auto-refunds paid orders to wallet) → { ok, cancelledBy, refunded }. { orderId, reason? }. */
+export const cancelOrder = callable('cancelOrder');
 
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */
