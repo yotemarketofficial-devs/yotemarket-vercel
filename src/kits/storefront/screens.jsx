@@ -7,6 +7,19 @@ import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
 const { useState: useSS, useEffect: useEffSS } = React;
 
+function NotFound({ back, label }){
+  return (
+    <div className="wrap anim-up" style={{ paddingTop:70, textAlign:'center', paddingBottom:70 }}>
+      <FA i="fa-magnifying-glass" style={{ fontSize:42, color:'var(--m-fg4)', marginBottom:14 }} />
+      <div className="ym-h2">{label || 'Not found'}</div>
+      <button className="ym-btn ym-btn-primary" style={{ margin:'18px auto 0', width:180 }} onClick={back}><FA i="fa-arrow-left" /> Go back</button>
+    </div>
+  );
+}
+function EmptyBlock({ icon='fa-store', text }){
+  return <div className="ym-card" style={{ padding:'40px 20px', textAlign:'center', color:'var(--m-fg3)' }}><FA i={icon} style={{ fontSize:30, color:'var(--m-fg4)', marginBottom:12, display:'block' }} />{text}</div>;
+}
+
 /* ---------- HOME ---------- */
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
@@ -56,18 +69,22 @@ export function HomeScreen(){
       {/* explore the mall */}
       <div className="wrap" style={{ marginTop:36 }}>
         <SectionTitle action="See all stores" onAction={()=>nav('search',{tab:'stores'})}>Explore the mall</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>
-          {YM_STORES.map(s=><StoreCard key={s.id} s={s} />)}
-        </div>
+        {YM_STORES.length === 0
+          ? <EmptyBlock icon="fa-store" text="No stores yet — check back soon as merchants come online." />
+          : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>
+              {YM_STORES.map(s=><StoreCard key={s.id} s={s} />)}
+            </div>}
       </div>
 
       {/* for you */}
-      <div className="wrap" style={{ marginTop:40 }}>
-        <SectionTitle action="Browse all" onAction={()=>nav('search')}>For you</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>
-          {YM_PRODUCTS.map(p=><ProductCard key={p.id} p={p} />)}
+      {YM_PRODUCTS.length > 0 && (
+        <div className="wrap" style={{ marginTop:40 }}>
+          <SectionTitle action="Browse all" onAction={()=>nav('search')}>For you</SectionTitle>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>
+            {YM_PRODUCTS.map(p=><ProductCard key={p.id} p={p} />)}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -128,7 +145,8 @@ function Empty({ icon, t, s }){
 /* ---------- PRODUCT ---------- */
 export function ProductScreen({ params }){
   const { back, nav, addToCart, requireAuth } = useYM();
-  const p = ymProduct(params.pid) || YM_PRODUCTS[0];
+  const p = ymProduct(params.pid);
+  if (!p) return <NotFound back={back} label="Product not found" />;
   const store = ymStore(p.store);
   const tint = (ymCat(p.cat)||{}).tint || '#4f46e5';
   const [qty, setQty] = useSS(1);
@@ -187,13 +205,14 @@ export function StoreScreen({ params }){
   const { back, nav, toast, requireAuth } = useYM();
   const { user } = useAuth();
   const uid = user?.uid;
-  const s = ymStore(params.sid) || YM_STORES[0];
-  const all = YM_PRODUCTS.filter(p=>p.store===s.id);
+  const s = ymStore(params.sid);
+  const all = s ? YM_PRODUCTS.filter(p=>p.store===s.id) : [];
   const [following, setFollowing] = useSS(false);
   useEffSS(() => {
-    if (!uid) { setFollowing(false); return undefined; }
+    if (!uid || !s) { setFollowing(false); return undefined; }
     return subscribeFollows(uid, (list) => setFollowing(list.some((f) => f.storeId === s.id)));
-  }, [uid, s.id]);
+  }, [uid, s?.id]);
+  const [cat, setCat] = useSS('all');
   const toggleFollow = () => {
     if (!uid) { requireAuth(() => {}); return; }
     const nf = !following;
@@ -201,7 +220,7 @@ export function StoreScreen({ params }){
       .then(() => toast(nf ? 'Following ' + s.name : 'Unfollowed', nf ? 'fa-circle-check' : 'fa-bell'))
       .catch(() => toast('Could not update follow', 'fa-triangle-exclamation'));
   };
-  const [cat, setCat] = useSS('all');
+  if (!s) return <NotFound back={back} label="Store not found" />;
   const cats = ['all', ...Array.from(new Set(all.map(p=>p.cat)))];
   const prods = cat==='all'?all:all.filter(p=>p.cat===cat);
   return (
