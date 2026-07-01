@@ -215,7 +215,7 @@ export function ProfileScreen(){
               <div><div className="ym-cap" style={{ fontWeight:600 }}>YotePoints balance</div><div style={{ fontSize:30, fontWeight:800, color:'var(--m-fg1)' }}>{prof.points} <span style={{ fontSize:15, fontWeight:600, color:'var(--m-fg3)' }}>pts</span></div></div>
               <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-pending-bg)', color:'var(--m-pending-fg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}><FA i="fa-coins" /></div>
             </div>
-            <div className="ym-cap">Earn points on every YoteMarket order — redeem them for wallet credit you can spend at checkout.</div>
+            <div className="ym-cap">Earn 1 point for every KSh 100 spent — credited when your order is delivered. Redeem points for wallet credit (1 pt = KSh 1) to spend at checkout.</div>
             <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:14, width:'100%' }} disabled={prof.points < 100} onClick={()=>setRedeemOpen(true)}><FA i="fa-gift" /> {prof.points < 100 ? 'Earn 100 pts to redeem' : 'Redeem points'}</button>
           </Card>
 

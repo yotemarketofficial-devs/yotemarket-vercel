@@ -173,14 +173,15 @@ export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup 
 /* Store location map for "pick up from store". Keyless: an OpenStreetMap embed
    (no API key) when the store has coords, plus a Google Maps "Get directions"
    deep link. Falls back to a search-by-name directions link when no coords. */
-export function StoreMap({ store, height=180 }){
-  const loc = store?.location;
-  const name = store?.name || 'Store';
-  const dest = loc ? `${loc.lat},${loc.lng}` : encodeURIComponent(`${name} ${store?.area || ''} Kenya`);
-  const dirHref = loc
-    ? `https://www.google.com/maps/dir/?api=1&destination=${dest}`
-    : `https://www.google.com/maps/search/?api=1&query=${dest}`;
-  const d = 0.0055;
+/* A pickup/location map for any destination (a store or a collection hub). Shows
+   an embedded pin when coordinates exist, and a "Get directions" CTA that opens
+   turn-by-turn navigation to the destination in Google Maps (works from coords or
+   a place-name query, so directions always resolve). */
+export function PlaceMap({ location, name='Location', area, address, height=180 }){
+  const loc = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? location : null;
+  const dest = loc ? `${loc.lat},${loc.lng}` : encodeURIComponent(`${name} ${area || ''} Kenya`);
+  const dirHref = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
+  const d = 0.006;
   return (
     <div>
       {loc ? (
@@ -188,16 +189,24 @@ export function StoreMap({ store, height=180 }){
           style={{ border:0, borderRadius:14, display:'block' }}
           src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`} />
       ) : (
-        <div style={{ height, borderRadius:14, background:'var(--m-surface-2)', display:'flex', flexDirection:'column', gap:6, alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:13 }}>
-          <FA i="fa-map-location-dot" style={{ fontSize:22 }} /> Pin not set yet — use directions below
+        <div style={{ height, borderRadius:14, background:'var(--m-surface-2)', display:'flex', flexDirection:'column', gap:6, alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:13, textAlign:'center', padding:12 }}>
+          <FA i="fa-map-location-dot" style={{ fontSize:22, color:'var(--m-primary)' }} /> {name}{area?` · ${area}`:''}<span className="ym-cap">Tap “Get directions” to navigate</span>
         </div>
       )}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginTop:10, flexWrap:'wrap' }}>
-        <span className="ym-cap" style={{ display:'inline-flex', gap:7, alignItems:'center' }}><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> {store?.address || store?.area || name}</span>
-        <a href={dirHref} target="_blank" rel="noreferrer" className="ym-btn ym-btn-ghost ym-btn-sm"><FA i="fa-diamond-turn-right" /> Get directions</a>
+        <span className="ym-cap" style={{ display:'inline-flex', gap:7, alignItems:'center', minWidth:0 }}><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{address || area || name}</span></span>
+        <a href={dirHref} target="_blank" rel="noreferrer" className="ym-btn ym-btn-primary ym-btn-sm"><FA i="fa-diamond-turn-right" /> Get directions</a>
       </div>
     </div>
   );
+}
+
+export function StoreMap({ store, height=180 }){
+  return <PlaceMap location={store?.location} name={store?.name || 'Store'} area={store?.area} address={store?.address} height={height} />;
+}
+
+export function HubMap({ hub, height=180 }){
+  return <PlaceMap location={hub?.location} name={hub?.name || 'Pickup hub'} area={hub?.area} address={hub?.area} height={height} />;
 }
 
 /* Sign-in prompt shown on account-only screens when browsing as a guest. */
