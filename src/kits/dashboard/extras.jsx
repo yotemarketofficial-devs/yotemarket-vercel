@@ -19,18 +19,32 @@ const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
 
-/* ---------- SALES ---------- */
+/* ---------- SALES (live) ---------- */
 export function Sales(){
+  const { orders, live } = useMerchant();
+  const os = live ? (orders || []) : [];
+  const paid = os.filter((o) => o.paid === true || o.status === 'delivered');
+  const revenue = paid.reduce((s, o) => s + (Number(o.total) || 0), 0);
+  const avg = paid.length ? Math.round(revenue / paid.length) : 0;
+  const delivered = os.filter((o) => o.status === 'delivered').length;
+  const rows = os.map((o) => ({
+    id: o.id, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',
+    items: Array.isArray(o.items) ? `${o.items.length} item${o.items.length !== 1 ? 's' : ''}` : '—',
+    total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : 'pending',
+    rawStatus: o.status, fulfillment: o.fulfillment || 'hub',
+    date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''),
+    hub: o.fulfillment === 'store_pickup' ? 'Store pickup' : (o.hub || '—'),
+  }));
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Sales</h1>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
-        <Stat label="Revenue (30d)" value="Ksh 348K" delta="+18%" up icon="fa-coins" tone="#7c3aed" />
-        <Stat label="Orders" value="248" delta="+14" up icon="fa-bag-shopping" tone="#3b82f6" />
-        <Stat label="Avg order value" value="Ksh 1,403" delta="+4%" up icon="fa-receipt" tone="#10b981" />
-        <Stat label="Refunds" value="3" delta="-1" up={false} icon="fa-rotate-left" tone="#ef4444" />
+        <Stat label="Revenue" value={ksh(revenue)} icon="fa-coins" tone="#7c3aed" />
+        <Stat label="Orders" value={String(os.length)} icon="fa-bag-shopping" tone="#3b82f6" />
+        <Stat label="Avg order value" value={ksh(avg)} icon="fa-receipt" tone="#10b981" />
+        <Stat label="Delivered" value={String(delivered)} icon="fa-circle-check" tone="#10b981" />
       </div>
-      <OrdersTable rows={[...ORDER_ROWS, ...ORDER_ROWS.slice(0,2)]} />
+      <OrdersTable rows={rows} />
     </div>
   );
 }
@@ -49,8 +63,10 @@ export function Wallet({ toast }){
       () => {});
     return () => u();
   }, [user?.uid]);
-  const total = WALLET.flow.reduce((s,f)=>s+(f.neg?0:f.value),0);
-  const balance = live ? (merchant?.balanceAvailable || 0) : WALLET.balance;
+  const balance = live ? (merchant?.balanceAvailable || 0) : 0;
+  const now = new Date();
+  const thisMonth = receipts.filter((r) => { const s = r.createdAt?.seconds; if (!s) return false; const d = new Date(s * 1000); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && r.type !== 'payout'; });
+  const monthIn = thisMonth.reduce((s, r) => s + (r.amount || 0), 0);
   const fmtRcptWhen = (r) => r.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short' }) : '';
   return (
     <div className="anim-up">
@@ -61,7 +77,7 @@ export function Wallet({ toast }){
             <FA i="fa-wallet" style={{ position:'absolute', right:14, bottom:-10, fontSize:96, color:'rgba(255,255,255,.1)' }} />
             <div style={{ color:'rgba(255,255,255,.78)', fontSize:13 }}>Available payout</div>
             <div style={{ fontSize:40, fontWeight:800, margin:'4px 0' }}>{ksh(balance)}</div>
-            <div style={{ color:'rgba(255,255,255,.78)', fontSize:13, marginBottom:18 }}>Next auto-payout {WALLET.nextPayout} · via M-Pesa</div>
+            <div style={{ color:'rgba(255,255,255,.78)', fontSize:13, marginBottom:18 }}>Withdraw to M-Pesa anytime</div>
             <button className="ym-btn ym-btn-mpesa" style={{ width:'auto' }} onClick={()=>toast&&toast('Withdrawal requested')}><FA i="fa-mobile-screen" /> Withdraw to M-Pesa</button>
           </Card>
           <SectionCard title="Receipts" sub="A digital receipt for every transaction">
@@ -90,13 +106,11 @@ export function Wallet({ toast }){
         </div>
         <Card style={{ padding:22 }}>
           <div className="ym-h2" style={{ fontSize:17, marginBottom:16 }}>This month</div>
-          {WALLET.flow.map(f=>(
-            <div key={f.label} style={{ marginBottom:16 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span className="ym-sub">{f.label}</span><span className="ym-h3" style={{ fontSize:14, color:f.neg?'var(--m-danger)':'var(--m-fg1)' }}>{f.neg?'−':''}{ksh(f.value)}</span></div>
-              <div style={{ height:8, borderRadius:9999, background:'var(--m-surface-2)', overflow:'hidden' }}><div style={{ width:Math.min(100,f.value/total*100)+'%', height:'100%', background:f.color }} /></div>
-            </div>
-          ))}
-          <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, marginTop:4, display:'flex', justifyContent:'space-between' }}><span className="ym-h3">Net earnings</span><span className="ym-h2" style={{ fontSize:18 }}>{ksh(total-3000)}</span></div>
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">Received</span><span className="ym-h3" style={{ fontSize:16 }}>{ksh(monthIn)}</span></div>
+            <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">Transactions</span><span className="ym-h3" style={{ fontSize:16 }}>{thisMonth.length}</span></div>
+            <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, display:'flex', justifyContent:'space-between' }}><span className="ym-h3">Available payout</span><span className="ym-h2" style={{ fontSize:18 }}>{ksh(balance)}</span></div>
+          </div>
         </Card>
       </div>
       <style>{`@media (max-width:820px){ .wallet-grid{ grid-template-columns:1fr !important; } }`}</style>
