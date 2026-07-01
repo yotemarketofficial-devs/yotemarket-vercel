@@ -148,6 +148,8 @@ export const posSale = callable('posSale');
 export const grantFreeMonths = callable('grantFreeMonths');
 /** Staff: backfill digital receipts for all past paid transactions → { orders, pos, topups, subs }. */
 export const backfillReceipts = callable('backfillReceipts');
+/** Staff: patch store logos into existing chats + followed-store records → { conversations, follows }. */
+export const backfillStoreLogos = callable('backfillStoreLogos');
 /** Admin: create a coupon → { id, code }. { code, type, value, name?, maxRedemptions?, expiresAt? }. */
 export const createPromo = callable('createPromo');
 /** Staff: list promotions/coupons → { promos }. */

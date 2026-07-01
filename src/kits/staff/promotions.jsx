@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts } from '../../lib/firebase.js';
+import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos } from '../../lib/firebase.js';
 const { useState, useEffect, useCallback } = React;
 
 export function Promotions(){
@@ -13,6 +13,7 @@ export function Promotions(){
   const [months, setMonths] = useState(1);
   const [granting, setGranting] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [logoFilling, setLogoFilling] = useState(false);
   const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
   const [creating, setCreating] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -33,6 +34,11 @@ export function Promotions(){
     setBackfilling(true); setMsg(null);
     try { const r = await backfillReceipts(); setMsg({ ok:true, text:`Receipts generated — orders ${r.orders}, POS ${r.pos}, top-ups ${r.topups}, subscriptions ${r.subs}.` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Backfill failed.' }); } finally { setBackfilling(false); }
+  };
+  const fillLogos = async () => {
+    setLogoFilling(true); setMsg(null);
+    try { const r = await backfillStoreLogos(); setMsg({ ok:true, text:`Store logos patched — ${r.conversations} chat(s), ${r.follows} followed-store record(s).` }); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Logo backfill failed.' }); } finally { setLogoFilling(false); }
   };
   const create = async () => {
     setCreating(true); setMsg(null);
@@ -71,6 +77,12 @@ export function Promotions(){
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--green-soft, #d1fae5)', color:'var(--green)' }}><Icon name="receipt" /></div><h3 className="font-bold t1">Digital receipts</h3></div>
           <p className="text-sm t3">Generate receipts for every past paid transaction (orders, POS sales, top-ups, subscriptions) so they show in each user's Receipts. Idempotent — safe to re-run.</p>
           <Btn kind="primary" size="md" icon={backfilling ? 'spinner' : 'receipt'} onClick={backfill} disabled={backfilling}>{backfilling ? 'Generating…' : 'Generate missing receipts'}</Btn>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="store" /></div><h3 className="font-bold t1">Store logos</h3></div>
+          <p className="text-sm t3">Patch store logos into existing chats and followed-store records created before logo support. Idempotent — only touches records missing the current logo.</p>
+          <Btn kind="primary" size="md" icon={logoFilling ? 'spinner' : 'store'} onClick={fillLogos} disabled={logoFilling}>{logoFilling ? 'Patching…' : 'Backfill store logos'}</Btn>
         </Card>
       </div>
 
