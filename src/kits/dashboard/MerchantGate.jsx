@@ -7,6 +7,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
 import { FA, Card, Btn } from './primitives.jsx';
+import AuthPanel from '../../components/AuthPanel.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
 const { useState, useEffect } = React;
 
@@ -48,54 +49,6 @@ function Loading() {
         <FA i="fa-circle-notch" style={{ fontSize: 28, color: 'var(--m-primary)', animation: 'ym-spin 1s linear infinite' }} />
         <div style={{ marginTop: 12, fontSize: 14 }}>Loading your dashboard…</div>
       </div>
-    </Shell>
-  );
-}
-
-/* ---------- sign in / register ---------- */
-function SignInPanel() {
-  const { signInEmail, registerEmail, signInGoogle } = useAuth();
-  const [mode, setMode] = useState('signin');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-
-  const submit = async () => {
-    setErr(''); setBusy(true);
-    try {
-      if (mode === 'register') await registerEmail(name, email, pass);
-      else await signInEmail(email, pass);
-      // onAuthStateChanged advances the gate; leave busy true through the transition.
-    } catch (e) { setErr(e.message || 'Could not sign in.'); setBusy(false); }
-  };
-  const google = async () => {
-    setErr(''); setBusy(true);
-    try { await signInGoogle(); } catch (e) { setErr(e.message || 'Google sign-in failed.'); setBusy(false); }
-  };
-
-  return (
-    <Shell>
-      <Card style={{ padding: 28 }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ width: 54, height: 54, borderRadius: 16, margin: '0 auto 14px', background: 'var(--m-grad)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FA i="fa-store" style={{ color: '#fff', fontSize: 22 }} /></div>
-          <h1 className="ym-h1" style={{ fontSize: 22 }}>Sell on YoteMarket</h1>
-          <p className="ym-sub" style={{ marginTop: 4 }}>Sign in to open your merchant dashboard.</p>
-        </div>
-        {mode === 'register' && (
-          <Field label="Your name"><input style={ipt} value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Wanjiru" /></Field>
-        )}
-        <Field label="Email"><input style={ipt} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" /></Field>
-        <Field label="Password"><input style={ipt} type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} /></Field>
-        {err && <div role="alert" style={errBox}><FA i="fa-circle-exclamation" /> {err}</div>}
-        <Btn kind="primary" style={{ width: '100%', marginTop: 16 }} disabled={busy} onClick={submit}>{busy ? 'Please wait…' : (mode === 'register' ? 'Create account' : 'Sign in')}</Btn>
-        <Btn kind="ghost" style={{ width: '100%', marginTop: 10 }} disabled={busy} onClick={google}><FA i="fa-google" brand /> Continue with Google</Btn>
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 13, color: 'var(--m-fg3)' }}>
-          {mode === 'register' ? 'Already have an account? ' : 'New to selling here? '}
-          <button style={linkBtn} onClick={() => { setMode(mode === 'register' ? 'signin' : 'register'); setErr(''); }}>{mode === 'register' ? 'Sign in' : 'Create an account'}</button>
-        </div>
-      </Card>
     </Shell>
   );
 }
@@ -180,7 +133,7 @@ export default function MerchantGate({ children }) {
 
   if (!firebaseEnabled) return children; // demo mode → dashboard directly
   if (loading) return <Loading />;
-  if (!hasAccount || !uid) return <SignInPanel />;
+  if (!hasAccount || !uid) return <AuthPanel stayRole="merchant" defaultRole="merchant" onAuthed={() => {}} />;
   if (merchant === undefined || sub === undefined) return <Loading />;
   if (!merchant || !merchant.storeId) return <StoreSignupPanel />;
   if (!sub || sub.status !== 'active') return <SubscribePanel expired={sub && sub.status === 'expired'} />;

@@ -11,7 +11,8 @@ import {
   updateProfile,
   sendEmailVerification,
 } from 'firebase/auth';
-import { auth, googleProvider, firebaseEnabled } from './firebase.js';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, googleProvider, firebaseEnabled, db } from './firebase.js';
 
 const AuthContext = createContext(null);
 
@@ -55,12 +56,21 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const registerEmail = useCallback(async (name, email, password) => {
+  const registerEmail = useCallback(async (name, email, password, phone) => {
     if (!firebaseEnabled) return guestSignIn(setUser, { email, displayName: name });
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       if (name) await updateProfile(cred.user, { displayName: name });
       sendEmailVerification(cred.user).catch(() => {});
+      // Persist a base profile so the name + M-Pesa phone are saved for BOTH
+      // shoppers and merchants (previously the phone was collected then dropped).
+      if (db) {
+        setDoc(doc(db, 'users', cred.user.uid), {
+          name: name || '',
+          ...(phone ? { phone: String(phone).trim() } : {}),
+          createdAt: serverTimestamp(),
+        }, { merge: true }).catch(() => {});
+      }
       return cred.user;
     } catch (err) {
       throw new Error(friendlyError(err));
