@@ -78,8 +78,8 @@ export function StoreCard({ s }){
         {s.isHub && <span style={{ position:'absolute', top:12, left:14, zIndex:2, background:'rgba(255,255,255,.92)', color:'#111827', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:9999, display:'inline-flex', gap:5, alignItems:'center' }}><FA i="fa-warehouse" style={{ fontSize:10 }} /> Hub</span>}
       </div>
       <div style={{ padding:'0 16px 16px' }}>
-        <div style={{ width:56, height:56, borderRadius:16, background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', alignItems:'center', justifyContent:'center', marginTop:-28, marginBottom:10 }}>
-          <FA i={s.icon} style={{ fontSize:24, color:s.tint }} />
+        <div style={{ width:56, height:56, borderRadius:16, background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', alignItems:'center', justifyContent:'center', marginTop:-28, marginBottom:10, overflow:'hidden' }}>
+          {s.logo ? <img src={s.logo} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon} style={{ fontSize:24, color:s.tint }} />}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
           <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</span>

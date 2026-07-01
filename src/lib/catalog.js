@@ -1,6 +1,7 @@
 // Catalog + order data access. Reads the world-readable Firestore collections
-// (categories / stores / products) and the signed-in user's orders. All helpers
-// no-op gracefully when the backend is absent so kits keep their bundled demo data.
+// (categories / stores / products) and the signed-in user's orders. Live-only:
+// the storefront shows real Firestore data (empty states where there's none);
+// no demo catalog fallback in production.
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase.js';
@@ -57,7 +58,8 @@ const normStore = (d) => ({
   tagline: d.tagline,
   tint: d.tint || '#4f46e5',
   icon: faIcon(d.icon, 'fa-store'),
-  img: d.img || d.imageUrl || undefined,
+  img: d.img || d.imageUrl || undefined,   // cover photo (banner)
+  logo: d.logo || undefined,               // store logo (avatar)
 });
 const normCat = (d) => ({
   id: d.id,
@@ -67,8 +69,8 @@ const normCat = (d) => ({
   order: d.order != null ? Number(d.order) : 99,
 });
 
-/** Fetch the public catalog once, normalised to the storefront UI shape.
- *  Returns null when unavailable/empty (→ kit keeps its bundled demo data). */
+/** Fetch the public catalog once, normalised to the storefront UI shape. Live-only:
+ *  returns the real data (even if empty). Returns null only on a hard fetch error. */
 export async function fetchCatalog() {
   if (!firebaseEnabled || !db) return null;
   try {
@@ -82,10 +84,9 @@ export async function fetchCatalog() {
     const liveIds = new Set(storeList.map((s) => s.id));
     const products = toArray(prods).map(normProduct).filter((p) => !p.store || liveIds.has(p.store));
     const categories = toArray(cats).map(normCat).sort((a, b) => a.order - b.order);
-    if (!products.length && !storeList.length) return null; // empty backend → demo
-    return { categories, stores: storeList, products };
+    return { categories, stores: storeList, products }; // live-only (may be empty)
   } catch (err) {
-    console.warn('[catalog] fetch failed — using demo data.', err);
+    console.warn('[catalog] fetch failed', err);
     return null;
   }
 }

@@ -167,32 +167,39 @@ function StoreBranding({ toast }){
   };
   if (!live || !storeId) return <div style={{ padding:'16px 20px', color:'var(--m-fg3)', fontSize:13 }}>Connect your store to set a cover photo and logo.</div>;
   return (
-    <div style={{ padding:'16px 20px 0' }}>
-      <div style={{ position:'relative', marginBottom:38 }}>
+    <div style={{ padding:'16px 20px 4px', display:'flex', flexDirection:'column', gap:16 }}>
+      {/* cover banner */}
+      <div>
+        <label className="ym-label">Cover photo</label>
         <ImageUpload aspect={16/6} outputSize={1280} title="Cover photo" pathFor={()=>coverPath(storeId)} onUploaded={(u)=>saveMedia('img',u,setCover)} onError={(e)=>toast&&toast(e.message)}>
           {({ pick, uploading })=>(
             <button type="button" onClick={pick} aria-label="Change cover photo"
-              style={{ width:'100%', height:130, border:'none', cursor:'pointer', borderRadius:14, overflow:'hidden', position:'relative', padding:0,
+              style={{ width:'100%', height:120, border:'none', cursor:'pointer', borderRadius:12, overflow:'hidden', position:'relative', padding:0, marginTop:6,
                 background: cover?`center/cover no-repeat url(${cover})`:'var(--m-grad-deep)' }}>
-              <span style={{ position:'absolute', right:12, bottom:12, background:'rgba(0,0,0,.5)', color:'#fff', borderRadius:9999, padding:'6px 12px', fontSize:12.5, fontWeight:600, display:'inline-flex', gap:6, alignItems:'center' }}>
+              <span style={{ position:'absolute', right:10, bottom:10, background:'rgba(0,0,0,.5)', color:'#fff', borderRadius:9999, padding:'6px 12px', fontSize:12.5, fontWeight:600, display:'inline-flex', gap:6, alignItems:'center' }}>
                 <FA i={uploading?'fa-circle-notch':'fa-camera'} style={{ animation: uploading?'ym-spin 1s linear infinite':'none' }} /> {cover?'Change cover':'Add cover'}
               </span>
             </button>
           )}
         </ImageUpload>
-        <div style={{ position:'absolute', left:18, bottom:-28 }}>
-          <ImageUpload aspect={1} round outputSize={400} title="Store logo" pathFor={()=>logoPath(storeId)} onUploaded={(u)=>saveMedia('logo',u,setLogo)} onError={(e)=>toast&&toast(e.message)}>
-            {({ pick, uploading })=>(
-              <button type="button" onClick={pick} title="Change logo"
-                style={{ width:66, height:66, borderRadius:9999, border:'3px solid var(--m-surface)', cursor:'pointer', overflow:'hidden', position:'relative', padding:0,
-                  background: logo?`center/cover no-repeat url(${logo})`:'var(--m-surface-2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                {!logo && <FA i="fa-store" style={{ color:'var(--m-primary)', fontSize:22 }} />}
-                <span style={{ position:'absolute', right:-2, bottom:-2, width:22, height:22, borderRadius:9999, background:'#fff', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 1px 4px rgba(0,0,0,.25)' }}>
-                  <FA i={uploading?'fa-circle-notch':'fa-camera'} style={{ fontSize:10, animation: uploading?'ym-spin 1s linear infinite':'none' }} />
-                </span>
-              </button>
-            )}
-          </ImageUpload>
+      </div>
+      {/* logo row */}
+      <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+        <ImageUpload aspect={1} round outputSize={400} title="Store logo" pathFor={()=>logoPath(storeId)} onUploaded={(u)=>saveMedia('logo',u,setLogo)} onError={(e)=>toast&&toast(e.message)}>
+          {({ pick, uploading })=>(
+            <button type="button" onClick={pick} title="Change logo"
+              style={{ width:60, height:60, borderRadius:9999, border:'1px solid var(--m-border)', cursor:'pointer', overflow:'hidden', position:'relative', padding:0, flexShrink:0,
+                background: logo?`center/cover no-repeat url(${logo})`:'var(--m-surface-2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {!logo && <FA i="fa-store" style={{ color:'var(--m-primary)', fontSize:20 }} />}
+              <span style={{ position:'absolute', right:0, bottom:0, width:22, height:22, borderRadius:9999, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>
+                <FA i={uploading?'fa-circle-notch':'fa-camera'} style={{ fontSize:9, animation: uploading?'ym-spin 1s linear infinite':'none' }} />
+              </span>
+            </button>
+          )}
+        </ImageUpload>
+        <div>
+          <div className="ym-h3" style={{ fontSize:14 }}>Store logo</div>
+          <div className="ym-cap">Square · shown on your store page &amp; cards</div>
         </div>
       </div>
     </div>

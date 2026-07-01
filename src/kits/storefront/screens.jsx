@@ -154,7 +154,7 @@ export function ProductScreen({ params }){
             {p.was && <span className="ym-sub" style={{ textDecoration:'line-through', fontSize:17 }}>{ymPrice(p.was)}</span>}
           </div>
           <div className="ym-card" style={{ display:'flex', alignItems:'center', gap:14, padding:14, marginBottom:18, cursor:'pointer' }} onClick={()=>nav('store',{sid:store.id})}>
-            <Thumb icon={store.icon} tint={store.tint} size={46} radius={9999} img={store.img} />
+            <Thumb icon={store.icon} tint={store.tint} size={46} radius={9999} img={store.logo || store.img} />
             <div style={{ flex:1 }}>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}><span className="ym-h3" style={{ fontSize:14 }}>{store.name}</span>{store.verified && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:12 }} />}</div>
               <div className="ym-cap">{store.area} · {store.rating} ★ · replies {store.responds}</div>
@@ -207,12 +207,16 @@ export function StoreScreen({ params }){
   return (
     <div className="anim-up">
       <div style={{ position:'relative', background:`linear-gradient(135deg, ${s.tint} 0%, ${s.tint}aa 55%, var(--m-bg) 100%)`, overflow:'hidden' }}>
-        <FA i={s.icon} style={{ position:'absolute', right:-20, top:-10, fontSize:200, color:'rgba(255,255,255,.12)' }} />
+        {s.img
+          ? (<><img src={s.img} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} /><div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(10,6,40,.55), rgba(10,6,40,.22))' }} /></>)
+          : <FA i={s.icon} style={{ position:'absolute', right:-20, top:-10, fontSize:200, color:'rgba(255,255,255,.12)' }} />}
         <div className="wrap" style={{ padding:'24px 24px 28px', position:'relative' }}>
           <button onClick={back} className="ym-btn ym-btn-sm" style={{ background:'rgba(255,255,255,.92)', color:'#111827', marginBottom:20 }}><FA i="fa-arrow-left" /> Back</button>
           <div style={{ display:'flex', alignItems:'flex-end', gap:18 }}>
             <div style={{ width:88, height:88, borderRadius:22, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'var(--m-shadow-float)', flexShrink:0, position:'relative' }}>
-              <FA i={s.icon} style={{ fontSize:38, color:s.tint }} />
+              {s.logo
+                ? <img src={s.logo} alt={s.name} style={{ width:'100%', height:'100%', borderRadius:22, objectFit:'cover' }} />
+                : <FA i={s.icon} style={{ fontSize:38, color:s.tint }} />}
               {s.verified && <span style={{ position:'absolute', bottom:-6, right:-6, width:28, height:28, borderRadius:9999, background:'var(--m-primary)', border:'3px solid var(--m-bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-check" style={{ color:'#fff', fontSize:12 }} /></span>}
             </div>
             <div style={{ flex:1, paddingBottom:4 }}>
