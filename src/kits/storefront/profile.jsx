@@ -60,7 +60,7 @@ const RECEIPT_ICON = { order:'fa-bag-shopping', wallet_topup:'fa-wallet', subscr
 const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', picked_up:'pending', at_hub:'active', delivered:'active', confirmed:'pending', out:'pending', awaiting:'pending' };
 const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup' };
 
-export function ProfileScreen(){
+export function ProfileScreen({ params }){
   const { nav, reset, theme, setTheme, toast, account, liveOrders } = useYM();
   const { user } = useAuth();
   const uid = user?.uid;
@@ -73,6 +73,14 @@ export function ProfileScreen(){
   const [redeemOpen, setRedeemOpen] = useSP(false);
   const [receiptOpen, setReceiptOpen] = useSP(null); // selected receipt or null
   const tg = k => setNotif(n=>({ ...n, [k]:!n[k] }));
+
+  // Deep-link from the footer "My wallet" link → scroll to the wallet card.
+  useEffP(() => {
+    if (params?.focus === 'wallet') {
+      const t = setTimeout(() => document.getElementById('wallet-card')?.scrollIntoView({ behavior:'smooth', block:'center' }), 120);
+      return () => clearTimeout(t);
+    }
+  }, [params?.focus]);
 
   if (!account.hasAccount) return <GuestGate icon="fa-user" title="Your account" sub="Sign in to manage your profile, addresses, wallet, and YotePoints rewards." />;
 
@@ -219,6 +227,7 @@ export function ProfileScreen(){
             <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:14, width:'100%' }} disabled={prof.points < 100} onClick={()=>setRedeemOpen(true)}><FA i="fa-gift" /> {prof.points < 100 ? 'Earn 100 pts to redeem' : 'Redeem points'}</button>
           </Card>
 
+          <div id="wallet-card" style={{ scrollMarginTop:80 }}>
           <Card title={firstName ? `${firstName}’s wallet` : 'Wallet'} icon="fa-wallet" action="Top up" onAction={()=>setTopupOpen(true)}>
             <div style={{ marginBottom:12 }}>
               <div style={{ fontSize:26, fontWeight:800, color:'var(--m-fg1)' }}>{ymPrice(prof.walletBalance)}</div>
@@ -241,6 +250,7 @@ export function ProfileScreen(){
               </div>
             )}
           </Card>
+          </div>
 
           <Card title="Receipts" icon="fa-receipt">
             {prof.receipts.length === 0 ? (

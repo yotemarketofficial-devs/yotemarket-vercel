@@ -101,33 +101,65 @@ export function Header(){
   );
 }
 
+/* A footer link — internal (runs an action) or external (real href, new tab). */
+function FLink({ label, onClick, href }){
+  const style = { marginBottom:10, cursor:'pointer', color:'var(--m-fg3)', textDecoration:'none', display:'block', background:'none', border:'none', padding:0, fontFamily:'inherit', fontSize:'inherit', textAlign:'left' };
+  if (href) return <a className="ym-sub ym-flink" href={href} target={href.startsWith('/')?undefined:'_blank'} rel="noreferrer" style={style}>{label}</a>;
+  return <button className="ym-sub ym-flink" onClick={onClick} style={style}>{label}</button>;
+}
+
 export function Footer(){
-  const { theme } = useYM();
+  const { theme, reset, requireAuth, openCart } = useYM();
+  const go = (screen) => reset(screen);              // public screens
+  const goAuth = (screen, params) => requireAuth(() => reset(screen, params)); // account-gated
+  const SOCIAL = [
+    { i:'fa-facebook-f', url:'https://www.facebook.com/yotemarket' },
+    { i:'fa-instagram',  url:'https://www.instagram.com/yotemarket' },
+    { i:'fa-whatsapp',   url:'https://wa.me/254720730861' },
+    { i:'fa-x-twitter',  url:'https://x.com/yotemarket' },
+  ];
   return (
     <footer style={{ background:'var(--m-surface)', borderTop:'1px solid var(--m-border)', marginTop:48 }}>
-      <div className="wrap" style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr', gap:32, padding:'48px 24px 32px' }}>
+      <div className="wrap ym-footer-grid" style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr 1fr', gap:32, padding:'48px 24px 32px' }}>
         <div>
           <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:26, marginBottom:14 }} />
           <p className="ym-sub" style={{ maxWidth:300 }}>Kenya's virtual mall — shop hundreds of local stores, chat &amp; negotiate in the app messenger, pay with M-Pesa, and collect at your nearest hub.</p>
           <div style={{ display:'flex', gap:10, marginTop:16 }}>
-            {['fa-facebook-f','fa-instagram','fa-whatsapp','fa-x-twitter'].map(i=>(
-              <a key={i} href="#" className="icon-btn" aria-label={i.replace('fa-','')} style={{ width:36, height:36, fontSize:14 }}><FA i={i} brand /></a>
+            {SOCIAL.map(s=>(
+              <a key={s.i} href={s.url} target="_blank" rel="noreferrer" className="icon-btn" aria-label={s.i.replace('fa-','')} style={{ width:36, height:36, fontSize:14 }}><FA i={s.i} brand /></a>
             ))}
           </div>
         </div>
         <div>
           <div className="ym-h3" style={{ marginBottom:14 }}>Shop</div>
-          {['Categories','Featured stores','Hubs near you','Track an order'].map(l=><div key={l} className="ym-sub" style={{ marginBottom:10, cursor:'pointer' }}>{l}</div>)}
+          <FLink label="Categories" onClick={()=>go('home')} />
+          <FLink label="Search products" onClick={()=>go('search')} />
+          <FLink label="Ask YoteAI" onClick={()=>go('ai')} />
+          <FLink label="Your cart" onClick={openCart} />
+        </div>
+        <div>
+          <div className="ym-h3" style={{ marginBottom:14 }}>Account</div>
+          <FLink label="My wallet" onClick={()=>goAuth('profile', { focus:'wallet' })} />
+          <FLink label="Track an order" onClick={()=>goAuth('orders')} />
+          <FLink label="Messages" onClick={()=>goAuth('messages')} />
+          <FLink label="Profile & YotePoints" onClick={()=>goAuth('profile')} />
         </div>
         <div>
           <div className="ym-h3" style={{ marginBottom:14 }}>Company</div>
-          {['Sell on YoteMarket','Become a rider','Help center','Contact us'].map(l=><div key={l} className="ym-sub" style={{ marginBottom:10, cursor:'pointer' }}>{l}</div>)}
+          <FLink label="Sell on YoteMarket" href="/dashboard" />
+          <FLink label="Become a rider" href="/rider" />
+          <FLink label="Help center" href="/contact" />
+          <FLink label="Contact us" href="/contact" />
         </div>
       </div>
       <div className="wrap" style={{ borderTop:'1px solid var(--m-border)', padding:'18px 24px', display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
         <span className="ym-cap">© 2026 YoteMarket — Shop Local. Delivered Fast.</span>
-        <span className="ym-cap">general@yotemarket.com · 0720 730 861</span>
+        <span className="ym-cap" style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+          <a href="mailto:general@yotemarket.com" className="ym-flink" style={{ color:'inherit', textDecoration:'none' }}>general@yotemarket.com</a> ·
+          <a href="tel:+254720730861" className="ym-flink" style={{ color:'inherit', textDecoration:'none' }}>0720 730 861</a>
+        </span>
       </div>
+      <style>{`.ym-flink:hover{ color:var(--m-primary) !important; } @media (max-width:720px){ .ym-footer-grid{ grid-template-columns:1fr 1fr !important; } }`}</style>
     </footer>
   );
 }
