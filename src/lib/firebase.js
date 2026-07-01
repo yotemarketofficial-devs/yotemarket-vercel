@@ -146,6 +146,8 @@ export const setMerchantTaxInfo = callable('setMerchantTaxInfo');
 export const posSale = callable('posSale');
 /** Admin: grant N free months to every merchant → { granted, months }. { months?, campaignId? }. */
 export const grantFreeMonths = callable('grantFreeMonths');
+/** Staff: backfill digital receipts for all past paid transactions → { orders, pos, topups, subs }. */
+export const backfillReceipts = callable('backfillReceipts');
 /** Admin: create a coupon → { id, code }. { code, type, value, name?, maxRedemptions?, expiresAt? }. */
 export const createPromo = callable('createPromo');
 /** Staff: list promotions/coupons → { promos }. */

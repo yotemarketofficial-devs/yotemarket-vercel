@@ -3,7 +3,7 @@
 import React from 'react';
 import { Icon, Card, Logo } from './primitives.jsx';
 import { YM_ECON, ymPaidKm, ymRunPayout, ymSubTier, ymRunEconomics } from '../mobile/economics.js';
-import { grantFreeMonths, listPromos, createPromo, setPromoActive } from '../../lib/firebase.js';
+import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts } from '../../lib/firebase.js';
 
 const { useState: useS } = React;
 const kes = n => 'KSh ' + Number(Math.round(n)).toLocaleString('en-KE');
@@ -413,6 +413,12 @@ function Promotions() {
   const [granting, setGranting] = useS(false);
   const [form, setForm] = useS({ code: '', type: 'percent', value: '', name: '', maxRedemptions: '', expiresAt: '' });
   const [creating, setCreating] = useS(false);
+  const [backfilling, setBackfilling] = useS(false);
+  const backfill = async () => {
+    setBackfilling(true); setMsg('');
+    try { const r = await backfillReceipts(); setMsg(`✓ Receipts generated — orders ${r.orders}, POS ${r.pos}, top-ups ${r.topups}, subscriptions ${r.subs}.`); }
+    catch (e) { setMsg(e.message || 'Backfill failed.'); } finally { setBackfilling(false); }
+  };
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -457,6 +463,12 @@ function Promotions() {
           <select value={months} onChange={e => setMonths(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm">{[1, 2, 3, 6].map(m => <option key={m} value={m}>{m}</option>)}</select>
           <button onClick={grant} disabled={granting} className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"><Icon name={granting ? 'spinner' : 'gift'} className={granting ? 'fa-spin mr-2' : 'mr-2'} />{granting ? 'Granting…' : `Grant ${months} free month${months > 1 ? 's' : ''} to all merchants`}</button>
         </div>
+      </Card>
+
+      <Card className="p-5 mb-6">
+        <div className="flex items-center gap-3 mb-2"><div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center"><Icon name="receipt" /></div><h3 className="font-bold text-gray-900">Digital receipts</h3></div>
+        <p className="text-sm text-gray-500 mb-4">Generate receipts for every past paid transaction (orders, POS sales, wallet top-ups, subscriptions) so they show in each user's Receipts. Idempotent — safe to re-run.</p>
+        <button onClick={backfill} disabled={backfilling} className="bg-primary text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-60"><Icon name={backfilling ? 'spinner' : 'receipt'} className={backfilling ? 'fa-spin mr-2' : 'mr-2'} />{backfilling ? 'Generating…' : 'Generate missing receipts'}</button>
       </Card>
 
       <Card className="p-5 mb-6">
