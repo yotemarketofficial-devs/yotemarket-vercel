@@ -8,23 +8,30 @@ import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
 import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, Team } from './screens.jsx';
 import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
+import { People, Finance, Legal } from './departments.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims } from './service.js';
 const { useState: useSApp } = React;
 
 const NAV = [
-  { key:'analytics',    icon:'gauge-high',     label:'Overview' },
-  { key:'approvals',    icon:'user-check',     label:'Merchant approvals' },
-  { key:'applications', icon:'briefcase',      label:'Marketer applications' },
-  { key:'scouts',       icon:'people-group',   label:'Scouts & payouts' },
-  { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics' },
-  { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet' },
-  { key:'promotions',   icon:'tags',           label:'Promotions & offers', adminOnly:true },
-  { key:'moderation',   icon:'comment-slash',  label:'Chat moderation' },
-  { key:'team',         icon:'user-shield',    label:'Team & roles', adminOnly:true },
-  { key:'economics',    icon:'scale-balanced', label:'Pricing & economics', lock:true },
+  { key:'analytics',    icon:'gauge-high',     label:'Overview',               section:'Operations' },
+  { key:'approvals',    icon:'user-check',     label:'Merchant approvals',     section:'Operations' },
+  { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics',     section:'Operations' },
+  { key:'moderation',   icon:'comment-slash',  label:'Chat moderation',        section:'Operations' },
+
+  { key:'applications', icon:'briefcase',      label:'Marketer applications',  section:'Growth' },
+  { key:'scouts',       icon:'people-group',   label:'Scouts & payouts',       section:'Growth' },
+  { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet', section:'Growth' },
+  { key:'promotions',   icon:'tags',           label:'Promotions & offers',    section:'Growth', adminOnly:true },
+
+  { key:'people',       icon:'users',          label:'People & HR',            section:'Company' },
+  { key:'finance',      icon:'chart-line',     label:'Finance',                section:'Company' },
+  { key:'legal',        icon:'gavel',          label:'Legal',                  section:'Company' },
+
+  { key:'team',         icon:'user-shield',    label:'Team & roles',           section:'Admin', adminOnly:true },
+  { key:'economics',    icon:'scale-balanced', label:'Pricing & economics',    section:'Admin', lock:true },
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, moderation:Moderation, team:Team, economics:Economics };
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, people:People, finance:Finance, legal:Legal, moderation:Moderation, team:Team, economics:Economics };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
 function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
@@ -35,18 +42,22 @@ function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
         <div className="flex items-center gap-2.5"><Logo size={26} /><span className="text-xs font-semibold t3 border-l pl-2.5 b-line">Ops</span></div>
         <button onClick={onClose} className="lg:hidden t3 w-8 h-8" aria-label="Close menu"><Icon name="xmark"/></button>
       </div>
-      <nav className="px-3 flex flex-col gap-1 flex-1">
-        {items.map(n=>{
+      <nav className="px-3 flex flex-col gap-0.5 flex-1 overflow-y-auto pb-3">
+        {items.map((n,i)=>{
           const on = active===n.key;
+          const newSection = n.section && n.section !== (items[i-1] && items[i-1].section);
           return (
-            <button key={n.key} onClick={()=>{go(n.key); onClose&&onClose();}}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-              style={ on?{background:'var(--pri-soft)',color:'var(--pri)'}:{color:'var(--t2)'}}>
-              <Icon name={n.icon} className="w-5 text-center" style={{color: on?'var(--pri)':'var(--t3)'}} />
-              <span className="flex-1 text-left">{n.label}</span>
-              {n.badge>0 && <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--amber)'}}>{n.badge}</span>}
-              {n.lock && <Icon name="lock" className="text-xs" style={{color:'var(--red)'}} />}
-            </button>
+            <React.Fragment key={n.key}>
+              {newSection && <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase t3" style={{letterSpacing:'.08em'}}>{n.section}</div>}
+              <button onClick={()=>{go(n.key); onClose&&onClose();}}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                style={ on?{background:'var(--pri-soft)',color:'var(--pri)'}:{color:'var(--t2)'}}>
+                <Icon name={n.icon} className="w-5 text-center" style={{color: on?'var(--pri)':'var(--t3)'}} />
+                <span className="flex-1 text-left">{n.label}</span>
+                {n.badge>0 && <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--amber)'}}>{n.badge}</span>}
+                {n.lock && <Icon name="lock" className="text-xs" style={{color:'var(--red)'}} />}
+              </button>
+            </React.Fragment>
           );
         })}
       </nav>
@@ -118,7 +129,7 @@ function App(){
             </div>
           </header>
 
-          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen /></main>
+          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={role==='admin'} /></main>
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1240px] mx-auto">
             <span>© 2026 YoteMarket Limited — Internal Operations</span>

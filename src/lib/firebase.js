@@ -157,6 +157,26 @@ export const setPromoActive = callable('setPromoActive');
 /** Merchant: redeem a coupon code → { type, months?|value? }. { code }. */
 export const redeemCoupon = callable('redeemCoupon');
 
+// ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
+/** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */
+export const onboardEmployee = callable('onboardEmployee');
+/** Admin: offboard an employee (revoke access + mark left) → { uid }. { uid?|email? }. */
+export const offboardEmployee = callable('offboardEmployee');
+/** Staff: the employee directory → { employees }. */
+export const listStaff = callable('listStaff');
+/** Staff: add a finance entry → { id }. { type:'revenue'|'expense', category?, amount, note?, date? }. */
+export const addFinanceEntry = callable('addFinanceEntry');
+/** Staff: finance entries + totals → { entries, revenue, expenses, net }. */
+export const listFinanceEntries = callable('listFinanceEntries');
+/** Admin: delete a finance entry → { ok }. { id }. */
+export const deleteFinanceEntry = callable('deleteFinanceEntry');
+/** Staff: add/update a legal record → { id }. { id?, title, type?, status?, counterparty?, note?, date? }. */
+export const saveLegalRecord = callable('saveLegalRecord');
+/** Staff: list legal records → { records }. */
+export const listLegalRecords = callable('listLegalRecords');
+/** Admin: delete a legal record → { ok }. { id }. */
+export const deleteLegalRecord = callable('deleteLegalRecord');
+
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {
   if (!app || !firebaseConfig.measurementId) return null;
