@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap } from './ui.jsx';
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, confirmPayment, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -29,6 +29,7 @@ export function CheckoutScreen(){
   const [busy, setBusy] = useSCm(false);
   const [err, setErr] = useSCm('');
   const [receipt, setReceipt] = useSCm('');
+  const [paidMethod, setPaidMethod] = useSCm('mpesa');
   const [hubId, setHubId] = useSCm(DEFAULT_HUB_ID);
   const [hubOpen, setHubOpen] = useSCm(false);
   const [checking, setChecking] = useSCm(false);
@@ -47,7 +48,7 @@ export function CheckoutScreen(){
 
   useEffCm(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); }, []);
   const stopWatching = () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); };
-  const settle = (rcpt) => { stopWatching(); setReceipt(rcpt); setPhase('paid'); clearCart(); };
+  const settle = (rcpt, method) => { stopWatching(); setReceipt(rcpt); if (method) setPaidMethod(method); setPhase('paid'); clearCart(); };
 
   // Actively confirm the order payment via Daraja (independent of the callback).
   // On success settlePaid flips the payment doc to 'paid', which the listener below
@@ -68,13 +69,13 @@ export function CheckoutScreen(){
   const payNow = async () => {
     setErr('');
     const uid = auth?.currentUser?.uid;
-    if (pay !== 'mpesa' || !firebaseEnabled || !db || !uid) {
-      settle('YM-' + Math.floor(58300 + Math.random() * 99));
-      return;
-    }
+    // Demo mode only (no backend): optimistic confirmation.
+    if (!firebaseEnabled || !db || !uid) { settle('YM-' + Math.floor(58300 + Math.random() * 99), pay); return; }
+    if (pay === 'mpesa' && !phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
     setBusy(true);
     try {
       const isPickup = fulfillment === 'store_pickup';
+      const storeName = ymStore(items[0]?.p?.store)?.name || '';
       const ref = await addDoc(collection(db, 'orders'), {
         buyerId: uid,
         storeId: items[0]?.p?.store || null,
@@ -86,17 +87,30 @@ export function CheckoutScreen(){
         step: 0,
         steps: isPickup ? STORE_PICKUP_STEPS : ORDER_STEPS,
         fulfillment,
+        payMethod: pay,
         ...(isPickup ? {} : { hub: hub.name, hubId: hub.id }),
         paid: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       const fallbackRcpt = ref.id.slice(0, 6).toUpperCase();
-      const storeName = ymStore(items[0]?.p?.store)?.name || '';
+
+      // Wallet: charge the YoteMarket wallet (server deducts + marks paid + dispatches).
+      if (pay === 'wallet') {
+        await payOrderWithWallet({ orderId: ref.id });
+        setBusy(false); settle('Wallet · ' + fallbackRcpt, 'wallet'); return;
+      }
+      // Cash on collection: track the order, pay at handover.
+      if (pay === 'cash') {
+        await placeCashOrder({ orderId: ref.id });
+        setBusy(false); settle(fallbackRcpt, 'cash'); return;
+      }
+
+      // M-Pesa STK.
       const res = await mpesaStkPush({ orderId: ref.id, phone, amount: total, storeName });
       const checkoutRequestId = res && res.checkoutRequestId;
       setBusy(false);
-      if (!checkoutRequestId) { settle(fallbackRcpt); return; }
+      if (!checkoutRequestId) { settle(fallbackRcpt, 'mpesa'); return; }
       cidRef.current = checkoutRequestId;
       setPhase('waiting');
       // Watch the payment doc that paid/failed flips (callback OR confirmPayment).
@@ -157,12 +171,12 @@ export function CheckoutScreen(){
   if(phase==='paid'){
     return (
       <div className="wrap anim-up" style={{ paddingTop:48, maxWidth:560, textAlign:'center', paddingBottom:40, margin:'0 auto' }}>
-        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i="fa-check" /></div>
-        <h1 className="ym-h1">Payment confirmed!</h1>
-        <p className="ym-body" style={{ marginTop:8 }}>Your order is confirmed and being prepared. You'll collect at <b style={{ color:'var(--m-fg1)' }}>{fulfillment==='store_pickup' ? (sellStore?.name || 'the store') : hub.name}</b> — we'll notify you when it's ready.</p>
+        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i={paidMethod==='cash'?'fa-box-check':'fa-check'} /></div>
+        <h1 className="ym-h1">{paidMethod==='cash' ? 'Order placed!' : 'Payment confirmed!'}</h1>
+        <p className="ym-body" style={{ marginTop:8 }}>{paidMethod==='cash' ? <>Your order is being prepared — <b style={{ color:'var(--m-fg1)' }}>pay {ymPrice(total)} on collection</b> at </> : <>Your order is confirmed and being prepared. You'll collect at </>}<b style={{ color:'var(--m-fg1)' }}>{fulfillment==='store_pickup' ? (sellStore?.name || 'the store') : hub.name}</b> — we'll notify you when it's ready.</p>
         <div className="ym-card" style={{ padding:20, margin:'24px 0', textAlign:'left' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">M-Pesa receipt</span><span className="ym-h3">{receipt}</span></div>
-          <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">Total paid</span><span className="ym-h3">{ymPrice(total)}</span></div>
+          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">{paidMethod==='cash'?'Order':paidMethod==='wallet'?'Wallet payment':'M-Pesa receipt'}</span><span className="ym-h3">{receipt}</span></div>
+          <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{paidMethod==='cash'?'Amount due':'Total paid'}</span><span className="ym-h3">{ymPrice(total)}</span></div>
         </div>
         <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
           <button className="ym-btn ym-btn-primary" onClick={()=>nav('orders')}><FA i="fa-box" /> Track order</button>

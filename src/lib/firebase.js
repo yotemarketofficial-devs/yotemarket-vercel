@@ -116,6 +116,10 @@ export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query
  *  → { paid, settledCount, creditedTotal }. { checkoutRequestId? }. */
 export const confirmPayment = callable('confirmPayment');
+/** Pay an order from the wallet → { ok, balance }. { orderId }. Deducts + marks paid. */
+export const payOrderWithWallet = callable('payOrderWithWallet');
+/** Place a cash-on-collection order (dispatch for tracking, unpaid) → { ok }. { orderId }. */
+export const placeCashOrder = callable('placeCashOrder');
 /** Redeem YotePoints for wallet credit → { redeemed, credited, balancePoints }. { points }. */
 export const redeemPoints = callable('redeemPoints');
 /** Rider claims an open batched run → { ok, orders }. { runId }. */
