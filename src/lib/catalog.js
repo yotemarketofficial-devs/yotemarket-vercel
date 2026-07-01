@@ -113,18 +113,19 @@ export function useCatalogSync(apply) {
   return version;
 }
 
-/** Live-subscribe to a buyer's orders. Returns an unsubscribe fn (no-op in demo mode). */
+/** Live-subscribe to a buyer's orders. Returns an unsubscribe fn (no-op in demo mode).
+ *  Equality-only query (no composite index needed) — sorted newest-first client-side. */
 export function subscribeUserOrders(uid, cb) {
   if (!firebaseEnabled || !db || !uid || uid === 'guest') return () => {};
   try {
-    const q = query(
-      collection(db, 'orders'),
-      where('buyerId', '==', uid),
-      orderBy('updatedAt', 'desc'),
-    );
+    const q = query(collection(db, 'orders'), where('buyerId', '==', uid));
     return onSnapshot(
       q,
-      (snap) => cb(toArray(snap)),
+      (snap) => {
+        const rows = toArray(snap).sort((a, b) =>
+          (b.updatedAt?.seconds || b.createdAt?.seconds || 0) - (a.updatedAt?.seconds || a.createdAt?.seconds || 0));
+        cb(rows);
+      },
       (err) => console.warn('[orders] subscription error', err),
     );
   } catch (err) {

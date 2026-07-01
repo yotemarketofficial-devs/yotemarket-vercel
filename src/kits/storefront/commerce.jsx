@@ -39,11 +39,15 @@ export function CheckoutScreen(){
   const cidRef = useRefCm(null);
   const hub = findHub(hubId) || HUBS[0];
 
-  // Default the pickup hub to the shopper's saved choice (users/{uid}.defaultHubId).
+  // Prefill from the shopper's profile: default pickup hub + M-Pesa phone.
   useEffCm(() => {
     const uid = auth?.currentUser?.uid;
     if (!firebaseEnabled || !db || !uid) return;
-    getDoc(doc(db, 'users', uid)).then((s) => { const id = s.data()?.defaultHubId; if (id && findHub(id)) setHubId(id); }).catch(() => {});
+    getDoc(doc(db, 'users', uid)).then((s) => {
+      const d = s.data() || {};
+      if (d.defaultHubId && findHub(d.defaultHubId)) setHubId(d.defaultHubId);
+      if (d.phone) setPhone((cur) => cur || d.phone);
+    }).catch(() => {});
   }, [hasAccount]);
 
   useEffCm(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); }, []);

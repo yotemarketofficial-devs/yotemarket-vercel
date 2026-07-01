@@ -34,7 +34,10 @@ export default function StorefrontApp(){
     } catch { /* no-op */ }
     return [{ screen:'home', params:{} }];
   });
-  const [cart, setCart] = useState([{ pid:'p3', qty:2 }]);
+  const [cart, setCart] = useState(() => {
+    try { const s = localStorage.getItem('ym_cart'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  useEffect(() => { try { localStorage.setItem('ym_cart', JSON.stringify(cart)); } catch { /* ignore */ } }, [cart]);
   const [cartOpen, setCartOpen] = useState(false);
   const [toastState, setToast] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
