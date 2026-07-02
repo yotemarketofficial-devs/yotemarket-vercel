@@ -184,6 +184,10 @@ export const saveLegalRecord = callable('saveLegalRecord');
 export const listLegalRecords = callable('listLegalRecords');
 /** Admin: delete a legal record → { ok }. { id }. */
 export const deleteLegalRecord = callable('deleteLegalRecord');
+/** Staff: cross-platform commercial data repository → { data }. */
+export const platformIntelligence = callable('platformIntelligence');
+/** Staff: AI business-intelligence brief from live platform data → { insights, data }. */
+export const platformInsights = callable('platformInsights');
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {

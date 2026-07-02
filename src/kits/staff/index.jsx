@@ -9,6 +9,7 @@ import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderati
 import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
+import { Intelligence } from './intelligence.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims } from './service.js';
 const { useState: useSApp } = React;
@@ -24,6 +25,7 @@ const NAV = [
   { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet', section:'Growth' },
   { key:'promotions',   icon:'tags',           label:'Promotions & offers',    section:'Growth', adminOnly:true },
 
+  { key:'intelligence', icon:'chart-pie',      label:'Business intelligence',  section:'Company', adminOnly:true },
   { key:'people',       icon:'users',          label:'People & HR',            section:'Company' },
   { key:'finance',      icon:'chart-line',     label:'Finance',                section:'Company' },
   { key:'legal',        icon:'gavel',          label:'Legal',                  section:'Company' },
@@ -31,7 +33,7 @@ const NAV = [
   { key:'team',         icon:'user-shield',    label:'Team & roles',           section:'Admin', adminOnly:true },
   { key:'economics',    icon:'scale-balanced', label:'Pricing & economics',    section:'Admin', lock:true },
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, people:People, finance:Finance, legal:Legal, moderation:Moderation, team:Team, economics:Economics };
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, moderation:Moderation, team:Team, economics:Economics };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
 function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
