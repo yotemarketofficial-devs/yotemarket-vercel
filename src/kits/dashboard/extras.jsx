@@ -142,7 +142,7 @@ function WithdrawSheet({ balance, payout, onClose, toast }){
   const n = Math.floor(Number(amount)) || 0;
   const submit = async () => {
     setErr('');
-    if (n < 50) { setErr('Minimum withdrawal is KSh 50.'); return; }
+    if (n < 1) { setErr('Enter an amount to withdraw.'); return; }
     if (n > balance) { setErr('Amount exceeds your available balance.'); return; }
     setBusy(true);
     try { const r = await requestMerchantWithdrawal({ amount: n }); toast && toast(`Withdrawal of ${ksh(r.amount)} initiated`); setDone(true); }
@@ -165,6 +165,7 @@ function WithdrawSheet({ balance, payout, onClose, toast }){
       <label className="ym-label">Amount (KSh)</label>
       <input style={wIpt} value={amount} onChange={(e)=>setAmount(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" />
       <div className="ym-cap" style={{ marginTop:8 }}>Available: {ksh(balance)}</div>
+      {n > 0 && n < 10 && <div className="ym-cap" style={{ marginTop:6 }}><FA i="fa-circle-info" /> M-Pesa's minimum payout is KSh 10 — smaller amounts may be declined.</div>}
       {err && <div role="alert" style={wErr}><FA i="fa-circle-exclamation" /> {err}</div>}
       <Btn kind="primary" style={{ width:'100%', marginTop:16 }} disabled={busy} onClick={submit}>{busy ? 'Sending…' : `Withdraw ${ksh(n)}`}</Btn>
     </Sheet>
@@ -197,7 +198,7 @@ export function Wallet({ toast }){
   const thisMonth = receipts.filter((r) => { const s = r.createdAt?.seconds; if (!s) return false; const d = new Date(s * 1000); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && r.type !== 'payout'; });
   const monthIn = thisMonth.reduce((s, r) => s + (r.amount || 0), 0);
   const fmtRcptWhen = (r) => r.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short' }) : '';
-  const onWithdraw = () => { if (!payout || !payout.method) setModal('setup'); else if (balance < 50) toast && toast('You need at least KSh 50 available to withdraw'); else setModal('withdraw'); };
+  const onWithdraw = () => { if (!payout || !payout.method) setModal('setup'); else if (balance < 1) toast && toast('You have no balance to withdraw yet'); else setModal('withdraw'); };
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Wallet</h1>
