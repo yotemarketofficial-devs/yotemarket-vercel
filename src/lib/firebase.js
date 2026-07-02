@@ -152,6 +152,8 @@ export const backfillReceipts = callable('backfillReceipts');
 export const backfillStoreLogos = callable('backfillStoreLogos');
 /** Staff: award YotePoints for past delivered orders → { orders, points }. */
 export const backfillPoints = callable('backfillPoints');
+/** Staff: backfill order numbers + customer names onto existing orders → { numbered, named }. */
+export const backfillOrders = callable('backfillOrders');
 /** Admin: create a coupon → { id, code }. { code, type, value, name?, maxRedemptions?, expiresAt? }. */
 export const createPromo = callable('createPromo');
 /** Staff: list promotions/coupons → { promos }. */

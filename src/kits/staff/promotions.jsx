@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints } from '../../lib/firebase.js';
+import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders } from '../../lib/firebase.js';
 const { useState, useEffect, useCallback } = React;
 
 export function Promotions(){
@@ -15,6 +15,7 @@ export function Promotions(){
   const [backfilling, setBackfilling] = useState(false);
   const [logoFilling, setLogoFilling] = useState(false);
   const [pointsFilling, setPointsFilling] = useState(false);
+  const [ordersFilling, setOrdersFilling] = useState(false);
   const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
   const [creating, setCreating] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -45,6 +46,11 @@ export function Promotions(){
     setPointsFilling(true); setMsg(null);
     try { const r = await backfillPoints(); setMsg({ ok:true, text:`YotePoints awarded — ${r.points} pts across ${r.orders} delivered order(s).` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Points backfill failed.' }); } finally { setPointsFilling(false); }
+  };
+  const fillOrders = async () => {
+    setOrdersFilling(true); setMsg(null);
+    try { const r = await backfillOrders(); setMsg({ ok:true, text:`Orders updated — ${r.numbered} numbered, ${r.named} customer name(s) filled in.` }); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Order backfill failed.' }); } finally { setOrdersFilling(false); }
   };
   const create = async () => {
     setCreating(true); setMsg(null);
@@ -95,6 +101,12 @@ export function Promotions(){
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--amber-soft, #fef3c7)', color:'var(--amber)' }}><Icon name="gift" /></div><h3 className="font-bold t1">YotePoints</h3></div>
           <p className="text-sm t3">Award YotePoints for past delivered orders that pre-date the earning logic (1 pt per KSh 100). Idempotent — only awards orders not yet credited.</p>
           <Btn kind="primary" size="md" icon={pointsFilling ? 'spinner' : 'gift'} onClick={fillPoints} disabled={pointsFilling}>{pointsFilling ? 'Awarding…' : 'Backfill YotePoints'}</Btn>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--blue-bg)', color:'var(--blue)' }}><Icon name="bag-shopping" /></div><h3 className="font-bold t1">Order details</h3></div>
+          <p className="text-sm t3">Fill the store-scoped order number and the customer's real name onto existing orders so they show in the merchant sales lists. Idempotent — only touches orders missing them.</p>
+          <Btn kind="primary" size="md" icon={ordersFilling ? 'spinner' : 'bag-shopping'} onClick={fillOrders} disabled={ordersFilling}>{ordersFilling ? 'Updating…' : 'Backfill order details'}</Btn>
         </Card>
       </div>
 
