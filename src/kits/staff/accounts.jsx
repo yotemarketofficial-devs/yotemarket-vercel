@@ -13,6 +13,7 @@ const fmtDate = (s) => s ? new Date(s).toLocaleDateString('en-KE', { day:'numeri
 
 export function Accounts(){
   const [users, setUsers] = useState([]);
+  const [source, setSource] = useState('auth');
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [q, setQ] = useState('');
@@ -21,7 +22,7 @@ export function Accounts(){
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await staffListUsers(); setUsers(r.users || []); }
+    try { const r = await staffListUsers(); setUsers(r.users || []); setSource(r.source || 'auth'); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Could not load accounts.' }); }
     finally { setLoading(false); }
   }, []);
@@ -47,6 +48,7 @@ export function Accounts(){
       <SectionHead icon="address-book" title="Accounts" sub={`${users.length} user account${users.length!==1?'s':''} across the platform`}
         action={<Btn kind="soft" size="md" icon={loading ? 'spinner' : 'rotate'} onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Btn>} />
       {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
+      {!loading && source === 'firestore' && <div className="text-xs t3 flex items-center gap-2" style={{ background:'var(--amber-bg)', color:'var(--amber)', padding:'8px 12px', borderRadius:10 }}><Icon name="triangle-exclamation" />Limited directory — the functions service account can't list Auth users, so this is built from Firestore (merchants, riders, staff, profiles). Grant it the "Firebase Authentication Admin" role for the full list + email lookups.</div>}
 
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1" style={{ minWidth:220, maxWidth:420 }}>
