@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders } from '../../lib/firebase.js';
+import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, staffCreditTestBalance } from '../../lib/firebase.js';
 const { useState, useEffect, useCallback } = React;
 
 export function Promotions(){
@@ -16,6 +16,8 @@ export function Promotions(){
   const [logoFilling, setLogoFilling] = useState(false);
   const [pointsFilling, setPointsFilling] = useState(false);
   const [ordersFilling, setOrdersFilling] = useState(false);
+  const [credit, setCredit] = useState({ email:'', amount:'500' });
+  const [crediting, setCrediting] = useState(false);
   const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
   const [creating, setCreating] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -51,6 +53,11 @@ export function Promotions(){
     setOrdersFilling(true); setMsg(null);
     try { const r = await backfillOrders(); setMsg({ ok:true, text:`Orders updated — ${r.numbered} numbered, ${r.named} customer name(s) filled in.` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Order backfill failed.' }); } finally { setOrdersFilling(false); }
+  };
+  const creditBalance = async () => {
+    setCrediting(true); setMsg(null);
+    try { const r = await staffCreditTestBalance({ email: credit.email.trim(), amount: Number(credit.amount) }); setMsg({ ok:true, text:`Credited ${kes(r.amount)} test balance to ${credit.email}.` }); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Credit failed.' }); } finally { setCrediting(false); }
   };
   const create = async () => {
     setCreating(true); setMsg(null);
@@ -107,6 +114,16 @@ export function Promotions(){
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--blue-bg)', color:'var(--blue)' }}><Icon name="bag-shopping" /></div><h3 className="font-bold t1">Order details</h3></div>
           <p className="text-sm t3">Fill the store-scoped order number and the customer's real name onto existing orders so they show in the merchant sales lists. Idempotent — only touches orders missing them.</p>
           <Btn kind="primary" size="md" icon={ordersFilling ? 'spinner' : 'bag-shopping'} onClick={fillOrders} disabled={ordersFilling}>{ordersFilling ? 'Updating…' : 'Backfill order details'}</Btn>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--amber-bg)', color:'var(--amber)' }}><Icon name="flask" /></div><h3 className="font-bold t1">Credit test balance</h3></div>
+          <p className="text-sm t3">Sandbox only — credit a merchant's available balance to test M-Pesa withdrawals. Disabled automatically when payouts run on production.</p>
+          <input value={credit.email} onChange={e => setCredit(c => ({ ...c, email:e.target.value }))} placeholder="Merchant email" className="ym-input" type="email" />
+          <div className="flex items-center gap-3">
+            <input value={credit.amount} onChange={e => setCredit(c => ({ ...c, amount:e.target.value.replace(/[^0-9]/g,'') }))} inputMode="numeric" className="ym-input" style={{ width:120 }} />
+            <Btn kind="primary" size="md" icon={crediting ? 'spinner' : 'flask'} onClick={creditBalance} disabled={crediting || !credit.email || !credit.amount}>{crediting ? 'Crediting…' : 'Credit balance'}</Btn>
+          </div>
         </Card>
       </div>
 
