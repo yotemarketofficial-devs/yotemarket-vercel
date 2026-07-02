@@ -29,12 +29,13 @@ export function Sales(){
   const avg = paid.length ? Math.round(revenue / paid.length) : 0;
   const delivered = os.filter((o) => o.status === 'delivered').length;
   const rows = os.map((o) => ({
-    id: o.id, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',
+    id: o.id, orderNo: o.orderNo || null, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',
     items: Array.isArray(o.items) ? `${o.items.length} item${o.items.length !== 1 ? 's' : ''}` : '—',
-    total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : 'pending',
+    total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : (o.status === 'cancelled' ? 'inactive' : 'pending'),
     rawStatus: o.status, fulfillment: o.fulfillment || 'hub',
     date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''),
     hub: o.fulfillment === 'store_pickup' ? 'Store pickup' : (o.hub || '—'),
+    raw: o,
   }));
   return (
     <div className="anim-up">

@@ -82,6 +82,8 @@ export function CheckoutScreen(){
       const storeName = ymStore(items[0]?.p?.store)?.name || '';
       const ref = await addDoc(collection(db, 'orders'), {
         buyerId: uid,
+        buyerName: account?.name || auth?.currentUser?.displayName || (auth?.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Customer'),
+        buyerPhone: phone.trim() || account?.phone || null,
         storeId: items[0]?.p?.store || null,
         items: items.map(x => ({ pid: x.pid, qty: x.qty, price: x.p.price, name: x.p.name })),
         subtotal,

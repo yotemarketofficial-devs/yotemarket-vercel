@@ -39,21 +39,23 @@ export function MerchantProvider({ children }) {
     return () => { u1(); u2(); };
   }, [uid]);
 
-  // store doc (live) + the store's products/orders (one-shot)
+  // store doc + the store's products/orders — all LIVE (onSnapshot) so the
+  // dashboard reflects real data in real time (no mock, no manual refresh).
   const storeId = merchant?.storeId;
   useEffect(() => {
     if (!firebaseEnabled || !db || !storeId) { setStore(null); setProducts(null); setOrders(null); return undefined; }
     const u = onSnapshot(doc(db, 'stores', storeId), (s) => setStore(s.exists() ? { id: s.id, ...s.data() } : null), () => {});
-    getDocs(query(collection(db, 'products'), where('storeId', '==', storeId)))
-      .then((snap) => setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-      .catch(() => setProducts([]));
-    getDocs(query(collection(db, 'orders'), where('storeId', '==', storeId)))
-      .then((snap) => setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
-      .catch(() => setOrders([]));
-    return () => u();
+    const up = onSnapshot(query(collection(db, 'products'), where('storeId', '==', storeId)),
+      (snap) => setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), () => setProducts([]));
+    const uo = onSnapshot(query(collection(db, 'orders'), where('storeId', '==', storeId)),
+      (snap) => setOrders(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), () => setOrders([]));
+    return () => { u(); up(); uo(); };
   }, [storeId]);
 
-  const live = Boolean(firebaseEnabled && merchant && store);
+  // "live" = a real backend is configured. Demo/mock data is used ONLY when there
+  // is no backend at all; with Firebase on, the dashboard is live-data-only (real
+  // figures, empty states while loading — never fake products/orders).
+  const live = Boolean(firebaseEnabled);
 
   const value = useMemo(() => ({ live, uid, displayName, merchant, sub, store, products, orders }), [live, uid, displayName, merchant, sub, store, products, orders]);
   return <MerchantCtx.Provider value={value}>{children}</MerchantCtx.Provider>;
@@ -66,18 +68,19 @@ export function useMerchant() {
 /** SHOP-shaped store/owner identity (live or demo fallback). */
 export function useShop() {
   const { live, store, merchant, displayName } = useMerchant();
-  if (!live || !store) return SHOP;
-  const name = store.name || merchant?.name || 'My store';
+  if (!live) return SHOP; // demo mode only (no backend)
+  const s = store || {};
+  const name = s.name || merchant?.name || 'My store';
   const owner = displayName || merchant?.name || name;
   return {
     name,
     owner,
     first: (owner || name).split(/\s+/)[0],
     role: 'Merchant',
-    shopId: store.id,
-    area: store.area || '',
-    location: store.location || null,
-    address: store.address || '',
+    shopId: s.id || '',
+    area: s.area || '',
+    location: s.location || null,
+    address: s.address || '',
     plan: '',
     photo: null,
     initials: initialsOf(owner || name),
@@ -124,12 +127,13 @@ export function useStoreOverview() {
       icon: faIcon(p.icon), tint: '#7c3aed',
     }));
     const orderRows = os.map((o) => ({
-      id: o.id, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',
+      id: o.id, orderNo: o.orderNo || null, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',
       items: Array.isArray(o.items) ? `${o.items.length} item${o.items.length !== 1 ? 's' : ''}` : '—',
-      total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : 'pending',
+      total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : (o.status === 'cancelled' ? 'inactive' : 'pending'),
       rawStatus: o.status, // real custody status for the handover column
       fulfillment: o.fulfillment || 'hub',
       date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''), hub: o.fulfillment === 'store_pickup' ? 'Store pickup' : (o.hub || '—'),
+      raw: o,
     }));
 
     return { live: true, kpis, week, products: prodRows, orders: orderRows };

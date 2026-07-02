@@ -1,8 +1,8 @@
 /* products.jsx — Merchant products CRUD + Add Product modal (aligned theme). */
 import React from 'react';
 import { FA, Card, Btn, Pill, Thumb, Stat } from './primitives.jsx';
-import { PROD_ROWS, ksh } from './data.js';
-import { useMerchant } from './merchant.jsx';
+import { ksh } from './data.js';
+import { useMerchant, useStoreOverview } from './merchant.jsx';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { productImagePath } from '../../lib/storage.js';
 import { saveProduct } from '../../lib/firebase.js';
@@ -14,18 +14,23 @@ const CAT_MAP = { Phones:'electronics', Electronics:'electronics', Audio:'electr
 export function Products({ onAdd, toast }){
   const [filter, setFilter] = useStateP('all');
   const [search, setSearch] = useStateP('');
-  const rows = PROD_ROWS.filter(p=>(filter==='all'||p.status===filter)&&(search===''||p.name.toLowerCase().includes(search.toLowerCase())));
+  const { products } = useStoreOverview();
+  const all = products || [];
+  const total = all.length;
+  const active = all.filter(p=>p.status==='active').length;
+  const out = all.filter(p=>p.stock===0).length;
+  const rows = all.filter(p=>(filter==='all'||p.status===filter||(filter==='out'&&p.stock===0))&&(search===''||p.name.toLowerCase().includes(search.toLowerCase())||(p.sku||'').toLowerCase().includes(search.toLowerCase())));
   return (
     <div className="anim-up">
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:14, marginBottom:20 }}>
-        <div><h1 className="ym-h1">My Products</h1><p className="ym-sub" style={{ marginTop:4 }}>47 products · 3 pending review · 1 out of stock</p></div>
+        <div><h1 className="ym-h1">My Products</h1><p className="ym-sub" style={{ marginTop:4 }}>{total} product{total!==1?'s':''}{out?` · ${out} out of stock`:''}</p></div>
         <Btn kind="primary" icon="fa-plus" onClick={onAdd}>Add product</Btn>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:16, marginBottom:20 }}>
-        <Stat label="Total" value="47" icon="fa-box" tone="#7c3aed" />
-        <Stat label="Active" value="42" icon="fa-circle-check" tone="#10b981" />
-        <Stat label="Pending" value="3" icon="fa-clock" tone="#f59e0b" />
-        <Stat label="Out of stock" value="1" icon="fa-triangle-exclamation" tone="#ef4444" />
+        <Stat label="Total" value={String(total)} icon="fa-box" tone="#7c3aed" />
+        <Stat label="Active" value={String(active)} icon="fa-circle-check" tone="#10b981" />
+        <Stat label="Inactive" value={String(total-active)} icon="fa-eye-slash" tone="#f59e0b" />
+        <Stat label="Out of stock" value={String(out)} icon="fa-triangle-exclamation" tone="#ef4444" />
       </div>
       <Card style={{ padding:0, overflow:'hidden' }}>
         <div style={{ padding:'16px 18px', borderBottom:'1px solid var(--m-border)', display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
@@ -34,7 +39,7 @@ export function Products({ onAdd, toast }){
             <input className="ym-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products by name or SKU…" style={{ paddingLeft:40 }} />
           </div>
           <div className="scroll-x" style={{ gap:4, background:'var(--m-surface-2)', borderRadius:10, padding:4 }}>
-            {[['all','All'],['active','Active'],['pending','Pending'],['inactive','Inactive']].map(([k,l])=>(
+            {[['all','All'],['active','Active'],['inactive','Inactive'],['out','Out of stock']].map(([k,l])=>(
               <button key={k} onClick={()=>setFilter(k)} style={{ padding:'7px 13px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, whiteSpace:'nowrap', background:filter===k?'var(--m-surface)':'transparent', color:filter===k?'var(--m-fg1)':'var(--m-fg3)', boxShadow:filter===k?'var(--m-shadow-card)':'none' }}>{l}</button>
             ))}
           </div>
@@ -44,6 +49,12 @@ export function Products({ onAdd, toast }){
           <table className="ym-table" style={{ minWidth:720 }}>
             <thead><tr><th style={{ width:36 }}><input type="checkbox" aria-label="Select all" /></th><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Sales</th><th>Status</th><th style={{ textAlign:'right' }}>Actions</th></tr></thead>
             <tbody>
+              {rows.length===0 && (
+                <tr><td colSpan={8} style={{ textAlign:'center', color:'var(--m-fg3)', padding:'40px 20px' }}>
+                  <FA i="fa-box-open" style={{ fontSize:26, color:'var(--m-fg4)', display:'block', marginBottom:10 }} />
+                  {all.length===0 ? 'No products yet — tap “Add product” to list your first item.' : 'No products match this filter.'}
+                </td></tr>
+              )}
               {rows.map(r=>(
                 <tr key={r.id}>
                   <td><input type="checkbox" aria-label={`Select ${r.name}`} /></td>
@@ -60,8 +71,7 @@ export function Products({ onAdd, toast }){
           </table>
         </div>
         <div style={{ padding:'14px 18px', borderTop:'1px solid var(--m-border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <span className="ym-cap">Showing {rows.length} of 47</span>
-          <div style={{ display:'flex', gap:4 }}>{['←','1','2','3','→'].map((p,i)=><button key={i} aria-label={`Page ${p}`} style={{ minWidth:32, height:32, borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, background:p==='1'?'var(--m-primary-deep)':'transparent', color:p==='1'?'#fff':'var(--m-fg3)' }}>{p}</button>)}</div>
+          <span className="ym-cap">Showing {rows.length} of {total}</span>
         </div>
       </Card>
     </div>

@@ -161,8 +161,50 @@ export function ProductsTable({ rows, onAdd, onOpenProducts }){
   );
 }
 
+const orderNoOf = (o) => o.orderNo || ('#' + String(o.id).slice(-6).toUpperCase());
+
+function MerchantOrderDetail({ o, onClose }){
+  const r = o.raw || {};
+  const items = Array.isArray(r.items) ? r.items : [];
+  const Row = ({ l, v }) => <div style={{ display:'flex', justifyContent:'space-between', padding:'7px 0' }}><span className="ym-cap">{l}</span><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>;
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(8,10,24,.5)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:480, maxHeight:'88vh', overflowY:'auto', padding:0 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 20px', borderBottom:'1px solid var(--m-border)' }}>
+          <div><div className="ym-h3" style={{ fontFamily:'ui-monospace,Menlo,monospace' }}>{orderNoOf(o)}</div><div className="ym-cap">{o.date}</div></div>
+          <button onClick={onClose} className="icon-btn" aria-label="Close"><FA i="fa-xmark" /></button>
+        </div>
+        <div style={{ padding:20 }}>
+          <Pill tone={o.status}>{CUSTODY_LBL[o.rawStatus] || o.rawStatus}</Pill>
+          <div style={{ marginTop:14, padding:12, borderRadius:12, background:'var(--m-surface-2)' }}>
+            <div className="ym-cap">Customer</div>
+            <div style={{ fontWeight:700, color:'var(--m-fg1)', fontSize:15 }}>{r.buyerName || o.buyer || 'Customer'}</div>
+            {r.buyerPhone && <a href={`tel:${r.buyerPhone}`} style={{ color:'var(--m-link)', fontSize:13, fontWeight:600, display:'inline-flex', gap:6, alignItems:'center', marginTop:4 }}><FA i="fa-phone" /> {r.buyerPhone}</a>}
+          </div>
+          <div className="ym-h3" style={{ fontSize:14, margin:'16px 0 6px' }}>{items.length} item{items.length!==1?'s':''}</div>
+          {items.map((it,i)=>(
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderTop:i?'1px solid var(--m-border)':'none' }}>
+              <span style={{ color:'var(--m-fg1)' }}>{it.name || 'Item'} <span className="ym-cap">×{it.qty||1}</span></span>
+              <span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh((it.price||0)*(it.qty||1))}</span>
+            </div>
+          ))}
+          <div style={{ borderTop:'1px solid var(--m-border)', marginTop:12, paddingTop:12 }}>
+            <Row l="Subtotal" v={ksh(r.subtotal != null ? r.subtotal : o.total)} />
+            {r.deliveryFee > 0 && <Row l="Delivery fee" v={ksh(r.deliveryFee)} />}
+            <div style={{ display:'flex', justifyContent:'space-between', paddingTop:6, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3" style={{ fontSize:14 }}>Total</span><span className="ym-h3" style={{ fontSize:14 }}>{ksh(o.total)}</span></div>
+            <Row l="Payment" v={{ mpesa:'M-Pesa', wallet:'YoteWallet', cash:'Cash on collection' }[r.payMethod] || r.payMethod || '—'} />
+            <Row l="Fulfilment" v={r.fulfillment==='store_pickup' ? 'Store pickup' : (r.hub || 'Hub delivery')} />
+            {r.pickupCode && (o.rawStatus==='at_hub' || o.rawStatus==='ready_pickup') && <Row l="Pickup code" v={<span style={{ fontFamily:'ui-monospace,Menlo,monospace', letterSpacing:1 }}>{r.pickupCode}</span>} />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function OrdersTable({ rows }){
-  const lbl = { active:'Paid', pending:'Processing', inactive:'Refunded' };
+  const lbl = { active:'Paid', pending:'Processing', inactive:'Cancelled' };
+  const [detail, setDetail] = useStateO(null);
   return (
     <SectionCard title="Recent orders" sub={`${rows.length} order${rows.length!==1?'s':''}`} action={<Btn kind="ghost" size="sm" iconRight="fa-arrow-right">View all sales</Btn>}>
       {rows.length === 0 ? <EmptyRow icon="fa-receipt" text="No orders yet — they'll appear here once customers buy." /> : (
@@ -172,8 +214,8 @@ export function OrdersTable({ rows }){
           <tbody>
             {rows.map((o,idx)=>(
               <tr key={o.id+'-'+idx}>
-                <td style={{ fontFamily:'ui-monospace,Menlo,monospace', fontSize:12.5 }}>#{o.id}</td>
-                <td><div style={{ display:'flex', alignItems:'center', gap:10 }}><Avatar src={`/assets/avatars/${o.avatar}`} name={o.buyer} size={30} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{o.buyer}</span></div></td>
+                <td><button onClick={()=>setDetail(o)} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'ui-monospace,Menlo,monospace', fontSize:12.5, color:'var(--m-link)', fontWeight:700, padding:0 }}>{orderNoOf(o)}</button></td>
+                <td><button onClick={()=>setDetail(o)} style={{ display:'flex', alignItems:'center', gap:10, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, textAlign:'left' }}><Avatar name={o.buyer} size={30} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{o.buyer}</span></button></td>
                 <td>{o.items}</td>
                 <td style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ksh(o.total)}</td>
                 <td>{o.hub}</td>
@@ -191,6 +233,7 @@ export function OrdersTable({ rows }){
         </table>
       </div>
       )}
+      {detail && <MerchantOrderDetail o={detail} onClose={()=>setDetail(null)} />}
     </SectionCard>
   );
 }
