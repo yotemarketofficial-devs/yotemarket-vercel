@@ -123,8 +123,10 @@ export const staffListPayoutChanges = callable('staffListPayoutChanges');
 export const staffResolvePayoutChange = callable('staffResolvePayoutChange');
 /** Staff: manually finalize a stuck withdrawal → { ok }. { settlementId, paid }. */
 export const staffResolveSettlement = callable('staffResolveSettlement');
-/** Admin: credit a merchant's available balance for sandbox withdrawal testing → { ok, uid, amount }. { email, amount }. */
+/** Admin: credit a merchant's available balance for sandbox withdrawal testing → { ok, uid, amount }. { uid?|email?, amount }. */
 export const staffCreditTestBalance = callable('staffCreditTestBalance');
+/** Staff: full account directory → { users, total }. */
+export const staffListUsers = callable('staffListUsers');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query
