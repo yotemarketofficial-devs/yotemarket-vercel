@@ -26,7 +26,6 @@ const FA = ({ i, brand = false, style, className = '' }) => (
 export const ROLES = [
   { id: 'shopper', label: 'Shopper', icon: 'fa-bag-shopping', desc: 'Shop 200+ local stores' },
   { id: 'merchant', label: 'Merchant', icon: 'fa-store', desc: 'Sell from your own storefront' },
-  { id: 'rider', label: 'Rider', icon: 'fa-motorcycle', desc: 'Deliver & earn from hubs' },
 ];
 // Where each role's app lives — used to route a user who signs in under a role
 // that doesn't belong to the app they're currently in.
