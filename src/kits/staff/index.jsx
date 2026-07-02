@@ -94,11 +94,6 @@ function App(){
   const Screen = SCREENS[effective] || Analytics;
   return (
     <div className="min-h-screen bg-page" data-screen-label={'Staff — '+LABELS[active]}>
-      {/* confidential strip */}
-      <div className="text-white text-xs font-semibold text-center py-1.5 px-4" style={{background:'var(--red)'}}>
-        <Icon name="triangle-exclamation" className="mr-1.5"/>
-        CONFIDENTIAL — internal staff &amp; admins only. Not visible to merchants, riders, marketers, or shoppers.
-      </div>
       <div className="flex">
         <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
           <Sidebar active={active} go={setActive} onSignOut={signOutUser} isAdmin={role==='admin'} />
@@ -113,8 +108,9 @@ function App(){
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-7 h-16" style={{background:'var(--surface)', borderBottom:'1px solid var(--line)'}}>
             <div className="flex items-center gap-3">
               <button onClick={()=>setMenu(true)} className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center t2" style={{background:'var(--surface2)'}} aria-label="Menu"><Icon name="bars"/></button>
-              <span className="text-sm font-semibold t3 hidden sm:flex items-center">
+              <span className="text-sm font-semibold t3 hidden sm:flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-md text-xs" style={{background:'var(--pri-soft)',color:'var(--pri)'}}>staff.yotemarket.com</span>
+                <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold" style={{background:'var(--surface2)',color:'var(--t3)'}} title="Internal staff & admins only — not visible to merchants, riders, marketers or shoppers."><Icon name="lock" className="text-[10px]"/> Confidential · Internal</span>
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">

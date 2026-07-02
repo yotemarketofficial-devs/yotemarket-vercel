@@ -224,8 +224,8 @@ function LiveChatThread({ conv, user, onBack }){
           {QUICK_CHIPS.map(c=><button key={c} className="ym-chip ym-btn-sm" style={{ height:34, flexShrink:0, fontSize:13 }} onClick={()=>send(c)}>{c}</button>)}
         </div>
       )}
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
-        <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Message…'} aria-label="Message" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:46, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 18px', borderTop:'1px solid var(--m-border)' }}>
+        <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Message…'} aria-label="Message" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:48, padding:'0 20px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
         <button onClick={()=>send()} disabled={blocked} className="icon-btn" aria-label="Send" style={{ background:'var(--m-primary-deep)', color:'#fff', opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
       </div>
     </div>
@@ -304,8 +304,8 @@ export function AIScreen(){
             {suggestions.map(s=><button key={s} onClick={()=>send(s)} style={{ border:'1px solid var(--m-border)', background:'var(--m-surface)', cursor:'pointer', fontFamily:'inherit', fontSize:13, color:'var(--m-fg2)', borderRadius:12, padding:'9px 13px', display:'flex', alignItems:'center', gap:8 }}><FA i="fa-wand-magic-sparkles" style={{ color:'var(--m-primary)', fontSize:12 }} /> {s}</button>)}
           </div>
         )}
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 20px', borderTop:'1px solid var(--m-border)' }}>
-          <input className="ym-input" placeholder="Ask YoteAI…" aria-label="Ask YoteAI" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:48, borderRadius:9999, background:'var(--m-surface-2)', border:'none' }} />
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 20px', borderTop:'1px solid var(--m-border)' }}>
+          <input className="ym-input" placeholder="Ask YoteAI…" aria-label="Ask YoteAI" value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:48, padding:'0 20px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none' }} />
           <button onClick={()=>send()} disabled={busy} className="icon-btn" aria-label="Send" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)', opacity:busy?.6:1 }}><FA i="fa-paper-plane" /></button>
         </div>
       </div>

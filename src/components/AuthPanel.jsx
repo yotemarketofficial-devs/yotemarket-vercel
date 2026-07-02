@@ -93,21 +93,21 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
 
   return (
     <div style={wrapStyle} onClick={(e) => { if (overlay && onClose && e.target === e.currentTarget) onClose(); }}>
-      <div className="ym-card anim-up auth-modal" style={{ position: 'relative', width: '100%', maxWidth: 980, minHeight: 600, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
+      <div className="ym-card anim-up auth-modal" style={{ position: 'relative', width: '100%', maxWidth: 880, minHeight: 520, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
         {onClose && (
           <button onClick={onClose} aria-label="Close" className="icon-btn" style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, background: 'rgba(255,255,255,.16)', color: '#fff' }}><FA i="fa-xmark" /></button>
         )}
         <div className="auth-brand"><BrandPanel theme={theme} onTheme={onTheme} /></div>
-        <div className="auth-form-panel" style={{ padding: '44px 44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflowY: 'auto' }}>
-          <div style={{ maxWidth: 380, width: '100%', margin: '0 auto' }}>
-            <h2 className="ym-h1" style={{ fontSize: 26 }}>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
+        <div className="auth-form-panel" style={{ padding: '38px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflowY: 'auto' }}>
+          <div style={{ maxWidth: 360, width: '100%', margin: '0 auto' }}>
+            <h2 className="ym-h1" style={{ fontSize: 23 }}>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
             <p className="ym-sub" style={{ marginTop: 6 }}>
               {mode === 'signin'
                 ? (merchantCtx ? 'Sign in to open your merchant dashboard.' : 'Sign in to check out, track orders, and chat with sellers.')
                 : 'Join Kenya’s virtual mall in a few taps.'}
             </p>
 
-            <div style={{ display: 'flex', gap: 4, background: 'var(--m-surface-2)', borderRadius: 9999, padding: 4, margin: '22px 0' }}>
+            <div style={{ display: 'flex', gap: 4, background: 'var(--m-surface-2)', borderRadius: 9999, padding: 4, margin: '18px 0' }}>
               {[['signin', 'Sign in'], ['register', 'Register']].map(([id, label]) => (
                 <button key={id} onClick={() => { setMode(id); setErr(''); }} style={{ flex: 1, height: 42, borderRadius: 9999, border: 'none', cursor: 'pointer',
                   fontFamily: 'inherit', fontSize: 14.5, fontWeight: 600, transition: 'all .2s',
@@ -116,7 +116,7 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
             </div>
 
             {/* role selection — identical for shopper + merchant onboarding */}
-            <div style={{ marginBottom: 18 }}>
+            <div style={{ marginBottom: 14 }}>
               <span className="ym-label">{mode === 'register' ? 'I want to join as' : 'Sign in as'}</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {ROLES.map((r) => (
@@ -133,7 +133,7 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
               {role !== stayRole && <div className="ym-cap" style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}><FA i="fa-arrow-up-right-from-square" /> Opens the {role} {role === 'merchant' ? 'dashboard' : role === 'rider' ? 'app' : 'storefront'} after sign-in.</div>}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {mode === 'register' && <div><label className="ym-label">Full name</label><input className="ym-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Wanjiru Kamau" /></div>}
               <div><label className="ym-label">Email</label><input className="ym-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" /></div>
               {mode === 'register' && <div><label className="ym-label">Phone number (M-Pesa)</label><input className="ym-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></div>}
