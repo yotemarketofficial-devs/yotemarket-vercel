@@ -233,7 +233,7 @@ export function Wallet({ toast }){
               {settlements.map((s,i)=>(
                 <div key={s.id||i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
                   <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface-2)', color:'var(--m-fg3)' }}><FA i="fa-money-bill-transfer" /></div>
-                  <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{ksh(s.amount||0)}</div><div className="ym-cap">{payoutLabel(s.payout)}{s.receipt?` · ${s.receipt}`:''}</div></div>
+                  <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{ksh(s.amount||0)}</div><div className="ym-cap">{payoutLabel(s.payout)}{s.receipt?` · ${s.receipt}`:''}{s.status==='failed'&&(s.resultDesc||s.reason)?` · ${s.resultDesc||s.reason}`:''}</div></div>
                   <Pill tone={SETTLE_TONE[s.status]||'pending'}>{SETTLE_LBL[s.status]||s.status}</Pill>
                 </div>
               ))}
