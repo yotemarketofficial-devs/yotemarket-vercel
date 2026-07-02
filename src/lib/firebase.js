@@ -123,6 +123,8 @@ export const staffListPayoutChanges = callable('staffListPayoutChanges');
 export const staffResolvePayoutChange = callable('staffResolvePayoutChange');
 /** Staff: manually finalize a stuck withdrawal → { ok }. { settlementId, paid }. */
 export const staffResolveSettlement = callable('staffResolveSettlement');
+/** Staff: reconcile stuck withdrawals via Daraja Transaction Status → { ok, scanned, queried, skipped }. */
+export const staffReconcilePayouts = callable('staffReconcilePayouts');
 /** Admin: credit a merchant's available balance for sandbox withdrawal testing → { ok, uid, amount }. { uid?|email?, amount }. */
 export const staffCreditTestBalance = callable('staffCreditTestBalance');
 /** Staff: full account directory → { users, total }. */

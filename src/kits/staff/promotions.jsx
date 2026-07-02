@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, staffCreditTestBalance } from '../../lib/firebase.js';
+import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
 const { useState, useEffect, useCallback } = React;
 
 export function Promotions(){
@@ -18,6 +18,7 @@ export function Promotions(){
   const [ordersFilling, setOrdersFilling] = useState(false);
   const [credit, setCredit] = useState({ email:'', amount:'500' });
   const [crediting, setCrediting] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
   const [creating, setCreating] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -58,6 +59,11 @@ export function Promotions(){
     setCrediting(true); setMsg(null);
     try { const r = await staffCreditTestBalance({ email: credit.email.trim(), amount: Number(credit.amount) }); setMsg({ ok:true, text:`Credited ${kes(r.amount)} test balance to ${credit.email}.` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Credit failed.' }); } finally { setCrediting(false); }
+  };
+  const reconcile = async () => {
+    setReconciling(true); setMsg(null);
+    try { const r = await staffReconcilePayouts(); setMsg({ ok:true, text:`Payout reconcile done — ${r.scanned} in processing, ${r.queried} re-queried, ${r.skipped} skipped.` }); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Reconcile failed.' }); } finally { setReconciling(false); }
   };
   const create = async () => {
     setCreating(true); setMsg(null);
@@ -124,6 +130,12 @@ export function Promotions(){
             <input value={credit.amount} onChange={e => setCredit(c => ({ ...c, amount:e.target.value.replace(/[^0-9]/g,'') }))} inputMode="numeric" className="ym-input" style={{ width:120 }} />
             <Btn kind="primary" size="md" icon={crediting ? 'spinner' : 'flask'} onClick={creditBalance} disabled={crediting || !credit.email || !credit.amount}>{crediting ? 'Crediting…' : 'Credit balance'}</Btn>
           </div>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--green-soft, #d1fae5)', color:'var(--green)' }}><Icon name="rotate" /></div><h3 className="font-bold t1">Reconcile payouts</h3></div>
+          <p className="text-sm t3">Re-query any merchant withdrawals stuck in <b>processing</b> (older than 10 min) via Daraja Transaction Status, then finalize them — paid or refunded. Runs automatically every 30 min; this triggers it now. Idempotent.</p>
+          <Btn kind="primary" size="md" icon={reconciling ? 'spinner' : 'rotate'} onClick={reconcile} disabled={reconciling}>{reconciling ? 'Reconciling…' : 'Reconcile payouts now'}</Btn>
         </Card>
       </div>
 
