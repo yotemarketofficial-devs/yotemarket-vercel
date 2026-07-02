@@ -27,6 +27,18 @@ const faIcon = (name, fallback = 'fa-tag') => {
   return n.startsWith('fa-') ? n : (MAT_FA[n] || fallback);
 };
 
+// Normalise a store/place location into { lat, lng }, tolerant of the shapes the
+// catalog can carry: a plain { lat, lng }, a Firestore GeoPoint ({ latitude,
+// longitude } / { _latitude, _longitude }), or top-level lat/lng fields. Returns
+// undefined when there are no valid finite coordinates (so PlaceMap shows its
+// placeholder instead of an empty map).
+const normLoc = (v) => {
+  if (!v || typeof v !== 'object') return undefined;
+  const lat = Number(v.lat ?? v.latitude ?? v._latitude);
+  const lng = Number(v.lng ?? v.lon ?? v.longitude ?? v._longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : undefined;
+};
+
 const normProduct = (d) => ({
   id: d.id,
   name: d.name,
@@ -47,6 +59,9 @@ const normStore = (d) => ({
   ownerId: d.ownerId || null, // merchant uid — lets a shopper open a live chat thread
   suspended: !!d.suspended,   // staff-suspended stores are hidden from the storefront
   area: d.area,
+  address: d.address || undefined,                          // shown under the store map
+  location: normLoc(d.location || d.geo || d.coords ||      // { lat, lng } for StoreMap
+    (d.lat != null || d.lng != null ? { lat: d.lat, lng: d.lng } : null)),
   rating: d.rating != null ? Number(d.rating) : undefined,
   reviews: d.reviews,
   products: d.products,
