@@ -8,7 +8,7 @@ import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
-import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, fmtTime, fmtWhen,
@@ -53,23 +53,151 @@ export function Sales(){
 
 /* ---------- WALLET ---------- */
 const RCPT_ICON = { subscription:'fa-id-card', pos:'fa-store', payout:'fa-money-bill-transfer', order:'fa-bag-shopping', wallet_topup:'fa-wallet', redemption:'fa-gift' };
+const PAYOUT_TYPES = [
+  { id:'phone',   label:'M-Pesa phone',      icon:'fa-mobile-screen', hint:'Send money to a Safaricom number' },
+  { id:'pochi',   label:'Pochi la Biashara', icon:'fa-store',         hint:'Business wallet on a phone number' },
+  { id:'till',    label:'Till (Buy Goods)',  icon:'fa-cash-register', hint:'Your M-Pesa Buy Goods till' },
+  { id:'paybill', label:'Paybill',           icon:'fa-building-columns', hint:'Your Paybill number + account' },
+];
+export const payoutLabel = (p) => {
+  if (!p) return 'Not set';
+  const t = p.type || (p.method === 'b2b' ? 'paybill' : 'phone');
+  if (t === 'phone') return `M-Pesa · ${p.phone}`;
+  if (t === 'pochi') return `Pochi la Biashara · ${p.phone}`;
+  if (t === 'till') return `Till · ${p.till}`;
+  if (t === 'paybill') return `Paybill ${p.paybill} · Acc ${p.account}`;
+  return 'Set';
+};
+const SETTLE_TONE = { paid:'active', processing:'pending', failed:'inactive' };
+const SETTLE_LBL = { paid:'Paid', processing:'Processing', failed:'Failed' };
+
+/* Overlay modal shell (dashboard has no shared Modal). */
+function Sheet({ title, onClose, children }){
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(8,10,24,.5)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:440, maxHeight:'88vh', overflowY:'auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <h3 className="ym-h2" style={{ fontSize:18 }}>{title}</h3>
+          <button onClick={onClose} className="icon-btn" aria-label="Close"><FA i="fa-xmark" /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const wIpt = { width:'100%', padding:'12px 14px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
+const wErr = { display:'flex', gap:9, alignItems:'center', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', borderRadius:11, padding:'11px 14px', fontSize:13, fontWeight:500, marginTop:12 };
+
+/* Set-up / change payout destination. `change=true` submits a staff-approved request. */
+function PayoutForm({ change, onClose, toast }){
+  const [type, setType] = useStateX('phone');
+  const [phone, setPhone] = useStateX('');
+  const [till, setTill] = useStateX('');
+  const [paybill, setPaybill] = useStateX('');
+  const [account, setAccount] = useStateX('');
+  const [busy, setBusy] = useStateX(false);
+  const [err, setErr] = useStateX('');
+  const submit = async () => {
+    setErr(''); setBusy(true);
+    const data = { type, phone, till, paybill, account };
+    try {
+      if (change) { await requestPayoutChange(data); toast && toast('Change request submitted for review'); }
+      else { await setMerchantPayout(data); toast && toast('Payout method saved'); }
+      onClose();
+    } catch (e) { setErr(e.message || 'Could not save.'); setBusy(false); }
+  };
+  return (
+    <Sheet title={change ? 'Request payout change' : 'Set payout method'} onClose={onClose}>
+      {change && <p className="ym-sub" style={{ marginBottom:14 }}>For your security, changing where money is sent needs staff approval. Your withdrawals keep using the current method until it's approved.</p>}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
+        {PAYOUT_TYPES.map((t) => (
+          <button key={t.id} onClick={()=>setType(t.id)} style={{ display:'flex', flexDirection:'column', gap:4, padding:'12px', textAlign:'left', borderRadius:12, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: type===t.id ? '2px solid var(--m-primary)' : '2px solid var(--m-border)' }}>
+            <FA i={t.icon} style={{ color: type===t.id ? 'var(--m-primary)' : 'var(--m-fg3)' }} />
+            <span className="ym-h3" style={{ fontSize:13.5 }}>{t.label}</span>
+            <span className="ym-cap" style={{ fontSize:11 }}>{t.hint}</span>
+          </button>
+        ))}
+      </div>
+      {(type === 'phone' || type === 'pochi') && (
+        <div><label className="ym-label">{type==='pochi'?'Pochi la Biashara number':'M-Pesa number'}</label><input style={wIpt} value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></div>
+      )}
+      {type === 'till' && <div><label className="ym-label">Till (Buy Goods) number</label><input style={wIpt} value={till} onChange={(e)=>setTill(e.target.value.replace(/\D/g,''))} placeholder="e.g. 5678901" inputMode="numeric" /></div>}
+      {type === 'paybill' && (<>
+        <div style={{ marginBottom:10 }}><label className="ym-label">Paybill number</label><input style={wIpt} value={paybill} onChange={(e)=>setPaybill(e.target.value.replace(/\D/g,''))} placeholder="e.g. 400200" inputMode="numeric" /></div>
+        <div><label className="ym-label">Account number</label><input style={wIpt} value={account} onChange={(e)=>setAccount(e.target.value)} placeholder="Account / reference" /></div>
+      </>)}
+      {err && <div role="alert" style={wErr}><FA i="fa-circle-exclamation" /> {err}</div>}
+      <Btn kind="primary" style={{ width:'100%', marginTop:16 }} disabled={busy} onClick={submit}>{busy ? 'Saving…' : (change ? 'Submit change request' : 'Save payout method')}</Btn>
+    </Sheet>
+  );
+}
+
+/* Withdraw available balance to the set payout. */
+function WithdrawSheet({ balance, payout, onClose, toast }){
+  const [amount, setAmount] = useStateX(String(balance || ''));
+  const [busy, setBusy] = useStateX(false);
+  const [err, setErr] = useStateX('');
+  const [done, setDone] = useStateX(false);
+  const n = Math.floor(Number(amount)) || 0;
+  const submit = async () => {
+    setErr('');
+    if (n < 50) { setErr('Minimum withdrawal is KSh 50.'); return; }
+    if (n > balance) { setErr('Amount exceeds your available balance.'); return; }
+    setBusy(true);
+    try { const r = await requestMerchantWithdrawal({ amount: n }); toast && toast(`Withdrawal of ${ksh(r.amount)} initiated`); setDone(true); }
+    catch (e) { setErr(e.message || 'Withdrawal failed.'); setBusy(false); }
+  };
+  if (done) return (
+    <Sheet title="Withdrawal sent" onClose={onClose}>
+      <div style={{ textAlign:'center', padding:'8px 0' }}>
+        <div style={{ width:64, height:64, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, margin:'0 auto 14px' }}><FA i="fa-check" /></div>
+        <p className="ym-body">Your payout to <b style={{ color:'var(--m-fg1)' }}>{payoutLabel(payout)}</b> is processing. It'll show as <b>Paid</b> here once M-Pesa confirms.</p>
+        <Btn kind="primary" style={{ width:'100%', marginTop:18 }} onClick={onClose}>Done</Btn>
+      </div>
+    </Sheet>
+  );
+  return (
+    <Sheet title="Withdraw to M-Pesa" onClose={onClose}>
+      <div style={{ padding:'12px 14px', borderRadius:12, background:'var(--m-surface-2)', marginBottom:14 }}>
+        <div className="ym-cap">Sending to</div><div className="ym-h3" style={{ fontSize:14 }}>{payoutLabel(payout)}</div>
+      </div>
+      <label className="ym-label">Amount (KSh)</label>
+      <input style={wIpt} value={amount} onChange={(e)=>setAmount(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" />
+      <div className="ym-cap" style={{ marginTop:8 }}>Available: {ksh(balance)}</div>
+      {err && <div role="alert" style={wErr}><FA i="fa-circle-exclamation" /> {err}</div>}
+      <Btn kind="primary" style={{ width:'100%', marginTop:16 }} disabled={busy} onClick={submit}>{busy ? 'Sending…' : `Withdraw ${ksh(n)}`}</Btn>
+    </Sheet>
+  );
+}
 
 export function Wallet({ toast }){
   const { merchant, live } = useMerchant();
   const { user } = useAuth();
   const [receipts, setReceipts] = useStateX([]);
+  const [settlements, setSettlements] = useStateX([]);
+  const [pendingChange, setPendingChange] = useStateX(false);
+  const [modal, setModal] = useStateX(null); // 'setup' | 'change' | 'withdraw'
   useEffX(() => {
     if (!firebaseEnabled || !db || !user?.uid) return undefined;
     const u = onSnapshot(query(collection(db, 'receipts'), where('userId', '==', user.uid), limit(40)),
       (s) => setReceipts(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))),
       () => {});
-    return () => u();
+    const us = onSnapshot(query(collection(db, 'merchant_settlements'), where('merchantId', '==', user.uid), limit(30)),
+      (s) => setSettlements(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))),
+      () => {});
+    const uc = onSnapshot(query(collection(db, 'payout_change_requests'), where('merchantId', '==', user.uid), where('status', '==', 'pending'), limit(1)),
+      (s) => setPendingChange(!s.empty), () => {});
+    return () => { u(); us(); uc(); };
   }, [user?.uid]);
   const balance = live ? (merchant?.balanceAvailable || 0) : 0;
+  const processing = live ? (merchant?.balanceProcessing || 0) : 0;
+  const payout = merchant?.payout || null;
   const now = new Date();
   const thisMonth = receipts.filter((r) => { const s = r.createdAt?.seconds; if (!s) return false; const d = new Date(s * 1000); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && r.type !== 'payout'; });
   const monthIn = thisMonth.reduce((s, r) => s + (r.amount || 0), 0);
   const fmtRcptWhen = (r) => r.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short' }) : '';
+  const onWithdraw = () => { if (!payout || !payout.method) setModal('setup'); else if (balance < 50) toast && toast('You need at least KSh 50 available to withdraw'); else setModal('withdraw'); };
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Wallet</h1>
@@ -79,9 +207,39 @@ export function Wallet({ toast }){
             <FA i="fa-wallet" style={{ position:'absolute', right:14, bottom:-10, fontSize:96, color:'rgba(255,255,255,.1)' }} />
             <div style={{ color:'rgba(255,255,255,.78)', fontSize:13 }}>Available payout</div>
             <div style={{ fontSize:40, fontWeight:800, margin:'4px 0' }}>{ksh(balance)}</div>
-            <div style={{ color:'rgba(255,255,255,.78)', fontSize:13, marginBottom:18 }}>Withdraw to M-Pesa anytime</div>
-            <button className="ym-btn ym-btn-mpesa" style={{ width:'auto' }} onClick={()=>toast&&toast('Withdrawal requested')}><FA i="fa-mobile-screen" /> Withdraw to M-Pesa</button>
+            <div style={{ color:'rgba(255,255,255,.78)', fontSize:13, marginBottom:18 }}>{processing > 0 ? `${ksh(processing)} processing · ` : ''}Withdraw to {payout ? payoutLabel(payout) : 'M-Pesa'}</div>
+            <button className="ym-btn ym-btn-mpesa" style={{ width:'auto' }} onClick={onWithdraw}><FA i="fa-mobile-screen" /> {payout ? 'Withdraw to M-Pesa' : 'Set up payout'}</button>
           </Card>
+
+          {/* payout method */}
+          <SectionCard title="Payout method" sub="Where your withdrawals are sent">
+            <div style={{ padding:'4px 18px 18px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:40, height:40, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i="fa-money-bill-transfer" /></div>
+                  <div><div className="ym-h3" style={{ fontSize:14 }}>{payout ? payoutLabel(payout) : 'Not set up yet'}</div><div className="ym-cap">{payout ? 'Active destination' : 'Add where you want to be paid'}</div></div>
+                </div>
+                {payout
+                  ? (pendingChange ? <Pill tone="pending">Change under review</Pill> : <Btn kind="ghost" size="sm" onClick={()=>setModal('change')}>Request change</Btn>)
+                  : <Btn kind="primary" size="sm" onClick={()=>setModal('setup')}>Set up</Btn>}
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* withdrawals history */}
+          <SectionCard title="Withdrawals" sub="Your M-Pesa payouts">
+            <div>
+              {settlements.length === 0 && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No withdrawals yet.</div>}
+              {settlements.map((s,i)=>(
+                <div key={s.id||i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
+                  <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface-2)', color:'var(--m-fg3)' }}><FA i="fa-money-bill-transfer" /></div>
+                  <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{ksh(s.amount||0)}</div><div className="ym-cap">{payoutLabel(s.payout)}{s.receipt?` · ${s.receipt}`:''}</div></div>
+                  <Pill tone={SETTLE_TONE[s.status]||'pending'}>{SETTLE_LBL[s.status]||s.status}</Pill>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
           <SectionCard title="Receipts" sub="A digital receipt for every transaction">
             <div>
               {(live ? receipts.length === 0 : WALLET.tx.length === 0) && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No receipts yet.</div>}
@@ -116,6 +274,9 @@ export function Wallet({ toast }){
         </Card>
       </div>
       <style>{`@media (max-width:820px){ .wallet-grid{ grid-template-columns:1fr !important; } }`}</style>
+      {modal === 'setup' && <PayoutForm onClose={()=>setModal(null)} toast={toast} />}
+      {modal === 'change' && <PayoutForm change onClose={()=>setModal(null)} toast={toast} />}
+      {modal === 'withdraw' && <WithdrawSheet balance={balance} payout={payout} onClose={()=>setModal(null)} toast={toast} />}
     </div>
   );
 }

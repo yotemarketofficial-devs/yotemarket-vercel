@@ -111,6 +111,18 @@ export const updateStoreMedia = callable('updateStoreMedia');
 export const saveProduct = callable('saveProduct');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
+/** Merchant: set payout destination (first time only) → { ok, payout }. { type, phone?|till?|paybill?, account? }. */
+export const setMerchantPayout = callable('setMerchantPayout');
+/** Merchant: request a change to an existing payout (staff-approved) → { ok, id }. { type, ... }. */
+export const requestPayoutChange = callable('requestPayoutChange');
+/** Merchant: withdraw available balance to the set payout via M-Pesa → { ok, settlementId, amount }. { amount? }. */
+export const requestMerchantWithdrawal = callable('requestMerchantWithdrawal');
+/** Staff: pending payout-change requests → { requests }. */
+export const staffListPayoutChanges = callable('staffListPayoutChanges');
+/** Staff: approve/reject a payout-change request → { ok }. { id, approve }. */
+export const staffResolvePayoutChange = callable('staffResolvePayoutChange');
+/** Staff: manually finalize a stuck withdrawal → { ok }. { settlementId, paid }. */
+export const staffResolveSettlement = callable('staffResolveSettlement');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query

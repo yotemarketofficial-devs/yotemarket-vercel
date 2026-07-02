@@ -10,6 +10,53 @@ import {
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
 } from './service.js';
+import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
+
+const payoutLabelStaff = (p) => {
+  if (!p) return 'Not set';
+  const t = p.type || (p.method === 'b2b' ? 'paybill' : 'phone');
+  if (t === 'phone') return `M-Pesa ${p.phone}`;
+  if (t === 'pochi') return `Pochi ${p.phone}`;
+  if (t === 'till') return `Till ${p.till}`;
+  if (t === 'paybill') return `Paybill ${p.paybill} · Acc ${p.account}`;
+  return 'Set';
+};
+
+/* Staff review of merchant payout-change requests (staff approval required). */
+function PayoutChangeReview(){
+  const { useState, useEffect, useCallback } = React;
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { const r = await staffListPayoutChanges(); setRows(r.requests || []); } catch (e) { /* backend off */ } finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const resolve = async (id, approve) => {
+    try { await staffResolvePayoutChange({ id, approve }); setMsg({ ok:true, text: approve ? 'Payout change approved.' : 'Request rejected.' }); load(); }
+    catch (e) { setMsg({ ok:false, text: e.message || 'Failed.' }); }
+  };
+  if (!loading && rows.length === 0) return null;
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="flex items-center justify-between p-5 pb-3"><h3 className="font-bold t1">Payout-change requests</h3>{rows.length > 0 && <Pill tone="amber">{rows.length} pending</Pill>}</div>
+      {msg && <div className="px-5 pb-2 text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
+      <div className="divide-y" style={{ borderColor:'var(--line)' }}>
+        {rows.map((r) => (
+          <div key={r.id} className="flex items-center gap-3 p-4" style={{ borderTop:'1px solid var(--line)' }}>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold t1 text-sm truncate">{r.storeName || r.merchantId}</div>
+              <div className="text-xs t3 mt-0.5">{payoutLabelStaff(r.current)} <Icon name="arrow-right" className="mx-1" /> <span className="t1 font-semibold">{payoutLabelStaff(r.requested)}</span></div>
+            </div>
+            <Btn kind="soft" size="sm" onClick={()=>resolve(r.id, false)}>Reject</Btn>
+            <Btn kind="primary" size="sm" onClick={()=>resolve(r.id, true)}>Approve</Btn>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
 const { useState: useSS, useEffect: useES } = React;
 
 /* ============ ANALYTICS OVERVIEW ============ */
@@ -313,6 +360,7 @@ export function Wallet(){
   const tone = { active:'ok', overdue:'red' };
   return (<div className="fadeup space-y-6">
     <SectionHead icon="wallet" title="Subscriptions & wallet" sub={live ? 'Platform float, M-Pesa settlement, and merchant billing oversight' : 'Sample billing — connect the backend for live subscriptions'} />
+    <PayoutChangeReview />
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Stat label="Platform float" value={wallet.float} icon="vault" tone="pri" />
       <Stat label="M-Pesa settled today" value={wallet.mpesaToday} icon="mobile-alt" tone="green" />
