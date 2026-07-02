@@ -5,6 +5,7 @@ import { YM_CATEGORIES, ymProduct, ymPrice } from './data.js';
 import { CATEGORY_TREE } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useUnreadCount } from '../../lib/chat.js';
+import YoteAiMark from '../../components/YoteAiMark.jsx';
 const { useState: useSC } = React;
 
 export function Header(){
@@ -24,7 +25,7 @@ export function Header(){
           <FA i="fa-magnifying-glass" style={{ color:'var(--m-primary)', fontSize:15 }} /> Search the mall…
         </button>
         <div className="ym-hdr-spacer" style={{ flex:1 }} />
-        <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><FA i="fa-wand-magic-sparkles" /></button>
+        <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><YoteAiMark size={20} color="#fff" /></button>
         <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />
           {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-secondary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{unread>9?'9+':unread}</span>}
