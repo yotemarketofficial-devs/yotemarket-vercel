@@ -2,6 +2,7 @@
 import React from 'react';
 import { ymPrice, ymStore, ymCat } from './data.js';
 import { HUBS } from './hubs.js';
+import { mapsEmbedUrl } from '../../lib/maps.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
 
 export const YMContext = createContext(null);
@@ -170,24 +171,25 @@ export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup 
   );
 }
 
-/* Store location map for "pick up from store". Keyless: an OpenStreetMap embed
-   (no API key) when the store has coords, plus a Google Maps "Get directions"
-   deep link. Falls back to a search-by-name directions link when no coords. */
 /* A pickup/location map for any destination (a store or a collection hub). Shows
    an embedded pin when coordinates exist, and a "Get directions" CTA that opens
    turn-by-turn navigation to the destination in Google Maps (works from coords or
-   a place-name query, so directions always resolve). */
+   a place-name query, so directions always resolve). Uses a Google Maps embed when
+   a Maps key is configured, and falls back to a keyless OpenStreetMap embed so
+   demo/preview builds still render a map. */
 export function PlaceMap({ location, name='Location', area, address, height=180 }){
   const loc = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? location : null;
   const dest = loc ? `${loc.lat},${loc.lng}` : encodeURIComponent(`${name} ${area || ''} Kenya`);
   const dirHref = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
   const d = 0.006;
+  const osmSrc = loc ? `https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}` : null;
+  const mapSrc = loc ? (mapsEmbedUrl(`${loc.lat},${loc.lng}`) || osmSrc) : null;
   return (
     <div>
       {loc ? (
         <iframe title={`${name} location`} width="100%" height={height} loading="lazy"
           style={{ border:0, borderRadius:14, display:'block' }}
-          src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`} />
+          src={mapSrc} />
       ) : (
         <div style={{ height, borderRadius:14, background:'var(--m-surface-2)', display:'flex', flexDirection:'column', gap:6, alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:13, textAlign:'center', padding:12 }}>
           <FA i="fa-map-location-dot" style={{ fontSize:22, color:'var(--m-primary)' }} /> {name}{area?` · ${area}`:''}<span className="ym-cap">Tap “Get directions” to navigate</span>
