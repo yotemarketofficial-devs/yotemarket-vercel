@@ -14,6 +14,17 @@ import {
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
   reportConversation, fmtTime, fmtWhen,
 } from '../../lib/chat.js';
+
+/* YoteAI brand mark — the smiling shopping bag, tinted via `color`. */
+const YoteAiMark = ({ size = 22, color = '#fff' }) => (
+  <svg width={size} height={size * 56 / 48} viewBox="0 0 48 56" fill="none" aria-hidden="true">
+    <path d="M17 17 L31 17 Q36 17 36.77 21.93 L40.23 44.07 Q41 49 36 49 L12 49 Q7 49 7.77 44.07 L11.23 21.93 Q12 17 17 17 Z" stroke={color} strokeWidth="3" strokeLinejoin="round" />
+    <path d="M18 25 C18 5 30 5 30 25" stroke={color} strokeWidth="3" strokeLinecap="round" />
+    <circle cx="18" cy="25" r="2.8" fill={color} />
+    <circle cx="30" cy="25" r="2.8" fill={color} />
+    <path d="M17.5 37 Q24 45 30.5 37" stroke={color} strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
 import { usePushPrompt } from '../../lib/push.js';
 const { useState: useSE, useRef: useRefE, useEffect: useEffE } = React;
 
@@ -102,7 +113,7 @@ function LiveMessages({ params, user, account }){
       <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:'min(560px, 72vh)', minHeight:400 }}>
         <div className="msg-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           <button onClick={()=>nav('ai')} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:14, display:'flex', alignItems:'center', gap:12, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
-            <div style={{ width:46, height:46, borderRadius:13, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:18 }} /></div>
+            <div style={{ width:46, height:46, borderRadius:13, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={24} /></div>
             <div style={{ flex:1, minWidth:0 }}><div style={{ color:'#fff', fontWeight:700, fontSize:14 }}>YoteAI Assistant</div><div style={{ color:'rgba(255,255,255,.85)', fontSize:12 }}>Find products & best deals</div></div>
             <span style={{ background:'rgba(255,255,255,.18)', color:'#fff', fontSize:10.5, fontWeight:700, padding:'4px 9px', borderRadius:9999 }}>AI</span>
           </button>
@@ -270,7 +281,7 @@ export function AIScreen(){
       <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-house" /> Home</button>
       <div className="ym-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:'min(600px, 76vh)', minHeight:420 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
-          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:17 }} /></div>
+          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={22} /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Shopping assistant</div></div>
         </div>
         <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>

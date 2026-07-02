@@ -1,0 +1,12 @@
+<svg viewBox="0 0 48 56" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="YoteAI">
+  <!-- shopping-bag body -->
+  <path d="M17 17 L31 17 Q36 17 36.77 21.93 L40.23 44.07 Q41 49 36 49 L12 49 Q7 49 7.77 44.07 L11.23 21.93 Q12 17 17 17 Z"
+        stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+  <!-- handle -->
+  <path d="M18 25 C18 5 30 5 30 25" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <!-- handle rivets -->
+  <circle cx="18" cy="25" r="2.8" fill="currentColor"/>
+  <circle cx="30" cy="25" r="2.8" fill="currentColor"/>
+  <!-- smile -->
+  <path d="M17.5 37 Q24 45 30.5 37" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+</svg>
