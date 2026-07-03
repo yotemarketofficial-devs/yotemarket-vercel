@@ -12,6 +12,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { subscribeFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
 import { createFeedPost, likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
 import { subscribeFollows } from '../../lib/account.js';
+import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 const fmtCount = (n) => { n = Number(n) || 0; return n >= 1000 ? (n / 1000).toFixed(n % 1000 >= 100 ? 1 : 0) + 'k' : String(n); };
@@ -30,7 +31,7 @@ const FEED_DEMO = [
 ];
 
 /* One full-height video card. Plays when >60% visible, pauses otherwise. */
-function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish }){
+function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish }){
   const secRef = useRef(null);
   const vRef = useRef(null);
   const viewedRef = useRef(false);
@@ -59,15 +60,13 @@ function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduc
   const src = feedVideoUrl(post);
   const p = post.product;
   return (
-    <section ref={secRef} style={{ scrollSnapAlign:'start', position:'relative', height:'100%', width:'100%', background:'#000', borderRadius:16, overflow:'hidden', flex:'0 0 100%' }}>
+    <section ref={secRef} style={{ scrollSnapAlign:'start', position:'relative', height:'100%', width:'100%', background:'#000', overflow:'hidden', flex:'0 0 100%' }}>
       <video ref={vRef} src={src} poster={post.posterUrl || undefined} loop playsInline muted={muted}
         onClick={() => setPaused(x => !x)} onTimeUpdate={onTime}
         style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', cursor:'pointer' }} />
-      {paused && <div onClick={()=>setPaused(false)} style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.9)', fontSize:44, cursor:'pointer' }}><FA i="fa-play" /></div>}
-
-      {/* top gradient + mute */}
-      <div style={{ position:'absolute', top:0, left:0, right:0, height:90, background:'linear-gradient(180deg,rgba(0,0,0,.45),transparent)', pointerEvents:'none' }} />
-      <button onClick={onToggleMute} aria-label={muted?'Unmute':'Mute'} style={{ position:'absolute', top:12, right:12, width:40, height:40, borderRadius:9999, border:'none', background:'rgba(0,0,0,.4)', color:'#fff', cursor:'pointer', backdropFilter:'blur(4px)' }}><FA i={muted?'fa-volume-xmark':'fa-volume-high'} /></button>
+      {paused && <div onClick={()=>setPaused(false)} style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.9)', fontSize:52, cursor:'pointer' }}><FA i="fa-play" /></div>}
+      {/* top scrim for the overlay bar's legibility */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:110, background:'linear-gradient(180deg,rgba(0,0,0,.5),transparent)', pointerEvents:'none' }} />
 
       {/* right action rail */}
       <div style={{ position:'absolute', right:12, bottom:120, display:'flex', flexDirection:'column', gap:18, alignItems:'center' }}>
@@ -115,7 +114,7 @@ function RailBtn({ icon, label, onClick, filled, activeColor }){
 }
 
 export function FeedScreen(){
-  const { nav, toast, requireAuth } = useYM();
+  const { nav, back, toast, requireAuth } = useYM();
   const { user } = useAuth();
   const uid = user?.uid;
   const [posts, setPosts] = useState(null); // null = loading
@@ -224,39 +223,46 @@ export function FeedScreen(){
     nav('messages', { store: { id: post.storeId, ownerId: post.ownerId, name: post.storeName, logo: post.storeLogo } });
   });
 
+  const railBtn = { pointerEvents:'auto', width:40, height:40, borderRadius:9999, border:'none', background:'rgba(0,0,0,.38)', color:'#fff', cursor:'pointer', backdropFilter:'blur(4px)', flexShrink:0 };
   return (
-    <div style={{ maxWidth:520, margin:'0 auto', padding:'12px 12px 0' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-          <span style={{ width:30, height:30, borderRadius:9, background:'var(--m-grad)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-clapperboard" /></span>
-          <span className="ym-h2" style={{ fontSize:20 }}>YoteFeed</span>
-        </div>
-        {storeId && <button className="ym-btn ym-btn-primary ym-btn-sm" onClick={() => setCompose(true)}><FA i="fa-plus" /> Post a clip</button>}
-      </div>
+    <div style={{ position:'relative', height:'100%', background:'#000', color:'#fff' }}>
+      {/* Portrait column: full-bleed on phones, letterboxed on wide screens (like Shorts). */}
+      <div style={{ position:'relative', height:'100%', width:'100%', maxWidth:480, margin:'0 auto' }}>
 
-      {posts === null ? (
-        <div className="ym-cap" style={{ padding:'40px 0', textAlign:'center' }}>Loading YoteFeed…</div>
-      ) : list.length === 0 ? (
-        <div style={{ padding:'56px 20px', textAlign:'center', color:'var(--m-fg3)' }}>
-          <FA i="fa-clapperboard" style={{ fontSize:40, color:'var(--m-primary)', marginBottom:12 }} />
-          <div className="ym-h3" style={{ marginBottom:6 }}>No clips yet</div>
-          <div className="ym-cap" style={{ marginBottom:16 }}>Shortform videos from stores will show up here.</div>
-          {storeId && <button className="ym-btn ym-btn-primary" onClick={() => setCompose(true)}><FA i="fa-plus" /> Post the first clip</button>}
+        {/* Floating overlay bar — sits on top of the video. */}
+        <div style={{ position:'absolute', top:0, left:0, right:0, zIndex:6, display:'flex', alignItems:'center', gap:10, padding:'14px 12px' }}>
+          <button onClick={() => back()} aria-label="Back" style={railBtn}><FA i="fa-arrow-left" /></button>
+          <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0 }}>
+            <YoteFeedMark size={22} />
+            <span style={{ fontWeight:800, fontSize:16, textShadow:'0 1px 3px rgba(0,0,0,.55)' }}>YoteFeed</span>
+          </div>
+          <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute' : 'Mute'} style={railBtn}><FA i={muted ? 'fa-volume-xmark' : 'fa-volume-high'} /></button>
+          {storeId && <button onClick={() => setCompose(true)} aria-label="Post a clip" style={{ ...railBtn, background:'var(--m-grad)', boxShadow:'var(--m-glow)', backdropFilter:'none' }}><FA i="fa-plus" /></button>}
         </div>
-      ) : (
-        <div style={{ height:'calc(100dvh - 150px)', overflowY:'auto', scrollSnapType:'y mandatory', display:'flex', flexDirection:'column', gap:12, borderRadius:16, WebkitOverflowScrolling:'touch' }}>
-          {list.map((post) => (
-            <FeedItem key={post.id} post={post} muted={muted} liked={likes.has(post.id)}
-              onToggleMute={() => setMuted((m) => !m)}
-              onLike={() => like(post)} onReport={() => report(post)}
-              onProduct={() => onShop(post)}
-              onStore={() => post.storeId && nav('store', { sid: post.storeId })}
-              onMessage={() => message(post)} canMessage={!!post.ownerId && post.ownerId !== uid}
-              onView={() => onView(post)} onFinish={() => onFinish(post)}
-              canDelete={!!uid && post.ownerId === uid} onDelete={() => remove(post)} />
-          ))}
-        </div>
-      )}
+
+        {posts === null ? (
+          <div style={{ height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.7)' }}>Loading YoteFeed…</div>
+        ) : list.length === 0 ? (
+          <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10, padding:24, textAlign:'center' }}>
+            <YoteFeedMark size={48} />
+            <div style={{ fontWeight:700, fontSize:18 }}>No clips yet</div>
+            <div style={{ fontSize:14, color:'rgba(255,255,255,.6)', maxWidth:280 }}>Shortform videos from stores will show up here.</div>
+            {storeId && <button className="ym-btn ym-btn-primary" style={{ marginTop:8 }} onClick={() => setCompose(true)}><FA i="fa-plus" /> Post the first clip</button>}
+          </div>
+        ) : (
+          <div style={{ height:'100%', overflowY:'auto', scrollSnapType:'y mandatory', WebkitOverflowScrolling:'touch' }}>
+            {list.map((post) => (
+              <FeedItem key={post.id} post={post} muted={muted} liked={likes.has(post.id)}
+                onLike={() => like(post)} onReport={() => report(post)}
+                onProduct={() => onShop(post)}
+                onStore={() => post.storeId && nav('store', { sid: post.storeId })}
+                onMessage={() => message(post)} canMessage={!!post.ownerId && post.ownerId !== uid}
+                onView={() => onView(post)} onFinish={() => onFinish(post)}
+                canDelete={!!uid && post.ownerId === uid} onDelete={() => remove(post)} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {compose && <FeedComposer storeId={storeId} onClose={() => setCompose(false)} onPosted={() => { setCompose(false); toast('Clip posted to YoteFeed', 'fa-clapperboard'); }} />}
     </div>
@@ -317,7 +323,7 @@ function FeedComposer({ storeId, onClose, onPosted }){
       <div onClick={busy ? undefined : onClose} style={{ position:'absolute', inset:0, background:'rgba(8,12,24,.55)' }} />
       <div className="ym-card" style={{ position:'relative', width:'100%', maxWidth:440, margin:12, padding:18, maxHeight:'88vh', overflowY:'auto' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <div className="ym-h3"><FA i="fa-clapperboard" style={{ color:'var(--m-primary)', marginRight:8 }} />Post to YoteFeed</div>
+          <div className="ym-h3" style={{ display:'flex', alignItems:'center', gap:8 }}><YoteFeedMark size={20} /> Post to YoteFeed</div>
           <button onClick={busy ? undefined : onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
         </div>
 

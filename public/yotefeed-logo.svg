@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="256" height="192" fill="none">
+  <defs>
+    <linearGradient id="yfBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="yfLens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#b7a3fc"/>
+      <stop offset="1" stop-color="#9d84f8"/>
+    </linearGradient>
+  </defs>
+  <path d="M46 18 L54 13.5 Q58 11.5 58 16.5 L58 31.5 Q58 36.5 54 34.5 L46 30 Z" fill="url(#yfLens)"/>
+  <path d="M12 7 L38 7 Q46 7 46 15 L46 33 Q46 41 38 41 L12 41 Q4 41 4 33 L4 15 Q4 7 12 7 Z" fill="url(#yfBody)"/>
+  <path d="M13 17 L13 34 L35 34 A22 17 0 0 0 13 17 Z" fill="#fff"/>
+</svg>

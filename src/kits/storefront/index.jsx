@@ -104,12 +104,17 @@ export default function StorefrontApp(){
     account, openAuth, requireAuth, signOut: doSignOut, liveOrders };
 
   const Screen = SCREENS[top.screen] || HomeScreen;
+  // YoteFeed runs edge-to-edge (YouTube-Shorts style): hide the site chrome and pin
+  // the shell to the viewport so the feed fills the screen with its own overlay bar.
+  const immersive = top.screen === 'feed';
   return (
     <YMContext.Provider value={ctx}>
-      <div data-screen-label={'Storefront — '+top.screen} style={{ minHeight:'100vh', display:'flex', flexDirection:'column' }}>
-        <Header />
-        <main key={stack.length+top.screen} style={{ flex:1 }}><Screen params={top.params} /></main>
-        <Footer />
+      <div data-screen-label={'Storefront — '+top.screen} style={immersive
+        ? { height:'100dvh', overflow:'hidden', display:'flex', flexDirection:'column' }
+        : { minHeight:'100vh', display:'flex', flexDirection:'column' }}>
+        {!immersive && <Header />}
+        <main key={stack.length+top.screen} style={{ flex:1, ...(immersive ? { minHeight:0 } : {}) }}><Screen params={top.params} /></main>
+        {!immersive && <Footer />}
         <CartDrawer />
         <Toast toast={toastState} />
         {showAuth && (
