@@ -35,6 +35,8 @@ const shortDate = (ts) => {
 export const registerMarketer = call('registerMarketer');
 /** Active scout requests an M-Pesa payout. { phone? } -> { amount }. */
 export const requestMarketerPayout = call('requestMarketerPayout');
+/** Submit that a referred merchant follows our socials. { storeId, platform, handle }. */
+export const submitMerchantFollow = call('submitMerchantFollow');
 
 export async function fetchLeaderboard() {
   const d = await call('marketerLeaderboard')();
@@ -47,26 +49,25 @@ export async function fetchMyMarketer(uid) {
   return s.exists() ? { id: uid, ...s.data() } : null;
 }
 
-/** The scout's referred stores → the referral-table shape. */
+/** The scout's referred stores → the referral-table shape. Activation-based
+ *  ('verified' here means the merchant made a first paid sale). Carries the
+ *  merchant-follow social task state so the UI can prompt for proof. */
 export async function fetchMyReferrals(uid) {
-  const snap = await getDocs(query(collection(db, 'stores'), where('scoutId', '==', uid)));
-  return snap.docs
-    .map((d) => {
-      const s = d.data();
-      return {
-        id: d.id,
-        shop: s.name || 'Store',
-        owner: s.ownerName || '',
-        county: s.area || '',
-        date: shortDate(s.createdAt),
-        _ms: tsMs(s.createdAt),
-        socials: s.socials || 0,
-        items: s.products || 0,
-        status: s.verified ? 'verified' : 'pending',
-        missing: s.verified ? undefined : 'awaiting staff verification',
-      };
-    })
-    .sort((a, b) => b._ms - a._ms);
+  const d = await call('myReferrals')().catch(() => null);
+  const list = Array.isArray(d?.referrals) ? d.referrals : [];
+  const rows = list.map((r) => ({
+    id: r.storeId,
+    shop: r.name || 'Store',
+    county: r.area || '',
+    items: r.listed ? 2 : 0,
+    follow: r.follow || 'none', // none|submitted|approved|rejected
+    status: r.activated ? 'verified' : 'pending', // 'verified' == activated (first paid sale)
+    missing: r.activated ? undefined : 'awaiting first paid sale',
+  }));
+  // Stash the cycle summary where the caller can pick it up (total referred is
+  // lifetime; the activation count cycles in batches of 100).
+  rows.summary = d?.summary || null;
+  return rows;
 }
 
 /** The scout's payout requests → the withdrawal-history shape. */

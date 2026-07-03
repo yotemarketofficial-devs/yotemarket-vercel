@@ -60,6 +60,7 @@ function StoreSignupPanel() {
   const [area, setArea] = useState('');
   const [tagline, setTagline] = useState('');
   const [phone, setPhone] = useState('');
+  const [referral, setReferral] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -69,7 +70,7 @@ function StoreSignupPanel() {
     setBusy(true);
     try {
       const payout = phone.trim() ? { method: 'b2c', phone: phone.trim() } : undefined;
-      await registerStore({ name: name.trim(), category, area: area.trim(), tagline: tagline.trim(), ...(payout ? { payout } : {}) });
+      await registerStore({ name: name.trim(), category, area: area.trim(), tagline: tagline.trim(), ...(payout ? { payout } : {}), ...(referral.trim() ? { referral: referral.trim() } : {}) });
       // The merchants/{uid} listener in the gate advances to the paywall; keep busy.
     } catch (e) { setErr(e.message || 'Could not create your store.'); setBusy(false); }
   };
@@ -90,6 +91,10 @@ function StoreSignupPanel() {
         <Field label="Area / location"><input style={ipt} value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Nairobi CBD" /></Field>
         <Field label="Tagline (optional)"><input style={ipt} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="What you sell, in a line" /></Field>
         <Field label="M-Pesa payout number (optional)"><input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></Field>
+        <Field label="Referral code (optional)">
+          <input style={ipt} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())} placeholder="e.g. YOTE-JOHN-1A2B" />
+          <p className="ym-cap" style={{ marginTop: 5, color: 'var(--m-success)' }}><FA i="fa-gift" /> Got a scout's code? Enter it to unlock your <b>first month free</b>.</p>
+        </Field>
         {err && <div role="alert" style={errBox}><FA i="fa-circle-exclamation" /> {err}</div>}
         <Btn kind="primary" style={{ width: '100%', marginTop: 16 }} disabled={busy} onClick={submit}>{busy ? 'Creating your store…' : 'Create my store'}</Btn>
         <p className="ym-cap" style={{ textAlign: 'center', marginTop: 10 }}>Next: choose a plan to activate your dashboard.</p>

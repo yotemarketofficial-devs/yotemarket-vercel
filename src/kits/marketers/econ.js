@@ -48,6 +48,19 @@ export function nextCheckpoint(merchants, cfg = MK_CONFIG) {
   return null;
 }
 
+// A scout works in cycles: at MK_BATCH_SIZE activated merchants the batch
+// completes (full checkpoint payout) and the count restarts. Lifetime "total
+// referred" still keeps growing — only the activation cycle resets.
+export const MK_BATCH_SIZE = 100;
+export function calcBatchedEarnings(merchants, cfg = MK_CONFIG) {
+  const full = Math.floor(merchants / MK_BATCH_SIZE);
+  const rem = merchants % MK_BATCH_SIZE;
+  return full * calcEarnings(MK_BATCH_SIZE, cfg).total + calcEarnings(rem, cfg).total;
+}
+export function cycleInfo(merchants) {
+  return { batches: Math.floor(merchants / MK_BATCH_SIZE), inCycle: merchants % MK_BATCH_SIZE, batchSize: MK_BATCH_SIZE };
+}
+
 export const ksh = (n) => 'KSH ' + Math.round(n).toLocaleString('en-KE');
 // a merchant is verified once they follow >=3 socials AND list >=2 items
 export const isVerified = (m) => (m.socials >= 3 && m.items >= 2);

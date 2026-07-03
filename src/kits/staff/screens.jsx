@@ -9,8 +9,17 @@ import {
   fetchRuns, fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
+  fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
 } from './service.js';
+
+// Official YoteMarket socials — the accounts a referred merchant must follow.
+const YOTE_SOCIALS = {
+  tiktok: 'https://www.tiktok.com/@yotemarketofficial',
+  instagram: 'https://www.instagram.com/yotemarketofficial',
+  facebook: 'https://www.facebook.com/yotemarketofficial',
+  linkedin: 'https://www.linkedin.com/company/yotemarket',
+};
 import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
 
 const payoutLabelStaff = (p) => {
@@ -248,11 +257,23 @@ export function Applications(){
 }
 
 /* ============ SCOUTS + PAYOUT APPROVALS ============ */
-export function Scouts(){
+const socialProfileUrl = (platform, handle) => {
+  const h = String(handle || '').replace(/^@+/, '');
+  if (platform === 'tiktok') return `https://www.tiktok.com/@${h}`;
+  if (platform === 'instagram') return `https://www.instagram.com/${h}`;
+  if (platform === 'facebook') return `https://www.facebook.com/${h}`;
+  if (platform === 'linkedin') return `https://www.linkedin.com/in/${h}`;
+  return null;
+};
+
+export function Scouts({ isAdmin }){
   const { data: scoutData, live } = useStaffResource(fetchMarketers, { applicants: [], scouts: SCOUTS });
   const { data: payoutData } = useStaffResource(fetchPayouts, PAYOUT_REQUESTS);
+  const { data: follows, reload: reloadFollows } = useStaffResource(fetchMerchantFollows, []);
   const scouts = scoutData.scouts || [];
+  const followList = follows || [];
   const [reqs,setReqs] = useSS(null);
+  const [snapMsg,setSnapMsg] = useSS('');
   useES(()=>{ setReqs(payoutData); }, [payoutData]);
   const list = reqs || [];
 
@@ -262,9 +283,29 @@ export function Scouts(){
     try { await resolvePayout(id, action); }
     catch { setReqs(prev); }
   };
+  const resolveFollow = async (id, approve) => {
+    const reason = approve ? '' : (window.prompt('Reason for rejecting (optional):') || '');
+    try { await resolveMerchantFollow(id, approve, reason); reloadFollows(); }
+    catch (e) { window.alert(e.message || 'Could not resolve.'); }
+  };
+  const snapshot = async () => {
+    if (!window.confirm("Snapshot every active scout's current balance as a protected floor? Run once at the activation-pay cutover. Safe to re-run.")) return;
+    try { const r = await snapshotScoutFloors(); setSnapMsg(`Floors snapshotted for ${r.updated} scout(s).`); }
+    catch (e) { setSnapMsg(e.message || 'Snapshot failed.'); }
+  };
 
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="people-group" title="Scout management" sub={live ? 'Monitor scout performance and approve M-Pesa payout requests' : 'Sample data — connect the backend for live scouts'} />
+    <SectionHead icon="people-group" title="Scout management" sub={live ? 'Approve payouts, verify merchant-follow proofs, monitor performance' : 'Sample data — connect the backend for live scouts'} />
+
+    {isAdmin && <Card className="p-4 flex flex-wrap items-center gap-3">
+      <div className="flex-1" style={{minWidth:220}}>
+        <div className="font-bold t1 text-sm">Activation-pay cutover</div>
+        <div className="text-xs t3">Snapshot current balances as floors so no scout drops when pay switches to first-paid-sale. Run once.</div>
+      </div>
+      {snapMsg && <span className="text-xs t2">{snapMsg}</span>}
+      <Btn kind="soft" size="sm" icon="floppy-disk" onClick={snapshot}>Snapshot floors</Btn>
+    </Card>}
+
     <div className="grid lg:grid-cols-5 gap-6">
       {/* payout approvals */}
       <div className="lg:col-span-2 space-y-3">
@@ -287,22 +328,57 @@ export function Scouts(){
       {/* scout table */}
       <Card className="p-0 overflow-hidden lg:col-span-3">
         <h3 className="font-bold t1 p-5 pb-3">Top scouts</h3>
-        <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:420}}>
+        <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:480}}>
           <thead><tr className="t3" style={{textAlign:'left',background:'var(--surface2)'}}>
-            <th className="px-5 py-2.5 font-semibold">Scout</th><th className="px-4 py-2.5 font-semibold text-right">Verified</th>
+            <th className="px-5 py-2.5 font-semibold">Scout</th><th className="px-4 py-2.5 font-semibold text-right">Referred</th>
+            <th className="px-4 py-2.5 font-semibold text-right">Activated</th>
             <th className="px-4 py-2.5 font-semibold text-right">Balance</th><th className="px-5 py-2.5 font-semibold text-right">Pending</th>
           </tr></thead>
           <tbody>{scouts.map(s=>(
             <tr key={s.id} style={{borderTop:'1px solid var(--line)'}}>
               <td className="px-5 py-3"><div className="flex items-center gap-2.5"><Avatar src={s.photo} name={s.name} size={30}/><div><div className="font-semibold t1">{s.name}</div><div className="text-xs t3">{s.county}</div></div></div></td>
+              <td className="px-4 py-3 text-right num t2">{s.referred ?? '—'}</td>
               <td className="px-4 py-3 text-right num font-semibold t1">{s.verified}</td>
               <td className="px-4 py-3 text-right num t2">{kes(s.balance)}</td>
               <td className="px-5 py-3 text-right num" style={{color: s.pending>0?'var(--amber)':'var(--t3)'}}>{s.pending>0?kes(s.pending):'—'}</td>
             </tr>))}
-            {scouts.length===0 && <tr><td colSpan={4} className="px-5 py-8 text-center t3">No active scouts yet.</td></tr>}</tbody>
+            {scouts.length===0 && <tr><td colSpan={5} className="px-5 py-8 text-center t3">No active scouts yet.</td></tr>}</tbody>
         </table></div>
       </Card>
     </div>
+
+    {/* merchant-follow verification queue */}
+    <Card className="p-0 overflow-hidden">
+      <div className="flex items-center justify-between p-5 pb-3 flex-wrap gap-2">
+        <h3 className="font-bold t1 flex items-center gap-2">Merchant-follow proofs {followList.length>0 && <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--amber)'}}>{followList.length}</span>}</h3>
+        <span className="text-xs t3">Open the handle, confirm they follow us, then approve to credit the scout.</span>
+      </div>
+      {followList.length===0
+        ? <div className="p-8 text-center t3"><Icon name="circle-check" className="text-2xl mb-2" style={{color:'var(--green)'}}/><div>No follow proofs waiting.</div></div>
+        : <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:600}}>
+            <thead><tr className="t3" style={{textAlign:'left',background:'var(--surface2)'}}>
+              <th className="px-5 py-2.5 font-semibold">Merchant</th><th className="px-4 py-2.5 font-semibold">Platform</th>
+              <th className="px-4 py-2.5 font-semibold">Handle</th><th className="px-4 py-2.5 font-semibold text-right">Reward</th>
+              <th className="px-5 py-2.5 font-semibold text-right">Verify</th>
+            </tr></thead>
+            <tbody>{followList.map(f=>{
+              const url = socialProfileUrl(f.platform, f.handle);
+              return (
+              <tr key={f.id} style={{borderTop:'1px solid var(--line)'}}>
+                <td className="px-5 py-3"><div className="font-semibold t1">{f.storeName}</div><div className="text-xs t3">{f.date}</div></td>
+                <td className="px-4 py-3 t2" style={{textTransform:'capitalize'}}>{f.platform}</td>
+                <td className="px-4 py-3">{url
+                  ? <a href={url} target="_blank" rel="noreferrer" className="accent font-semibold">@{String(f.handle).replace(/^@+/,'')} <Icon name="arrow-up-right-from-square" className="text-xs"/></a>
+                  : <span className="t2">@{f.handle}</span>}</td>
+                <td className="px-4 py-3 text-right num t2">{kes(f.reward)}</td>
+                <td className="px-5 py-3"><div className="flex gap-2 justify-end">
+                  <Btn kind="success" size="sm" icon="check" onClick={()=>resolveFollow(f.id,true)}>Approve</Btn>
+                  <Btn kind="soft" size="sm" onClick={()=>resolveFollow(f.id,false)}>Reject</Btn>
+                </div></td>
+              </tr>);
+            })}</tbody>
+          </table></div>}
+    </Card>
   </div>);
 }
 

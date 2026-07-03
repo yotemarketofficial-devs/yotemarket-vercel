@@ -1,9 +1,9 @@
 /* screens.jsx — Marketers app screens (scout-facing). */
 import React from 'react';
 import { ME, REFERRALS, VERIFIED_COUNT, PENDING_COUNT, TOTAL_REFERRED, LEADERBOARD, PAYOUTS, COUNTIES } from './data.js';
-import { calcEarnings, nextCheckpoint, merchantsToWithdrawal, ksh, MK_CONFIG } from './econ.js';
+import { calcEarnings, calcBatchedEarnings, cycleInfo, nextCheckpoint, merchantsToWithdrawal, ksh, MK_CONFIG } from './econ.js';
 import { Card, Btn, Pill, Avatar, Stat, Bar, Medal, Icon, useTheme, useEarn } from './ui.jsx';
-import { requestMarketerPayout } from './service.js';
+import { requestMarketerPayout, submitMerchantFollow } from './service.js';
 const { useState: useS, useMemo, useRef, useEffect: useE } = React;
 
 /* ============ shared: page header ============ */
@@ -97,8 +97,11 @@ function ReferralCode({ onShare }){
 /* ============ DASHBOARD ============ */
 export function Dashboard({ go }){
   const e = useEarn();
-  const earn = calcEarnings(VERIFIED_COUNT);
-  const nextCp = nextCheckpoint(VERIFIED_COUNT);
+  const cyc = cycleInfo(VERIFIED_COUNT);          // VERIFIED_COUNT == lifetime activated
+  const earn = calcEarnings(cyc.inCycle);         // earnings within the current 100-batch
+  const total = calcBatchedEarnings(VERIFIED_COUNT); // completed batches + current cycle
+  const fullBatchPay = calcEarnings(cyc.batchSize).total;
+  const nextCp = nextCheckpoint(cyc.inCycle);
   const myRank = (LEADERBOARD.find(s=>s.you)||{}).rank;
   const recent = REFERRALS.slice(0,5);
   return (
@@ -110,10 +113,10 @@ export function Dashboard({ go }){
         <div className="absolute -right-8 -top-10 w-48 h-48 rounded-full" style={{background:'radial-gradient(circle, rgba(244,181,48,.35), transparent 70%)'}} />
         <div className="grid lg:grid-cols-2 gap-6 relative">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{color:'rgba(255,255,255,.7)'}}>Total earnings · this cycle</div>
-            <div className="num font-extrabold mt-2" style={{ fontSize:48, lineHeight:1, color:'var(--gold-bright)' }}>{ksh(earn.total)}</div>
+            <div className="text-xs font-semibold uppercase tracking-widest" style={{color:'rgba(255,255,255,.7)'}}>Total earnings · all cycles</div>
+            <div className="num font-extrabold mt-2" style={{ fontSize:48, lineHeight:1, color:'var(--gold-bright)' }}>{ksh(total)}</div>
             <div className="text-sm mt-2" style={{color:'rgba(255,255,255,.85)'}}>
-              Qualification {ksh(earn.qualifyPay)} + bonus {ksh(earn.bonusPay)} · {VERIFIED_COUNT} verified merchants
+              {cyc.batches>0 && <>{cyc.batches} batch{cyc.batches===1?'':'es'} × {ksh(fullBatchPay)} + </>}this cycle {ksh(earn.total)} · {cyc.inCycle}/{cyc.batchSize} activated
             </div>
             <div className="flex gap-2.5 mt-5 flex-wrap">
               <Btn kind="gold" icon="money-bill-wave" onClick={()=>go('payouts')}>Withdraw to M-Pesa</Btn>
@@ -126,9 +129,9 @@ export function Dashboard({ go }){
 
       {/* stat grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat label="Verified merchants" value={VERIFIED_COUNT} sub="follow ≥3 socials · list ≥2 items" icon="store" tone="green" />
-        <Stat label="Pending verification" value={PENDING_COUNT} sub="awaiting merchant activity" icon="hourglass-half" tone="gold" />
-        <Stat label="Withdrawable balance" value={ksh(earn.withdrawable?earn.total:0)} sub={earn.withdrawable?'ready to cash out':`min ${ksh(MK_CONFIG.minWithdrawal)}`} icon="wallet" earn />
+        <Stat label="Activated merchants" value={VERIFIED_COUNT} sub="first paid sale · lifetime" icon="store" tone="green" />
+        <Stat label="This cycle" value={`${cyc.inCycle}/${cyc.batchSize}`} sub={`${cyc.batches} batch${cyc.batches===1?'':'es'} completed`} icon="layer-group" tone="gold" />
+        <Stat label="Withdrawable balance" value={ksh(total>=MK_CONFIG.minWithdrawal?total:0)} sub={total>=MK_CONFIG.minWithdrawal?'ready to cash out':`min ${ksh(MK_CONFIG.minWithdrawal)}`} icon="wallet" earn />
         <Stat label="Leaderboard rank" value={`#${myRank}`} sub="nationwide · this month" icon="trophy" tone="purple" />
       </div>
 
@@ -140,28 +143,29 @@ export function Dashboard({ go }){
             {nextCp && <span className="num text-sm font-bold" style={{color:e.fg}}>+{ksh(nextCp.gain)} on arrival</span>}
           </div>
           {nextCp ? (<>
-            <Bar pct={(VERIFIED_COUNT/nextCp.totalMerchantsAt)*100} color={e.fg} />
+            <Bar pct={(cyc.inCycle/nextCp.totalMerchantsAt)*100} color={e.fg} />
             <div className="flex justify-between text-xs t3 mt-2 num">
-              <span>{VERIFIED_COUNT} verified</span><span>target {nextCp.totalMerchantsAt}</span>
+              <span>{cyc.inCycle} activated this cycle</span><span>target {nextCp.totalMerchantsAt}</span>
             </div>
             <p className="text-sm t2 mt-4">
-              <b className="num t1">{nextCp.need}</b> more verified merchant{nextCp.need===1?'':'s'} re-rates your bonus merchants to KSH 20 each — balance becomes <b className="num" style={{color:e.fg}}>{ksh(nextCp.newTotal)}</b>.
+              <b className="num t1">{nextCp.need}</b> more activated merchant{nextCp.need===1?'':'s'} re-rates your bonus merchants to KSH 20 each — this cycle becomes <b className="num" style={{color:e.fg}}>{ksh(nextCp.newTotal)}</b>.
             </p>
-          </>) : <p className="text-sm t2">All checkpoints cleared — every new merchant adds a flat {ksh(MK_CONFIG.lowRate)}.</p>}
-          <div className="mt-5"><EarningsCurve current={VERIFIED_COUNT} /></div>
+          </>) : <p className="text-sm t2">Cycle maxed — reaching {cyc.batchSize} activated completes this batch (<b style={{color:e.fg}}>{ksh(fullBatchPay)}</b>) and starts a fresh cycle.</p>}
+          <div className="mt-5"><EarningsCurve current={cyc.inCycle} /></div>
         </Card>
 
         <Card className="p-6">
           <h3 className="font-bold t1 mb-4">Earnings breakdown</h3>
-          <BreakRow l="Qualification bonus" v={ksh(earn.qualifyPay)} note="at 10 verified" />
+          {cyc.batches>0 && <BreakRow l={`Completed batches (${cyc.batches})`} v={ksh(cyc.batches*fullBatchPay)} note={`${ksh(fullBatchPay)} each`} />}
+          <BreakRow l="Qualification bonus" v={ksh(earn.qualifyPay)} note="at 10 activated · this cycle" />
           <BreakRow l={`Re-rated @ 20 (${earn.highRateCount})`} v={ksh(earn.highRateCount*20)} note="past a checkpoint" />
           <BreakRow l={`Standard @ 10 (${earn.lowRateCount})`} v={ksh(earn.lowRateCount*10)} note="below next checkpoint" />
           <div className="flex justify-between items-center pt-3 mt-2" style={{borderTop:'1px solid var(--line)'}}>
             <span className="font-bold t1">Total</span>
-            <span className="num font-extrabold text-lg" style={{color:e.fg}}>{ksh(earn.total)}</span>
+            <span className="num font-extrabold text-lg" style={{color:e.fg}}>{ksh(total)}</span>
           </div>
           <div className="mt-5 rounded-xl p-3 text-xs t2" style={{background:'var(--surface2)'}}>
-            <Icon name="circle-info" className="accent mr-1.5"/> Checkpoints sit at 40 / 70 / 100 total merchants. Each one re-rates <i>all</i> bonus merchants retroactively.
+            <Icon name="circle-info" className="accent mr-1.5"/> Every {cyc.batchSize} activated merchants completes a batch ({ksh(fullBatchPay)}) and the cycle restarts — your lifetime referred keeps counting.
           </div>
         </Card>
       </div>
@@ -185,37 +189,85 @@ function BreakRow({ l, v, note }){
 
 /* ============ REFERRALS TABLE (shared) ============ */
 function statusTone(s){ return s==='verified'?'verified':s==='pending'?'pending':'reject'; }
+const SOCIALS = [['instagram','Instagram'],['tiktok','TikTok'],['facebook','Facebook'],['linkedin','LinkedIn']];
+const FOLLOW_TONE = { approved:'verified', submitted:'pending', rejected:'reject', none:'pending' };
+const FOLLOW_LABEL = { approved:'Following', submitted:'In review', rejected:'Rejected' };
 function RefTable({ rows, compact }){
+  const [followFor, setFollowFor] = useS(null);
   return (
     <div className="overflow-x-auto no-bar">
       <table className="w-full text-sm" style={{minWidth:compact?520:660}}>
         <thead><tr className="t3" style={{textAlign:'left'}}>
           <th className="px-5 py-3 font-semibold">Shop</th>
           <th className="px-4 py-3 font-semibold">County</th>
-          {!compact && <th className="px-4 py-3 font-semibold">Socials</th>}
           {!compact && <th className="px-4 py-3 font-semibold">Items</th>}
-          <th className="px-4 py-3 font-semibold">Joined</th>
+          <th className="px-4 py-3 font-semibold">Follows us</th>
           <th className="px-5 py-3 font-semibold">Status</th>
         </tr></thead>
         <tbody>
           {rows.map(r=>(
             <tr key={r.id} style={{borderTop:'1px solid var(--line)'}}>
-              <td className="px-5 py-3">
-                <div className="font-semibold t1">{r.shop}</div>
-                <div className="text-xs t3">{r.owner}</div>
-              </td>
+              <td className="px-5 py-3"><div className="font-semibold t1">{r.shop}</div></td>
               <td className="px-4 py-3 t2">{r.county}</td>
-              {!compact && <td className="px-4 py-3"><ReqDots n={r.socials} max={3} /></td>}
               {!compact && <td className="px-4 py-3"><ReqDots n={r.items} max={2} /></td>}
-              <td className="px-4 py-3 t2 num">{r.date}</td>
+              <td className="px-4 py-3">
+                {(!r.follow || r.follow==='none' || r.follow==='rejected')
+                  ? <button onClick={()=>setFollowFor(r.id)} className="text-xs font-semibold accent"><Icon name="plus" className="mr-1"/>{r.follow==='rejected'?'Resubmit':'Submit proof'}</button>
+                  : <Pill tone={FOLLOW_TONE[r.follow]}>{FOLLOW_LABEL[r.follow]}</Pill>}
+              </td>
               <td className="px-5 py-3">
-                <Pill tone={statusTone(r.status)}>{r.status}</Pill>
+                <Pill tone={statusTone(r.status)}>{r.status==='verified'?'activated':r.status}</Pill>
                 {r.missing && r.status!=='verified' && <div className="text-xs t3 mt-1">{r.missing}</div>}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {followFor && <FollowModal storeId={followFor} onClose={()=>setFollowFor(null)} />}
+    </div>
+  );
+}
+function FollowModal({ storeId, onClose }){
+  const [platform, setPlatform] = useS('instagram');
+  const [handle, setHandle] = useS('');
+  const [busy, setBusy] = useS(false);
+  const [err, setErr] = useS('');
+  const [done, setDone] = useS(false);
+  const submit = async () => {
+    if (!handle.trim()) { setErr('Enter the merchant’s @handle.'); return; }
+    setBusy(true); setErr('');
+    try { await submitMerchantFollow({ storeId, platform, handle: handle.trim().replace(/^@+/,'') }); setDone(true); }
+    catch(e){ setErr(e.message||'Could not submit.'); setBusy(false); }
+  };
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(8,10,24,.55)'}}>
+      <div onClick={e=>e.stopPropagation()} className="w-full" style={{maxWidth:420}}>
+        <Card className="p-6">
+          {done ? (
+            <div className="text-center">
+              <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center text-white mb-3" style={{background:'var(--green)'}}><Icon name="check"/></div>
+              <div className="font-bold t1">Submitted for review</div>
+              <p className="text-sm t2 mt-1">We'll confirm the follow and credit your reward once approved.</p>
+              <Btn kind="primary" className="mt-4" onClick={onClose}>Done</Btn>
+            </div>
+          ) : (<>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-bold t1">Merchant follows us</h3>
+              <button onClick={onClose} className="t3"><Icon name="xmark"/></button>
+            </div>
+            <p className="text-sm t2 mb-4">Enter the merchant's social handle. Staff confirm the follow, then your reward is added.</p>
+            <div className="flex gap-2 mb-3">
+              {SOCIALS.map(([id,l])=>(
+                <button key={id} onClick={()=>setPlatform(id)} className="flex-1 px-3 py-2 rounded-xl text-sm font-semibold"
+                  style={ platform===id ? {background:'var(--grad)',color:'#fff'} : {background:'var(--surface2)',color:'var(--t2)',border:'1px solid var(--line)'}}>{l}</button>
+              ))}
+            </div>
+            <input className="ym-input" style={{width:'100%'}} placeholder="@merchant_handle" value={handle} onChange={e=>setHandle(e.target.value)} />
+            {err && <div className="text-sm mt-2 flex items-center gap-2" style={{color:'var(--red)'}}><Icon name="circle-exclamation"/>{err}</div>}
+            <Btn kind="primary" className="mt-4" style={{width:'100%'}} disabled={busy} onClick={submit}>{busy?'Submitting…':'Submit for review'}</Btn>
+          </>)}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -240,11 +292,11 @@ export function Referrals(){
     rejected: REFERRALS.filter(r=>r.status==='rejected').length,
   };
   const rows = REFERRALS.filter(r => (filter==='all'||r.status===filter) &&
-    (r.shop.toLowerCase().includes(q.toLowerCase()) || r.owner.toLowerCase().includes(q.toLowerCase())));
-  const chips = [['all','All'],['verified','Verified'],['pending','Pending'],['rejected','Rejected']];
+    (r.shop||'').toLowerCase().includes(q.toLowerCase()));
+  const chips = [['all','All'],['verified','Activated'],['pending','Pending'],['rejected','Rejected']];
   return (
     <div className="fadeup space-y-6">
-      <PageHead title="My referrals" sub={`${TOTAL_REFERRED} merchants referred all-time · ${counts.verified} verified`}
+      <PageHead title="My referrals" sub={`${TOTAL_REFERRED} merchants referred all-time · ${counts.verified} activated`}
         action={<Btn kind="primary" icon="user-plus">Invite a merchant</Btn>} />
 
       <Card className="p-4 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -270,8 +322,8 @@ export function Referrals(){
       <Card className="p-5 flex gap-3" style={{background:'var(--surface2)'}}>
         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:'var(--purple-soft)',color:'var(--purple)'}}><Icon name="circle-check"/></div>
         <div>
-          <div className="font-bold t1 text-sm">How a referral becomes verified</div>
-          <p className="text-sm t2 mt-1">A merchant counts toward your earnings only once they <b>follow at least 3 of YoteMarket's socials</b> and <b>list at least 2 items</b> in their shop. Pending merchants nudge automatically until they qualify.</p>
+          <div className="font-bold t1 text-sm">How a referral activates</div>
+          <p className="text-sm t2 mt-1">A merchant counts toward your earnings once they make their <b>first paid sale</b> (their free signup month doesn't count). The <b>follows-us</b> task is a separate reward — submit the merchant's handle and staff verify it. Every 100 activated merchants completes a batch and your cycle restarts.</p>
         </div>
       </Card>
     </div>

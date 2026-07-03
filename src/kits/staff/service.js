@@ -170,5 +170,21 @@ export async function resolvePayout(id, action) {
   return call('staffResolvePayout')({ id, action });
 }
 
+// ── Merchant-follow social proofs (scout task verification) ───────────────────
+/** Queue of submitted "merchant follows us" proofs awaiting staff verification. */
+export async function fetchMerchantFollows() {
+  const d = await call('staffListMerchantFollows')();
+  return Array.isArray(d?.items) ? d.items : [];
+}
+/** Approve (credit the scout) or reject a follow proof, with an audit reason. */
+export async function resolveMerchantFollow(id, approve, reason = '') {
+  return call('staffResolveMerchantFollow')({ id, approve, reason });
+}
+/** Admin cutover: snapshot each active scout's earned floor before the switch
+ *  to activation-based pay (raise-only, safe to re-run). */
+export async function snapshotScoutFloors() {
+  return call('staffSnapshotScoutFloors')();
+}
+
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };
