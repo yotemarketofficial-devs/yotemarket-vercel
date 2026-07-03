@@ -1,25 +1,14 @@
-// Google Maps config for the YoteMarket web platform.
-// A browser Maps key is not a secret — it ships in every client bundle (exactly like
-// the Firebase web config in firebase.js and the Flutter apps' MAPS key), and is meant
-// to be locked down with an HTTP-referrer restriction in Google Cloud Console rather
-// than kept hidden. So it's baked in as a default; VITE_GOOGLE_MAPS_API_KEY still
-// overrides for other environments.
-export const GOOGLE_MAPS_API_KEY =
-  import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyCIEIHw8DRwMdFAttZBWscBevICSbsK0pQ';
+// Maps config for the YoteMarket web platform — Mapbox.
+// The Mapbox *public* token (pk.*) is a browser token designed to ship in the client
+// bundle and works cross-domain, so no per-host gating or API-enablement dance is
+// needed. It comes from VITE_MAPBOX_TOKEN — set in web_app/.env.local for local dev and
+// in the Vercel project env for production (kept out of source so GitHub secret-scanning
+// doesn't block pushes). Empty → maps fall back to the keyless OpenStreetMap embed.
+// Lock the token down with URL restrictions in the Mapbox account dashboard.
+export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
-// The key is HTTP-referrer-restricted to the production custom domains, and the Google
-// Maps Embed API renders only when the request comes from one of them. Anywhere else
-// (yotemarket.vercel.app, preview deploys, localhost) Google returns a referrer 403 and
-// an <iframe> can't fall back on its own — so we only build a Google embed URL on the
-// allowed hosts and let the caller use the keyless OpenStreetMap embed everywhere else.
-// Keep this in sync with the key's "Website restrictions" in Google Cloud Console.
-const MAPS_ALLOWED_HOSTS = ['yotemarket.co.ke', 'yotemarket.com'];
-
-function hostAllowsGoogleMaps() {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  return MAPS_ALLOWED_HOSTS.some((h) => host === h || host.endsWith('.' + h));
-}
+const MAPBOX_STYLE = 'streets-v12'; // Mapbox-owned style; no custom style needed
+const MAPBOX_MARKER = '4f46e5';     // brand --m-primary (hex, no '#')
 
 // Fallback map center + coarse town lookup, used when a store hasn't saved a precise
 // pickup pin. Keeps the map from being an empty grey box: we drop an approximate
@@ -53,13 +42,13 @@ export function approxCenterFor(area) {
   return DEFAULT_MAP_CENTER;
 }
 
-// Build a Google Maps Embed API "place" URL that drops a marker at either a
-// "lat,lng" pair or a free-text place query. Returns null when there's no key, no
-// query, or the current host isn't authorized for the key — the caller then falls
-// back to the keyless OpenStreetMap embed. NOTE: the "Maps Embed API" must also be
-// enabled on the key's Google Cloud project, or Google answers 403 (ApiNotActivated).
-export function mapsEmbedUrl(query, { zoom = 15 } = {}) {
-  if (!GOOGLE_MAPS_API_KEY || !query || !hostAllowsGoogleMaps()) return null;
-  return `https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_API_KEY}` +
-    `&q=${encodeURIComponent(query)}&zoom=${zoom}`;
+// Build a Mapbox Static Images API URL: a rendered PNG with a brand pin at lat/lng,
+// usable directly as an <img src>. Requested @2x for retina; width/height are the
+// pixel size Mapbox renders (the <img> is scaled to its container with object-fit).
+// Returns null when there's no token or bad coords (caller falls back to OSM).
+export function mapboxStaticUrl(lat, lng, { zoom = 14, width = 720, height = 400 } = {}) {
+  if (!MAPBOX_TOKEN || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const marker = `pin-s+${MAPBOX_MARKER}(${lng},${lat})`;
+  return `https://api.mapbox.com/styles/v1/mapbox/${MAPBOX_STYLE}/static/${marker}/` +
+    `${lng},${lat},${zoom},0/${width}x${height}@2x?access_token=${MAPBOX_TOKEN}`;
 }

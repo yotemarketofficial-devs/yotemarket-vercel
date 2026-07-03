@@ -2,7 +2,7 @@
 import React from 'react';
 import { ymPrice, ymStore, ymCat } from './data.js';
 import { HUBS } from './hubs.js';
-import { mapsEmbedUrl, approxCenterFor } from '../../lib/maps.js';
+import { mapboxStaticUrl, approxCenterFor } from '../../lib/maps.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
 
 export const YMContext = createContext(null);
@@ -171,14 +171,13 @@ export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup 
   );
 }
 
-/* A pickup/location map for any destination (a store or a collection hub). Renders an
-   embedded pin at the saved coordinates, and a "Get directions" CTA that opens
-   turn-by-turn navigation in Google Maps (works from coords or a place-name query, so
-   directions always resolve). Uses a Google Maps embed on the key's whitelisted hosts
-   and falls back to a keyless OpenStreetMap embed everywhere else. When a place has no
-   saved pin, it drops an APPROXIMATE town-level marker (from the area text) so the map
-   is never an empty grey box — the caption flags it and directions still use the real
-   area name. */
+/* A pickup/location map for any destination (a store or a collection hub). Renders a
+   Mapbox static map with a brand pin at the saved coordinates, and a "Get directions"
+   CTA that opens turn-by-turn navigation (works from coords or a place-name query, so
+   directions always resolve). Falls back to a keyless OpenStreetMap embed if no Mapbox
+   token is configured. When a place has no saved pin, it drops an APPROXIMATE town-level
+   marker (from the area text) so the map is never an empty grey box — the caption flags
+   it and directions still use the real area name. */
 export function PlaceMap({ location, name='Location', area, address, height=180 }){
   const real = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? location : null;
   const loc = real || approxCenterFor(area);       // always resolves → map is never grey
@@ -186,13 +185,17 @@ export function PlaceMap({ location, name='Location', area, address, height=180 
   const dest = real ? `${real.lat},${real.lng}` : encodeURIComponent(`${name} ${area || ''} Kenya`);
   const dirHref = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
   const d = 0.006;
-  const osmSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`;
-  const mapSrc = mapsEmbedUrl(`${loc.lat},${loc.lng}`) || osmSrc;
+  const mapImg = mapboxStaticUrl(loc.lat, loc.lng, { zoom: real ? 15 : 12 });
   return (
     <div>
-      <iframe title={`${name} location`} width="100%" height={height} loading="lazy"
-        style={{ border:0, borderRadius:14, display:'block' }}
-        src={mapSrc} />
+      {mapImg ? (
+        <img src={mapImg} alt={`Map showing ${name}`} width="100%" height={height} loading="lazy"
+          style={{ border:0, borderRadius:14, display:'block', width:'100%', height, objectFit:'cover' }} />
+      ) : (
+        <iframe title={`${name} location`} width="100%" height={height} loading="lazy"
+          style={{ border:0, borderRadius:14, display:'block' }}
+          src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`} />
+      )}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginTop:10, flexWrap:'wrap' }}>
         <span className="ym-cap" style={{ display:'inline-flex', gap:7, alignItems:'center', minWidth:0 }}><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{address || area || name}{approx ? ' · approximate area' : ''}</span></span>
         <a href={dirHref} target="_blank" rel="noreferrer" className="ym-btn ym-btn-primary ym-btn-sm"><FA i="fa-diamond-turn-right" /> Get directions</a>
