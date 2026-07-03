@@ -9,9 +9,10 @@ import { ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db } from '../../lib/firebase.js';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { subscribeFeed, subscribeMyFeedLikes, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
-import { createFeedPost, likeFeedPost, reportFeedPost, deleteFeedPost } from '../../lib/firebase.js';
-const { useState, useEffect, useRef } = React;
+import { subscribeFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
+import { createFeedPost, likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
+import { subscribeFollows } from '../../lib/account.js';
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 const fmtCount = (n) => { n = Number(n) || 0; return n >= 1000 ? (n / 1000).toFixed(n % 1000 >= 100 ? 1 : 0) + 'k' : String(n); };
 
@@ -29,9 +30,11 @@ const FEED_DEMO = [
 ];
 
 /* One full-height video card. Plays when >60% visible, pauses otherwise. */
-function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete }){
+function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish }){
   const secRef = useRef(null);
   const vRef = useRef(null);
+  const viewedRef = useRef(false);
+  const finishedRef = useRef(false);
   const [visible, setVisible] = useState(false);
   const [paused, setPaused] = useState(false);
 
@@ -43,15 +46,22 @@ function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduc
   useEffect(() => {
     const v = vRef.current; if (!v) return;
     if (visible && !paused) { v.play().catch(() => {}); } else { v.pause(); }
+    if (visible && !viewedRef.current) { viewedRef.current = true; onView && onView(); } // ranking: 1 view/session
   }, [visible, paused]);
   useEffect(() => { const v = vRef.current; if (v) v.muted = muted; }, [muted]);
+
+  // Watch-completion → a strong engagement signal (video loops, so watch currentTime).
+  const onTime = () => {
+    const v = vRef.current; if (!v || !v.duration || finishedRef.current) return;
+    if (v.currentTime / v.duration > 0.9) { finishedRef.current = true; onFinish && onFinish(); }
+  };
 
   const src = feedVideoUrl(post);
   const p = post.product;
   return (
     <section ref={secRef} style={{ scrollSnapAlign:'start', position:'relative', height:'100%', width:'100%', background:'#000', borderRadius:16, overflow:'hidden', flex:'0 0 100%' }}>
       <video ref={vRef} src={src} poster={post.posterUrl || undefined} loop playsInline muted={muted}
-        onClick={() => setPaused(x => !x)}
+        onClick={() => setPaused(x => !x)} onTimeUpdate={onTime}
         style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', cursor:'pointer' }} />
       {paused && <div onClick={()=>setPaused(false)} style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.9)', fontSize:44, cursor:'pointer' }}><FA i="fa-play" /></div>}
 
@@ -110,12 +120,17 @@ export function FeedScreen(){
   const uid = user?.uid;
   const [posts, setPosts] = useState(null); // null = loading
   const [likes, setLikes] = useState(new Set());
+  const [seen, setSeen] = useState(new Set());
+  const [follows, setFollows] = useState([]);
+  const [orderIds, setOrderIds] = useState(null); // frozen ranked order (stable while scrolling)
   const [muted, setMuted] = useState(true);
   const [storeId, setStoreId] = useState(null);
   const [compose, setCompose] = useState(false);
 
   useEffect(() => subscribeFeed(setPosts), []);
   useEffect(() => { if (!uid) { setLikes(new Set()); return undefined; } return subscribeMyFeedLikes(uid, setLikes); }, [uid]);
+  useEffect(() => { if (!uid) { setSeen(new Set()); return undefined; } return subscribeFeedSeen(uid, setSeen); }, [uid]);
+  useEffect(() => { if (!uid) { setFollows([]); return undefined; } return subscribeFollows(uid, setFollows); }, [uid]);
   useEffect(() => {
     let live = true;
     if (!uid) { setStoreId(null); return undefined; }
@@ -123,8 +138,67 @@ export function FeedScreen(){
     return () => { live = false; };
   }, [uid]);
 
-  // Live feed, or bundled demo clips when it's empty (so scrolling is testable).
-  const list = posts === null ? [] : (posts.length ? posts : FEED_DEMO);
+  // Stores to boost = followed + stores of clips the user has liked (engaged).
+  const boostStores = useMemo(() => {
+    const s = new Set(follows.map((f) => f.id || f.storeId).filter(Boolean));
+    (posts || []).forEach((p) => { if (likes.has(p.id) && p.storeId) s.add(p.storeId); });
+    return s;
+  }, [follows, likes, posts]);
+
+  // Refs so ranking reads current context without re-ranking every time it changes.
+  const rankCtxRef = useRef({ likes, seen, boostStores });
+  rankCtxRef.current = { likes, seen, boostStores };
+
+  // Freeze the ranked order ONCE the feed first loads — order stays stable while you
+  // scroll (re-ranking mid-scroll would jump the viewport). Remounting the screen
+  // (navigating away + back) re-ranks with the latest seen/likes.
+  useEffect(() => {
+    if (posts && posts.length && !orderIds) {
+      const c = rankCtxRef.current;
+      setOrderIds(rankFeed(posts, { likedSet: c.likes, seenSet: c.seen, boostStores: c.boostStores }).map((p) => p.id));
+    }
+  }, [posts, orderIds]);
+
+  const byId = useMemo(() => { const m = new Map(); (posts || []).forEach((p) => m.set(p.id, p)); return m; }, [posts]);
+  // Render in frozen order, merging live post data; new clips (not yet ranked) append.
+  const ranked = useMemo(() => {
+    if (!posts || !posts.length || !orderIds) return posts || [];
+    const placed = new Set(); const arr = [];
+    orderIds.forEach((id) => { const p = byId.get(id); if (p) { arr.push(p); placed.add(id); } });
+    posts.forEach((p) => { if (!placed.has(p.id)) arr.push(p); });
+    return arr;
+  }, [posts, orderIds, byId]);
+
+  // Live ranked feed, or bundled demo clips when it's empty (so scrolling is testable).
+  const list = posts === null ? [] : (ranked.length ? ranked : FEED_DEMO);
+
+  // ── Ranking signals: batch engagement events, flush once per session (cheap). ──
+  const pendingRef = useRef({});           // { postId: { views, finishes, shopTaps } }
+  const countedViewRef = useRef(new Set());
+  const countedFinishRef = useRef(new Set());
+  const bump = (postId, field) => {
+    if (!postId || String(postId).startsWith('demo')) return; // demo clips aren't real docs
+    const e = pendingRef.current[postId] || (pendingRef.current[postId] = {});
+    e[field] = (e[field] || 0) + 1;
+  };
+  const onView = (post) => { if (post.demo || countedViewRef.current.has(post.id)) return; countedViewRef.current.add(post.id); bump(post.id, 'views'); };
+  const onFinish = (post) => { if (post.demo || countedFinishRef.current.has(post.id)) return; countedFinishRef.current.add(post.id); bump(post.id, 'finishes'); };
+  const onShop = (post) => { if (!post.demo) bump(post.id, 'shopTaps'); if (post.productId) nav('product', { pid: post.productId }); };
+  const flush = useCallback(() => {
+    const events = Object.entries(pendingRef.current)
+      .map(([postId, v]) => ({ postId, ...v }))
+      .filter((e) => e.views || e.finishes || e.shopTaps);
+    if (!events.length) return;
+    pendingRef.current = {};
+    recordFeedEvents({ events }).catch(() => {}); // fire-and-forget, best-effort
+  }, []);
+  useEffect(() => {
+    const iv = setInterval(flush, 30000);
+    const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', flush);
+    return () => { clearInterval(iv); document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', flush); flush(); };
+  }, [flush]);
 
   const like = (post) => {
     if (post.demo) { setLikes((s) => { const n = new Set(s); if (n.has(post.id)) n.delete(post.id); else n.add(post.id); return n; }); return; }
@@ -175,9 +249,10 @@ export function FeedScreen(){
             <FeedItem key={post.id} post={post} muted={muted} liked={likes.has(post.id)}
               onToggleMute={() => setMuted((m) => !m)}
               onLike={() => like(post)} onReport={() => report(post)}
-              onProduct={() => post.productId && nav('product', { pid: post.productId })}
+              onProduct={() => onShop(post)}
               onStore={() => post.storeId && nav('store', { sid: post.storeId })}
               onMessage={() => message(post)} canMessage={!!post.ownerId && post.ownerId !== uid}
+              onView={() => onView(post)} onFinish={() => onFinish(post)}
               canDelete={!!uid && post.ownerId === uid} onDelete={() => remove(post)} />
           ))}
         </div>

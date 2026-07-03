@@ -193,6 +193,8 @@ export const likeFeedPost = callable('likeFeedPost');
 export const reportFeedPost = callable('reportFeedPost');
 /** Owner or staff: remove a feed post → { ok }. { postId }. */
 export const deleteFeedPost = callable('deleteFeedPost');
+/** Batched feed engagement (ranking signals) → { ok }. { events:[{postId,views?,finishes?,shopTaps?}] }. */
+export const recordFeedEvents = callable('recordFeedEvents');
 /** Staff: open review-abuse reports for triage → { reports }. */
 export const staffListReviewReports = callable('staffListReviewReports');
 /** Staff: remove a review + correct rating aggregates → { ok }. { reviewId, reason? }. */
