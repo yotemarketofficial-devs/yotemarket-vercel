@@ -25,6 +25,7 @@ export function Header(){
           <FA i="fa-magnifying-glass" style={{ color:'var(--m-primary)', fontSize:15 }} /> Search the mall…
         </button>
         <div className="ym-hdr-spacer" style={{ flex:1 }} />
+        <button onClick={()=>nav('feed')} className="icon-btn" aria-label="YoteFeed"><FA i="fa-clapperboard" /></button>
         <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><YoteAiMark size={20} color="#fff" /></button>
         <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />

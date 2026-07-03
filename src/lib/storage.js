@@ -13,6 +13,8 @@ export const avatarPath = (uid) => `avatars/${uid}/${stamp()}.jpg`;
 export const productImagePath = (storeId) => `product_images/${storeId}/${stamp()}.jpg`;
 export const coverPath = (storeId) => `product_images/${storeId}/cover_${stamp()}.jpg`;
 export const logoPath = (storeId) => `product_images/${storeId}/logo_${stamp()}.jpg`;
+// YoteFeed videos live under feed/{storeId}/ (matches the deployed Storage rule).
+export const feedVideoPath = (storeId, ext = 'mp4') => `feed/${storeId}/${stamp()}.${ext}`;
 
 /**
  * Upload a Blob to `path` and resolve with its public download URL.
@@ -22,6 +24,25 @@ export function uploadImage(path, blob, onProgress) {
   return new Promise((resolve, reject) => {
     if (!storageReady()) { reject(new Error('Storage is not configured.')); return; }
     const task = uploadBytesResumable(ref(storage, path), blob, { contentType: 'image/jpeg' });
+    task.on(
+      'state_changed',
+      (snap) => { if (onProgress && snap.totalBytes) onProgress(snap.bytesTransferred / snap.totalBytes); },
+      (err) => reject(new Error(friendly(err))),
+      () => getDownloadURL(task.snapshot.ref).then(resolve).catch((e) => reject(new Error(friendly(e)))),
+    );
+  });
+}
+
+/**
+ * Upload a video File/Blob to `path`, resolving with its public download URL.
+ * `onProgress(0..1)` fires as bytes transfer. Content type comes from the file
+ * (defaults to video/mp4). Mirrors uploadImage but for the feed/{storeId}/ path.
+ */
+export function uploadVideo(path, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    if (!storageReady()) { reject(new Error('Storage is not configured.')); return; }
+    const contentType = file?.type || 'video/mp4';
+    const task = uploadBytesResumable(ref(storage, path), file, { contentType });
     task.on(
       'state_changed',
       (snap) => { if (onProgress && snap.totalBytes) onProgress(snap.bytesTransferred / snap.totalBytes); },

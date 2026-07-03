@@ -184,6 +184,15 @@ export const redeemCoupon = callable('redeemCoupon');
 export const submitReview = callable('submitReview');
 /** Shopper: flag a fraudulent/abusive review for staff → { ok }. { reviewId, reason? }. */
 export const reportReview = callable('reportReview');
+// ── YoteFeed (shortform video selling) ───────────────────────────────────────
+/** Merchant: publish a shortform video post → { ok, id }. { videoUrl, caption?, productId?, posterUrl?, durationMs?, aspect? }. */
+export const createFeedPost = callable('createFeedPost');
+/** Shopper: like/unlike a feed post → { ok, likes, liked }. { postId, like }. */
+export const likeFeedPost = callable('likeFeedPost');
+/** Shopper: flag a feed post for staff → { ok }. { postId, reason? }. */
+export const reportFeedPost = callable('reportFeedPost');
+/** Owner or staff: remove a feed post → { ok }. { postId }. */
+export const deleteFeedPost = callable('deleteFeedPost');
 /** Staff: open review-abuse reports for triage → { reports }. */
 export const staffListReviewReports = callable('staffListReviewReports');
 /** Staff: remove a review + correct rating aggregates → { ok }. { reviewId, reason? }. */
