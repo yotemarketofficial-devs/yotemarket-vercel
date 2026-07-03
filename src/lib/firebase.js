@@ -180,8 +180,14 @@ export const listPromos = callable('listPromos');
 export const setPromoActive = callable('setPromoActive');
 /** Merchant: redeem a coupon code → { type, months?|value? }. { code }. */
 export const redeemCoupon = callable('redeemCoupon');
-/** Shopper: submit/update a product review → { ok, rating, reviews }. { productId, rating, text? }. */
+/** Shopper: submit/update a product review (verified purchase + email required) → { ok, rating, reviews }. { productId, rating, text? }. */
 export const submitReview = callable('submitReview');
+/** Shopper: flag a fraudulent/abusive review for staff → { ok }. { reviewId, reason? }. */
+export const reportReview = callable('reportReview');
+/** Staff: open review-abuse reports for triage → { reports }. */
+export const staffListReviewReports = callable('staffListReviewReports');
+/** Staff: remove a review + correct rating aggregates → { ok }. { reviewId, reason? }. */
+export const staffRemoveReview = callable('staffRemoveReview');
 /** Buyer or selling merchant: cancel an order (auto-refunds paid orders to wallet) → { ok, cancelledBy, refunded }. { orderId, reason? }. */
 export const cancelOrder = callable('cancelOrder');
 

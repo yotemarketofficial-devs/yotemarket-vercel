@@ -9,6 +9,7 @@ import {
   fetchRuns, fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
+  fetchReviewReports, removeReview, dismissReviewReport,
 } from './service.js';
 import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
 
@@ -451,6 +452,54 @@ export function Moderation(){
       {list.length===0 && <Card className="p-10 text-center t3"><Icon name="circle-check" className="text-3xl mb-2" style={{color:'var(--green)'}}/><div>No open reports — all clear.</div></Card>}
     </div>
     {view && <TranscriptModal view={view} onClose={()=>setView(null)} />}
+  </div>);
+}
+
+/* ============ REVIEW MODERATION (fraud/abuse reports → remove or dismiss) ====== */
+const REVIEW_REPORTS_DEMO = [
+  { id:'rr1', reviewId:'p1_x', productId:'p1', storeId:'s1', reviewText:'Terrible, do not buy from here!!! scam', reviewRating:1, reporterName:'Merchant', reason:'Suspected competitor / fake review', at:'1h ago', status:'open' },
+  { id:'rr2', reviewId:'p4_y', productId:'p4', storeId:'s3', reviewText:'visit mysite dot com for cheaper', reviewRating:2, reporterName:'Shopper', reason:'Spam / off-platform link', at:'3h ago', status:'open' },
+];
+
+export function ReviewModeration(){
+  const { data, live } = useStaffResource(fetchReviewReports, REVIEW_REPORTS_DEMO);
+  const [rows, setRows] = useSS(null);
+  useES(()=>{ setRows(data); }, [data]);
+  const list = rows || [];
+
+  const act = async (id, fn, ...args) => {
+    const prev = list;
+    setRows(rs=>(rs||[]).filter(r=>r.id!==id));
+    try { await fn(...args); } catch { setRows(prev); }
+  };
+
+  return (<div className="fadeup space-y-6">
+    <SectionHead icon="star-half-stroke" title="Review moderation" sub={live ? 'Reported product reviews — remove fraud/abuse (ratings auto-correct) or dismiss' : 'Sample reports — connect the backend for live moderation'} />
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <Stat label="Open reports" value={list.filter(r=>r.status!=='resolved').length} icon="flag" tone="amber" />
+      <Stat label="Low-star flagged" value={list.filter(r=>(r.reviewRating||0)<=2).length} icon="star" tone="red" />
+      <Stat label="Reports today" value={list.length} icon="inbox" tone="pri" />
+      <Stat label="Protection" value="Verified" icon="shield-halved" tone="green" />
+    </div>
+    <div className="space-y-3">
+      {list.map(r=>(
+        <Card key={r.id} className="p-4">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--red-bg)',color:'var(--red)'}}><Icon name="flag"/></div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold t1 flex items-center gap-2">{r.reason}{r.reviewRating!=null && <Pill tone={r.reviewRating<=2?'red':'amber'}>{r.reviewRating}★</Pill>}</div>
+              {r.reviewText && <div className="text-sm t2 mt-1 italic">“{r.reviewText}”</div>}
+              <div className="text-xs t3 mt-1">Reported by {r.reporterName}{r.at?` · ${r.at}`:''}{r.productId?` · product ${r.productId}`:''}</div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Btn kind="danger" size="sm" icon="trash" onClick={()=>act(r.id, removeReview, r.reviewId, 'staff moderation')}>Remove review</Btn>
+              <Btn kind="ghost" size="sm" icon="check" onClick={()=>act(r.id, dismissReviewReport, r.id)}>Dismiss</Btn>
+            </div>
+          </div>
+        </Card>
+      ))}
+      {list.length===0 && <Card className="p-10 text-center t3"><Icon name="circle-check" className="text-3xl mb-2" style={{color:'var(--green)'}}/><div>No open review reports — all clear.</div></Card>}
+    </div>
   </div>);
 }
 

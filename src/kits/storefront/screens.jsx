@@ -6,7 +6,7 @@ import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
 import { subscribeProductReviews } from '../../lib/reviews.js';
-import { submitReview } from '../../lib/firebase.js';
+import { submitReview, reportReview } from '../../lib/firebase.js';
 const { useState: useSS, useEffect: useEffSS } = React;
 
 /* ---------- PRODUCT REVIEWS (live, functional) ---------- */
@@ -54,6 +54,14 @@ function ProductReviews({ product }){
       .finally(()=>setBusy(false));
   };
 
+  const report = (r) => {
+    if (!uid) { requireAuth(()=>{}); return; }
+    const reason = (typeof window !== 'undefined' && window.prompt('Why are you reporting this review? (optional)')) ?? undefined;
+    reportReview({ reviewId: r.id, reason: reason || undefined })
+      .then(()=>toast('Thanks — our team will review this.', 'fa-flag'))
+      .catch(e=>toast(e.message || 'Could not report review', 'fa-triangle-exclamation'));
+  };
+
   return (
     <div id="product-reviews" style={{ marginTop:44, scrollMarginTop:80 }}>
       <SectionTitle>Ratings & reviews</SectionTitle>
@@ -70,6 +78,7 @@ function ProductReviews({ product }){
           <button className="ym-btn ym-btn-primary ym-btn-sm" style={{ marginTop:10 }} disabled={busy} onClick={send}>
             <FA i={busy?'fa-circle-notch':'fa-paper-plane'} style={busy?{ animation:'ym-spin 1s linear infinite' }:null} /> {mine ? 'Update review' : 'Submit review'}
           </button>
+          <div className="ym-cap" style={{ marginTop:8, display:'flex', alignItems:'center', gap:6 }}><FA i="fa-shield-halved" style={{ color:'#16a34a' }} /> Only verified buyers can review — your purchase is checked automatically.</div>
         </div>
       </div>
       {reviews === null ? <div className="ym-cap" style={{ padding:'8px 2px' }}>Loading reviews…</div>
@@ -81,9 +90,16 @@ function ProductReviews({ product }){
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
                     <div style={{ width:34, height:34, borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:13 }}>{(r.author||'?').slice(0,1).toUpperCase()}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div className="ym-h3" style={{ fontSize:13.5 }}>{r.author || 'Shopper'}{r.userId===uid && <span className="ym-cap" style={{ marginLeft:6 }}>· You</span>}</div>
+                      <div className="ym-h3" style={{ fontSize:13.5, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                        {r.author || 'Shopper'}
+                        {r.userId===uid && <span className="ym-cap">· You</span>}
+                        {r.verified && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, color:'#16a34a' }}><FA i="fa-circle-check" /> Verified purchase</span>}
+                      </div>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}><Stars rating={r.rating} size={12} /><span className="ym-cap">{fmtReviewDate(r)}</span></div>
                     </div>
+                    {r.userId!==uid && (
+                      <button title="Report review" onClick={()=>report(r)} style={{ background:'none', border:0, color:'var(--m-fg4)', cursor:'pointer', padding:4, flexShrink:0 }}><FA i="fa-flag" /></button>
+                    )}
                   </div>
                   {r.text && <p className="ym-body" style={{ margin:0, fontSize:14 }}>{r.text}</p>}
                 </div>

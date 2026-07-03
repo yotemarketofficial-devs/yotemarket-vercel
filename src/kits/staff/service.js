@@ -127,6 +127,22 @@ export async function resolveReport(reportId, action) {
   return call('staffResolveReport')({ reportId, action });
 }
 
+// ── Review moderation (verified-purchase reviews; fraud/abuse triage) ─────────
+export async function fetchReviewReports() {
+  const d = await call('staffListReviewReports')();
+  return Array.isArray(d?.reports) ? d.reports : [];
+}
+
+/** Remove a fraudulent/abusive review and correct rating aggregates. */
+export async function removeReview(reviewId, reason = 'removed by staff') {
+  return call('staffRemoveReview')({ reviewId, reason });
+}
+
+/** Dismiss a report, keeping the review (judged legitimate). */
+export async function dismissReviewReport(reportId) {
+  return call('staffResolveReviewReport')({ reportId, action: 'dismissed' });
+}
+
 /** Admin-only: grant/revoke a staff role by email. role: 'admin'|'moderator'|'none'. */
 export async function setStaffRole(email, role) {
   return call('staffSetRole')({ email, role });

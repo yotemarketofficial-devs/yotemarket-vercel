@@ -5,7 +5,7 @@ import './staff.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
-import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, Team } from './screens.jsx';
+import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, ReviewModeration, Team } from './screens.jsx';
 import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
@@ -20,6 +20,7 @@ const NAV = [
   { key:'approvals',    icon:'user-check',     label:'Merchant approvals',     section:'Operations' },
   { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics',     section:'Operations' },
   { key:'moderation',   icon:'comment-slash',  label:'Chat moderation',        section:'Operations' },
+  { key:'reviews',      icon:'star-half-stroke', label:'Review moderation',     section:'Operations' },
 
   { key:'applications', icon:'briefcase',      label:'Marketer applications',  section:'Growth' },
   { key:'scouts',       icon:'people-group',   label:'Scouts & payouts',       section:'Growth' },
@@ -35,7 +36,7 @@ const NAV = [
   { key:'team',         icon:'user-shield',    label:'Team & roles',           section:'Admin', adminOnly:true },
   { key:'economics',    icon:'scale-balanced', label:'Pricing & economics',    section:'Admin', lock:true },
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, team:Team, economics:Economics };
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, economics:Economics };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
 function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
