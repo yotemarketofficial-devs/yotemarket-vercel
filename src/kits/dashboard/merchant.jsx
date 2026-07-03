@@ -132,6 +132,8 @@ export function useStoreOverview() {
       total: Number(o.total) || 0, status: o.status === 'delivered' ? 'active' : (o.status === 'cancelled' ? 'inactive' : 'pending'),
       rawStatus: o.status, // real custody status for the handover column
       fulfillment: o.fulfillment || 'hub',
+      awaitingDecision: !!o.awaitingDecision && o.paid === true, // held for merchant delivery decision
+      paid: o.paid === true,
       date: o.placed || (o.createdAt ? fmtTs(o.createdAt) : ''), hub: o.fulfillment === 'store_pickup' ? 'Store pickup' : (o.hub || '—'),
       raw: o,
     }));

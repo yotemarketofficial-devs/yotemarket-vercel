@@ -21,7 +21,15 @@ export function CheckoutScreen(){
   const subtotal = items.reduce((s,x)=>s+x.p.price*x.qty,0);
   const [fulfillment, setFulfillment] = useSCm('hub'); // hub | store_pickup
   const sellStore = ymStore(items[0]?.p?.store);
-  const fee = (fulfillment === 'hub' && items.length) ? DELIVERY_FEE : 0;
+  // Delivery rules for the selling store (fall back to the flat fee when unset).
+  const deliv = sellStore?.delivery || null;
+  const offersDelivery = deliv ? deliv.offers !== false : true;
+  const baseFee = deliv && deliv.fee != null ? Number(deliv.fee) : DELIVERY_FEE;
+  const freeOver = deliv && Number(deliv.freeOver) > 0 ? Number(deliv.freeOver) : 0;
+  const deliveryFee = (freeOver > 0 && subtotal >= freeOver) ? 0 : baseFee;
+  // If the store doesn't offer delivery, checkout is pickup-only.
+  useEffCm(() => { if (!offersDelivery && fulfillment !== 'store_pickup') setFulfillment('store_pickup'); }, [offersDelivery]); // eslint-disable-line
+  const fee = (fulfillment === 'hub' && items.length) ? deliveryFee : 0;
   const total = subtotal + fee;
   const [pay, setPay] = useSCm('mpesa');
   const [phone, setPhone] = useSCm('');
@@ -210,7 +218,10 @@ export function CheckoutScreen(){
           <div className="ym-card" style={{ padding:22 }}>
             <div className="ym-h3" style={{ marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-truck-fast" style={{ color:'var(--m-primary)' }} /> How would you like it?</div>
             <div style={{ display:'flex', gap:10, marginBottom:16 }} className="fulfil-row">
-              {[['hub','fa-warehouse','Hub delivery',`Delivered to a YoteMarket hub · ${ymPrice(DELIVERY_FEE)}`],['store_pickup','fa-store','Pick up from store',`Collect from ${sellStore?.name || 'the store'} · Free`]].map(([id,ic,t,sub])=>(
+              {[
+                ...(offersDelivery ? [['hub','fa-warehouse','Hub delivery', deliveryFee>0 ? `Delivered to a YoteMarket hub · ${ymPrice(deliveryFee)}` : 'Delivered to a YoteMarket hub · Free']] : []),
+                ['store_pickup','fa-store','Pick up from store',`Collect from ${sellStore?.name || 'the store'} · Free`],
+              ].map(([id,ic,t,sub])=>(
                 <button key={id} onClick={()=>setFulfillment(id)} style={{ flex:1, textAlign:'left', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: fulfillment===id?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
                   <FA i={ic} style={{ fontSize:18, color: fulfillment===id?'var(--m-primary)':'var(--m-fg3)' }} />
                   <div className="ym-h3" style={{ fontSize:14, marginTop:8 }}>{t}</div>
@@ -218,6 +229,8 @@ export function CheckoutScreen(){
                 </button>
               ))}
             </div>
+            {offersDelivery && freeOver>0 && subtotal<freeOver && <div className="ym-cap" style={{ margin:'-6px 0 14px', color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Add {ymPrice(freeOver-subtotal)} more for free delivery.</div>}
+            {offersDelivery && deliv?.note && <div className="ym-cap" style={{ margin:'-6px 0 14px' }}><FA i="fa-circle-info" /> {deliv.note}</div>}
             {fulfillment==='hub' ? (
               <>
                 <div style={{ display:'flex', alignItems:'center', gap:14, padding:14, borderRadius:14, border:'2px solid var(--m-primary)', background:'var(--m-surface-3)' }}>

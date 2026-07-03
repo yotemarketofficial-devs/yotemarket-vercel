@@ -60,6 +60,8 @@ const normStore = (d) => ({
   suspended: !!d.suspended,   // staff-suspended stores are hidden from the storefront
   area: d.area,
   address: d.address || undefined,                          // shown under the store map
+  delivery: d.delivery || null,                             // delivery rules → checkout fee/free-over/offer
+  autoDispatch: d.delivery ? d.delivery.autoDispatch !== false : true,
   location: normLoc(d.location || d.geo || d.coords ||      // { lat, lng } for StoreMap
     (d.lat != null || d.lng != null ? { lat: d.lat, lng: d.lng } : null)),
   rating: d.rating != null ? Number(d.rating) : undefined,

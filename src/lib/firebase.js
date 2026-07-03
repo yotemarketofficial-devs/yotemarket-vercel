@@ -154,6 +154,10 @@ export const staffListHubOperators = callable('staffListHubOperators');
 export const hubListOrders = callable('hubListOrders');
 /** Store owner: set the store's pickup location for the map → { ok }. { lat, lng, address? }. */
 export const updateStoreLocation = callable('updateStoreLocation');
+/** Store owner: set delivery rules → { ok, delivery }. { offers?, fee?, freeOver?, autoDispatch?, note? }. */
+export const setStoreDelivery = callable('setStoreDelivery');
+/** Store owner: decide fulfilment for an order awaiting a decision → { ok }. { orderId, decision:'delivery'|'pickup' }. */
+export const setOrderDeliveryDecision = callable('setOrderDeliveryDecision');
 /** Store owner: mark a store-pickup order ready for collection → { ok }. { orderId }. */
 export const markOrderReady = callable('markOrderReady');
 /** Store owner: confirm a store-pickup collection (enter shopper's code) → { ok }. { orderId, code }. */

@@ -3,7 +3,7 @@ import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
 import { INSIGHTS, ksh } from './data.js';
 import { useShop, useStoreOverview } from './merchant.jsx';
-import { getHandoverCode, markOrderReady, confirmStorePickup, cancelOrder } from '../../lib/firebase.js';
+import { getHandoverCode, markOrderReady, confirmStorePickup, cancelOrder, setOrderDeliveryDecision } from '../../lib/firebase.js';
 const { useState: useStateO } = React;
 
 // Real custody status → merchant-facing label.
@@ -202,6 +202,27 @@ function MerchantOrderDetail({ o, onClose }){
   );
 }
 
+const miniBtn = { display:'inline-flex', alignItems:'center', gap:6, padding:'6px 10px', borderRadius:9, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit', whiteSpace:'nowrap' };
+
+/* Per-order "offer delivery" decision — shown when a paid delivery order is held
+   for the merchant (store has auto-dispatch off). */
+function DeliveryDecisionAction({ orderId }){
+  const [busy, setBusy] = useStateO('');
+  const [done, setDone] = useStateO('');
+  const decide = async (decision) => {
+    setBusy(decision);
+    try { await setOrderDeliveryDecision({ orderId, decision }); setDone(decision); }
+    catch { /* noop */ } finally { setBusy(''); }
+  };
+  if (done) return <span className="ym-cap" style={{ color:'var(--m-success)' }}><FA i="fa-circle-check" /> {done === 'delivery' ? 'Delivery offered' : 'Buyer pickup'}</span>;
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+      <button onClick={()=>decide('delivery')} disabled={!!busy} style={{ ...miniBtn, background:'var(--m-primary)', color:'#fff', border:'none' }}><FA i={busy==='delivery'?'fa-circle-notch':'fa-truck-fast'} /> Offer delivery</button>
+      <button onClick={()=>decide('pickup')} disabled={!!busy} style={miniBtn}><FA i={busy==='pickup'?'fa-circle-notch':'fa-store'} /> Buyer pickup</button>
+    </div>
+  );
+}
+
 export function OrdersTable({ rows }){
   const lbl = { active:'Paid', pending:'Processing', inactive:'Cancelled' };
   const [detail, setDetail] = useStateO(null);
@@ -221,9 +242,11 @@ export function OrdersTable({ rows }){
                 <td>{o.hub}</td>
                 <td><Pill tone={o.status}>{CUSTODY_LBL[o.rawStatus] || lbl[o.status]}</Pill></td>
                 <td>
-                  {o.fulfillment === 'store_pickup'
-                    ? <StorePickupAction orderId={o.id} status={o.rawStatus} />
-                    : (o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>)}
+                  {o.awaitingDecision
+                    ? <DeliveryDecisionAction orderId={o.id} />
+                    : o.fulfillment === 'store_pickup'
+                      ? <StorePickupAction orderId={o.id} status={o.rawStatus} />
+                      : (o.rawStatus === 'accepted' ? <PickupCode orderId={o.id} /> : <span className="ym-cap">—</span>)}
                   {CANCELLABLE_M.includes(o.rawStatus) && <div style={{ marginTop:6 }}><CancelOrderBtn orderId={o.id} /></div>}
                 </td>
                 <td className="ym-cap">{o.date}</td>

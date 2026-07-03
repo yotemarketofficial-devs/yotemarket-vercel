@@ -10,12 +10,13 @@ import { Products, AddProductModal } from './products.jsx';
 import { Sales, Wallet, Subscription, Settings, Chat, Assistant, Insight } from './extras.jsx';
 import { Pos } from './pos.jsx';
 import { FeedManager } from './feedmgr.jsx';
+import { DeliverySettings } from './delivery.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
 const { useState, useEffect, useRef } = React;
 
-const SCREENS = { overview:Overview, pos:Pos, assistant:Assistant, insight:Insight, products:Products, feed:FeedManager, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, settings:Settings };
-const LABELS = { overview:'Overview', pos:'Point of sale', assistant:'YoteAI', insight:'YoteMarket Insight', products:'My Products', feed:'YoteFeed', sales:'Sales', wallet:'Wallet', chat:'Chats', subscription:'Subscription', settings:'Settings' };
+const SCREENS = { overview:Overview, pos:Pos, assistant:Assistant, insight:Insight, products:Products, feed:FeedManager, delivery:DeliverySettings, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, settings:Settings };
+const LABELS = { overview:'Overview', pos:'Point of sale', assistant:'YoteAI', insight:'YoteMarket Insight', products:'My Products', feed:'YoteFeed', delivery:'Delivery', sales:'Sales', wallet:'Wallet', chat:'Chats', subscription:'Subscription', settings:'Settings' };
 
 function Toast({ toast }){
   if(!toast) return null;

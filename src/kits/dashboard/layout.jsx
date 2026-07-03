@@ -12,6 +12,7 @@ export const NAV = [
   { key:'sales', icon:'fa-cash-register', label:'Sales' },
   { key:'products', icon:'fa-box', label:'My Products' },
   { key:'feed', icon:'fa-clapperboard', label:'YoteFeed' },
+  { key:'delivery', icon:'fa-truck-fast', label:'Delivery' },
   { key:'wallet', icon:'fa-wallet', label:'Wallet' },
   { key:'chat', icon:'fa-comments', label:'Chats' },
   { key:'subscription', icon:'fa-id-card', label:'Subscription' },
