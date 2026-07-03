@@ -15,6 +15,19 @@ const { useState, useEffect, useRef } = React;
 
 const fmtCount = (n) => { n = Number(n) || 0; return n >= 1000 ? (n / 1000).toFixed(n % 1000 >= 100 ? 1 : 0) + 'k' : String(n); };
 
+// Demo clips shown ONLY when the live feed is empty (matches the storefront's demo
+// fallback). They're local-only — actions no-op — and disappear once real posts
+// exist. Public Google sample MP4s (play in <video> without CORS setup).
+const DV = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/';
+const FEED_DEMO = [
+  { id:'demo1', demo:true, storeName:'Sunset Threads', caption:'New arrivals just dropped 🔥 swipe up for more', likes:1240, videoUrl:`${DV}BigBuckBunny.mp4` },
+  { id:'demo2', demo:true, storeName:'Nairobi Gadgets', caption:'This power bank lasts 3 days on one charge 🔋', likes:842, videoUrl:`${DV}ForBiggerFun.mp4` },
+  { id:'demo3', demo:true, storeName:'Coast Spices Co.', caption:'Fresh pilau masala, ground this morning 🌶️', likes:2130, videoUrl:`${DV}ForBiggerJoyrides.mp4` },
+  { id:'demo4', demo:true, storeName:'Bidii Hardware', caption:'Cordless drill demo — quiet & strong 🛠️', likes:567, videoUrl:`${DV}ForBiggerEscapes.mp4` },
+  { id:'demo5', demo:true, storeName:'Green Grocer', caption:'Farm-to-door veggies every morning 🥬', likes:389, videoUrl:`${DV}ForBiggerMeltdowns.mp4` },
+  { id:'demo6', demo:true, storeName:'Kipenzi Fashion', caption:'Ankara styles for the weekend ✨', likes:1975, videoUrl:`${DV}ForBiggerBlazes.mp4` },
+];
+
 /* One full-height video card. Plays when >60% visible, pauses otherwise. */
 function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete }){
   const secRef = useRef(null);
@@ -110,19 +123,26 @@ export function FeedScreen(){
     return () => { live = false; };
   }, [uid]);
 
-  const list = posts || [];
+  // Live feed, or bundled demo clips when it's empty (so scrolling is testable).
+  const list = posts === null ? [] : (posts.length ? posts : FEED_DEMO);
 
-  const like = (post) => requireAuth(() => {
-    const liked = likes.has(post.id);
-    setLikes((s) => { const n = new Set(s); if (liked) n.delete(post.id); else n.add(post.id); return n; }); // optimistic
-    likeFeedPost({ postId: post.id, like: !liked }).catch((e) => toast(e.message || 'Could not update like', 'fa-triangle-exclamation'));
-  });
-  const report = (post) => requireAuth(() => {
-    const reason = window.prompt('Why are you reporting this clip? (optional)') ?? undefined;
-    reportFeedPost({ postId: post.id, reason: reason || undefined })
-      .then(() => toast('Thanks — our team will take a look.', 'fa-flag'))
-      .catch((e) => toast(e.message || 'Could not report', 'fa-triangle-exclamation'));
-  });
+  const like = (post) => {
+    if (post.demo) { setLikes((s) => { const n = new Set(s); if (n.has(post.id)) n.delete(post.id); else n.add(post.id); return n; }); return; }
+    requireAuth(() => {
+      const liked = likes.has(post.id);
+      setLikes((s) => { const n = new Set(s); if (liked) n.delete(post.id); else n.add(post.id); return n; }); // optimistic
+      likeFeedPost({ postId: post.id, like: !liked }).catch((e) => toast(e.message || 'Could not update like', 'fa-triangle-exclamation'));
+    });
+  };
+  const report = (post) => {
+    if (post.demo) { toast('That’s a demo clip 🙂', 'fa-clapperboard'); return; }
+    requireAuth(() => {
+      const reason = window.prompt('Why are you reporting this clip? (optional)') ?? undefined;
+      reportFeedPost({ postId: post.id, reason: reason || undefined })
+        .then(() => toast('Thanks — our team will take a look.', 'fa-flag'))
+        .catch((e) => toast(e.message || 'Could not report', 'fa-triangle-exclamation'));
+    });
+  };
   const remove = (post) => { if (!window.confirm('Remove this clip?')) return;
     deleteFeedPost({ postId: post.id }).then(() => toast('Clip removed', 'fa-trash')).catch((e) => toast(e.message || 'Could not remove', 'fa-triangle-exclamation')); };
   const message = (post) => requireAuth(() => {
