@@ -16,7 +16,7 @@ const { useState, useEffect, useRef } = React;
 const fmtCount = (n) => { n = Number(n) || 0; return n >= 1000 ? (n / 1000).toFixed(n % 1000 >= 100 ? 1 : 0) + 'k' : String(n); };
 
 /* One full-height video card. Plays when >60% visible, pauses otherwise. */
-function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduct, onStore, canDelete, onDelete }){
+function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete }){
   const secRef = useRef(null);
   const vRef = useRef(null);
   const [visible, setVisible] = useState(false);
@@ -49,6 +49,7 @@ function FeedItem({ post, muted, liked, onToggleMute, onLike, onReport, onProduc
       {/* right action rail */}
       <div style={{ position:'absolute', right:12, bottom:120, display:'flex', flexDirection:'column', gap:18, alignItems:'center' }}>
         <RailBtn icon={liked?'fa-heart':'fa-heart'} filled={liked} label={fmtCount(post.likes)} onClick={onLike} activeColor="#ff375f" />
+        {canMessage && <RailBtn icon="fa-comment-dots" label="Message" onClick={onMessage} />}
         <RailBtn icon="fa-flag" label="Report" onClick={onReport} />
         {canDelete && <RailBtn icon="fa-trash" label="Delete" onClick={onDelete} />}
       </div>
@@ -124,6 +125,10 @@ export function FeedScreen(){
   });
   const remove = (post) => { if (!window.confirm('Remove this clip?')) return;
     deleteFeedPost({ postId: post.id }).then(() => toast('Clip removed', 'fa-trash')).catch((e) => toast(e.message || 'Could not remove', 'fa-triangle-exclamation')); };
+  const message = (post) => requireAuth(() => {
+    if (!post.ownerId) { toast('This store isn’t on chat yet.', 'fa-comment-slash'); return; }
+    nav('messages', { store: { id: post.storeId, ownerId: post.ownerId, name: post.storeName, logo: post.storeLogo } });
+  });
 
   return (
     <div style={{ maxWidth:520, margin:'0 auto', padding:'12px 12px 0' }}>
@@ -152,6 +157,7 @@ export function FeedScreen(){
               onLike={() => like(post)} onReport={() => report(post)}
               onProduct={() => post.productId && nav('product', { pid: post.productId })}
               onStore={() => post.storeId && nav('store', { sid: post.storeId })}
+              onMessage={() => message(post)} canMessage={!!post.ownerId && post.ownerId !== uid}
               canDelete={!!uid && post.ownerId === uid} onDelete={() => remove(post)} />
           ))}
         </div>
