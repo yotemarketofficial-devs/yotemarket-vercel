@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" width="256" height="192" fill="none">
   <defs>
     <linearGradient id="yfBody" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8b5cf6"/>
-      <stop offset="1" stop-color="#7c3aed"/>
+      <stop offset="0" stop-color="#8b3fea"/>
+      <stop offset="1" stop-color="#5b2c9c"/>
     </linearGradient>
     <linearGradient id="yfLens" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#b7a3fc"/>
-      <stop offset="1" stop-color="#9d84f8"/>
+      <stop offset="0" stop-color="#c1a4f6"/>
+      <stop offset="1" stop-color="#a179ee"/>
     </linearGradient>
   </defs>
   <path d="M46 18 L54 13.5 Q58 11.5 58 16.5 L58 31.5 Q58 36.5 54 34.5 L46 30 Z" fill="url(#yfLens)"/>

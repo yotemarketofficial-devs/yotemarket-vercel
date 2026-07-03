@@ -199,6 +199,23 @@ export function FeedScreen(){
     return () => { clearInterval(iv); document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', flush); flush(); };
   }, [flush]);
 
+  // ── Keyboard navigation (touch swipe is native via scroll-snap). ──
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (compose) return; // composer open → let the form take keys
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = scrollRef.current; if (!el) return;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'j') { e.preventDefault(); el.scrollBy({ top: el.clientHeight, behavior: 'smooth' }); }
+      else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'k') { e.preventDefault(); el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' }); }
+      else if (e.key === 'm' || e.key === 'M') { setMuted((m) => !m); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [compose]);
+
   const like = (post) => {
     if (post.demo) { setLikes((s) => { const n = new Set(s); if (n.has(post.id)) n.delete(post.id); else n.add(post.id); return n; }); return; }
     requireAuth(() => {
@@ -250,7 +267,7 @@ export function FeedScreen(){
             {storeId && <button className="ym-btn ym-btn-primary" style={{ marginTop:8 }} onClick={() => setCompose(true)}><FA i="fa-plus" /> Post the first clip</button>}
           </div>
         ) : (
-          <div style={{ height:'100%', overflowY:'auto', scrollSnapType:'y mandatory', WebkitOverflowScrolling:'touch' }}>
+          <div ref={scrollRef} style={{ height:'100%', overflowY:'auto', scrollSnapType:'y mandatory', WebkitOverflowScrolling:'touch' }}>
             {list.map((post) => (
               <FeedItem key={post.id} post={post} muted={muted} liked={likes.has(post.id)}
                 onLike={() => like(post)} onReport={() => report(post)}

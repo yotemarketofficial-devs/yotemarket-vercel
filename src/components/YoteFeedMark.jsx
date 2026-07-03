@@ -11,13 +11,14 @@ export default function YoteFeedMark({ size = 28, style }) {
   return (
     <svg width={size * 4 / 3} height={size} viewBox="0 0 64 48" fill="none" aria-hidden="true" style={style}>
       <defs>
+        {/* brand-aligned: matches --m-grad (#5b2c9c → #8b3fea violet) */}
         <linearGradient id={body} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8b5cf6" />
-          <stop offset="1" stopColor="#7c3aed" />
+          <stop offset="0" stopColor="#8b3fea" />
+          <stop offset="1" stopColor="#5b2c9c" />
         </linearGradient>
         <linearGradient id={lens} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#b7a3fc" />
-          <stop offset="1" stopColor="#9d84f8" />
+          <stop offset="0" stopColor="#c1a4f6" />
+          <stop offset="1" stopColor="#a179ee" />
         </linearGradient>
       </defs>
       {/* lens (drawn first so the body overlaps it at the seam) */}
