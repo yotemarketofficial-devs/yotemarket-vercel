@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
 import { subscribeProductReviews } from '../../lib/reviews.js';
 import { submitReview, reportReview } from '../../lib/firebase.js';
+import { StoreClipsRail } from './feed.jsx';
 const { useState: useSS, useEffect: useEffSS } = React;
 
 /* ---------- PRODUCT REVIEWS (live, functional) ---------- */
@@ -367,6 +368,7 @@ export function StoreScreen({ params }){
             </div>
           ))}
         </div>
+        <StoreClipsRail storeId={s.id} storeName={s.name} />
         <SectionTitle>{prods.length} product{prods.length!==1?'s':''}</SectionTitle>
         {cats.length>2 && (
           <div className="scroll-x" style={{ gap:8, marginBottom:18 }}>

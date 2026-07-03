@@ -9,7 +9,7 @@ import { ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db } from '../../lib/firebase.js';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { subscribeFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
+import { subscribeFeed, subscribeStoreFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
 import { createFeedPost, likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
 import { subscribeFollows } from '../../lib/account.js';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
@@ -113,10 +113,12 @@ function RailBtn({ icon, label, onClick, filled, activeColor }){
   );
 }
 
-export function FeedScreen(){
+export function FeedScreen({ params = {} }){
   const { nav, back, toast, requireAuth } = useYM();
   const { user } = useAuth();
   const uid = user?.uid;
+  const scopedStoreId = params.storeId || null;   // when set, show only this store's clips
+  const scopedName = params.storeName || '';
   const [posts, setPosts] = useState(null); // null = loading
   const [likes, setLikes] = useState(new Set());
   const [seen, setSeen] = useState(new Set());
@@ -126,7 +128,7 @@ export function FeedScreen(){
   const [storeId, setStoreId] = useState(null);
   const [compose, setCompose] = useState(false);
 
-  useEffect(() => subscribeFeed(setPosts), []);
+  useEffect(() => scopedStoreId ? subscribeStoreFeed(scopedStoreId, setPosts) : subscribeFeed(setPosts), [scopedStoreId]);
   useEffect(() => { if (!uid) { setLikes(new Set()); return undefined; } return subscribeMyFeedLikes(uid, setLikes); }, [uid]);
   useEffect(() => { if (!uid) { setSeen(new Set()); return undefined; } return subscribeFeedSeen(uid, setSeen); }, [uid]);
   useEffect(() => { if (!uid) { setFollows([]); return undefined; } return subscribeFollows(uid, setFollows); }, [uid]);
@@ -216,6 +218,16 @@ export function FeedScreen(){
     return () => window.removeEventListener('keydown', onKey);
   }, [compose]);
 
+  // Store-scoped open: jump to the tapped clip once the ranked order has settled.
+  const startedRef = useRef(false);
+  useEffect(() => {
+    if (startedRef.current || !params.startId || !orderIds) return;
+    const el = scrollRef.current; if (!el) return;
+    const idx = list.findIndex((p) => p.id === params.startId);
+    if (idx > 0) el.scrollTo({ top: idx * el.clientHeight });
+    startedRef.current = true;
+  }, [orderIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const like = (post) => {
     if (post.demo) { setLikes((s) => { const n = new Set(s); if (n.has(post.id)) n.delete(post.id); else n.add(post.id); return n; }); return; }
     requireAuth(() => {
@@ -251,7 +263,7 @@ export function FeedScreen(){
           <button onClick={() => back()} aria-label="Back" style={railBtn}><FA i="fa-arrow-left" /></button>
           <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:0 }}>
             <YoteFeedMark size={22} />
-            <span style={{ fontWeight:800, fontSize:16, textShadow:'0 1px 3px rgba(0,0,0,.55)' }}>YoteFeed</span>
+            <span style={{ fontWeight:800, fontSize:16, textShadow:'0 1px 3px rgba(0,0,0,.55)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{scopedStoreId ? (scopedName || 'Store clips') : 'YoteFeed'}</span>
           </div>
           <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute' : 'Mute'} style={railBtn}><FA i={muted ? 'fa-volume-xmark' : 'fa-volume-high'} /></button>
           {storeId && <button onClick={() => setCompose(true)} aria-label="Post a clip" style={{ ...railBtn, background:'var(--m-grad)', boxShadow:'var(--m-glow)', backdropFilter:'none' }}><FA i="fa-plus" /></button>}
@@ -282,6 +294,43 @@ export function FeedScreen(){
       </div>
 
       {compose && <FeedComposer storeId={storeId} onClose={() => setCompose(false)} onPosted={() => { setCompose(false); toast('Clip posted to YoteFeed', 'fa-clapperboard'); }} />}
+    </div>
+  );
+}
+
+/* StoreClipsRail — a store's YoteFeed clips as a horizontal reel on the store page.
+   Thumbnails are the clip's first frame (data-light: metadata only, no autoplay);
+   tapping opens the immersive feed scoped to this store, starting on that clip. */
+export function StoreClipsRail({ storeId, storeName }){
+  const { nav } = useYM();
+  const [clips, setClips] = useState(null);
+  useEffect(() => { if (!storeId) { setClips([]); return undefined; } return subscribeStoreFeed(storeId, setClips); }, [storeId]);
+  if (!clips || !clips.length) return null;
+  const open = (startId) => nav('feed', { storeId, storeName, startId });
+  return (
+    <div style={{ marginBottom:24 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+          <YoteFeedMark size={20} />
+          <span className="ym-h3" style={{ fontSize:16 }}>Clips</span>
+          <span className="ym-cap">· {clips.length}</span>
+        </div>
+        <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={() => open(clips[0].id)}>Watch all <FA i="fa-chevron-right" /></button>
+      </div>
+      <div className="scroll-x" style={{ gap:12 }}>
+        {clips.map((c) => (
+          <button key={c.id} onClick={() => open(c.id)} aria-label="Play clip"
+            style={{ flexShrink:0, width:132, aspectRatio:'9 / 16', borderRadius:14, overflow:'hidden', position:'relative', border:'none', padding:0, cursor:'pointer', background:'#000' }}>
+            <video src={`${feedVideoUrl(c)}#t=0.1`} muted playsInline preload="metadata" tabIndex={-1}
+              style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            <span style={{ position:'absolute', inset:0, background:'linear-gradient(0deg,rgba(0,0,0,.55),transparent 42%)', pointerEvents:'none' }} />
+            <span style={{ position:'absolute', top:8, right:8, width:26, height:26, borderRadius:9999, background:'rgba(0,0,0,.42)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, backdropFilter:'blur(3px)' }}><FA i="fa-play" /></span>
+            {c.product
+              ? <span style={{ position:'absolute', left:8, bottom:8, background:'rgba(255,255,255,.94)', color:'#111', fontSize:11, fontWeight:700, padding:'3px 7px', borderRadius:8 }}>{ymPrice(c.product.price)}</span>
+              : (c.caption ? <span style={{ position:'absolute', left:8, right:8, bottom:8, color:'#fff', fontSize:11, textAlign:'left', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textShadow:'0 1px 2px rgba(0,0,0,.6)' }}>{c.caption}</span> : null)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

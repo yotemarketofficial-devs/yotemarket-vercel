@@ -3,7 +3,7 @@
 // createFeedPost callable records a `feed_posts/{id}` doc. The video URL is read back
 // straight from the doc here — put behind `feedVideoUrl()` so a future swap to
 // Cloudflare/HLS is a one-liner and never touches the UI.
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase.js';
 import { feedVideoPath, uploadVideo } from './storage.js';
 
@@ -23,6 +23,20 @@ export function subscribeFeed(cb, max = 150) {
     const rows = snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
       .filter((p) => (p.status || 'live') === 'live' && p.videoUrl);
+    cb(rows);
+  }, () => cb([]));
+}
+
+/** Live-subscribe to ONE store's clips (newest first). Equality query on storeId
+ *  (index-free); status-filtered + sorted client-side. Returns an unsubscribe fn. */
+export function subscribeStoreFeed(storeId, cb, max = 50) {
+  if (!firebaseEnabled || !db || !storeId) { cb([]); return () => {}; }
+  const q = query(collection(db, 'feed_posts'), where('storeId', '==', String(storeId)), limit(max));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((p) => (p.status || 'live') === 'live' && p.videoUrl)
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     cb(rows);
   }, () => cb([]));
 }
