@@ -1,16 +1,14 @@
 /* feed.jsx — YoteFeed: TikTok-Shop-style vertical shortform video feed (MVP).
    Shoppers swipe a full-height feed of store clips; each can tag a product that
-   deep-links to the product page / cart. Merchants post clips via the composer.
-   Video is the Firebase-Storage MP4 (read via feedVideoUrl) — swap that one helper
-   for HLS later without touching this UI. */
+   deep-links to the product page / cart. Merchants post & manage clips from the
+   dashboard (kits/dashboard/feedmgr.jsx) — this screen is view-only. Video is the
+   Firebase-Storage MP4 (read via feedVideoUrl) — swap that one helper for HLS later. */
 import React from 'react';
 import { useYM, FA } from './ui.jsx';
 import { ymPrice } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db } from '../../lib/firebase.js';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { subscribeFeed, subscribeStoreFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
-import { createFeedPost, likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
+import { subscribeFeed, subscribeStoreFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl } from '../../lib/feed.js';
+import { likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
 import { subscribeFollows } from '../../lib/account.js';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
@@ -125,19 +123,11 @@ export function FeedScreen({ params = {} }){
   const [follows, setFollows] = useState([]);
   const [orderIds, setOrderIds] = useState(null); // frozen ranked order (stable while scrolling)
   const [muted, setMuted] = useState(true);
-  const [storeId, setStoreId] = useState(null);
-  const [compose, setCompose] = useState(false);
 
   useEffect(() => scopedStoreId ? subscribeStoreFeed(scopedStoreId, setPosts) : subscribeFeed(setPosts), [scopedStoreId]);
   useEffect(() => { if (!uid) { setLikes(new Set()); return undefined; } return subscribeMyFeedLikes(uid, setLikes); }, [uid]);
   useEffect(() => { if (!uid) { setSeen(new Set()); return undefined; } return subscribeFeedSeen(uid, setSeen); }, [uid]);
   useEffect(() => { if (!uid) { setFollows([]); return undefined; } return subscribeFollows(uid, setFollows); }, [uid]);
-  useEffect(() => {
-    let live = true;
-    if (!uid) { setStoreId(null); return undefined; }
-    getDoc(doc(db, 'merchants', uid)).then((s) => { if (live) setStoreId((s.exists() && s.data().storeId) || null); }).catch(() => {});
-    return () => { live = false; };
-  }, [uid]);
 
   // Stores to boost = followed + stores of clips the user has liked (engaged).
   const boostStores = useMemo(() => {
@@ -266,7 +256,6 @@ export function FeedScreen({ params = {} }){
             <span style={{ fontWeight:800, fontSize:16, textShadow:'0 1px 3px rgba(0,0,0,.55)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{scopedStoreId ? (scopedName || 'Store clips') : 'YoteFeed'}</span>
           </div>
           <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute' : 'Mute'} style={railBtn}><FA i={muted ? 'fa-volume-xmark' : 'fa-volume-high'} /></button>
-          {storeId && <button onClick={() => setCompose(true)} aria-label="Post a clip" style={{ ...railBtn, background:'var(--m-grad)', boxShadow:'var(--m-glow)', backdropFilter:'none' }}><FA i="fa-plus" /></button>}
         </div>
 
         {posts === null ? (
@@ -276,7 +265,6 @@ export function FeedScreen({ params = {} }){
             <YoteFeedMark size={48} />
             <div style={{ fontWeight:700, fontSize:18 }}>No clips yet</div>
             <div style={{ fontSize:14, color:'rgba(255,255,255,.6)', maxWidth:280 }}>Shortform videos from stores will show up here.</div>
-            {storeId && <button className="ym-btn ym-btn-primary" style={{ marginTop:8 }} onClick={() => setCompose(true)}><FA i="fa-plus" /> Post the first clip</button>}
           </div>
         ) : (
           <div ref={scrollRef} style={{ height:'100%', overflowY:'auto', scrollSnapType:'y mandatory', WebkitOverflowScrolling:'touch' }}>
@@ -292,8 +280,6 @@ export function FeedScreen({ params = {} }){
           </div>
         )}
       </div>
-
-      {compose && <FeedComposer storeId={storeId} onClose={() => setCompose(false)} onPosted={() => { setCompose(false); toast('Clip posted to YoteFeed', 'fa-clapperboard'); }} />}
     </div>
   );
 }
@@ -335,97 +321,3 @@ export function StoreClipsRail({ storeId, storeName }){
   );
 }
 
-/* Merchant composer: pick a vertical video, optionally tag a product, caption, post. */
-function FeedComposer({ storeId, onClose, onPosted }){
-  const { toast } = useYM();
-  const [file, setFile] = useState(null);
-  const [url, setUrl] = useState('');
-  const [meta, setMeta] = useState(null); // { durationMs, aspect }
-  const [caption, setCaption] = useState('');
-  const [productId, setProductId] = useState('');
-  const [products, setProducts] = useState([]);
-  const [busy, setBusy] = useState(false);
-  const [pct, setPct] = useState(0);
-  const [err, setErr] = useState('');
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    let live = true;
-    if (!storeId) return undefined;
-    getDocs(query(collection(db, 'products'), where('storeId', '==', storeId)))
-      .then((s) => { if (live) setProducts(s.docs.map((d) => ({ id: d.id, ...d.data() }))); }).catch(() => {});
-    return () => { live = false; };
-  }, [storeId]);
-  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
-
-  const pick = (e) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    if (!f.type.startsWith('video/')) { setErr('Please choose a video file.'); return; }
-    if (f.size > 60 * 1024 * 1024) { setErr('Video is too large (max 60 MB). Trim it or lower the quality.'); return; }
-    setErr(''); setFile(f);
-    const objUrl = URL.createObjectURL(f); setUrl(objUrl);
-    const v = document.createElement('video');
-    v.preload = 'metadata';
-    v.onloadedmetadata = () => {
-      const w = v.videoWidth, h = v.videoHeight;
-      const aspect = h > w ? '9:16' : (w === h ? '1:1' : '16:9');
-      setMeta({ durationMs: Math.round((v.duration || 0) * 1000), aspect });
-    };
-    v.src = objUrl;
-  };
-
-  const post = async () => {
-    if (!file) { setErr('Choose a video first.'); return; }
-    setBusy(true); setErr(''); setPct(0);
-    try {
-      const videoUrl = await uploadFeedVideo(storeId, file, setPct);
-      await createFeedPost({ videoUrl, caption: caption.trim() || undefined, productId: productId || undefined, durationMs: meta?.durationMs, aspect: meta?.aspect });
-      onPosted();
-    } catch (e) { setErr(e.message || 'Could not post the clip.'); setBusy(false); }
-  };
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:60, display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-      <div onClick={busy ? undefined : onClose} style={{ position:'absolute', inset:0, background:'rgba(8,12,24,.55)' }} />
-      <div className="ym-card" style={{ position:'relative', width:'100%', maxWidth:440, margin:12, padding:18, maxHeight:'88vh', overflowY:'auto' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <div className="ym-h3" style={{ display:'flex', alignItems:'center', gap:8 }}><YoteFeedMark size={20} /> Post to YoteFeed</div>
-          <button onClick={busy ? undefined : onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
-        </div>
-
-        <input ref={inputRef} type="file" accept="video/*" onChange={pick} style={{ display:'none' }} />
-        {!url ? (
-          <button onClick={() => inputRef.current?.click()} style={{ width:'100%', aspectRatio:'9/16', maxHeight:320, borderRadius:14, border:'2px dashed var(--m-line)', background:'var(--m-surface-2)', color:'var(--m-fg3)', display:'flex', flexDirection:'column', gap:8, alignItems:'center', justifyContent:'center', cursor:'pointer', fontFamily:'inherit' }}>
-            <FA i="fa-film" style={{ fontSize:30, color:'var(--m-primary)' }} />
-            <span style={{ fontWeight:600 }}>Choose a vertical video</span>
-            <span className="ym-cap">MP4 · up to 60 MB · keep it short</span>
-          </button>
-        ) : (
-          <div style={{ position:'relative', borderRadius:14, overflow:'hidden', background:'#000', maxHeight:320, display:'flex', justifyContent:'center' }}>
-            <video src={url} controls playsInline style={{ maxHeight:320, maxWidth:'100%' }} />
-            <button onClick={() => { setFile(null); setUrl(''); setMeta(null); }} disabled={busy} style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,.5)', color:'#fff', border:'none', borderRadius:9999, width:32, height:32, cursor:'pointer' }}><FA i="fa-arrows-rotate" /></button>
-          </div>
-        )}
-
-        <textarea className="ym-input" value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 300))} placeholder="Add a caption…" rows={2} style={{ resize:'vertical', marginTop:12, width:'100%' }} />
-
-        {products.length > 0 && (
-          <label style={{ display:'block', marginTop:10 }}>
-            <span className="ym-cap" style={{ display:'block', marginBottom:5 }}>Tag a product (optional)</span>
-            <select className="ym-input" value={productId} onChange={(e) => setProductId(e.target.value)} style={{ width:'100%' }}>
-              <option value="">No product</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name} · {ymPrice(p.price)}</option>)}
-            </select>
-          </label>
-        )}
-
-        {err && <div className="ym-cap" style={{ color:'var(--m-danger,#dc2626)', marginTop:10 }}><FA i="fa-triangle-exclamation" /> {err}</div>}
-        {busy && <div className="ym-cap" style={{ marginTop:10 }}>Uploading… {Math.round(pct * 100)}%</div>}
-
-        <button className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:14 }} disabled={busy || !file} onClick={post}>
-          <FA i={busy ? 'fa-circle-notch' : 'fa-paper-plane'} style={busy ? { animation:'ym-spin 1s linear infinite' } : null} /> {busy ? 'Posting…' : 'Post clip'}
-        </button>
-      </div>
-    </div>
-  );
-}

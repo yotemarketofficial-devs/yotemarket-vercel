@@ -11,6 +11,7 @@ export const NAV = [
   { key:'insight', icon:'fa-lightbulb', label:'YoteMarket Insight' },
   { key:'sales', icon:'fa-cash-register', label:'Sales' },
   { key:'products', icon:'fa-box', label:'My Products' },
+  { key:'feed', icon:'fa-clapperboard', label:'YoteFeed' },
   { key:'wallet', icon:'fa-wallet', label:'Wallet' },
   { key:'chat', icon:'fa-comments', label:'Chats' },
   { key:'subscription', icon:'fa-id-card', label:'Subscription' },
