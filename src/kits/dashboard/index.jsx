@@ -3,20 +3,31 @@
 import React from 'react';
 import './dashboard.css';
 import { ThemeCtx, FA } from './primitives.jsx';
-import { MerchantProvider } from './merchant.jsx';
-import { Sidebar, TopBar, Footer } from './layout.jsx';
+import { MerchantProvider, useMerchant } from './merchant.jsx';
+import { Sidebar, TopBar, Footer, navForRole } from './layout.jsx';
 import { Overview } from './overview.jsx';
 import { Products, AddProductModal } from './products.jsx';
 import { Sales, Wallet, Subscription, Settings, Chat, Assistant, Insight } from './extras.jsx';
 import { Pos } from './pos.jsx';
 import { FeedManager } from './feedmgr.jsx';
 import { DeliverySettings } from './delivery.jsx';
+import { TeamManager } from './team.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
 const { useState, useEffect, useRef } = React;
 
-const SCREENS = { overview:Overview, pos:Pos, assistant:Assistant, insight:Insight, products:Products, feed:FeedManager, delivery:DeliverySettings, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, settings:Settings };
-const LABELS = { overview:'Overview', pos:'Point of sale', assistant:'YoteAI', insight:'YoteMarket Insight', products:'My Products', feed:'YoteFeed', delivery:'Delivery', sales:'Sales', wallet:'Wallet', chat:'Chats', subscription:'Subscription', settings:'Settings' };
+const SCREENS = { overview:Overview, pos:Pos, assistant:Assistant, insight:Insight, products:Products, feed:FeedManager, delivery:DeliverySettings, sales:Sales, wallet:Wallet, chat:Chat, subscription:Subscription, team:TeamManager, settings:Settings };
+const LABELS = { overview:'Overview', pos:'Point of sale', assistant:'YoteAI', insight:'YoteMarket Insight', products:'My Products', feed:'YoteFeed', delivery:'Delivery', sales:'Sales', wallet:'Wallet', chat:'Chats', subscription:'Subscription', team:'Team', settings:'Settings' };
+
+/* Renders the active screen, gated by the signed-in user's store role (an employee
+   who lands on a screen they can't see is snapped back to the overview). */
+function GuardedScreen({ active, setActive, screenProps }){
+  const { role } = useMerchant();
+  const allowed = navForRole(role).map((n) => n.key);
+  useEffect(() => { if (!allowed.includes(active)) setActive('overview'); }, [active, role]); // eslint-disable-line
+  const Screen = SCREENS[allowed.includes(active) ? active : 'overview'] || Overview;
+  return <Screen {...screenProps} />;
+}
 
 function Toast({ toast }){
   if(!toast) return null;
@@ -38,7 +49,6 @@ export default function DashboardApp(){
   // Register the merchant's browser for chat/order push; toast foreground messages.
   useChatPush(user, (payload)=>toastFn(payload?.notification?.title || 'New message'));
 
-  const Screen = SCREENS[active] || Overview;
   const props = { onAdd:()=>setAddOpen(true), onCopyLink:()=>toastFn('Store link copied to clipboard!'), onOpenProducts:()=>setActive('products'), toast:toastFn };
 
   return (
@@ -49,7 +59,7 @@ export default function DashboardApp(){
         <main style={{ flex:1, padding:'28px 0' }}>
           <div className="wrap dash-shell" style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:28, alignItems:'start' }}>
             <aside className="dash-aside" style={{ position:'sticky', top:88 }}><Sidebar active={active} onChange={setActive} /></aside>
-            <div style={{ minWidth:0 }}><Screen {...props} /></div>
+            <div style={{ minWidth:0 }}><GuardedScreen active={active} setActive={setActive} screenProps={props} /></div>
           </div>
         </main>
 

@@ -156,6 +156,15 @@ export const hubListOrders = callable('hubListOrders');
 export const updateStoreLocation = callable('updateStoreLocation');
 /** Store owner: set delivery rules → { ok, delivery }. { offers?, fee?, freeOver?, autoDispatch?, note? }. */
 export const setStoreDelivery = callable('setStoreDelivery');
+// ── Store team (owner manages employees who run the store with their own login) ──
+/** Owner: add an employee by email → { ok, uid, role, name }. { email, role:'manager'|'cashier' }. */
+export const addStoreEmployee = callable('addStoreEmployee');
+/** Owner: list the store team → { employees }. */
+export const listStoreEmployees = callable('listStoreEmployees');
+/** Owner: change an employee's role → { ok }. { uid, role }. */
+export const setStoreEmployeeRole = callable('setStoreEmployeeRole');
+/** Owner: remove an employee → { ok }. { uid }. */
+export const removeStoreEmployee = callable('removeStoreEmployee');
 /** Store owner: decide fulfilment for an order awaiting a decision → { ok }. { orderId, decision:'delivery'|'pickup' }. */
 export const setOrderDeliveryDecision = callable('setOrderDeliveryDecision');
 /** Store owner: mark a store-pickup order ready for collection → { ok }. { orderId }. */

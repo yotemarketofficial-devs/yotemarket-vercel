@@ -2,26 +2,36 @@
 import React from 'react';
 import { FA, Avatar, Logo, ThemeToggle } from './primitives.jsx';
 import { ksh } from './data.js';
-import { useShop, useSubCard } from './merchant.jsx';
+import { useShop, useSubCard, useMerchant } from './merchant.jsx';
 
+// `roles` = which store roles see the item. owner = all; manager = everything except
+// money (wallet/subscription) & team; cashier = POS + orders + chat.
+const ALL = ['owner', 'manager', 'cashier'];
+const OM = ['owner', 'manager'];
 export const NAV = [
-  { key:'overview', icon:'fa-gauge-high', label:'Dashboard' },
-  { key:'pos', icon:'fa-store', label:'Point of sale' },
-  { key:'assistant', icon:'fa-wand-magic-sparkles', label:'YoteAI' },
-  { key:'insight', icon:'fa-lightbulb', label:'YoteMarket Insight' },
-  { key:'sales', icon:'fa-cash-register', label:'Sales' },
-  { key:'products', icon:'fa-box', label:'My Products' },
-  { key:'feed', icon:'fa-clapperboard', label:'YoteFeed' },
-  { key:'delivery', icon:'fa-truck-fast', label:'Delivery' },
-  { key:'wallet', icon:'fa-wallet', label:'Wallet' },
-  { key:'chat', icon:'fa-comments', label:'Chats' },
-  { key:'subscription', icon:'fa-id-card', label:'Subscription' },
-  { key:'settings', icon:'fa-gear', label:'Settings' },
+  { key:'overview', icon:'fa-gauge-high', label:'Dashboard', roles:ALL },
+  { key:'pos', icon:'fa-store', label:'Point of sale', roles:ALL },
+  { key:'assistant', icon:'fa-wand-magic-sparkles', label:'YoteAI', roles:OM },
+  { key:'insight', icon:'fa-lightbulb', label:'YoteMarket Insight', roles:OM },
+  { key:'sales', icon:'fa-cash-register', label:'Sales', roles:OM },
+  { key:'products', icon:'fa-box', label:'My Products', roles:OM },
+  { key:'feed', icon:'fa-clapperboard', label:'YoteFeed', roles:OM },
+  { key:'delivery', icon:'fa-truck-fast', label:'Delivery', roles:OM },
+  { key:'chat', icon:'fa-comments', label:'Chats', roles:ALL },
+  { key:'wallet', icon:'fa-wallet', label:'Wallet', roles:['owner'] },
+  { key:'subscription', icon:'fa-id-card', label:'Subscription', roles:['owner'] },
+  { key:'team', icon:'fa-user-group', label:'Team', roles:['owner'] },
+  { key:'settings', icon:'fa-gear', label:'Settings', roles:['owner'] },
 ];
+
+/** Nav items visible to a role ('owner' when unknown/demo). */
+export const navForRole = (role) => NAV.filter((n) => n.roles.includes(role || 'owner'));
 
 export function Sidebar({ active, onChange, onClose }){
   const shop = useShop();
   const subc = useSubCard();
+  const { role } = useMerchant();
+  const items = navForRole(role);
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
       <div className="ym-card" style={{ padding:18 }}>
@@ -29,11 +39,11 @@ export function Sidebar({ active, onChange, onClose }){
           <Avatar src={shop.photo} name={shop.owner} size={52} />
           <div style={{ minWidth:0 }}>
             <div className="ym-h3" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{shop.name}</div>
-            <div className="ym-cap">{shop.role}{shop.area ? ' · ' + shop.area : ''}</div>
+            <div className="ym-cap">{({ owner:'Owner', manager:'Manager', cashier:'Cashier' })[role] || shop.role}{shop.area ? ' · ' + shop.area : ''}</div>
           </div>
         </div>
         <nav style={{ display:'flex', flexDirection:'column', gap:4, marginTop:14 }}>
-          {NAV.map(n=>{
+          {items.map(n=>{
             const on = active===n.key;
             return (
               <button key={n.key} onClick={()=>{ onChange(n.key); onClose&&onClose(); }}

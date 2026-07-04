@@ -26,22 +26,24 @@ export function MerchantProvider({ children }) {
   const uid = user?.uid;
   const displayName = user?.displayName || '';
   const [merchant, setMerchant] = useState(null);
+  const [staff, setStaff] = useState(null);        // store_staff/{uid} when the user is an employee
   const [sub, setSub] = useState(null);
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState(null);
   const [orders, setOrders] = useState(null);
 
-  // merchant account + subscription (live)
+  // merchant account + subscription + store-team membership (all live)
   useEffect(() => {
     if (!firebaseEnabled || !db || !uid) return undefined;
     const u1 = onSnapshot(doc(db, 'merchants', uid), (s) => setMerchant(s.exists() ? s.data() : null), () => {});
     const u2 = onSnapshot(doc(db, 'subscriptions', uid), (s) => setSub(s.exists() ? s.data() : null), () => {});
-    return () => { u1(); u2(); };
+    const u3 = onSnapshot(doc(db, 'store_staff', uid), (s) => setStaff(s.exists() && (s.data().status || 'active') === 'active' ? s.data() : null), () => setStaff(null));
+    return () => { u1(); u2(); u3(); };
   }, [uid]);
 
-  // store doc + the store's products/orders — all LIVE (onSnapshot) so the
-  // dashboard reflects real data in real time (no mock, no manual refresh).
-  const storeId = merchant?.storeId;
+  // Owner (has a merchants doc) OR employee (store_staff) — resolve the store + role.
+  const storeId = merchant?.storeId || staff?.storeId || null;
+  const role = merchant?.storeId ? 'owner' : (staff ? (staff.role === 'manager' ? 'manager' : 'cashier') : null);
   useEffect(() => {
     if (!firebaseEnabled || !db || !storeId) { setStore(null); setProducts(null); setOrders(null); return undefined; }
     const u = onSnapshot(doc(db, 'stores', storeId), (s) => setStore(s.exists() ? { id: s.id, ...s.data() } : null), () => {});
@@ -57,7 +59,7 @@ export function MerchantProvider({ children }) {
   // figures, empty states while loading — never fake products/orders).
   const live = Boolean(firebaseEnabled);
 
-  const value = useMemo(() => ({ live, uid, displayName, merchant, sub, store, products, orders }), [live, uid, displayName, merchant, sub, store, products, orders]);
+  const value = useMemo(() => ({ live, uid, displayName, merchant, staff, role, storeId, sub, store, products, orders }), [live, uid, displayName, merchant, staff, role, storeId, sub, store, products, orders]);
   return <MerchantCtx.Provider value={value}>{children}</MerchantCtx.Provider>;
 }
 

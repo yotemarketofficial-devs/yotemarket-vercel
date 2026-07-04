@@ -126,20 +126,24 @@ export default function MerchantGate({ children }) {
   const uid = user?.uid;
   const [merchant, setMerchant] = useState(undefined); // undefined=loading, null=none
   const [sub, setSub] = useState(undefined);
+  const [staff, setStaff] = useState(undefined);       // store_staff/{uid} for employees
 
   useEffect(() => {
     if (!firebaseEnabled || !db || loading) return undefined;
-    if (!hasAccount || !uid) { setMerchant(null); setSub(null); return undefined; }
-    setMerchant(undefined); setSub(undefined);
+    if (!hasAccount || !uid) { setMerchant(null); setSub(null); setStaff(null); return undefined; }
+    setMerchant(undefined); setSub(undefined); setStaff(undefined);
     const u1 = onSnapshot(doc(db, 'merchants', uid), (s) => setMerchant(s.exists() ? s.data() : null), () => setMerchant(null));
     const u2 = onSnapshot(doc(db, 'subscriptions', uid), (s) => setSub(s.exists() ? s.data() : null), () => setSub(null));
-    return () => { u1(); u2(); };
+    const u3 = onSnapshot(doc(db, 'store_staff', uid), (s) => setStaff(s.exists() && (s.data().status || 'active') === 'active' ? s.data() : null), () => setStaff(null));
+    return () => { u1(); u2(); u3(); };
   }, [uid, hasAccount, loading]);
 
   if (!firebaseEnabled) return children; // demo mode → dashboard directly
   if (loading) return <Loading />;
   if (!hasAccount || !uid) return <AuthPanel stayRole="merchant" defaultRole="merchant" onAuthed={() => {}} />;
-  if (merchant === undefined || sub === undefined) return <Loading />;
+  if (merchant === undefined || sub === undefined || staff === undefined) return <Loading />;
+  // Store employee (not an owner) → straight to the dashboard; the owner handles billing.
+  if ((!merchant || !merchant.storeId) && staff) return children;
   if (!merchant || !merchant.storeId) return <StoreSignupPanel />;
   if (!sub || sub.status !== 'active') return <SubscribePanel expired={sub && sub.status === 'expired'} />;
   return children;
