@@ -155,6 +155,15 @@ export function Approvals(){
     finally { setRows(rs=>(rs||[]).map(r=>r.id===id?{...r,_busy:false}:r)); }
   };
 
+  // Flagship pick — shows as a circle-logo on the storefront's Featured stores row.
+  const toggleFeature = async (m) => {
+    const next = !m.featured;
+    setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,featured:next,_busy:true}:r));
+    try { await setMerchantStatus(m.id, next?'feature':'unfeature'); }
+    catch { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,featured:!next}:r)); }
+    finally { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,_busy:false}:r)); }
+  };
+
   const isPending = s => s==='pending' || s==='review';
   const shown = list.filter(r=> filter==='all' || (filter==='pending' ? isPending(r.status) : r.status===filter));
   const count = s => list.filter(r=> s==='pending' ? isPending(r.status) : r.status===s).length;
@@ -180,6 +189,7 @@ export function Approvals(){
               <div className="font-bold t1 flex items-center gap-2">{m.shop}
                 {verified && <Pill tone="ok">Verified</Pill>}
                 {suspended && <Pill tone="red">Suspended</Pill>}
+                {m.featured && <Pill tone="pri">Featured</Pill>}
               </div>
               <div className="text-xs t3">{m.owner}{m.county?` · ${m.county}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
             </div>
@@ -190,6 +200,7 @@ export function Approvals(){
             </div>
             <div className="flex gap-2">
               {!verified && !suspended && <Btn kind="success" size="sm" icon="circle-check" onClick={()=>apply(m.id,'verify','verified')} disabled={m._busy} title={ready?'':'Readiness checklist incomplete'}>Verify</Btn>}
+              {!suspended && <Btn kind={m.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>toggleFeature(m)} disabled={m._busy} title="Show as a flagship store on the storefront home">{m.featured?'Featured':'Feature'}</Btn>}
               {suspended
                 ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>apply(m.id,'reinstate','verified')} disabled={m._busy}>Reinstate</Btn>
                 : <Btn kind="danger" size="sm" icon="ban" onClick={()=>apply(m.id,'suspend','suspended')} disabled={m._busy}>Suspend</Btn>}

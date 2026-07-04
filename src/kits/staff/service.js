@@ -113,7 +113,7 @@ export async function fetchTranscript(convId) {
 }
 
 // ── Actions (staff-gated Cloud Functions) ────────────────────────────────────
-/** action: 'verify' | 'unverify' | 'suspend' | 'reinstate' */
+/** action: 'verify' | 'unverify' | 'suspend' | 'reinstate' | 'feature' | 'unfeature' */
 export async function setMerchantStatus(storeId, action) {
   return call('staffSetMerchantStatus')({ storeId, action });
 }
