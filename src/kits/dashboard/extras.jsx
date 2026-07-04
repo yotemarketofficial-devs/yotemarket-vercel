@@ -23,6 +23,7 @@ const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000
 /* ---------- SALES (live) ---------- */
 export function Sales(){
   const { orders, live } = useMerchant();
+  const [tab, setTab] = useStateX('completed');
   const os = live ? (orders || []) : [];
   const paid = os.filter((o) => o.paid === true || o.status === 'delivered');
   const revenue = paid.reduce((s, o) => s + (Number(o.total) || 0), 0);
@@ -37,6 +38,14 @@ export function Sales(){
     hub: o.fulfillment === 'store_pickup' ? 'Store pickup' : (o.hub || '—'),
     raw: o,
   }));
+  // Split by status: Completed (delivered/collected), Cancelled, Pending (everything else in-flight).
+  const groups = {
+    completed: rows.filter((r) => r.rawStatus === 'delivered'),
+    pending: rows.filter((r) => r.rawStatus !== 'delivered' && r.rawStatus !== 'cancelled'),
+    cancelled: rows.filter((r) => r.rawStatus === 'cancelled'),
+  };
+  const TABS = [['completed', 'Completed', 'fa-circle-check'], ['pending', 'Pending', 'fa-clock'], ['cancelled', 'Cancelled', 'fa-ban']];
+  const tabLabel = (TABS.find((t) => t[0] === tab) || TABS[0])[1];
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Sales</h1>
@@ -46,7 +55,18 @@ export function Sales(){
         <Stat label="Avg order value" value={ksh(avg)} icon="fa-receipt" tone="#10b981" />
         <Stat label="Delivered" value={String(delivered)} icon="fa-circle-check" tone="#10b981" />
       </div>
-      <OrdersTable rows={rows} />
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+        {TABS.map(([id, lb, ic]) => {
+          const on = tab === id;
+          return (
+            <button key={id} onClick={() => setTab(id)} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'9px 14px', borderRadius:11, cursor:'pointer', fontFamily:'inherit', fontWeight:600, fontSize:13.5, border: on ? '2px solid var(--m-primary)' : '1px solid var(--m-border)', background: on ? 'var(--m-surface-3)' : 'var(--m-surface)', color: on ? 'var(--m-primary)' : 'var(--m-fg2)' }}>
+              <FA i={ic} /> {lb}
+              <span style={{ minWidth:20, height:20, borderRadius:9999, background: on ? 'var(--m-primary)' : 'var(--m-surface-2)', color: on ? '#fff' : 'var(--m-fg3)', fontSize:11, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', padding:'0 5px' }}>{groups[id].length}</span>
+            </button>
+          );
+        })}
+      </div>
+      <OrdersTable rows={groups[tab]} title={`${tabLabel} orders`} />
     </div>
   );
 }

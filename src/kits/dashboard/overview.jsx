@@ -223,11 +223,11 @@ function DeliveryDecisionAction({ orderId }){
   );
 }
 
-export function OrdersTable({ rows }){
+export function OrdersTable({ rows, title = 'Recent orders' }){
   const lbl = { active:'Paid', pending:'Processing', inactive:'Cancelled' };
   const [detail, setDetail] = useStateO(null);
   return (
-    <SectionCard title="Recent orders" sub={`${rows.length} order${rows.length!==1?'s':''}`} action={<Btn kind="ghost" size="sm" iconRight="fa-arrow-right">View all sales</Btn>}>
+    <SectionCard title={title} sub={`${rows.length} order${rows.length!==1?'s':''}`}>
       {rows.length === 0 ? <EmptyRow icon="fa-receipt" text="No orders yet — they'll appear here once customers buy." /> : (
       <div style={{ overflowX:'auto' }}>
         <table className="ym-table" style={{ minWidth:740 }}>
@@ -236,7 +236,15 @@ export function OrdersTable({ rows }){
             {rows.map((o,idx)=>(
               <tr key={o.id+'-'+idx}>
                 <td><button onClick={()=>setDetail(o)} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'ui-monospace,Menlo,monospace', fontSize:12.5, color:'var(--m-link)', fontWeight:700, padding:0 }}>{orderNoOf(o)}</button></td>
-                <td><button onClick={()=>setDetail(o)} style={{ display:'flex', alignItems:'center', gap:10, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, textAlign:'left' }}><Avatar name={o.buyer} size={30} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{o.buyer}</span></button></td>
+                <td>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <Avatar name={o.buyer} size={30} />
+                    <div style={{ minWidth:0 }}>
+                      <button onClick={()=>setDetail(o)} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, fontWeight:600, color:'var(--m-fg1)', textAlign:'left' }}>{o.buyer}</button>
+                      {o.raw?.buyerPhone && <div><a href={`tel:${o.raw.buyerPhone}`} style={{ color:'var(--m-link)', fontSize:12, fontWeight:600, display:'inline-flex', gap:5, alignItems:'center' }}><FA i="fa-phone" /> {o.raw.buyerPhone}</a></div>}
+                    </div>
+                  </div>
+                </td>
                 <td>{o.items}</td>
                 <td style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ksh(o.total)}</td>
                 <td>{o.hub}</td>
