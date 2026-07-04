@@ -43,6 +43,13 @@ export function Pos({ toast }){
   const [session, setSession] = useState({ count: 0, total: 0 });
   const ctxRef = useRef(null);
   const searchRef = useRef(null);
+  // ── on-screen number keypad (for touchscreens): types into the focused numeric field ──
+  const [keypad, setKeypad] = useState(() => { try { return localStorage.getItem('ym_pos_keypad') === '1'; } catch { return false; } });
+  const [kpTarget, setKpTarget] = useState(null); // { label, apply(fn) } — the focused numeric field
+  useEffect(() => { const h = (e) => setKeypad(!!e.detail); window.addEventListener('ym-pos-keypad', h); return () => window.removeEventListener('ym-pos-keypad', h); }, []);
+  const toggleKeypad = () => setKeypad((on) => { const v = !on; try { localStorage.setItem('ym_pos_keypad', v ? '1' : '0'); } catch { /* */ } try { window.dispatchEvent(new CustomEvent('ym-pos-keypad', { detail: v })); } catch { /* */ } return v; });
+  const kpPress = (k) => { const t = kpTarget; if (!t) return; if (k === 'back') t.apply((p) => String(p).slice(0, -1)); else if (k === 'clear') t.apply(() => ''); else t.apply((p) => (String(p) + k).replace(/[^0-9]/g, '')); };
+  const numInput = (label, apply) => ({ inputMode: keypad ? 'none' : 'numeric', onFocus: () => setKpTarget({ label, apply }) });
   // ── devices: barcode scanner + receipt printer ──
   const [devOpen, setDevOpen] = useState(false);
   const [scanMode, setScanMode] = useState(() => { try { return localStorage.getItem('pos_scan') === '1'; } catch { return false; } });
@@ -264,6 +271,7 @@ export function Pos({ toast }){
         <div><h1 className="ym-h1">Point of sale</h1><p className="ym-sub">Ring up an in-store sale — issues a KRA tax invoice.</p></div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {session.count > 0 && <Card style={{ padding:'10px 16px', textAlign:'right' }}><div className="ym-cap">This session</div><div className="ym-h3">{session.count} sale{session.count !== 1 ? 's' : ''} · {ksh(session.total)}</div></Card>}
+          <Btn kind={keypad ? 'primary' : 'soft'} size="sm" icon="fa-calculator" onClick={toggleKeypad}>Keypad</Btn>
           <Btn kind="soft" size="sm" icon="fa-plug" onClick={() => setDevOpen(true)}>Devices</Btn>
         </div>
       </div>
@@ -275,7 +283,7 @@ export function Pos({ toast }){
             {showCustom && (
               <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center', background:'var(--m-surface-2)', borderRadius:12, padding:12 }}>
                 <input className="ipt" value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Item name" style={{ flex:2, minWidth:120 }} />
-                <input className="ipt" value={cPrice} onChange={(e) => setCPrice(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" placeholder="Price" style={{ width:100 }} />
+                <input className="ipt" value={cPrice} onChange={(e) => setCPrice(e.target.value.replace(/[^0-9]/g, ''))} {...numInput('Custom price', (f) => setCPrice((p) => f(p)))} placeholder="Price" style={{ width:100 }} />
                 <Btn kind="primary" size="sm" onClick={addCustom}>Add</Btn>
               </div>
             )}
@@ -319,7 +327,7 @@ export function Pos({ toast }){
             {/* discount */}
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span className="ym-cap" style={{ minWidth:60 }}>Discount</span>
-              <input className="ipt" value={disc.value} onChange={(e) => setDisc((d) => ({ ...d, value: e.target.value.replace(/[^0-9]/g, '') }))} inputMode="numeric" placeholder="0" style={{ flex:1, height:40 }} />
+              <input className="ipt" value={disc.value} onChange={(e) => setDisc((d) => ({ ...d, value: e.target.value.replace(/[^0-9]/g, '') }))} {...numInput('Discount', (f) => setDisc((d) => ({ ...d, value: f(d.value) })))} placeholder="0" style={{ flex:1, height:40 }} />
               <div style={{ display:'flex', border:'1px solid var(--m-border)', borderRadius:10, overflow:'hidden' }}>
                 {[['amount', 'KSh'], ['percent', '%']].map(([t, lb]) => (
                   <button key={t} onClick={() => setDisc((d) => ({ ...d, type: t }))} style={{ padding:'8px 12px', border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:600, fontSize:13, background: disc.type === t ? 'var(--m-primary)' : 'var(--m-surface)', color: disc.type === t ? '#fff' : 'var(--m-fg2)' }}>{lb}</button>
@@ -340,11 +348,11 @@ export function Pos({ toast }){
 
             {pay === 'cash' && (
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <input className="ipt" value={tendered} onChange={(e) => setTendered(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" placeholder="Cash received" style={{ flex:1 }} />
+                <input className="ipt" value={tendered} onChange={(e) => setTendered(e.target.value.replace(/[^0-9]/g, ''))} {...numInput('Cash received', (f) => setTendered((p) => f(p)))} placeholder="Cash received" style={{ flex:1 }} />
                 {change != null && <div style={{ textAlign:'right', minWidth:110 }}><div className="ym-cap">Change due</div><div className="ym-h3" style={{ color: change < 0 ? 'var(--m-inactive-fg)' : 'var(--m-success)' }}>{change < 0 ? 'Short ' + ksh(-change) : ksh(change)}</div></div>}
               </div>
             )}
-            {pay === 'mpesa' && <input className="ipt" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="Customer M-Pesa number" />}
+            {pay === 'mpesa' && <input className="ipt" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode={keypad ? 'none' : 'tel'} onFocus={() => setKpTarget({ label: 'M-Pesa phone', apply: (f) => setPhone((p) => f(p)) })} placeholder="Customer M-Pesa number" />}
             <input className="ipt" value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name (optional)" />
             {err && <div style={{ color:'var(--m-inactive-fg)', fontSize:13, display:'flex', gap:8, alignItems:'center' }}><FA i="fa-circle-exclamation" /> {err}</div>}
             <Btn kind={pay === 'mpesa' ? 'mpesa' : 'primary'} icon={busy ? 'fa-circle-notch' : 'fa-bolt'} disabled={busy || cart.length === 0 || total <= 0} onClick={charge} style={{ width:'100%' }}>
@@ -354,7 +362,8 @@ export function Pos({ toast }){
         </SectionCard>
       </div>
       {devOpen && <PosDevices scanMode={scanMode} setScanMode={setScanMode} printMethod={printMethod} setPrintMethod={setPrintMethod} btName={btName} onConnect={connectBt} onDisconnect={disconnectBt} onTest={testPrint} onClose={() => setDevOpen(false)} />}
-      <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:1fr !important; } }`}</style>
+      {keypad && <Keypad target={kpTarget} onPress={kpPress} onClose={toggleKeypad} />}
+      <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:1fr !important; } } @media (max-width:560px){ .pos-keypad{ left:12px !important; right:12px !important; width:auto !important; } }`}</style>
     </div>
   );
 }
@@ -444,5 +453,31 @@ function PosDevices({ scanMode, setScanMode, printMethod, setPrintMethod, btName
     </div>
   );
 }
+/* On-screen number keypad for touchscreen terminals. Types into whichever numeric
+   field was last focused (cash, discount, price, phone). Buttons preventDefault on
+   mousedown so tapping them doesn't blur/lose the active field. */
+function Keypad({ target, onPress, onClose }){
+  const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '00', '0', 'back'];
+  const md = (e) => e.preventDefault();
+  const key = { height:52, borderRadius:12, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:19, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center' };
+  return (
+    <div className="pos-keypad" style={{ position:'fixed', right:16, bottom:16, zIndex:90, width:264, background:'var(--m-surface)', border:'1px solid var(--m-border)', borderRadius:16, boxShadow:'var(--m-shadow-float)', padding:12 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+        <span className="ym-cap" style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}><FA i="fa-calculator" style={{ color:'var(--m-primary)' }} /> <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{target ? target.label : 'Tap a number field'}</span></span>
+        <button onMouseDown={md} onClick={onClose} aria-label="Hide keypad" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:16, flexShrink:0 }}><FA i="fa-xmark" /></button>
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+        {keys.map((k) => (
+          <button key={k} onMouseDown={md} onClick={() => onPress(k)} disabled={!target}
+            style={{ ...key, background: k === 'back' ? 'var(--m-surface-2)' : 'var(--m-surface)', opacity: target ? 1 : 0.5, cursor: target ? 'pointer' : 'not-allowed' }}>
+            {k === 'back' ? <FA i="fa-delete-left" /> : k}
+          </button>
+        ))}
+      </div>
+      <button onMouseDown={md} onClick={() => onPress('clear')} disabled={!target} style={{ width:'100%', marginTop:8, height:40, borderRadius:10, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', color:'var(--m-fg2)', fontSize:13, fontWeight:600, cursor: target ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: target ? 1 : 0.5 }}>Clear</button>
+    </div>
+  );
+}
+
 const qtyBtn = { width:30, height:30, borderRadius:9, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 };
 function Line({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }

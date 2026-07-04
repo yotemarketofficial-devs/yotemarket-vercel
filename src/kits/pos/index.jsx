@@ -51,6 +51,9 @@ function PosSettings({ onClose }){
   const { theme, setTheme } = useContext(ThemeCtx);
   const [autoPrint, setAutoPrint] = useFlag('ym_pos_autoprint');
   const [beep, setBeep] = useFlag('ym_pos_beep');
+  const [keypad, setKeypadRaw] = useFlag('ym_pos_keypad');
+  // Keep the register (which owns the live keypad) in sync when toggled from here.
+  const setKeypad = (v) => { setKeypadRaw(v); try { window.dispatchEvent(new CustomEvent('ym-pos-keypad', { detail: v })); } catch { /* */ } };
   return (
     <div style={{ position:'fixed', inset:0, zIndex:120, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(8,12,24,.55)' }} />
@@ -74,6 +77,10 @@ function PosSettings({ onClose }){
 
         <SettingRow icon="fa-volume-high" title="Beep on sale" sub="Play a confirmation tone when a sale completes.">
           <Toggle checked={beep} onChange={setBeep} />
+        </SettingRow>
+
+        <SettingRow icon="fa-calculator" title="On-screen keypad" sub="Number pad for touchscreens (also in the register toolbar).">
+          <Toggle checked={keypad} onChange={setKeypad} />
         </SettingRow>
 
         <div style={{ padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
