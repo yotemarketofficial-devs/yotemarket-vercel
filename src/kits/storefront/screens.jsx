@@ -170,15 +170,34 @@ export function HomeScreen(){
         );
       })()}
 
-      {/* explore the mall */}
-      <div className="wrap" style={{ marginTop:36 }}>
-        <SectionTitle action="See all stores" onAction={()=>nav('search',{tab:'stores'})}>Explore the mall</SectionTitle>
-        {YM_STORES.length === 0
-          ? <EmptyBlock icon="fa-store" text="No stores yet — check back soon as merchants come online." />
-          : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>
-              {YM_STORES.map(s=><StoreCard key={s.id} s={s} />)}
-            </div>}
-      </div>
+      {/* explore the mall — shops grouped into their categories */}
+      {YM_STORES.length === 0 ? (
+        <div className="wrap" style={{ marginTop:36 }}>
+          <SectionTitle>Explore the mall</SectionTitle>
+          <EmptyBlock icon="fa-store" text="No stores yet — check back soon as merchants come online." />
+        </div>
+      ) : (() => {
+        const seen = new Set();
+        const sections = CATEGORY_TREE
+          .map((node) => {
+            const list = YM_STORES.filter(s => s.cat === node.id);
+            list.forEach(s => seen.add(s.id));
+            return list.length ? { node, list } : null;
+          })
+          .filter(Boolean);
+        const rest = YM_STORES.filter(s => !seen.has(s.id));
+        if (rest.length) sections.push({ node: { id:'more', label:'More shops', icon:'fa-store', tint:'var(--m-primary)' }, list: rest });
+        return sections.map(({ node, list }) => (
+          <div className="wrap" style={{ marginTop:36 }} key={node.id}>
+            <SectionTitle action={list.length>8 ? 'See all' : undefined} onAction={()=>nav('search', { tab:'stores', ...(node.id!=='more' ? { cat:node.id } : {}) })}>
+              <FA i={node.icon} style={{ color:node.tint, marginRight:9, fontSize:16 }} />{node.label} <span className="ym-cap" style={{ fontWeight:600 }}>· {list.length}</span>
+            </SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>
+              {list.slice(0,8).map(s=><StoreCard key={s.id} s={s} />)}
+            </div>
+          </div>
+        ));
+      })()}
 
       {/* for you */}
       {YM_PRODUCTS.length > 0 && (
@@ -201,7 +220,8 @@ export function SearchScreen({ params }){
   const [tab, setTab] = useSS(params.tab || 'products');
   const ids = catalogIdsFor(cat);
   const prods = YM_PRODUCTS.filter(p=>(cat==='all'||ids.includes(p.cat))&&(!q||p.name.toLowerCase().includes(q.toLowerCase())));
-  const stores = YM_STORES.filter(s=>!q||s.name.toLowerCase().includes(q.toLowerCase()));
+  // Stores filter by their own category (catId) as well as the search text.
+  const stores = YM_STORES.filter(s=>(cat==='all'||s.cat===cat||ids.includes(s.cat))&&(!q||s.name.toLowerCase().includes(q.toLowerCase())));
   const catTitle = (CATEGORY_TREE.find(c=>c.id===cat)||ymCat(cat)||{}).label || '';
   const showSub = params.sub && cat===(params.cat||'all');
   return (
@@ -227,19 +247,18 @@ export function SearchScreen({ params }){
           </button>
         ))}
       </div>
-      {tab==='products' && (
-        <div className="scroll-x" style={{ gap:8, marginBottom:20 }}>
-          {YM_CATEGORIES.map(c=>(
-            <button key={c.id} className={'ym-chip'+(cat===c.id?' is-active':'')} onClick={()=>setCat(c.id)} style={{ flexShrink:0 }}><FA i={c.icon} style={{ fontSize:13 }} /> {c.label}</button>
-          ))}
-        </div>
-      )}
+      {/* Category chips filter both products and stores (shared category taxonomy). */}
+      <div className="scroll-x" style={{ gap:8, marginBottom:20 }}>
+        {YM_CATEGORIES.map(c=>(
+          <button key={c.id} className={'ym-chip'+(cat===c.id?' is-active':'')} onClick={()=>setCat(c.id)} style={{ flexShrink:0 }}><FA i={c.icon} style={{ fontSize:13 }} /> {c.label}</button>
+        ))}
+      </div>
       {tab==='products' ? (
         prods.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
         : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${catTitle||'this category'} yet`} s={q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.'} />
       ) : (
         stores.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
-        : <Empty icon="fa-store" t={`No stores for “${q}”`} s="Try a different name." />
+        : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${catTitle||'this category'} yet`} s={q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.'} />
       )}
     </div>
   );

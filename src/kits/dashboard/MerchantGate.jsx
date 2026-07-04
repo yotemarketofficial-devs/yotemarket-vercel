@@ -9,17 +9,13 @@ import { db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
 import { FA, Card, Btn } from './primitives.jsx';
 import AuthPanel from '../../components/AuthPanel.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
+import { CATEGORY_TREE } from '../storefront/categories.js';
 const { useState, useEffect } = React;
 
-const CATS = [
-  { id: 'electronics', label: 'Electronics' },
-  { id: 'phones', label: 'Phones & Tablets' },
-  { id: 'fashion', label: 'Fashion' },
-  { id: 'groceries', label: 'Groceries & Food' },
-  { id: 'home', label: 'Home & Furniture' },
-  { id: 'beauty', label: 'Health & Beauty' },
-  { id: 'kids', label: 'Babies & Kids' },
-];
+// The store category options come from the canonical category taxonomy
+// (storefront/categories.js) so a merchant's category matches how shoppers browse
+// and filter the mall. This is the single source of truth for store categories.
+const CATS = CATEGORY_TREE.map((c) => ({ id: c.id, label: c.label }));
 
 const ipt = { width: '100%', padding: '12px 14px', borderRadius: 11, border: '1px solid var(--m-border)', background: 'var(--m-surface)', color: 'var(--m-fg1)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 const errBox = { display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13, fontWeight: 500, margin: '14px 0 0' };

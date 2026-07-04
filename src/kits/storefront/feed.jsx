@@ -1,4 +1,4 @@
-/* feed.jsx — YoteFeed: TikTok-Shop-style vertical shortform video feed (MVP).
+/* feed.jsx — YoteFeed: a shoppable vertical shortform video feed (MVP).
    Shoppers swipe a full-height feed of store clips; each can tag a product that
    deep-links to the product page / cart. Merchants post & manage clips from the
    dashboard (kits/dashboard/feedmgr.jsx) — this screen is view-only. Video is the
@@ -244,7 +244,7 @@ export function FeedScreen({ params = {} }){
   const railBtn = { pointerEvents:'auto', width:40, height:40, borderRadius:9999, border:'none', background:'rgba(0,0,0,.38)', color:'#fff', cursor:'pointer', backdropFilter:'blur(4px)', flexShrink:0 };
   return (
     <div style={{ position:'relative', height:'100%', background:'#000', color:'#fff' }}>
-      {/* Portrait column: full-bleed on phones, letterboxed on wide screens (like Shorts). */}
+      {/* Portrait column: full-bleed on phones, letterboxed on wide screens. */}
       <div style={{ position:'relative', height:'100%', width:'100%', maxWidth:480, margin:'0 auto' }}>
 
         {/* Floating overlay bar — sits on top of the video. */}

@@ -1,5 +1,5 @@
-/* categories.js — Multilevel category taxonomy for the YoteMarket mall, modelled on
-   jiji.co.ke's category structure (top-level → subcategories), curated for a goods
+/* categories.js — Multilevel category taxonomy for the YoteMarket mall: a broad
+   classifieds-style structure (top-level → subcategories), curated for a goods
    marketplace. This is the SINGLE SOURCE OF TRUTH for the storefront taxonomy: the
    "All categories" mega-menu, the category chip row, and search all derive from it.
    Top-level `id`s align with the live Firestore catalog (`catId`) so browsing filters

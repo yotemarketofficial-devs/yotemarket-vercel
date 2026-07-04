@@ -156,8 +156,38 @@ export function OnboardScreen({ defaultName = '', onDone }){
           </div>
         </div>
         {err && <div className="mt-4 text-sm flex items-center gap-2" style={{color:'var(--red)'}}><Icon name="circle-exclamation"/>{err}</div>}
-        <Btn type="submit" kind="primary" size="lg" className="w-full mt-6" icon={busy?'spinner':'rocket'} disabled={busy}>{busy?'Creating…':'Join the program'}</Btn>
+        <Btn type="submit" kind="primary" size="lg" className="w-full mt-6" icon={busy?'spinner':'rocket'} disabled={busy}>{busy?'Submitting…':'Submit application'}</Btn>
+        <p className="text-center text-xs t3 mt-4">Applications are reviewed within 24 hours. You'll get access once you're approved.</p>
       </form>
+    </AuthShell>
+  );
+}
+
+/* Signed in with a marketer record that isn't approved yet. The scout dashboard is
+   gated to APPROVED (active) marketers only — applicants wait here for review,
+   rejected applicants are told, and both can sign out. */
+export function StatusScreen({ profile, onSignOut }){
+  const rejected = profile?.status === 'rejected';
+  return (
+    <AuthShell>
+      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full fadeup text-center">
+        <div className="w-16 h-16 rounded-2xl grad flex items-center justify-center text-white text-3xl mb-5 mx-auto">
+          <Icon name={rejected ? 'circle-xmark' : 'hourglass-half'} />
+        </div>
+        <h2 className="text-2xl font-bold t1">{rejected ? 'Application not approved' : 'Application under review'}</h2>
+        <p className="t3 text-sm mt-2 leading-relaxed">
+          {rejected
+            ? 'Thanks for your interest in the YoteMarket Marketer Program. Your application wasn’t approved this time — you’re welcome to reapply as the program grows.'
+            : 'Thanks for applying! Our team reviews scout applications within 24 hours. You’ll get an SMS and email the moment you’re approved — then sign back in here to open your scout dashboard.'}
+        </p>
+        <div className="mt-6 rounded-xl p-3.5 text-sm flex items-center gap-2.5" style={{background:'var(--surface2)', color:'var(--t2)'}}>
+          <Icon name={rejected ? 'circle-info' : 'clock'} style={{color:'var(--purple)'}} />
+          <span>Signed in as <b className="t1">{profile?.email || profile?.name || 'scout'}</b> · status: {rejected ? 'not approved' : 'pending review'}</span>
+        </div>
+        <button onClick={onSignOut} className="w-full mt-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2" style={{border:'1px solid var(--line2)', color:'var(--t1)'}}>
+          <Icon name="right-from-bracket"/> Sign out
+        </button>
+      </div>
     </AuthShell>
   );
 }

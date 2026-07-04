@@ -104,7 +104,7 @@ export default function StorefrontApp(){
     account, openAuth, requireAuth, signOut: doSignOut, liveOrders };
 
   const Screen = SCREENS[top.screen] || HomeScreen;
-  // YoteFeed runs edge-to-edge (YouTube-Shorts style): hide the site chrome and pin
+  // YoteFeed runs edge-to-edge (immersive full-screen shortform): hide the site chrome and pin
   // the shell to the viewport so the feed fills the screen with its own overlay bar.
   const immersive = top.screen === 'feed';
   return (
