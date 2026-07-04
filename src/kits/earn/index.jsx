@@ -5,12 +5,47 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './earn.css';
 import Calculator from './Calculator.jsx';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { firebaseEnabled } from '../../lib/firebase.js';
+import { registerMarketer } from '../marketers/service.js';
 const { useState } = React;
 
 const PROOF_TINTS = ['#7c3aed', '#10b981', '#f59e0b', '#ec4899'];
 
 export default function EarnLanding() {
+  const { registerEmail } = useAuth();
   const [submitted, setSubmitted] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [county, setCounty] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  // The one signup: creates the scout's account + a pending application. Approval is
+  // manual (staff), so they can't reach the dashboard until approved.
+  const apply = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setErr('');
+    if (!name.trim() || !email.trim() || password.length < 6 || !county) {
+      setErr('Add your name, email, a 6+ character password and your county.');
+      return;
+    }
+    setBusy(true);
+    try {
+      if (firebaseEnabled) {
+        await registerEmail(name.trim(), email.trim(), password, phone.trim());
+        await registerMarketer({ name: name.trim(), phone: phone.trim(), county });
+      }
+      setSubmitted(true);
+    } catch (ex) {
+      setErr(ex.message || 'Could not submit your application. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <>
@@ -200,39 +235,32 @@ export default function EarnLanding() {
             <p className="apply-sub">Approval within 24 hours. Get your unique referral link by SMS &amp; WhatsApp.</p>
 
             {!submitted ? (
-              <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
+              <form onSubmit={apply}>
                 <div className="row">
-                  <div><label>Full name</label><input type="text" placeholder="Jane Wanjiku" required /></div>
-                  <div><label>Phone (Safaricom)</label><input type="tel" placeholder="07XX XXX XXX" required /></div>
+                  <div><label>Full name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Wanjiku" required /></div>
+                  <div><label>Phone (Safaricom)</label><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" required /></div>
                 </div>
                 <div className="row">
-                  <div><label>Email</label><input type="email" placeholder="you@example.com" required /></div>
+                  <div><label>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required /></div>
+                  <div><label>Create a password</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 characters" autoComplete="new-password" required /></div>
+                </div>
+                <div className="row">
                   <div><label>County</label>
-                    <select required defaultValue="">
+                    <select required value={county} onChange={(e) => setCounty(e.target.value)}>
                       <option value="" disabled>Select your county…</option>
                       <option>Nairobi</option><option>Mombasa</option><option>Kisumu</option><option>Nakuru</option>
                       <option>Eldoret (Uasin Gishu)</option><option>Kiambu</option><option>Machakos</option><option>Kakamega</option>
                       <option>Other (Kenya)</option>
                     </select>
                   </div>
-                </div>
-                <div className="row">
                   <div><label>Where will you scout?</label>
-                    <select required defaultValue="">
+                    <select defaultValue="">
                       <option value="" disabled>Pick your channel…</option>
                       <option>Physical markets / shops</option>
-                      <option>Social media (TikTok, Instagram)</option>
+                      <option>Social media</option>
                       <option>WhatsApp groups &amp; SMS</option>
                       <option>Door-to-door / community</option>
                       <option>Mix of the above</option>
-                    </select>
-                  </div>
-                  <div><label>Have you done sales before?</label>
-                    <select required defaultValue="">
-                      <option value="" disabled>Choose one…</option>
-                      <option>Yes — formally (job)</option>
-                      <option>Yes — informally (own hustle)</option>
-                      <option>No, but I'm a fast learner</option>
                     </select>
                   </div>
                 </div>
@@ -241,17 +269,18 @@ export default function EarnLanding() {
                 </div>
                 <div className="checkbox-row">
                   <input type="checkbox" id="agree" required defaultChecked />
-                  <label htmlFor="agree">I agree to be contacted by YoteMarket via SMS, WhatsApp, and email. I understand top-performing scouts will be invited to interview, and I'll receive my referral link within 24 hours.</label>
+                  <label htmlFor="agree">I agree to be contacted by YoteMarket via SMS, WhatsApp, and email. I understand top-performing scouts will be invited to interview, and my dashboard unlocks once my application is approved.</label>
                 </div>
-                <button className="btn-gold submit" type="submit"><i className="fas fa-paper-plane"></i> Submit my scout application</button>
+                {err && <div style={{ color: '#fca5a5', fontSize: '13.5px', margin: '4px 0 12px', display: 'flex', gap: '8px', alignItems: 'center' }}><i className="fas fa-circle-exclamation"></i> {err}</div>}
+                <button className="btn-gold submit" type="submit" disabled={busy}><i className={busy ? 'fas fa-circle-notch fa-spin' : 'fas fa-paper-plane'}></i> {busy ? 'Submitting…' : 'Submit my scout application'}</button>
                 <div className="apply-note"><i className="fas fa-lock"></i> Your phone is shared only with the YoteMarket scout team. Never sold.</div>
               </form>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', padding: '40px 20px', textAlign: 'center' }}>
-                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(52,211,153,0.2)', border: '2px solid var(--green-bright)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--green-bright)', fontSize: '30px' }}><i className="fas fa-check"></i></div>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(52,211,153,0.2)', border: '2px solid var(--green-bright)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--green-bright)', fontSize: '30px' }}><i className="fas fa-hourglass-half"></i></div>
                 <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--white)' }}>Application received!</h3>
-                <p style={{ margin: 0, color: 'var(--mute)', maxWidth: '380px', lineHeight: 1.5 }}>We'll review it within 24 hours and send your unique referral link by SMS &amp; WhatsApp. Karibu YoteMarket.</p>
-                <Link className="btn-gold" to="/marketers/app" style={{ marginTop: '6px' }}><i className="fas fa-calculator"></i> Open the scout dashboard</Link>
+                <p style={{ margin: 0, color: 'var(--mute)', maxWidth: '380px', lineHeight: 1.5 }}>Your scout account is created and under review. We approve applications within 24 hours — you'll get an SMS &amp; email, then sign in to open your dashboard. Karibu YoteMarket.</p>
+                <Link className="btn-gold" to="/marketers/app" style={{ marginTop: '6px' }}><i className="fas fa-arrow-right-to-bracket"></i> Go to scout sign in</Link>
               </div>
             )}
           </div>

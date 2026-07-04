@@ -53,15 +53,12 @@ function Field({ label, ...props }){
   );
 }
 
-/* Unified Firebase auth: sign in, or create an account + scout profile in one go. */
+/* Sign-in ONLY — the scout dashboard is for APPROVED marketers. New scouts apply on
+   the recruitment landing (the single application form at /marketers). */
 export function AuthScreen(){
-  const { signInEmail, registerEmail, signInGoogle } = useAuth();
-  const [mode, setMode] = useSA('signin'); // signin | signup
-  const [name, setName] = useSA('');
+  const { signInEmail, signInGoogle } = useAuth();
   const [email, setEmail] = useSA('');
   const [password, setPassword] = useSA('');
-  const [phone, setPhone] = useSA('');
-  const [county, setCounty] = useSA('Nairobi');
   const [busy, setBusy] = useSA(false);
   const [err, setErr] = useSA('');
 
@@ -69,18 +66,8 @@ export function AuthScreen(){
     e?.preventDefault?.();
     if (busy) return;
     setBusy(true); setErr('');
-    try {
-      if (mode === 'signup') {
-        if (!name.trim()) throw new Error('Enter your full name.');
-        await registerEmail(name.trim(), email.trim(), password);
-        // Now authenticated — create the scout profile. If this throws, the app
-        // shell shows the onboarding step as a fallback.
-        await registerMarketer({ name: name.trim(), phone: phone.trim(), county });
-      } else {
-        await signInEmail(email.trim(), password);
-      }
-      // The app shell observes auth state and advances to the dashboard.
-    } catch (ex) { setErr(ex.message || 'Something went wrong.'); }
+    try { await signInEmail(email.trim(), password); }
+    catch (ex) { setErr(ex.message || 'Could not sign in.'); }
     finally { setBusy(false); }
   };
   const google = async () => {
@@ -88,36 +75,22 @@ export function AuthScreen(){
     try { await signInGoogle(); } catch (ex) { if (ex.code !== 'cancelled') setErr(ex.message || 'Google sign-in failed.'); }
   };
 
-  const signup = mode === 'signup';
   return (
     <AuthShell>
       <form className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full fadeup" onSubmit={submit}>
-        <h2 className="text-2xl font-bold t1">{signup ? 'Become a scout' : 'Welcome back, scout'}</h2>
-        <p className="t3 text-sm mt-1">{signup ? 'Create your account and start referring merchants.' : 'Sign in to track your referrals and earnings.'}</p>
+        <h2 className="text-2xl font-bold t1">Scout sign in</h2>
+        <p className="t3 text-sm mt-1">For approved marketers. Sign in to track your referrals and earnings.</p>
 
         <div className="space-y-4 mt-7">
-          {signup && <Field label="Full name" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" />}
           <Field label="Email" type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" />
-          <Field label="Password" type="password" autoComplete={signup?'new-password':'current-password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder={signup?'Min. 6 characters':'••••••••'} />
-          {signup && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Phone (M-Pesa)" className="ym-input num" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="07XX XXX XXX" />
-              <div>
-                <label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">County</label>
-                <select className="ym-input" value={county} onChange={e=>setCounty(e.target.value)}>{COUNTIES.map(c=><option key={c}>{c}</option>)}</select>
-              </div>
-            </div>
-          )}
+          <Field label="Password" type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" />
         </div>
 
         {err && <div className="mt-4 text-sm flex items-center gap-2" style={{color:'var(--red)'}}><Icon name="circle-exclamation"/>{err}</div>}
-        <Btn type="submit" kind="primary" size="lg" className="w-full mt-6" icon={busy?'spinner':undefined} disabled={busy}>{busy?'Please wait…':(signup?'Create account':'Sign in')}</Btn>
+        <Btn type="submit" kind="primary" size="lg" className="w-full mt-6" icon={busy?'spinner':undefined} disabled={busy}>{busy?'Signing in…':'Sign in'}</Btn>
         <button type="button" onClick={google} className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2" style={{border:'1px solid var(--line2)',color:'var(--t1)'}}><Icon name="google" brand/> Continue with Google</button>
-        <p className="text-center text-sm t3 mt-5">
-          {signup
-            ? <>Already a scout? <button type="button" onClick={()=>{ setMode('signin'); setErr(''); }} className="font-semibold accent">Sign in</button></>
-            : <>New here? <button type="button" onClick={()=>{ setMode('signup'); setErr(''); }} className="font-semibold accent">Become a scout</button></>}
-        </p>
+        <p className="text-center text-sm t3 mt-6">New scout? <a href="/marketers#apply" className="font-semibold accent">Apply to join the program →</a></p>
+        <p className="text-center text-xs t3 mt-2" style={{color:'var(--t3)'}}>Only approved marketers can sign in. Applications are reviewed within 24 hours.</p>
       </form>
     </AuthShell>
   );
