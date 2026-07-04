@@ -210,8 +210,10 @@ export function CheckoutScreen(){
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
-      <button onClick={back} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Back</button>
-      <h1 className="ym-h1" style={{ marginBottom:24 }}>Checkout</h1>
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:24 }}>
+        <button onClick={back} aria-label="Back" className="icon-btn" style={{ flexShrink:0 }}><FA i="fa-arrow-left" /></button>
+        <h1 className="ym-h1" style={{ margin:0 }}>Checkout</h1>
+      </div>
       <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:28, alignItems:'start' }} className="checkout-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
           {/* fulfillment */}
@@ -487,8 +489,10 @@ export function OrdersScreen(){
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:840 }}>
-      <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-house" /> Home</button>
-      <h1 className="ym-h1" style={{ marginBottom:24 }}>My orders</h1>
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:24 }}>
+        <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ flexShrink:0 }}><FA i="fa-arrow-left" /></button>
+        <h1 className="ym-h1" style={{ margin:0 }}>My orders</h1>
+      </div>
       {orders.length === 0 ? (
         <div style={{ textAlign:'center', padding:'70px 20px' }}>
           <FA i="fa-box-open" style={{ fontSize:44, color:'var(--m-fg4)', marginBottom:14 }} />

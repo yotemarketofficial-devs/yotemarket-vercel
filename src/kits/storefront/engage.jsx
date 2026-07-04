@@ -102,7 +102,7 @@ function LiveMessages({ params, user, account }){
         <h1 className="ym-h1" style={{ margin:0 }}>Messages</h1>
       </div>
       <NotifyBanner user={user} />
-      <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:'min(560px, 72vh)', minHeight:400 }}>
+      <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:'min(680px, calc(100dvh - 200px))', minHeight:460 }}>
         <div className="msg-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           <button onClick={()=>nav('ai')} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:14, display:'flex', alignItems:'center', gap:12, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
             <div style={{ width:46, height:46, borderRadius:13, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={24} color="#fff" /></div>
@@ -141,8 +141,10 @@ function LiveMessages({ params, user, account }){
         </div>
       </div>
       <style>{`
-        @media (max-width:640px){
-          .msg-grid{ grid-template-columns:1fr !important; }
+        @media (max-width:820px){
+          /* Collapse to a single full-width column early so the thread never gets
+             squeezed next to the 320px conversation list on tablets/large phones. */
+          .msg-grid{ grid-template-columns:1fr !important; height:calc(100dvh - 168px) !important; min-height:440px; }
           .msg-grid[data-view="thread"] .msg-list{ display:none !important; }
           .msg-grid[data-view="list"] .msg-thread{ display:none !important; }
           .msg-back{ display:inline-flex !important; }
@@ -197,12 +199,12 @@ function LiveChatThread({ conv, user, onBack }){
         </div>
         <button className="icon-btn" aria-label="Report conversation" title={reported?'Reported':'Report conversation'} onClick={report} disabled={reported} style={{ color: reported?'var(--m-fg4)':'var(--m-fg3)' }}><FA i="fa-flag" /></button>
       </div>
-      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {msgs.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
         {msgs.map((m) => {
           const mine = m.senderId === myUid;
           return (
-            <div key={m.id} style={{ maxWidth:'72%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
+            <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
               alignSelf: mine?'flex-end':'flex-start',
               background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
               borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
@@ -270,13 +272,13 @@ export function AIScreen(){
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:760, margin:'0 auto' }}>
-      <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-house" /> Home</button>
+      <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
       <div className="ym-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:'min(600px, 76vh)', minHeight:420 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
           <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={22} color="#fff" /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Shopping assistant</div></div>
         </div>
-        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+        <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
           {msgs.map((m,i)=>(
             <div key={i} style={{ display:'flex', flexDirection:'column', gap:8, alignItems:m.role==='user'?'flex-end':'flex-start' }}>
               <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:m.role==='user'?'pre-wrap':'normal',

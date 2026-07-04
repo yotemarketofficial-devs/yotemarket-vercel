@@ -575,8 +575,8 @@ export function Chat(){
           <div className="ym-sub">Your buyer conversations appear here once you’re signed in.</div>
         </Card>
       ) : (
-      <Card style={{ display:'grid', gridTemplateColumns:'300px 1fr', overflow:'hidden', height:540 }} className="chat-grid">
-        <div style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
+      <Card data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'300px 1fr', overflow:'hidden', height:'min(660px, calc(100vh - 220px))', minHeight:480 }} className="chat-grid">
+        <div className="chat-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           {convos === null && <div style={{ padding:'22px 16px', color:'var(--m-fg3)', fontSize:13.5 }}>Loading chats…</div>}
           {convos !== null && list.length === 0 && (
             <div style={{ padding:'26px 16px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>
@@ -597,16 +597,21 @@ export function Chat(){
           })}
         </div>
         {selConv
-          ? <MerchantChatThread key={selConv.id} conv={selConv} user={user} />
-          : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24 }}>Select a conversation.</div>}
+          ? <MerchantChatThread key={selConv.id} conv={selConv} user={user} onBack={()=>setSel(null)} />
+          : <div className="chat-thread" style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24 }}>Select a conversation.</div>}
       </Card>
       )}
-      <style>{`@media (max-width:640px){ .chat-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`@media (max-width:640px){
+        .chat-grid{ grid-template-columns:1fr !important; }
+        .chat-grid[data-view="thread"] .chat-list{ display:none !important; }
+        .chat-grid[data-view="list"] .chat-thread{ display:none !important; }
+        .chat-back{ display:inline-flex !important; }
+      }`}</style>
     </div>
   );
 }
 
-function MerchantChatThread({ conv, user }){
+function MerchantChatThread({ conv, user, onBack }){
   const uid = user.uid;
   const otherId = otherParticipant(conv, uid);
   const info = (conv.info && conv.info[otherId]) || {};
@@ -626,16 +631,17 @@ function MerchantChatThread({ conv, user }){
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0 }}>
+    <div className="chat-thread" style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
+        <button className="chat-back" onClick={onBack} aria-label="Back to chats" style={{ display:'none', width:34, height:34, borderRadius:9999, border:'none', background:'var(--m-surface-2)', color:'var(--m-fg2)', cursor:'pointer', alignItems:'center', justifyContent:'center', flexShrink:0 }}><FA i="fa-arrow-left" /></button>
         <Avatar name={info.name || 'Customer'} size={40} />
         <div style={{ flex:1 }}><div className="ym-h3">{info.name || 'Customer'}</div><div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:blocked?'var(--m-danger)':'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Customer'}</div></div>
       </div>
-      <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {msgs.length===0 && <div style={{ margin:'auto', color:'var(--m-fg3)', fontSize:13.5 }}>No messages yet.</div>}
         {msgs.map((m) => {
           const mine = m.senderId === uid;
-          return <div key={m.id} style={{ maxWidth:'72%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}</div></div>;
+          return <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}</div></div>;
         })}
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderTop:'1px solid var(--m-border)', background:'var(--m-surface)' }}>
@@ -689,7 +695,7 @@ export function Assistant(){
           <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:17 }} /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Growth assistant</div></div>
         </div>
-        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+        <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
           {msgs.map((m,i)=>(
             <div key={i} style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:m.role==='user'?'pre-wrap':'normal',
               alignSelf:m.role==='user'?'flex-end':'flex-start', background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
@@ -769,7 +775,7 @@ export function Insight(){
           <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-lightbulb" style={{ color:'#fff', fontSize:17 }} /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteMarket Insight</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Tips & business intelligence</div></div>
         </div>
-        <div ref={scrollRef} style={{ flex:1, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+        <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
           {msgs.map((m,i)=>(
             <div key={i} style={{ display:'flex', flexDirection:'column', gap:8, alignItems:m.role==='user'?'flex-end':'flex-start' }}>
               <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:m.role==='user'?'pre-wrap':'normal',

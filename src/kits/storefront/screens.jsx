@@ -206,7 +206,7 @@ export function SearchScreen({ params }){
   const showSub = params.sub && cat===(params.cat||'all');
   return (
     <div className="wrap anim-up" style={{ paddingTop:28 }}>
-      <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-house" /> Home</button>
+      <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
       {cat!=='all' && (
         <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:7, marginBottom:14, flexWrap:'wrap' }}>
           <button onClick={()=>setCat('all')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12, color:'var(--m-fg3)', padding:0 }}>All categories</button>
@@ -259,7 +259,7 @@ export function ProductScreen({ params }){
   const related = YM_PRODUCTS.filter(x=>x.cat===p.cat && x.id!==p.id).slice(0,4);
   return (
     <div className="wrap anim-up" style={{ paddingTop:20 }}>
-      <button onClick={back} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /> Back</button>
+      <button onClick={back} aria-label="Back" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:36, alignItems:'start' }} className="prod-detail">
         <div className="ym-img" style={{ height:420, borderRadius:22, background:`linear-gradient(135deg, ${tint}30, ${tint}60)`, position:'relative' }}>
           <FA i={p.icon} style={{ fontSize:130, color:tint, position:'relative' }} />
@@ -341,7 +341,7 @@ export function StoreScreen({ params }){
           ? (<><img src={s.img} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} /><div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(10,6,40,.55), rgba(10,6,40,.22))' }} /></>)
           : <FA i={s.icon} style={{ position:'absolute', right:-20, top:-10, fontSize:200, color:'rgba(255,255,255,.12)' }} />}
         <div className="wrap" style={{ padding:'24px 24px 28px', position:'relative' }}>
-          <button onClick={back} className="ym-btn ym-btn-sm" style={{ background:'rgba(255,255,255,.92)', color:'#111827', marginBottom:20 }}><FA i="fa-arrow-left" /> Back</button>
+          <button onClick={back} aria-label="Back" style={{ width:40, height:40, borderRadius:9999, border:'none', background:'rgba(255,255,255,.92)', color:'#111827', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:15, marginBottom:20, boxShadow:'var(--m-shadow-card)' }}><FA i="fa-arrow-left" /></button>
           <div style={{ display:'flex', alignItems:'flex-end', gap:18 }}>
             <div style={{ width:88, height:88, borderRadius:22, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'var(--m-shadow-float)', flexShrink:0, position:'relative' }}>
               {s.logo

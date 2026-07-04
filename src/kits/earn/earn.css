@@ -180,6 +180,11 @@
   .kit-earn .how-steps, .kit-earn .earnings-grid, .kit-earn .test-grid, .kit-earn .kit-grid{ grid-template-columns: 1fr; }
   .kit-earn .apply-card{ padding: 28px; }
   .kit-earn form .row{ grid-template-columns: 1fr; }
+  /* Header on phones: drop the decorative badge so the logo + Sign in + Apply
+     now no longer overflow / squeeze. */
+  .kit-earn .topbar-inner{ padding: 12px 18px; }
+  .kit-earn .top-logo .badge{ display: none; }
+  .kit-earn .top-cta{ gap: 10px; }
 }
 
 .kit-earn{min-height:100vh;}
