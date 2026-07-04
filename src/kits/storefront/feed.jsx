@@ -195,7 +195,6 @@ export function FeedScreen({ params = {} }){
   const scrollRef = useRef(null);
   useEffect(() => {
     const onKey = (e) => {
-      if (compose) return; // composer open → let the form take keys
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -206,7 +205,7 @@ export function FeedScreen({ params = {} }){
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [compose]);
+  }, []);
 
   // Store-scoped open: jump to the tapped clip once the ranked order has settled.
   const startedRef = useRef(false);
