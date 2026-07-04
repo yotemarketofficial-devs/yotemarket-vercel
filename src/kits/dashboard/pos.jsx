@@ -33,6 +33,16 @@ export function Pos({ toast }){
   const [session, setSession] = useState({ count: 0, total: 0 });
   const ctxRef = useRef(null);
   const searchRef = useRef(null);
+  // ── devices: barcode scanner + receipt printer ──
+  const [devOpen, setDevOpen] = useState(false);
+  const [scanMode, setScanMode] = useState(() => { try { return localStorage.getItem('pos_scan') === '1'; } catch { return false; } });
+  const [printMethod, setPrintMethod] = useState(() => { try { return localStorage.getItem('pos_print') || 'system'; } catch { return 'system'; } });
+  const btRef = useRef(null);          // { device, char } when a Bluetooth printer is connected
+  const [btName, setBtName] = useState('');
+  useEffect(() => { try { localStorage.setItem('pos_scan', scanMode ? '1' : '0'); } catch { /* */ } }, [scanMode]);
+  useEffect(() => { try { localStorage.setItem('pos_print', printMethod); } catch { /* */ } }, [printMethod]);
+  // Scanner mode: keep the search box focused so a scan (types code + Enter) always lands.
+  useEffect(() => { if (scanMode && phase === 'cart' && !devOpen) searchRef.current?.focus(); }, [cart, scanMode, phase, devOpen]);
 
   const subtotal = cart.reduce((s, x) => s + (Number(x.price) || 0) * x.qty, 0);
   const discVal = Number(disc.value) || 0;
@@ -115,7 +125,23 @@ export function Pos({ toast }){
     L.push('', 'Asante — thank you!');
     return L.join('\n');
   };
-  const printReceipt = (r) => {
+  const connectBt = async () => {
+    if (!navigator.bluetooth) { toast && toast('This browser doesn’t support Bluetooth printing'); return; }
+    try {
+      const res = await connectBtPrinter();
+      btRef.current = res; setBtName(res.device.name || 'Bluetooth printer'); setPrintMethod('bluetooth');
+      res.device.addEventListener('gattserverdisconnected', () => { btRef.current = null; setBtName(''); });
+      toast && toast('Printer connected');
+    } catch (e) { if (e && e.name !== 'NotFoundError') toast && toast('Could not connect that printer'); }
+  };
+  const disconnectBt = () => { try { btRef.current?.device?.gatt?.disconnect(); } catch { /* */ } btRef.current = null; setBtName(''); };
+  const testPrint = () => printReceipt({ invoiceNo: 'TEST', items: [{ name: 'Test item', price: 100, qty: 1 }], subtotal: 100, discount: 0, total: 100, payMethod: 'cash' });
+
+  const printReceipt = async (r) => {
+    if (printMethod === 'bluetooth' && btRef.current?.char) {
+      try { await btPrint(btRef.current.char, receiptText(r)); toast && toast('Sent to printer'); return; }
+      catch (e) { toast && toast('Printer error — using the print dialog instead'); }
+    }
     const rows = (r.items || []).map((it) => `<tr><td>${escapeHtml(it.name)} <span class="q">x${it.qty}</span></td><td class="r">${ksh((it.price || 0) * (it.qty || 1))}</td></tr>`).join('');
     const w = window.open('', '_blank', 'width=360,height=640'); if (!w) return;
     w.document.write(`<!doctype html><html><head><title>Receipt ${r.invoiceNo || ''}</title><style>
@@ -178,7 +204,10 @@ export function Pos({ toast }){
     <div className="anim-up">
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:6 }}>
         <div><h1 className="ym-h1">Point of sale</h1><p className="ym-sub">Ring up an in-store sale — issues a KRA tax invoice.</p></div>
-        {session.count > 0 && <Card style={{ padding:'10px 16px', textAlign:'right' }}><div className="ym-cap">This session</div><div className="ym-h3">{session.count} sale{session.count !== 1 ? 's' : ''} · {ksh(session.total)}</div></Card>}
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          {session.count > 0 && <Card style={{ padding:'10px 16px', textAlign:'right' }}><div className="ym-cap">This session</div><div className="ym-h3">{session.count} sale{session.count !== 1 ? 's' : ''} · {ksh(session.total)}</div></Card>}
+          <Btn kind="soft" size="sm" icon="fa-plug" onClick={() => setDevOpen(true)}>Devices</Btn>
+        </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:22, alignItems:'start', marginTop:14 }} className="pos-grid">
         {/* catalog */}
@@ -266,11 +295,84 @@ export function Pos({ toast }){
           </div>
         </SectionCard>
       </div>
+      {devOpen && <PosDevices scanMode={scanMode} setScanMode={setScanMode} printMethod={printMethod} setPrintMethod={setPrintMethod} btName={btName} onConnect={connectBt} onDisconnect={disconnectBt} onTest={testPrint} onClose={() => setDevOpen(false)} />}
       <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
   );
 }
 
 function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+
+// Web Bluetooth thermal printing (best-effort; works with common ESC/POS serial
+// printers exposing the 0x18f0 "printer" service). System/browser printing is the
+// always-available fallback.
+const BT_PRINTER_SVC = 0x18f0;
+async function connectBtPrinter(){
+  const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [BT_PRINTER_SVC] });
+  const server = await device.gatt.connect();
+  const svc = await server.getPrimaryService(BT_PRINTER_SVC);
+  const chars = await svc.getCharacteristics();
+  const char = chars.find((c) => c.properties.writeWithoutResponse) || chars.find((c) => c.properties.write) || chars[0];
+  return { device, char };
+}
+async function btPrint(char, text){
+  const enc = new TextEncoder();
+  const bytes = new Uint8Array([0x1b, 0x40, ...enc.encode(text), 0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x00]); // init + text + feed + cut
+  for (let i = 0; i < bytes.length; i += 180) {
+    const chunk = bytes.slice(i, i + 180);
+    if (char.properties.writeWithoutResponse) await char.writeValueWithoutResponse(chunk); else await char.writeValue(chunk);
+    await new Promise((r) => setTimeout(r, 24));
+  }
+}
+
+/* POS devices — connect a barcode scanner (HID keyboard) + a receipt printer. */
+function PosDevices({ scanMode, setScanMode, printMethod, setPrintMethod, btName, onConnect, onDisconnect, onTest, onClose }){
+  const [scan, setScan] = useState('');
+  const hasBt = typeof navigator !== 'undefined' && !!navigator.bluetooth;
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:80, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(8,12,24,.55)' }} />
+      <Card style={{ position:'relative', width:'100%', maxWidth:480, padding:0, maxHeight:'88vh', overflowY:'auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 18px', borderBottom:'1px solid var(--m-border)' }}>
+          <div className="ym-h3"><FA i="fa-plug" style={{ color:'var(--m-primary)', marginRight:8 }} />Connect devices</div>
+          <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
+        </div>
+
+        {/* scanner */}
+        <div style={{ padding:18, borderBottom:'1px solid var(--m-border)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}><FA i="fa-barcode" style={{ color:'var(--m-primary)' }} /><div className="ym-h3" style={{ fontSize:14 }}>Barcode scanner</div></div>
+          <p className="ym-cap" style={{ marginBottom:12 }}>USB and Bluetooth scanners work as keyboards — pair/plug it in via your device, then scan into the search box. No setup needed here.</p>
+          <label style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12, cursor:'pointer' }}>
+            <input type="checkbox" checked={scanMode} onChange={(e) => setScanMode(e.target.checked)} />
+            <span style={{ fontSize:13.5 }}><b>Scanner mode</b> — keep the search box focused so every scan registers.</span>
+          </label>
+          <input className="ipt" value={scan} onChange={(e) => setScan(e.target.value)} placeholder="Test: scan a barcode here…" />
+          {scan && <div className="ym-cap" style={{ marginTop:6, color:'var(--m-success)' }}><FA i="fa-circle-check" /> Reading: {scan}</div>}
+        </div>
+
+        {/* printer */}
+        <div style={{ padding:18 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}><FA i="fa-print" style={{ color:'var(--m-primary)' }} /><div className="ym-h3" style={{ fontSize:14 }}>Receipt printer</div></div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8, margin:'10px 0 14px' }}>
+            {[['system', 'System printer', 'Use the browser print dialog — pick your thermal or A4 printer.'], ['bluetooth', 'Bluetooth thermal printer', 'Print directly to a paired ESC/POS receipt printer.']].map(([id, t, sub]) => (
+              <label key={id} style={{ display:'flex', gap:10, alignItems:'flex-start', padding:12, borderRadius:12, cursor:'pointer', border: printMethod === id ? '2px solid var(--m-primary)' : '1px solid var(--m-border)' }}>
+                <input type="radio" name="printm" checked={printMethod === id} onChange={() => setPrintMethod(id)} style={{ marginTop:3 }} />
+                <span><span className="ym-h3" style={{ fontSize:13.5 }}>{t}</span><span className="ym-cap" style={{ display:'block' }}>{sub}</span></span>
+              </label>
+            ))}
+          </div>
+          {printMethod === 'bluetooth' && (
+            <div style={{ marginBottom:12 }}>
+              {!hasBt ? <div className="ym-cap" style={{ color:'var(--m-inactive-fg)' }}><FA i="fa-triangle-exclamation" /> This browser has no Bluetooth support — use a system printer, or Chrome/Edge on desktop/Android.</div>
+                : btName ? <div style={{ display:'flex', alignItems:'center', gap:10 }}><span className="ym-cap" style={{ color:'var(--m-success)' }}><FA i="fa-circle-check" /> Connected: {btName}</span><Btn kind="ghost" size="sm" onClick={onDisconnect}>Disconnect</Btn></div>
+                  : <Btn kind="soft" size="sm" icon="fa-bluetooth-b" brandIcon onClick={onConnect}>Connect printer</Btn>}
+            </div>
+          )}
+          <Btn kind="primary" size="sm" icon="fa-receipt" onClick={onTest} style={{ width:'100%' }}>Test print</Btn>
+        </div>
+      </Card>
+    </div>
+  );
+}
 const qtyBtn = { width:30, height:30, borderRadius:9, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 };
 function Line({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
