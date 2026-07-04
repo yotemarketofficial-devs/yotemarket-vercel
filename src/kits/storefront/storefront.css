@@ -81,6 +81,10 @@
 .kit-storefront .prod-card:hover{transform:translateY(-5px); box-shadow:var(--m-shadow-float);}
 .kit-storefront .store-card{cursor:pointer; overflow:hidden; transition:transform .25s, box-shadow .25s;}
 .kit-storefront .store-card:hover{transform:translateY(-5px); box-shadow:var(--m-shadow-float);}
+.kit-storefront .cat-tile{transition:transform .2s, box-shadow .2s;}
+.kit-storefront .cat-tile:hover{transform:translateY(-3px); box-shadow:var(--m-shadow-float);}
+.kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.35);}
+[data-theme="dark"] .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.28);}
 
 .kit-storefront .icon-btn{width:44px; height:44px; border-radius:9999px; border:none; cursor:pointer; background:var(--m-surface-2);
   color:var(--m-fg1); font-size:16px; display:flex; align-items:center; justify-content:center; position:relative; transition:filter .15s;}

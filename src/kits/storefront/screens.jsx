@@ -1,6 +1,6 @@
 /* screens.jsx — Storefront: Home, Search, Product, Store. */
 import React from 'react';
-import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, SectionTitle, QtyStepper } from './ui.jsx';
+import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, TopBrandCard, SectionTitle, QtyStepper } from './ui.jsx';
 import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
 import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -170,6 +170,25 @@ export function HomeScreen(){
         );
       })()}
 
+      {/* Shop by category — top-level taxonomy tiles → category browse */}
+      <div className="wrap" style={{ marginTop:30 }}>
+        <SectionTitle action="All categories" onAction={()=>nav('search')}>Shop by category</SectionTitle>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(154px, 1fr))', gap:14 }}>
+          {CATEGORY_TREE.map(node => {
+            const count = YM_STORES.filter(s => s.cat === node.id).length;
+            return (
+              <button key={node.id} onClick={()=>nav('search',{ cat:node.id })} className="ym-card cat-tile" style={{ border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:15, display:'flex', alignItems:'center', gap:13 }}>
+                <span style={{ width:46, height:46, borderRadius:13, flexShrink:0, background:node.tint+'22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:19 }}><FA i={node.icon} /></span>
+                <span style={{ minWidth:0 }}>
+                  <span className="ym-h3" style={{ fontSize:14.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{node.short || node.label}</span>
+                  <span className="ym-cap">{count ? `${count} shop${count!==1?'s':''}` : 'Browse'}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Featured — staff-picked flagship stores, shown as circle logos */}
       {(() => {
         const featured = YM_STORES.filter(s => s.featured);
@@ -188,6 +207,20 @@ export function HomeScreen(){
                   <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%', textAlign:'center' }}>{s.name}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Top brands — enterprise-subscription businesses, premium horizontal rail */}
+      {(() => {
+        const brands = YM_STORES.filter(s => s.topBrand);
+        if (!brands.length) return null;
+        return (
+          <div className="wrap" style={{ marginTop:34 }}>
+            <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'stores' })}>Top brands</SectionTitle>
+            <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
+              {brands.map(s => <TopBrandCard key={s.id} s={s} />)}
             </div>
           </div>
         );

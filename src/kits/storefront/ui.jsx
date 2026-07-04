@@ -96,6 +96,36 @@ export function StoreCard({ s }){
   );
 }
 
+/* Top-brand card — premium placement for enterprise-subscription businesses.
+   Richer/larger than StoreCard with a gold accent; surfaces NO subscription/tier
+   language to shoppers (that stays staff-only) — just a friendly "Top brand" mark. */
+export function TopBrandCard({ s }){
+  const { nav } = useYM();
+  return (
+    <div className="ym-card store-card top-brand-card" style={{ padding:0, width:288, flexShrink:0 }} onClick={()=>nav('store',{sid:s.id})}>
+      <div style={{ height:104, background:`linear-gradient(120deg, ${s.tint}, ${s.tint}99)`, position:'relative', borderRadius:'18px 18px 0 0', overflow:'hidden' }}>
+        <FA i={s.icon} style={{ position:'absolute', right:-8, top:-10, fontSize:104, color:'rgba(255,255,255,.18)' }} />
+        <PhotoOverlay src={s.img} radius="18px 18px 0 0" />
+        <span style={{ position:'absolute', top:12, left:12, zIndex:2, background:'linear-gradient(135deg,#f4b530,#fcd34d)', color:'#3a2a00', fontSize:11, fontWeight:700, padding:'4px 11px', borderRadius:9999, display:'inline-flex', gap:5, alignItems:'center', boxShadow:'0 4px 12px -3px rgba(244,181,48,.55)' }}><FA i="fa-crown" style={{ fontSize:10 }} /> Top brand</span>
+      </div>
+      <div style={{ padding:'0 16px 16px' }}>
+        <div style={{ position:'relative', zIndex:2, width:60, height:60, borderRadius:16, background:'var(--m-surface)', boxShadow:'var(--m-shadow-card)', display:'flex', alignItems:'center', justifyContent:'center', marginTop:-30, marginBottom:10, overflow:'hidden', border:'2px solid var(--m-gold)' }}>
+          {s.logo ? <img src={s.logo} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon} style={{ fontSize:26, color:s.tint }} />}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span className="ym-h3" style={{ fontSize:15.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</span>
+          {s.verified && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:13, flexShrink:0 }} />}
+        </div>
+        <div className="ym-cap" style={{ margin:'3px 0 10px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.tagline}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          {s.reviews > 0 && <span style={{ display:'inline-flex', gap:5, alignItems:'center' }}><FA i="fa-star" style={{ fontSize:12, color:'#f5a524' }} /><span className="ym-cap" style={{ fontWeight:700, color:'var(--m-fg1)' }}>{s.rating}</span></span>}
+          {s.products != null && <><span className="ym-cap">·</span><span className="ym-cap">{s.products} products</span></>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SectionTitle({ children, action, onAction }){
   return (
     <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:16 }}>

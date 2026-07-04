@@ -6,11 +6,13 @@ import { KPIS, GMV_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT
 import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes } from './ui.jsx';
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
+  enterpriseQuote, setEnterprise,
   fetchRuns, fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
+  cleanupSeededTestAccounts,
 } from './service.js';
 
 // Official YoteMarket socials — the accounts a referred merchant must follow.
@@ -140,7 +142,7 @@ function Mini({ label, v, tone, icon }){
 }
 
 /* ============ MERCHANT VERIFICATION & OVERSIGHT ============ */
-export function Approvals(){
+export function Approvals({ isAdmin }){
   const { data, live } = useStaffResource(()=>fetchMerchants('all'), MERCHANTS);
   const [rows,setRows] = useSS(null);
   useES(()=>{ setRows(data); }, [data]);
@@ -162,6 +164,32 @@ export function Approvals(){
     try { await setMerchantStatus(m.id, next?'feature':'unfeature'); }
     catch { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,featured:!next}:r)); }
     finally { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,_busy:false}:r)); }
+  };
+
+  // Manual "Top brand" placement (staff override) — the storefront Top-brands rail.
+  // Effective topBrand = this staff toggle OR an active Enterprise subscription.
+  const toggleTopBrand = async (m) => {
+    if (m.enterprise && m.topBrand) { window.alert('This store is on Enterprise, which already grants Top-brand placement. Deactivate Enterprise to remove it.'); return; }
+    const next = !m.topBrand;
+    setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,topBrand:next,topBrandStaff:next,_busy:true}:r));
+    try { await setMerchantStatus(m.id, next?'topbrand':'untopbrand'); }
+    catch { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,topBrand:!next,topBrandStaff:!next}:r)); }
+    finally { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,_busy:false}:r)); }
+  };
+
+  // Enterprise activation modal (quote-based; price grounded in per-package-per-km).
+  const [entFor, setEntFor] = useSS(null);
+  const onEnterpriseDone = (m, patch) => setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,...patch}:r));
+
+  // One-off: delete the seeded non-Google test accounts (admin only).
+  const [cleanBusy, setCleanBusy] = useSS(false);
+  const [cleanDone, setCleanDone] = useSS(null);
+  const runCleanup = async () => {
+    if (!window.confirm('Permanently delete the 18 seeded non-Google (@yotemarket.com) test accounts and their test stores/products? This cannot be undone. Google sign-in accounts are NOT affected.')) return;
+    setCleanBusy(true);
+    try { const r = await cleanupSeededTestAccounts(); setCleanDone(r?.counts || {}); }
+    catch (e) { setCleanDone({ error: e.message || 'Cleanup failed' }); }
+    finally { setCleanBusy(false); }
   };
 
   const isPending = s => s==='pending' || s==='review';
@@ -189,7 +217,9 @@ export function Approvals(){
               <div className="font-bold t1 flex items-center gap-2">{m.shop}
                 {verified && <Pill tone="ok">Verified</Pill>}
                 {suspended && <Pill tone="red">Suspended</Pill>}
-                {m.featured && <Pill tone="pri">Featured</Pill>}
+                {m.featured && <Pill tone="blue">Featured</Pill>}
+                {m.enterprise && <Pill tone="amber">Enterprise</Pill>}
+                {m.topBrand && !m.enterprise && <Pill tone="amber">Top brand</Pill>}
               </div>
               <div className="text-xs t3">{m.owner}{m.county?` · ${m.county}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
             </div>
@@ -198,9 +228,11 @@ export function Approvals(){
               <Chk ok={m.items>=2} label={`${m.items||0} items`} />
               <Chk ok={m.socials>=3} label={`${m.socials||0} socials`} />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {!verified && !suspended && <Btn kind="success" size="sm" icon="circle-check" onClick={()=>apply(m.id,'verify','verified')} disabled={m._busy} title={ready?'':'Readiness checklist incomplete'}>Verify</Btn>}
               {!suspended && <Btn kind={m.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>toggleFeature(m)} disabled={m._busy} title="Show as a flagship store on the storefront home">{m.featured?'Featured':'Feature'}</Btn>}
+              {!suspended && <Btn kind={m.enterprise?'primary':'soft'} size="sm" icon="crown" onClick={()=>setEntFor(m)} disabled={m._busy} title="Enterprise tier — all Pro features + high delivery allotment + Top-brand placement (quote-based, staff-activated)">{m.enterprise?'Enterprise':'Enterprise…'}</Btn>}
+              {!suspended && <Btn kind={m.topBrand?'primary':'soft'} size="sm" icon="award" onClick={()=>toggleTopBrand(m)} disabled={m._busy} title="Manually place this store in the storefront Top-brands rail (independent of Enterprise)">Top brand</Btn>}
               {suspended
                 ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>apply(m.id,'reinstate','verified')} disabled={m._busy}>Reinstate</Btn>
                 : <Btn kind="danger" size="sm" icon="ban" onClick={()=>apply(m.id,'suspend','suspended')} disabled={m._busy}>Suspend</Btn>}
@@ -210,11 +242,138 @@ export function Approvals(){
       })}
       {shown.length===0 && <Card className="p-10 text-center t3"><Icon name="inbox" className="text-3xl mb-2"/><div>Nothing here.</div></Card>}
     </div>
+
+    {isAdmin && (
+      <Card className="p-4" style={{border:'1px solid var(--red)'}}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'rgba(239,68,68,.12)',color:'var(--red)'}}><Icon name="triangle-exclamation"/></div>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold t1">Delete seeded test accounts</div>
+            <div className="text-xs t3">One-off cleanup — removes the 18 non-Google (@yotemarket.com) seed accounts and their test stores/products. Google sign-in accounts are untouched.</div>
+            {cleanDone && !cleanDone.error && <div className="text-xs mt-1" style={{color:'var(--green)'}}>Done — deleted {cleanDone.auth} accounts, {cleanDone.stores} stores, {cleanDone.products} products.</div>}
+            {cleanDone && cleanDone.error && <div className="text-xs mt-1" style={{color:'var(--red)'}}>{cleanDone.error}</div>}
+          </div>
+          <Btn kind="danger" size="sm" icon={cleanBusy?'spinner':'trash'} onClick={runCleanup} disabled={cleanBusy || (cleanDone && !cleanDone.error)}>{cleanBusy?'Deleting…':((cleanDone && !cleanDone.error)?'Done':'Delete test accounts')}</Btn>
+        </div>
+      </Card>
+    )}
+
+    {entFor && <EnterpriseModal m={entFor} onClose={()=>setEntFor(null)} onDone={onEnterpriseDone} />}
   </div>);
 }
 function Chk({ ok, label }){
   return <span className="pill" style={{background: ok?'var(--green-bg)':'var(--surface2)', color: ok?'var(--green-fg)':'var(--t3)'}}><Icon name={ok?'check':'minus'}/>{label}</span>;
 }
+
+/* Enterprise activation — quote-based. The monthly price is GROUNDED in the delivery
+   unit economics (price per package, per package per km) from the live rate card; the
+   server recomputes authoritatively on activate. Staff-only surface. */
+function EnterpriseModal({ m, onClose, onDone }){
+  const [card, setCard] = useSS(null);      // rate card rows (per delivery sub-tier)
+  const [err, setErr] = useSS(null);
+  const [subTier, setSubTier] = useSS('a05');
+  const [packages, setPackages] = useSS(150);
+  const [disc, setDisc] = useSS(0);
+  const [busy, setBusy] = useSS(false);
+
+  useES(() => { let live=true; enterpriseQuote().then(d=>{ if(live) setCard(d.rateCard); }).catch(e=>{ if(live) setErr(e.message||'Could not load rate card'); }); return ()=>{ live=false; }; }, []);
+
+  const row = (card||[]).find(r=>r.subTier===subTier) || (card||[])[0];
+  const pkgs = Math.max(1, Math.round(Number(packages)||0));
+  const d = Math.min(90, Math.max(0, Number(disc)||0));
+  const gross = row ? row.perPackage * pkgs : 0;
+  const monthly = Math.round(gross * (1 - d/100));
+
+  const activate = async () => {
+    setBusy(true);
+    try { const r = await setEnterprise(m.id, true, { subTier, packages: pkgs, discountPct: d });
+      onDone(m, { enterprise:true, topBrand:true, plan:'Enterprise' });
+      onClose(); void r;
+    } catch (e) { setErr(e.message||'Activation failed'); setBusy(false); }
+  };
+  const deactivate = async () => {
+    if (!window.confirm(`Deactivate Enterprise for ${m.shop}? Top-brand placement is removed (unless a manual Top-brand override is set).`)) return;
+    setBusy(true);
+    try { await setEnterprise(m.id, false); onDone(m, { enterprise:false, topBrand: !!m.topBrandStaff, plan:'' }); onClose(); }
+    catch (e) { setErr(e.message||'Could not deactivate'); setBusy(false); }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={e=>e.stopPropagation()} className="card" style={{ width:'100%', maxWidth:560, maxHeight:'88vh', overflowY:'auto', padding:22 }}>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:'rgba(245,181,48,.16)', color:'var(--amber, #f4b530)' }}><Icon name="crown"/></div>
+          <div className="min-w-0 flex-1"><div className="font-bold t1">Enterprise · {m.shop}</div><div className="text-xs t3">All Pro features + high delivery allotment + Top-brand placement</div></div>
+          <Btn kind="soft" size="sm" icon="xmark" onClick={onClose}>Close</Btn>
+        </div>
+
+        {err && <div className="text-xs mt-2 mb-1" style={{ color:'var(--red)' }}>{err}</div>}
+
+        {m.enterprise ? (
+          <div className="mt-3 space-y-3">
+            <Pill tone="amber">Currently on Enterprise</Pill>
+            <p className="text-xs t3">This store already has an active Enterprise subscription and Top-brand placement. You can deactivate it below.</p>
+            <Btn kind="danger" size="sm" icon={busy?'spinner':'ban'} onClick={deactivate} disabled={busy}>{busy?'Working…':'Deactivate Enterprise'}</Btn>
+          </div>
+        ) : !card ? (
+          <div className="text-xs t3 mt-4">Loading unit-economics rate card…</div>
+        ) : (
+          <div className="mt-3">
+            <div className="text-xs t3 mb-2">Price is grounded in the delivery unit economics — <b>price per package per kilometre</b> — from the live rate card. Pick the merchant's distance band + monthly package volume; the server recomputes the exact price on activate.</div>
+
+            {/* Rate card */}
+            <div style={{ overflowX:'auto', border:'1px solid var(--line)', borderRadius:12, marginBottom:16 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12.5, whiteSpace:'nowrap' }}>
+                <thead><tr style={{ textAlign:'left', color:'var(--t3)' }}>
+                  <th style={{ padding:'8px 10px' }}>Band · range</th><th style={{ padding:'8px 10px', textAlign:'right' }}>Ksh / package</th><th style={{ padding:'8px 10px', textAlign:'right' }}>Ksh / pkg / km</th>
+                </tr></thead>
+                <tbody>
+                  {card.map(r=>(
+                    <tr key={r.subTier} onClick={()=>setSubTier(r.subTier)} style={{ cursor:'pointer', borderTop:'1px solid var(--line)', background: r.subTier===subTier?'var(--pri-soft)':'transparent' }}>
+                      <td style={{ padding:'8px 10px' }}><b>{r.band}</b> · {r.range}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right' }}>{kes(r.perPackage)}</td>
+                      <td style={{ padding:'8px 10px', textAlign:'right' }}>{kes(r.perPackagePerKm)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Inputs */}
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs t3">Distance band
+                <select value={subTier} onChange={e=>setSubTier(e.target.value)} style={inputStyle}>
+                  {card.map(r=><option key={r.subTier} value={r.subTier}>{r.band} · {r.range}</option>)}
+                </select>
+              </label>
+              <label className="text-xs t3">Packages / month
+                <input type="number" min="1" value={packages} onChange={e=>setPackages(e.target.value)} style={inputStyle} />
+              </label>
+              <label className="text-xs t3">Volume discount %
+                <input type="number" min="0" max="90" value={disc} onChange={e=>setDisc(e.target.value)} style={inputStyle} />
+              </label>
+              <div className="text-xs t3">Delivery allotment<div className="font-bold t1 mt-1" style={{ fontSize:15 }}>{pkgs} / month</div></div>
+            </div>
+
+            {/* Quote breakdown */}
+            <div className="mt-4 p-3 rounded-xl" style={{ background:'var(--surface2)' }}>
+              <div className="flex items-center justify-between text-xs t2"><span>{row?`${kes(row.perPackage)}/pkg × ${pkgs} pkgs`:''}</span><span>{kes(gross)}</span></div>
+              {d>0 && <div className="flex items-center justify-between text-xs t2 mt-1"><span>Volume discount ({d}%)</span><span style={{ color:'var(--red)' }}>−{kes(gross-monthly)}</span></div>}
+              <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop:'1px solid var(--line)' }}><span className="font-bold t1">Monthly</span><span className="font-bold t1" style={{ fontSize:18 }}>{kes(monthly)}</span></div>
+              <div className="text-xs t3 mt-1">{row?`Unit economics: ${kes(row.perPackagePerKm)} per package per km · ${row.km} km billed`:''}</div>
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <Btn kind="primary" size="sm" icon={busy?'spinner':'crown'} onClick={activate} disabled={busy}>{busy?'Activating…':`Activate · ${kes(monthly)}/mo`}</Btn>
+              <Btn kind="soft" size="sm" onClick={onClose} disabled={busy}>Cancel</Btn>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+const inputStyle = { display:'block', width:'100%', marginTop:5, padding:'8px 10px', borderRadius:10, border:'1px solid var(--line)', background:'var(--surface)', color:'var(--t1)', fontSize:14, fontFamily:'inherit' };
 
 /* ============ MARKETER APPLICATIONS (hiring funnel) ============ */
 const STAGES = ['New','Review','Shortlist','Interview'];

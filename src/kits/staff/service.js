@@ -113,9 +113,30 @@ export async function fetchTranscript(convId) {
 }
 
 // ── Actions (staff-gated Cloud Functions) ────────────────────────────────────
-/** action: 'verify' | 'unverify' | 'suspend' | 'reinstate' | 'feature' | 'unfeature' */
+/** action: 'verify' | 'unverify' | 'suspend' | 'reinstate' | 'feature' | 'unfeature'
+ *          | 'topbrand' | 'untopbrand' (manual Top-brand placement) */
 export async function setMerchantStatus(storeId, action) {
   return call('staffSetMerchantStatus')({ storeId, action });
+}
+
+/** Enterprise unit-economics rate card (price per package + per km, per delivery
+ *  sub-tier) and — when subTier+packages are supplied — a live monthly quote. */
+export async function enterpriseQuote(args = {}) {
+  const d = await call('staffEnterpriseQuote')(args);
+  if (!d || !Array.isArray(d.rateCard)) throw new Error('staffEnterpriseQuote: unexpected shape');
+  return d;
+}
+
+/** Activate/deactivate Enterprise for a store. When `subTier`+`packages` are given
+ *  the server derives the monthly price from price-per-package-per-km; a raw `price`
+ *  overrides. opts: { subTier, packages, discountPct, price, deliveriesCap, months, note } */
+export async function setEnterprise(storeId, on, opts = {}) {
+  return call('staffSetEnterprise')({ storeId, on, ...opts });
+}
+
+/** ADMIN one-off: delete the seeded non-Google test accounts + their footprint. */
+export async function cleanupSeededTestAccounts() {
+  return call('cleanupSeededTestAccounts')();
 }
 
 /** status: 'active' | 'blocked' (existing deployed callable). */

@@ -59,6 +59,7 @@ const normStore = (d) => ({
   ownerId: d.ownerId || null, // merchant uid — lets a shopper open a live chat thread
   suspended: !!d.suspended,   // staff-suspended stores are hidden from the storefront
   featured: !!d.featured,     // staff-picked flagship → storefront "Featured stores" circles
+  topBrand: !!(d.topBrand || d.enterprise), // enterprise-subscription business → storefront "Top brands" rail (premium placement, set server-side on activation)
   cat: d.catId || d.cat || null, // category id (from signup) — powers category browse/filter
   area: d.area,
   address: d.address || undefined,                          // shown under the store map
