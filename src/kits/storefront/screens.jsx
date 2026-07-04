@@ -175,7 +175,7 @@ export function HomeScreen(){
           subcategory pills (the mall's full taxonomy lives here now, not a header band) */}
       <div className="wrap" style={{ marginTop:30 }}>
         <SectionTitle action="All categories" onAction={()=>nav('search')}>Shop by category</SectionTitle>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(154px, 1fr))', gap:14 }}>
+        <div className="cat-grid">
           {CATEGORY_TREE.map(node => {
             const count = YM_STORES.filter(s => s.cat === node.id).length;
             const open = openCat === node.id;
