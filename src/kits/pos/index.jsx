@@ -79,7 +79,7 @@ function PosSettings({ onClose }){
           <Toggle checked={beep} onChange={setBeep} />
         </SettingRow>
 
-        <SettingRow icon="fa-calculator" title="On-screen keypad" sub="Number pad for touchscreens (also in the register toolbar).">
+        <SettingRow icon="fa-calculator" title="On-screen keypad" sub="Open the terminal on the number pad — for touchscreen tills. It's always a tab in the register.">
           <Toggle checked={keypad} onChange={setKeypad} />
         </SettingRow>
 

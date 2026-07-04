@@ -7,7 +7,7 @@ import React from 'react';
 import { FA, Card, Btn, SectionCard } from './primitives.jsx';
 import { ksh } from './data.js';
 import { useMerchant } from './merchant.jsx';
-import { posSale, confirmPayment, db, firebaseEnabled, posDeviceStatus, registerPosDevice, listPosDevices, removePosDevice } from '../../lib/firebase.js';
+import { posSale, confirmPayment, db, firebaseEnabled, posDeviceStatus, registerPosDevice, listPosDevices, removePosDevice, markOrderReady, confirmStorePickup } from '../../lib/firebase.js';
 import { doc, getDoc } from 'firebase/firestore';
 const { useState, useRef, useEffect } = React;
 
@@ -24,9 +24,13 @@ function posDeviceId(){
 const DEVICE_ID = posDeviceId();
 
 export function Pos({ toast }){
-  const { products, store } = useMerchant();
+  const { products, store, orders } = useMerchant();
   const catalog = Array.isArray(products) ? products.filter((p) => p.inStock !== false) : [];
   const storeName = store?.name || 'Your store';
+  // Store-pickup orders waiting to be collected here (newest / ready first).
+  const pickups = (Array.isArray(orders) ? orders : [])
+    .filter((o) => o.fulfillment === 'store_pickup' && o.status !== 'delivered' && o.status !== 'cancelled')
+    .sort((a, b) => (a.status === 'ready_pickup' ? 0 : 1) - (b.status === 'ready_pickup' ? 0 : 1));
   const [q, setQ] = useState('');
   const [cart, setCart] = useState([]); // [{ key, pid?, custom?, name, price, qty }]
   const [disc, setDisc] = useState({ type: 'amount', value: '' });
@@ -43,13 +47,14 @@ export function Pos({ toast }){
   const [session, setSession] = useState({ count: 0, total: 0 });
   const ctxRef = useRef(null);
   const searchRef = useRef(null);
-  // ── on-screen number keypad (for touchscreens): types into the focused numeric field ──
-  const [keypad, setKeypad] = useState(() => { try { return localStorage.getItem('ym_pos_keypad') === '1'; } catch { return false; } });
+  // ── left panel view: products catalog · store pickup · on-screen number keypad ──
+  const [leftView, setLeftView] = useState(() => { try { return localStorage.getItem('ym_pos_keypad') === '1' ? 'keypad' : 'products'; } catch { return 'products'; } });
   const [kpTarget, setKpTarget] = useState(null); // { label, apply(fn) } — the focused numeric field
-  useEffect(() => { const h = (e) => setKeypad(!!e.detail); window.addEventListener('ym-pos-keypad', h); return () => window.removeEventListener('ym-pos-keypad', h); }, []);
-  const toggleKeypad = () => setKeypad((on) => { const v = !on; try { localStorage.setItem('ym_pos_keypad', v ? '1' : '0'); } catch { /* */ } try { window.dispatchEvent(new CustomEvent('ym-pos-keypad', { detail: v })); } catch { /* */ } return v; });
+  // The settings "on-screen keypad" toggle chooses whether the terminal opens on the pad.
+  useEffect(() => { const h = (e) => setLeftView(e.detail ? 'keypad' : 'products'); window.addEventListener('ym-pos-keypad', h); return () => window.removeEventListener('ym-pos-keypad', h); }, []);
   const kpPress = (k) => { const t = kpTarget; if (!t) return; if (k === 'back') t.apply((p) => String(p).slice(0, -1)); else if (k === 'clear') t.apply(() => ''); else t.apply((p) => (String(p) + k).replace(/[^0-9]/g, '')); };
-  const numInput = (label, apply) => ({ inputMode: keypad ? 'none' : 'numeric', onFocus: () => setKpTarget({ label, apply }) });
+  // When the keypad view is showing, suppress the native soft keyboard on numeric fields.
+  const numInput = (label, apply) => ({ inputMode: leftView === 'keypad' ? 'none' : 'numeric', onFocus: () => setKpTarget({ label, apply }) });
   // ── devices: barcode scanner + receipt printer ──
   const [devOpen, setDevOpen] = useState(false);
   const [scanMode, setScanMode] = useState(() => { try { return localStorage.getItem('pos_scan') === '1'; } catch { return false; } });
@@ -271,37 +276,54 @@ export function Pos({ toast }){
         <div><h1 className="ym-h1">Point of sale</h1><p className="ym-sub">Ring up an in-store sale — issues a KRA tax invoice.</p></div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {session.count > 0 && <Card style={{ padding:'10px 16px', textAlign:'right' }}><div className="ym-cap">This session</div><div className="ym-h3">{session.count} sale{session.count !== 1 ? 's' : ''} · {ksh(session.total)}</div></Card>}
-          <Btn kind={keypad ? 'primary' : 'soft'} size="sm" icon="fa-calculator" onClick={toggleKeypad}>Keypad</Btn>
           <Btn kind="soft" size="sm" icon="fa-plug" onClick={() => setDevOpen(true)}>Devices</Btn>
         </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:22, alignItems:'start', marginTop:14 }} className="pos-grid">
-        {/* catalog */}
-        <SectionCard title="Products" action={<Btn kind="ghost" size="sm" icon="fa-plus" onClick={() => setShowCustom((s) => !s)}>Custom item</Btn>}>
-          <div style={{ padding:16 }}>
-            <input ref={searchRef} className="ipt" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onSearchKey} placeholder="Search or scan (name / SKU)…" style={{ marginBottom:14 }} autoFocus />
-            {showCustom && (
-              <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center', background:'var(--m-surface-2)', borderRadius:12, padding:12 }}>
-                <input className="ipt" value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Item name" style={{ flex:2, minWidth:120 }} />
-                <input className="ipt" value={cPrice} onChange={(e) => setCPrice(e.target.value.replace(/[^0-9]/g, ''))} {...numInput('Custom price', (f) => setCPrice((p) => f(p)))} placeholder="Price" style={{ width:100 }} />
-                <Btn kind="primary" size="sm" onClick={addCustom}>Add</Btn>
-              </div>
-            )}
-            {catalog.length === 0 ? (
-              <div style={{ textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, padding:'24px 0' }}><FA i="fa-box-open" style={{ fontSize:22, display:'block', marginBottom:8 }} /> No products yet — search adds nothing, but you can still ring up custom items.</div>
-            ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))', gap:10 }}>
-                {shown.map((p) => (
-                  <button key={p.id} onClick={() => addProduct(p)} style={{ textAlign:'left', padding:12, borderRadius:13, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border:'1px solid var(--m-border)' }}>
-                    <div style={{ width:34, height:34, borderRadius:9, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:8 }}><FA i={p.icon || 'fa-box'} /></div>
-                    <div className="ym-h3" style={{ fontSize:13, lineHeight:1.25, height:32, overflow:'hidden' }}>{p.name}</div>
-                    <div className="ym-sub" style={{ fontWeight:700, color:'var(--m-fg1)', marginTop:4 }}>{ksh(p.price)}</div>
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* LEFT: products catalog · store pickup · on-screen number pad (tabbed) */}
+        <Card style={{ padding:0, overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'12px 14px', borderBottom:'1px solid var(--m-border)', flexWrap:'wrap' }}>
+            {[['products', 'Products', 'fa-boxes-stacked'], ['pickup', 'Pickup', 'fa-store'], ['keypad', 'Keypad', 'fa-calculator']].map(([id, lb, ic]) => {
+              const on = leftView === id;
+              return (
+                <button key={id} onClick={() => setLeftView(id)} style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'8px 13px', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:600, fontSize:13.5, background: on ? 'var(--m-primary)' : 'var(--m-surface-2)', color: on ? '#fff' : 'var(--m-fg2)' }}>
+                  <FA i={ic} /> {lb}{id === 'pickup' && pickups.length ? ` · ${pickups.length}` : ''}
+                </button>
+              );
+            })}
+            {leftView === 'products' && <div style={{ marginLeft:'auto' }}><Btn kind="ghost" size="sm" icon="fa-plus" onClick={() => setShowCustom((s) => !s)}>Custom item</Btn></div>}
           </div>
-        </SectionCard>
+
+          {leftView === 'keypad' ? (
+            <KeypadPanel target={kpTarget} onPress={kpPress} />
+          ) : leftView === 'pickup' ? (
+            <PickupPanel orders={pickups} toast={toast} />
+          ) : (
+            <div style={{ padding:16 }}>
+              <input ref={searchRef} className="ipt" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onSearchKey} placeholder="Search or scan (name / SKU)…" style={{ marginBottom:14 }} autoFocus />
+              {showCustom && (
+                <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center', background:'var(--m-surface-2)', borderRadius:12, padding:12 }}>
+                  <input className="ipt" value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Item name" style={{ flex:2, minWidth:120 }} />
+                  <input className="ipt" value={cPrice} onChange={(e) => setCPrice(e.target.value.replace(/[^0-9]/g, ''))} {...numInput('Custom price', (f) => setCPrice((p) => f(p)))} placeholder="Price" style={{ width:100 }} />
+                  <Btn kind="primary" size="sm" onClick={addCustom}>Add</Btn>
+                </div>
+              )}
+              {catalog.length === 0 ? (
+                <div style={{ textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, padding:'24px 0' }}><FA i="fa-box-open" style={{ fontSize:22, display:'block', marginBottom:8 }} /> No products yet — search adds nothing, but you can still ring up custom items.</div>
+              ) : (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))', gap:10 }}>
+                  {shown.map((p) => (
+                    <button key={p.id} onClick={() => addProduct(p)} style={{ textAlign:'left', padding:12, borderRadius:13, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border:'1px solid var(--m-border)' }}>
+                      <div style={{ width:34, height:34, borderRadius:9, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:8 }}><FA i={p.icon || 'fa-box'} /></div>
+                      <div className="ym-h3" style={{ fontSize:13, lineHeight:1.25, height:32, overflow:'hidden' }}>{p.name}</div>
+                      <div className="ym-sub" style={{ fontWeight:700, color:'var(--m-fg1)', marginTop:4 }}>{ksh(p.price)}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
 
         {/* cart + pay */}
         <SectionCard title={`Cart · ${itemsCount} item${itemsCount !== 1 ? 's' : ''}`}>
@@ -352,7 +374,7 @@ export function Pos({ toast }){
                 {change != null && <div style={{ textAlign:'right', minWidth:110 }}><div className="ym-cap">Change due</div><div className="ym-h3" style={{ color: change < 0 ? 'var(--m-inactive-fg)' : 'var(--m-success)' }}>{change < 0 ? 'Short ' + ksh(-change) : ksh(change)}</div></div>}
               </div>
             )}
-            {pay === 'mpesa' && <input className="ipt" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode={keypad ? 'none' : 'tel'} onFocus={() => setKpTarget({ label: 'M-Pesa phone', apply: (f) => setPhone((p) => f(p)) })} placeholder="Customer M-Pesa number" />}
+            {pay === 'mpesa' && <input className="ipt" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode={leftView === 'keypad' ? 'none' : 'tel'} onFocus={() => setKpTarget({ label: 'M-Pesa phone', apply: (f) => setPhone((p) => f(p)) })} placeholder="Customer M-Pesa number" />}
             <input className="ipt" value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name (optional)" />
             {err && <div style={{ color:'var(--m-inactive-fg)', fontSize:13, display:'flex', gap:8, alignItems:'center' }}><FA i="fa-circle-exclamation" /> {err}</div>}
             <Btn kind={pay === 'mpesa' ? 'mpesa' : 'primary'} icon={busy ? 'fa-circle-notch' : 'fa-bolt'} disabled={busy || cart.length === 0 || total <= 0} onClick={charge} style={{ width:'100%' }}>
@@ -362,8 +384,7 @@ export function Pos({ toast }){
         </SectionCard>
       </div>
       {devOpen && <PosDevices scanMode={scanMode} setScanMode={setScanMode} printMethod={printMethod} setPrintMethod={setPrintMethod} btName={btName} onConnect={connectBt} onDisconnect={disconnectBt} onTest={testPrint} onClose={() => setDevOpen(false)} />}
-      {keypad && <Keypad target={kpTarget} onPress={kpPress} onClose={toggleKeypad} />}
-      <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:1fr !important; } } @media (max-width:560px){ .pos-keypad{ left:12px !important; right:12px !important; width:auto !important; } }`}</style>
+      <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
   );
 }
@@ -453,28 +474,76 @@ function PosDevices({ scanMode, setScanMode, printMethod, setPrintMethod, btName
     </div>
   );
 }
-/* On-screen number keypad for touchscreen terminals. Types into whichever numeric
-   field was last focused (cash, discount, price, phone). Buttons preventDefault on
-   mousedown so tapping them doesn't blur/lose the active field. */
-function Keypad({ target, onPress, onClose }){
+/* On-screen number keypad (lives in the left panel, where Products is). Types into
+   whichever numeric field was last focused (cash, discount, price, phone). Buttons
+   preventDefault on mousedown so tapping them doesn't blur/lose the active field. */
+function KeypadPanel({ target, onPress }){
   const keys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '00', '0', 'back'];
   const md = (e) => e.preventDefault();
-  const key = { height:52, borderRadius:12, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:19, fontWeight:700, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center' };
   return (
-    <div className="pos-keypad" style={{ position:'fixed', right:16, bottom:16, zIndex:90, width:264, background:'var(--m-surface)', border:'1px solid var(--m-border)', borderRadius:16, boxShadow:'var(--m-shadow-float)', padding:12 }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-        <span className="ym-cap" style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}><FA i="fa-calculator" style={{ color:'var(--m-primary)' }} /> <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{target ? target.label : 'Tap a number field'}</span></span>
-        <button onMouseDown={md} onClick={onClose} aria-label="Hide keypad" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:16, flexShrink:0 }}><FA i="fa-xmark" /></button>
+    <div style={{ padding:16 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, padding:'10px 14px', borderRadius:12, background:'var(--m-surface-2)' }}>
+        <FA i="fa-calculator" style={{ color:'var(--m-primary)' }} />
+        <span className="ym-cap" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{target ? `Entering: ${target.label}` : 'Tap a Cash / Discount / phone field, then type'}</span>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
         {keys.map((k) => (
           <button key={k} onMouseDown={md} onClick={() => onPress(k)} disabled={!target}
-            style={{ ...key, background: k === 'back' ? 'var(--m-surface-2)' : 'var(--m-surface)', opacity: target ? 1 : 0.5, cursor: target ? 'pointer' : 'not-allowed' }}>
+            style={{ height:60, borderRadius:14, border:'1px solid var(--m-border)', background: k === 'back' ? 'var(--m-surface-2)' : 'var(--m-surface)', color:'var(--m-fg1)', fontSize:22, fontWeight:700, cursor: target ? 'pointer' : 'not-allowed', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', opacity: target ? 1 : 0.5 }}>
             {k === 'back' ? <FA i="fa-delete-left" /> : k}
           </button>
         ))}
       </div>
-      <button onMouseDown={md} onClick={() => onPress('clear')} disabled={!target} style={{ width:'100%', marginTop:8, height:40, borderRadius:10, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', color:'var(--m-fg2)', fontSize:13, fontWeight:600, cursor: target ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: target ? 1 : 0.5 }}>Clear</button>
+      <button onMouseDown={md} onClick={() => onPress('clear')} disabled={!target} style={{ width:'100%', marginTop:10, height:44, borderRadius:12, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', color:'var(--m-fg2)', fontSize:13.5, fontWeight:600, cursor: target ? 'pointer' : 'not-allowed', fontFamily:'inherit', opacity: target ? 1 : 0.5 }}>Clear</button>
+    </div>
+  );
+}
+
+/* Store-pickup handover: online orders customers collect here. Mark ready, then
+   enter the shopper's 4-digit pickup code to release the order (confirmStorePickup). */
+function PickupPanel({ orders, toast }){
+  return (
+    <div style={{ padding:16 }}>
+      <p className="ym-cap" style={{ marginBottom:12 }}>Online orders set for collection here. Enter the shopper's pickup code to release the order.</p>
+      {orders.length === 0 ? (
+        <div style={{ textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, padding:'28px 0' }}><FA i="fa-store" style={{ fontSize:22, display:'block', marginBottom:8 }} /> No pickup orders waiting.</div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          {orders.map((o) => <PickupRow key={o.id} o={o} toast={toast} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PickupRow({ o, toast }){
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const no = o.orderNo || ('YM-' + String(o.id).slice(-6).toUpperCase());
+  const ready = async () => { setBusy(true); try { await markOrderReady({ orderId: o.id }); toast && toast('Marked ready for pickup'); } catch (e) { toast && toast(e.message || 'Could not mark ready'); } finally { setBusy(false); } };
+  const collect = async () => {
+    if (code.trim().length < 3) { toast && toast('Enter the shopper’s pickup code'); return; }
+    setBusy(true);
+    try { await confirmStorePickup({ orderId: o.id, code: code.trim() }); setDone(true); toast && toast('Collected — order released'); }
+    catch (e) { toast && toast(e.message || 'That code doesn’t match'); } finally { setBusy(false); }
+  };
+  return (
+    <div style={{ border:'1px solid var(--m-border)', borderRadius:13, padding:12, opacity: done ? 0.6 : 1 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, marginBottom:done ? 0 : 10 }}>
+        <div style={{ minWidth:0 }}>
+          <div className="ym-h3" style={{ fontSize:13.5 }}>{no}</div>
+          <div className="ym-cap" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{o.buyerName || 'Customer'} · {ksh(o.total)}</div>
+        </div>
+        <span className="ym-cap" style={{ color: done || o.status === 'ready_pickup' ? 'var(--m-success)' : 'var(--m-fg3)', flexShrink:0 }}>{done ? '✓ Collected' : (o.status === 'ready_pickup' ? 'Ready' : (o.status === 'preparing' ? 'Preparing' : o.status))}</span>
+      </div>
+      {!done && (
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          {o.status !== 'ready_pickup' && <Btn kind="soft" size="sm" icon="fa-box-open" disabled={busy} onClick={ready}>Mark ready</Btn>}
+          <input className="ipt" value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" maxLength={6} placeholder="Pickup code" style={{ flex:1, minWidth:100, textAlign:'center', letterSpacing:3, fontWeight:700, height:42 }} />
+          <Btn kind="primary" size="sm" icon={busy ? 'fa-circle-notch' : 'fa-circle-check'} disabled={busy} onClick={collect}>Collect</Btn>
+        </div>
+      )}
     </div>
   );
 }
