@@ -97,8 +97,10 @@ function LiveMessages({ params, user, account }){
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
-      <button onClick={()=>reset('home')} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginBottom:18 }}><FA i="fa-house" /> Home</button>
-      <h1 className="ym-h1" style={{ marginBottom:20 }}>Messages</h1>
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20 }}>
+        <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ flexShrink:0 }}><FA i="fa-arrow-left" /></button>
+        <h1 className="ym-h1" style={{ margin:0 }}>Messages</h1>
+      </div>
       <NotifyBanner user={user} />
       <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:'min(560px, 72vh)', minHeight:400 }}>
         <div className="msg-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
@@ -214,9 +216,9 @@ function LiveChatThread({ conv, user, onBack }){
           {QUICK_CHIPS.map(c=><button key={c} className="ym-chip ym-btn-sm" style={{ height:34, flexShrink:0, fontSize:13 }} onClick={()=>send(c)}>{c}</button>)}
         </div>
       )}
-      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 18px', borderTop:'1px solid var(--m-border)' }}>
-        <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Message…'} aria-label="Message" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ height:48, padding:'0 20px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
-        <button onClick={()=>send()} disabled={blocked} className="icon-btn" aria-label="Send" style={{ background:'var(--m-primary-deep)', color:'#fff', opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderTop:'1px solid var(--m-border)', background:'var(--m-surface)' }}>
+        <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Message…'} aria-label="Message" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ flex:1, minWidth:0, height:46, padding:'0 18px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
+        <button onClick={()=>send()} disabled={blocked} aria-label="Send" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'none', background:'var(--m-primary-deep)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
       </div>
     </div>
   );
