@@ -21,7 +21,7 @@ export function Header(){
         <button onClick={()=>reset('home')} style={{ border:'none', background:'none', cursor:'pointer', flexShrink:0 }}>
           <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:28, display:'block' }} />
         </button>
-        <button onClick={()=>nav('search')} style={{ flex:1, maxWidth:520, height:46, borderRadius:9999, border:'none', cursor:'pointer',
+        <button onClick={()=>nav('search')} className="ym-hdr-search" style={{ flex:1, maxWidth:520, height:46, borderRadius:9999, border:'none', cursor:'pointer',
           background:'var(--m-surface-2)', display:'flex', alignItems:'center', gap:11, padding:'0 18px', fontFamily:'inherit', fontSize:14.5, color:'var(--m-fg3)' }}>
           <FA i="fa-magnifying-glass" style={{ color:'var(--m-primary)', fontSize:15 }} /> Search the mall…
         </button>
@@ -99,7 +99,17 @@ export function Header(){
           </div>
         </div>
       </>)}
-      <style>{`.cat-sub:hover{ color:var(--m-primary) !important; } @media (max-width:640px){ .acct-name{ display:none; } .ym-hdr{ gap:10px !important; } .ym-hdr-spacer{ display:none !important; } }`}</style>
+      <style>{`.cat-sub:hover{ color:var(--m-primary) !important; }
+        @media (max-width:640px){
+          .acct-name{ display:none; }
+          /* Header wraps to two rows on phones: logo + actions on top, full-width search below.
+             Fixes the squeeze from cramming logo + search + 6 icons into one narrow row. */
+          .ym-hdr{ flex-wrap:wrap; gap:8px !important; row-gap:10px; height:auto !important; padding-top:12px !important; padding-bottom:12px !important; }
+          /* Search drops to its own full-width second row; the flex spacer keeps the
+             logo on the left and the action icons on the right of the top row. */
+          .ym-hdr-search{ order:10; flex-basis:100% !important; max-width:none !important; }
+          .ym-hdr .icon-btn{ width:40px; height:40px; }
+        }`}</style>
     </header>
   );
 }
