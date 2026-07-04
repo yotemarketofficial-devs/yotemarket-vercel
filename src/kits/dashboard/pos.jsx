@@ -109,9 +109,13 @@ export function Pos({ toast }){
   const showReceipt = async (saleId, invoiceNo, snapshot) => {
     let inv = invoiceNo ? { invoiceNo } : null;
     if (firebaseEnabled && db && saleId) { try { const s = await getDoc(doc(db, 'invoices', 'inv_pos_' + saleId)); if (s.exists()) inv = { ...s.data(), ...inv }; } catch { /* none */ } }
-    setReceipt({ ...(inv || { invoiceNo: '—' }), ...snapshot });
+    const rec = { ...(inv || { invoiceNo: '—' }), ...snapshot };
+    setReceipt(rec);
     setSession((v) => ({ count: v.count + 1, total: v.total + snapshot.total }));
     setPhase('done');
+    // POS settings (set in the terminal Settings sheet): beep + auto-print on each sale.
+    try { if (localStorage.getItem('ym_pos_beep') === '1') posBeep(); } catch { /* */ }
+    try { if (localStorage.getItem('ym_pos_autoprint') === '1') setTimeout(() => printReceipt(rec), 300); } catch { /* */ }
   };
 
   const charge = async () => {
@@ -356,6 +360,18 @@ export function Pos({ toast }){
 }
 
 function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+
+// Short confirmation beep on a completed sale (opt-in via POS settings).
+function posBeep(){
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
+    const ac = new Ctx(); const o = ac.createOscillator(); const g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.001, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.25, ac.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.18);
+    o.start(); o.stop(ac.currentTime + 0.2); o.onended = () => { try { ac.close(); } catch { /* */ } };
+  } catch { /* */ }
+}
 
 // Web Bluetooth thermal printing (best-effort; works with common ESC/POS serial
 // printers exposing the 0x18f0 "printer" service). System/browser printing is the

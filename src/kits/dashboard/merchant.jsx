@@ -85,6 +85,7 @@ export function useShop() {
     address: s.address || '',
     plan: '',
     photo: null,
+    logo: s.logo || null, // store logo (denormalised on the store doc) for POS/branding
     initials: initialsOf(owner || name),
   };
 }

@@ -43,10 +43,16 @@ function Loading() {
     <Shell>
       <div style={{ textAlign: 'center', color: 'var(--m-fg3)' }}>
         <FA i="fa-circle-notch" style={{ fontSize: 28, color: 'var(--m-primary)', animation: 'ym-spin 1s linear infinite' }} />
-        <div style={{ marginTop: 12, fontSize: 14 }}>Loading your dashboard…</div>
+        <div style={{ marginTop: 12, fontSize: 14 }}>Loading…</div>
       </div>
     </Shell>
   );
+}
+
+/* Hard-navigate to another route (used to bounce cashiers into the POS terminal). */
+function Redirect({ to }) {
+  useEffect(() => { try { window.location.replace(to); } catch { /* */ } }, [to]);
+  return <Loading />;
 }
 
 /* ---------- store signup ---------- */
@@ -138,8 +144,15 @@ export default function MerchantGate({ children }) {
   if (loading) return <Loading />;
   if (!hasAccount || !uid) return <AuthPanel stayRole="merchant" defaultRole="merchant" onAuthed={() => {}} />;
   if (merchant === undefined || sub === undefined || staff === undefined) return <Loading />;
-  // Store employee (not an owner) → straight to the dashboard; the owner handles billing.
-  if ((!merchant || !merchant.storeId) && staff) return children;
+  // Store employees skip the subscription gate (the owner handles billing). Cashiers
+  // are TERMINAL-ONLY — they never enter the store dashboard, so bounce them to /pos;
+  // managers get the dashboard as normal.
+  if ((!merchant || !merchant.storeId) && staff) {
+    if (staff.role !== 'manager' && typeof window !== 'undefined' && !window.location.pathname.startsWith('/pos')) {
+      return <Redirect to="/pos" />;
+    }
+    return children;
+  }
   if (!merchant || !merchant.storeId) return <StoreSignupPanel />;
   if (!sub || sub.status !== 'active') return <SubscribePanel expired={sub && sub.status === 'expired'} />;
   return children;
