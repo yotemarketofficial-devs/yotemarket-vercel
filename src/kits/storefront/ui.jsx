@@ -99,10 +99,10 @@ export function StoreCard({ s }){
 /* Top-brand card — premium placement for enterprise-subscription businesses.
    Richer/larger than StoreCard with a gold accent; surfaces NO subscription/tier
    language to shoppers (that stays staff-only) — just a friendly "Top brand" mark. */
-export function TopBrandCard({ s }){
+export function TopBrandCard({ s, width=288 }){
   const { nav } = useYM();
   return (
-    <div className="ym-card store-card top-brand-card" style={{ padding:0, width:288, flexShrink:0 }} onClick={()=>nav('store',{sid:s.id})}>
+    <div className="ym-card store-card top-brand-card" style={{ padding:0, width, flexShrink:0 }} onClick={()=>nav('store',{sid:s.id})}>
       <div style={{ height:104, background:`linear-gradient(120deg, ${s.tint}, ${s.tint}99)`, position:'relative', borderRadius:'18px 18px 0 0', overflow:'hidden' }}>
         <FA i={s.icon} style={{ position:'absolute', right:-8, top:-10, fontSize:104, color:'rgba(255,255,255,.18)' }} />
         <PhotoOverlay src={s.img} radius="18px 18px 0 0" />

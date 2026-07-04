@@ -127,13 +127,14 @@ function EmptyBlock({ icon='fa-store', text }){
 /* ---------- HOME ---------- */
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
+  const [openCat, setOpenCat] = useSS(null); // expanded "Shop by category" tile → subcategory pills
   const IN_PROGRESS = ['queued','accepted','picked_up','at_hub','out','awaiting'];
   const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>IN_PROGRESS.includes(o.status)) : null;
   return (
     <div className="anim-up">
       {/* hero */}
       <div className="wrap" style={{ paddingTop:24 }}>
-        <div style={{ position:'relative', overflow:'hidden', borderRadius:24, backgroundImage:'var(--m-banner)', backgroundSize:'cover', backgroundPosition:'center 42%', padding:'48px 44px', color:'#fff', boxShadow:'var(--m-shadow-float)' }}>
+        <div style={{ position:'relative', overflow:'hidden', borderRadius:24, backgroundImage:'var(--m-banner)', backgroundSize:'cover', backgroundPosition:'center 72%', padding:'48px 44px', color:'#fff', boxShadow:'var(--m-shadow-float)' }}>
           <div style={{ maxWidth:560, position:'relative' }}>
             <div style={{ fontSize:13, letterSpacing:'.18em', textTransform:'uppercase', fontWeight:700, color:'var(--m-amber)' }}>Welcome to our Virtual Mall</div>
             <h1 style={{ fontSize:'clamp(28px,4vw,44px)', fontWeight:800, lineHeight:1.08, margin:'12px 0 0', textShadow:'0 2px 14px rgba(16,6,50,.6)' }}>Shop local. <span style={{ color:'var(--m-amber)' }}>Delivered</span> fast.</h1>
@@ -170,24 +171,62 @@ export function HomeScreen(){
         );
       })()}
 
-      {/* Shop by category — top-level taxonomy tiles → category browse */}
+      {/* Shop by category — top-level taxonomy tiles; tap a tile to reveal its
+          subcategory pills (the mall's full taxonomy lives here now, not a header band) */}
       <div className="wrap" style={{ marginTop:30 }}>
         <SectionTitle action="All categories" onAction={()=>nav('search')}>Shop by category</SectionTitle>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(154px, 1fr))', gap:14 }}>
           {CATEGORY_TREE.map(node => {
             const count = YM_STORES.filter(s => s.cat === node.id).length;
+            const open = openCat === node.id;
             return (
-              <button key={node.id} onClick={()=>nav('search',{ cat:node.id })} className="ym-card cat-tile" style={{ border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:15, display:'flex', alignItems:'center', gap:13 }}>
+              <button key={node.id} onClick={()=>setOpenCat(o=>o===node.id?null:node.id)} className="ym-card cat-tile" aria-expanded={open}
+                style={{ cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:15, display:'flex', alignItems:'center', gap:13, border:open?`1.5px solid ${node.tint}`:'1.5px solid transparent' }}>
                 <span style={{ width:46, height:46, borderRadius:13, flexShrink:0, background:node.tint+'22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:19 }}><FA i={node.icon} /></span>
-                <span style={{ minWidth:0 }}>
+                <span style={{ minWidth:0, flex:1 }}>
                   <span className="ym-h3" style={{ fontSize:14.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{node.short || node.label}</span>
-                  <span className="ym-cap">{count ? `${count} shop${count!==1?'s':''}` : 'Browse'}</span>
+                  <span className="ym-cap">{count ? `${count} shop${count!==1?'s':''}` : `${node.subs.length} types`}</span>
                 </span>
+                <FA i={open?'fa-chevron-up':'fa-chevron-down'} style={{ fontSize:11, color:'var(--m-fg4)', flexShrink:0 }} />
               </button>
             );
           })}
         </div>
+        {openCat && (() => {
+          const node = CATEGORY_TREE.find(c => c.id === openCat);
+          if (!node) return null;
+          return (
+            <div className="ym-card anim-fade" style={{ marginTop:14, padding:'16px 18px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:12, flexWrap:'wrap' }}>
+                <span className="ym-h3" style={{ display:'inline-flex', alignItems:'center', gap:9 }}>
+                  <span style={{ width:28, height:28, borderRadius:8, background:node.tint+'22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}><FA i={node.icon} /></span>
+                  {node.label}
+                </span>
+                <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={()=>nav('search',{ cat:node.id })}>Shop all {node.short || node.label} <FA i="fa-arrow-right" style={{ fontSize:11 }} /></button>
+              </div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                {node.subs.map(s => (
+                  <button key={s} className="ym-chip" onClick={()=>nav('search',{ cat:node.id, sub:s })} style={{ height:34, fontSize:13 }}>{s}</button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
+
+      {/* Top brands — enterprise-subscription businesses, premium horizontal rail */}
+      {(() => {
+        const brands = YM_STORES.filter(s => s.topBrand);
+        if (!brands.length) return null;
+        return (
+          <div className="wrap" style={{ marginTop:34 }}>
+            <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'brands' })}>Top brands</SectionTitle>
+            <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
+              {brands.map(s => <TopBrandCard key={s.id} s={s} />)}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Featured — staff-picked flagship stores, shown as circle logos */}
       {(() => {
@@ -207,64 +246,6 @@ export function HomeScreen(){
                   <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%', textAlign:'center' }}>{s.name}</span>
                 </button>
               ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Top brands — enterprise-subscription businesses, premium horizontal rail */}
-      {(() => {
-        const brands = YM_STORES.filter(s => s.topBrand);
-        if (!brands.length) return null;
-        return (
-          <div className="wrap" style={{ marginTop:34 }}>
-            <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'stores' })}>Top brands</SectionTitle>
-            <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
-              {brands.map(s => <TopBrandCard key={s.id} s={s} />)}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* More stores — category groups nested under one clean heading (compact rows) */}
-      {YM_STORES.length === 0 ? (
-        <div className="wrap" style={{ marginTop:36 }}>
-          <SectionTitle>Explore the mall</SectionTitle>
-          <EmptyBlock icon="fa-store" text="No stores yet — check back soon as merchants come online." />
-        </div>
-      ) : (() => {
-        const seen = new Set();
-        const sections = CATEGORY_TREE
-          .map((node) => {
-            const list = YM_STORES.filter(s => s.cat === node.id);
-            list.forEach(s => seen.add(s.id));
-            return list.length ? { node, list } : null;
-          })
-          .filter(Boolean);
-        const rest = YM_STORES.filter(s => !seen.has(s.id));
-        if (rest.length) sections.push({ node: { id:'more', label:'Other shops', icon:'fa-store', tint:'#7c3aed' }, list: rest });
-        return (
-          <div className="wrap" style={{ marginTop:32 }}>
-            <SectionTitle action="See all stores" onAction={()=>nav('search', { tab:'stores' })}>More stores</SectionTitle>
-            <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-              {sections.map(({ node, list }) => {
-                const goCat = () => nav('search', { tab:'stores', ...(node.id !== 'more' ? { cat:node.id } : {}) });
-                return (
-                  <div key={node.id}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:11 }}>
-                      <button onClick={goCat} style={{ display:'inline-flex', alignItems:'center', gap:9, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, minWidth:0 }}>
-                        <span style={{ width:30, height:30, borderRadius:9, background:node.tint + '22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}><FA i={node.icon} /></span>
-                        <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap' }}>{node.label}</span>
-                        <span className="ym-cap">· {list.length}</span>
-                      </button>
-                      {list.length > 3 && <button onClick={goCat} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ flexShrink:0 }}>See all <FA i="fa-chevron-right" style={{ fontSize:10 }} /></button>}
-                    </div>
-                    <div className="scroll-x" style={{ gap:14 }}>
-                      {list.slice(0, 10).map(s => <div key={s.id} style={{ width:232, flexShrink:0 }}><StoreCard s={s} /></div>)}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </div>
         );
@@ -293,6 +274,8 @@ export function SearchScreen({ params }){
   const prods = YM_PRODUCTS.filter(p=>(cat==='all'||ids.includes(p.cat))&&(!q||p.name.toLowerCase().includes(q.toLowerCase())));
   // Stores filter by their own category (catId) as well as the search text.
   const stores = YM_STORES.filter(s=>(cat==='all'||s.cat===cat||ids.includes(s.cat))&&(!q||s.name.toLowerCase().includes(q.toLowerCase())));
+  // Top brands = enterprise storefronts, within the current category/search filter.
+  const brands = stores.filter(s=>s.topBrand);
   const catTitle = (CATEGORY_TREE.find(c=>c.id===cat)||ymCat(cat)||{}).label || '';
   const showSub = params.sub && cat===(params.cat||'all');
   return (
@@ -311,7 +294,7 @@ export function SearchScreen({ params }){
         <input className="ym-input" autoFocus placeholder="Search products & stores…" value={q} onChange={e=>setQ(e.target.value)} style={{ paddingLeft:46, height:54 }} />
       </div>
       <div style={{ display:'flex', gap:26, borderBottom:'1px solid var(--m-border)', marginBottom:20 }}>
-        {[['products','Products',prods.length],['stores','Stores',stores.length]].map(([id,label,n])=>(
+        {[['products','Products',prods.length],['stores','Stores',stores.length],['brands','Top brands',brands.length]].map(([id,label,n])=>(
           <button key={id} onClick={()=>setTab(id)} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:15, fontWeight:600, padding:'4px 2px 12px', position:'relative', color: tab===id?'var(--m-primary)':'var(--m-fg3)' }}>
             {label} <span className="ym-cap" style={{ fontWeight:600 }}>{n}</span>
             {tab===id && <span style={{ position:'absolute', left:0, right:0, bottom:0, height:3, borderRadius:3, background:'var(--m-primary)' }} />}
@@ -327,10 +310,54 @@ export function SearchScreen({ params }){
       {tab==='products' ? (
         prods.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
         : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${catTitle||'this category'} yet`} s={q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.'} />
+      ) : tab==='brands' ? (
+        brands.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:18 }}>{brands.map(s=><TopBrandCard key={s.id} s={s} width="100%" />)}</div>
+        : <Empty icon="fa-crown" t={q ? `No top brands for “${q}”` : `No top brands in ${catTitle||'this category'} yet`} s="Top brands are our flagship enterprise storefronts — check back soon." />
       ) : (
-        stores.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
-        : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${catTitle||'this category'} yet`} s={q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.'} />
+        stores.length ? (
+          // Explore stores: browsing all with no query → the category-split view;
+          // once a category chip or search term is active, the flat filtered grid.
+          (cat==='all' && !q)
+            ? <StoresByCategory stores={stores} onPick={setCat} />
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
+        ) : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${catTitle||'this category'} yet`} s={q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.'} />
       )}
+    </div>
+  );
+}
+/* Explore stores — the mall's stores split into category groups (compact rows).
+   Moved here from the home page: the front page stays lean (Shop by category /
+   Top brands / Featured / For you) while the full category browse lives in
+   "Explore stores". "See all" on a group narrows to that category's flat grid. */
+function StoresByCategory({ stores, onPick }){
+  const seen = new Set();
+  const sections = CATEGORY_TREE.map((node) => {
+    const list = stores.filter(s => s.cat === node.id);
+    list.forEach(s => seen.add(s.id));
+    return list.length ? { node, list } : null;
+  }).filter(Boolean);
+  const rest = stores.filter(s => !seen.has(s.id));
+  if (rest.length) sections.push({ node: { id:'more', label:'Other shops', icon:'fa-store', tint:'#7c3aed' }, list: rest });
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:26 }}>
+      {sections.map(({ node, list }) => {
+        const pick = () => node.id !== 'more' && onPick(node.id);
+        return (
+          <div key={node.id}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:12 }}>
+              <button onClick={pick} style={{ display:'inline-flex', alignItems:'center', gap:9, background:'none', border:'none', cursor:node.id!=='more'?'pointer':'default', fontFamily:'inherit', padding:0, minWidth:0 }}>
+                <span style={{ width:30, height:30, borderRadius:9, background:node.tint + '22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}><FA i={node.icon} /></span>
+                <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap' }}>{node.label}</span>
+                <span className="ym-cap">· {list.length}</span>
+              </button>
+              {node.id !== 'more' && list.length > 3 && <button onClick={pick} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ flexShrink:0 }}>See all <FA i="fa-chevron-right" style={{ fontSize:10 }} /></button>}
+            </div>
+            <div className="scroll-x" style={{ gap:14 }}>
+              {list.slice(0, 10).map(s => <div key={s.id} style={{ width:232, flexShrink:0 }}><StoreCard s={s} /></div>)}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
