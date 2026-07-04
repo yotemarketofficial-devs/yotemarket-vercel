@@ -19,6 +19,10 @@ import { getStorage } from 'firebase/storage';
 // are baked in as defaults; VITE_FIREBASE_* env vars still override for other environments.
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDXt0Rpw_Cll8RQ_BO0riSKb8q7oZWvgYY',
+  // Google/OAuth sign-in shows this host ("continue to …"). To brand it, point it at
+  // auth.yotemarket.co.ke — but ONLY after that subdomain is live on Firebase Hosting
+  // (it serves /__/auth/handler). Set VITE_FIREBASE_AUTH_DOMAIN=auth.yotemarket.co.ke in
+  // Vercel then redeploy; leaving the fallback keeps sign-in working until it's verified.
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'yotemarket-app.firebaseapp.com',
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || 'https://yotemarket-app-default-rtdb.europe-west1.firebasedatabase.app',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'yotemarket-app',
