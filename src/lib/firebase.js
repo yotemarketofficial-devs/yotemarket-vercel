@@ -165,6 +165,15 @@ export const listStoreEmployees = callable('listStoreEmployees');
 export const setStoreEmployeeRole = callable('setStoreEmployeeRole');
 /** Owner: remove an employee → { ok }. { uid }. */
 export const removeStoreEmployee = callable('removeStoreEmployee');
+// ── POS device lock (anti-fraud: POS runs only on owner-authorized terminals) ──
+/** Any role: is this device authorized for POS? → { authorized, role, label }. { deviceId }. */
+export const posDeviceStatus = callable('posDeviceStatus');
+/** Owner: authorize this device as a POS terminal → { ok, label }. { deviceId, label }. */
+export const registerPosDevice = callable('registerPosDevice');
+/** Owner: list authorized POS terminals → { devices }. */
+export const listPosDevices = callable('listPosDevices');
+/** Owner: revoke a POS terminal → { ok }. { deviceId }. */
+export const removePosDevice = callable('removePosDevice');
 /** Store owner: decide fulfilment for an order awaiting a decision → { ok }. { orderId, decision:'delivery'|'pickup' }. */
 export const setOrderDeliveryDecision = callable('setOrderDeliveryDecision');
 /** Store owner: mark a store-pickup order ready for collection → { ok }. { orderId }. */

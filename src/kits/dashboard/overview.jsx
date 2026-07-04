@@ -179,7 +179,6 @@ function MerchantOrderDetail({ o, onClose }){
           <div style={{ marginTop:14, padding:12, borderRadius:12, background:'var(--m-surface-2)' }}>
             <div className="ym-cap">Customer</div>
             <div style={{ fontWeight:700, color:'var(--m-fg1)', fontSize:15 }}>{r.buyerName || o.buyer || 'Customer'}</div>
-            {r.buyerPhone && <a href={`tel:${r.buyerPhone}`} style={{ color:'var(--m-link)', fontSize:13, fontWeight:600, display:'inline-flex', gap:6, alignItems:'center', marginTop:4 }}><FA i="fa-phone" /> {r.buyerPhone}</a>}
           </div>
           <div className="ym-h3" style={{ fontSize:14, margin:'16px 0 6px' }}>{items.length} item{items.length!==1?'s':''}</div>
           {items.map((it,i)=>(
@@ -236,15 +235,7 @@ export function OrdersTable({ rows, title = 'Recent orders' }){
             {rows.map((o,idx)=>(
               <tr key={o.id+'-'+idx}>
                 <td><button onClick={()=>setDetail(o)} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'ui-monospace,Menlo,monospace', fontSize:12.5, color:'var(--m-link)', fontWeight:700, padding:0 }}>{orderNoOf(o)}</button></td>
-                <td>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <Avatar name={o.buyer} size={30} />
-                    <div style={{ minWidth:0 }}>
-                      <button onClick={()=>setDetail(o)} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, fontWeight:600, color:'var(--m-fg1)', textAlign:'left' }}>{o.buyer}</button>
-                      {o.raw?.buyerPhone && <div><a href={`tel:${o.raw.buyerPhone}`} style={{ color:'var(--m-link)', fontSize:12, fontWeight:600, display:'inline-flex', gap:5, alignItems:'center' }}><FA i="fa-phone" /> {o.raw.buyerPhone}</a></div>}
-                    </div>
-                  </div>
-                </td>
+                <td><button onClick={()=>setDetail(o)} style={{ display:'flex', alignItems:'center', gap:10, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', padding:0, textAlign:'left' }}><Avatar name={o.buyer} size={30} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{o.buyer}</span></button></td>
                 <td>{o.items}</td>
                 <td style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ksh(o.total)}</td>
                 <td>{o.hub}</td>

@@ -7,11 +7,21 @@ import React from 'react';
 import { FA, Card, Btn, SectionCard } from './primitives.jsx';
 import { ksh } from './data.js';
 import { useMerchant } from './merchant.jsx';
-import { posSale, confirmPayment, db, firebaseEnabled } from '../../lib/firebase.js';
+import { posSale, confirmPayment, db, firebaseEnabled, posDeviceStatus, registerPosDevice, listPosDevices, removePosDevice } from '../../lib/firebase.js';
 import { doc, getDoc } from 'firebase/firestore';
 const { useState, useRef, useEffect } = React;
 
 let customSeq = 0;
+
+// Stable per-device id (this browser) used for the POS device lock.
+function posDeviceId(){
+  try {
+    let id = localStorage.getItem('ym_pos_device');
+    if (!id) { id = 'dev_' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)); localStorage.setItem('ym_pos_device', id); }
+    return id;
+  } catch { return 'dev_nostorage'; }
+}
+const DEVICE_ID = posDeviceId();
 
 export function Pos({ toast }){
   const { products, store } = useMerchant();
@@ -43,6 +53,25 @@ export function Pos({ toast }){
   useEffect(() => { try { localStorage.setItem('pos_print', printMethod); } catch { /* */ } }, [printMethod]);
   // Scanner mode: keep the search box focused so a scan (types code + Enter) always lands.
   useEffect(() => { if (scanMode && phase === 'cart' && !devOpen) searchRef.current?.focus(); }, [cart, scanMode, phase, devOpen]);
+
+  // ── POS device lock: this terminal must be authorized by the store owner. ──
+  const [devAuth, setDevAuth] = useState('checking'); // checking | ok | setup | blocked
+  const [devRole, setDevRole] = useState('');
+  const [setupName, setSetupName] = useState('');
+  const [setupBusy, setSetupBusy] = useState(false);
+  const checkDevice = () => {
+    if (!firebaseEnabled) { setDevAuth('ok'); return; } // demo mode
+    setDevAuth('checking');
+    posDeviceStatus({ deviceId: DEVICE_ID })
+      .then((r) => { setDevRole(r.role || ''); setDevAuth(r.authorized ? 'ok' : (r.role === 'owner' ? 'setup' : 'blocked')); })
+      .catch(() => setDevAuth('blocked'));
+  };
+  useEffect(() => { checkDevice(); /* eslint-disable-next-line */ }, []);
+  const authorizeDevice = async () => {
+    setSetupBusy(true);
+    try { await registerPosDevice({ deviceId: DEVICE_ID, label: setupName.trim() || 'POS terminal' }); setDevAuth('ok'); toast && toast('Device authorized for POS'); }
+    catch (e) { toast && toast(e.message || 'Could not authorize this device'); } finally { setSetupBusy(false); }
+  };
 
   const subtotal = cart.reduce((s, x) => s + (Number(x.price) || 0) * x.qty, 0);
   const discVal = Number(disc.value) || 0;
@@ -93,7 +122,7 @@ export function Pos({ toast }){
     try {
       const payload = {
         items: cart.map((x) => x.custom ? { custom: true, name: x.name, price: x.price, qty: x.qty } : { pid: x.pid, qty: x.qty }),
-        payMethod: pay, customerName: name.trim(),
+        payMethod: pay, customerName: name.trim(), deviceId: DEVICE_ID,
         ...(discountAmt > 0 ? { discount: { type: disc.type, value: discVal } } : {}),
       };
       if (pay === 'mpesa') payload.phone = phone.trim();
@@ -163,6 +192,31 @@ export function Pos({ toast }){
     </body></html>`);
     w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch { /* */ } }, 250);
   };
+
+  if (devAuth !== 'ok') return (
+    <div className="anim-up" style={{ maxWidth:460, margin:'40px auto' }}>
+      <Card style={{ padding:26, textAlign:'center' }}>
+        {devAuth === 'checking' ? (
+          <><FA i="fa-circle-notch" style={{ fontSize:28, color:'var(--m-primary)', animation:'ym-spin 1s linear infinite' }} /><div style={{ marginTop:12, color:'var(--m-fg3)' }}>Checking this device…</div></>
+        ) : devAuth === 'blocked' ? (
+          <>
+            <div style={{ width:64, height:64, borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-inactive-fg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, margin:'0 auto 14px' }}><FA i="fa-lock" /></div>
+            <h1 className="ym-h2">POS not set up here</h1>
+            <p className="ym-sub" style={{ marginTop:8 }}>This device isn’t authorized for Point of sale. For fraud protection, only devices the store owner has set up can ring up sales — ask the owner to open POS on this device and authorize it.</p>
+            <Btn kind="ghost" icon="fa-rotate" style={{ marginTop:16 }} onClick={checkDevice}>Check again</Btn>
+          </>
+        ) : (
+          <>
+            <div style={{ width:64, height:64, borderRadius:16, background:'var(--m-grad)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, margin:'0 auto 14px', boxShadow:'var(--m-glow)' }}><FA i="fa-store" /></div>
+            <h1 className="ym-h2">Set up POS on this device</h1>
+            <p className="ym-sub" style={{ marginTop:8, marginBottom:16 }}>Authorize this device as a POS terminal. Only devices you authorize can ring up sales — set up another for each branch.</p>
+            <input className="ipt" value={setupName} onChange={(e) => setSetupName(e.target.value)} placeholder="Name this terminal (e.g. Main counter)" style={{ marginBottom:12 }} />
+            <Btn kind="primary" icon={setupBusy ? 'fa-circle-notch' : 'fa-circle-check'} disabled={setupBusy} onClick={authorizeDevice} style={{ width:'100%' }}>{setupBusy ? 'Authorizing…' : 'Authorize this device'}</Btn>
+          </>
+        )}
+      </Card>
+    </div>
+  );
 
   if (phase === 'waiting') return (
     <div className="anim-up" style={{ maxWidth:460, margin:'40px auto', textAlign:'center' }}>

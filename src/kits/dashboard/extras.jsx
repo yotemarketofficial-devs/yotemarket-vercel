@@ -192,6 +192,32 @@ function WithdrawSheet({ balance, payout, onClose, toast }){
   );
 }
 
+/* Receipt detail — opened from the Wallet receipts list. */
+function RcptRow({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
+function ReceiptSheet({ r, onClose }){
+  const out = r.type === 'payout';
+  return (
+    <Sheet title="Receipt" onClose={onClose}>
+      <div style={{ textAlign:'center', marginBottom:14 }}>
+        <div style={{ width:56, height:56, borderRadius:16, margin:'0 auto 10px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, background:out?'var(--m-surface-2)':'var(--m-active-bg)', color:out?'var(--m-fg3)':'var(--m-active-fg)' }}><FA i={RCPT_ICON[r.type]||'fa-receipt'} /></div>
+        <div className="ym-h2" style={{ fontSize:22 }}>{out?'−':'+'}{ksh(r.amount||0)}</div>
+        <div className="ym-cap" style={{ marginTop:2 }}>{r.title||'Payment'}{r.storeName?` · ${r.storeName}`:''}</div>
+      </div>
+      {Array.isArray(r.lines) && r.lines.length>0 && (
+        <div style={{ borderTop:'1px solid var(--m-border)', padding:'12px 0', display:'flex', flexDirection:'column', gap:8 }}>
+          {r.lines.map((l,i)=>(<div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:13.5 }}><span className="ym-sub">{l.label}</span><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(l.amount||0)}</span></div>))}
+        </div>
+      )}
+      <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:12, display:'flex', flexDirection:'column', gap:8 }}>
+        <RcptRow l="Reference" v={r.ref || r.receiptNo || '—'} />
+        {r.method && <RcptRow l="Method" v={{ mpesa:'M-Pesa', cash:'Cash', wallet:'YoteWallet' }[r.method] || r.method} />}
+        <RcptRow l="Date" v={fmtRcptWhen(r)} />
+      </div>
+      <Btn kind="primary" style={{ width:'100%', marginTop:16 }} onClick={onClose}>Done</Btn>
+    </Sheet>
+  );
+}
+
 export function Wallet({ toast }){
   const { merchant, live } = useMerchant();
   const { user } = useAuth();
@@ -199,6 +225,7 @@ export function Wallet({ toast }){
   const [settlements, setSettlements] = useStateX([]);
   const [pendingChange, setPendingChange] = useStateX(false);
   const [modal, setModal] = useStateX(null); // 'setup' | 'change' | 'withdraw'
+  const [rcpt, setRcpt] = useStateX(null);   // open receipt detail
   useEffX(() => {
     if (!firebaseEnabled || !db || !user?.uid) return undefined;
     const u = onSnapshot(query(collection(db, 'receipts'), where('userId', '==', user.uid), limit(40)),
@@ -268,11 +295,12 @@ export function Wallet({ toast }){
                 ? receipts.map((r,i)=>{
                     const out = r.type === 'payout';
                     return (
-                      <div key={r.id||i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
+                      <button key={r.id||i} onClick={()=>setRcpt(r)} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none', width:'100%', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
                         <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:out?'var(--m-surface-2)':'var(--m-active-bg)', color:out?'var(--m-fg3)':'var(--m-active-fg)' }}><FA i={RCPT_ICON[r.type]||'fa-receipt'} /></div>
                         <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.title||'Payment'}</div><div className="ym-cap">{fmtRcptWhen(r)}{r.ref?` · ${r.ref}`:''}</div></div>
                         <div style={{ fontWeight:700, color:out?'var(--m-fg1)':'var(--m-success)' }}>{out?'−':'+'}{ksh(r.amount||0)}</div>
-                      </div>
+                        <FA i="fa-chevron-right" style={{ color:'var(--m-fg3)', fontSize:12 }} />
+                      </button>
                     );
                   })
                 : WALLET.tx.map((t,i)=>(
@@ -298,6 +326,7 @@ export function Wallet({ toast }){
       {modal === 'setup' && <PayoutForm onClose={()=>setModal(null)} toast={toast} />}
       {modal === 'change' && <PayoutForm change onClose={()=>setModal(null)} toast={toast} />}
       {modal === 'withdraw' && <WithdrawSheet balance={balance} payout={payout} onClose={()=>setModal(null)} toast={toast} />}
+      {rcpt && <ReceiptSheet r={rcpt} onClose={()=>setRcpt(null)} />}
     </div>
   );
 }
