@@ -28,7 +28,7 @@ function useProfileData(uid){
     unsubs.push(subscribeAddresses(uid, (a)=>setData(p=>({ ...p, addresses:a }))));
     unsubs.push(subscribeFollows(uid, (f)=>setData(p=>({ ...p, follows:f }))));
     // Digital receipts (equality-only query → no composite index; sorted client-side).
-    unsubs.push(onSnapshot(query(collection(db,'receipts'), where('userId','==',uid), limit(30)), (s)=>{ const r=s.docs.map(d=>({ id:d.id, ...d.data() })).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); setData(p=>({ ...p, receipts:r })); }, ()=>{}));
+    unsubs.push(onSnapshot(query(collection(db,'receipts'), where('userId','==',uid), limit(40)), (s)=>{ const r=s.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>x.type!=='pos').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); setData(p=>({ ...p, receipts:r })); }, ()=>{}));
     return () => unsubs.forEach(u=>u());
   }, [uid]);
   return data;

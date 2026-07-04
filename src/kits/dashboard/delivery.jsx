@@ -34,7 +34,6 @@ export function DeliverySettings({ toast }){
   const { store } = useMerchant();
   const d = store?.delivery || {};
   const [offers, setOffers] = useState(true);
-  const [fee, setFee] = useState('150');
   const [freeOver, setFreeOver] = useState('0');
   const [autoDispatch, setAutoDispatch] = useState(true);
   const [note, setNote] = useState('');
@@ -43,21 +42,20 @@ export function DeliverySettings({ toast }){
   // Hydrate from the store's saved rules once they load.
   useEffect(() => {
     setOffers(d.offers !== false);
-    setFee(String(d.fee != null ? d.fee : 150));
     setFreeOver(String(d.freeOver != null ? d.freeOver : 0));
     setAutoDispatch(d.autoDispatch !== false);
     setNote(d.note || '');
-  }, [store?.id, d.offers, d.fee, d.freeOver, d.autoDispatch, d.note]); // eslint-disable-line
+  }, [store?.id, d.offers, d.freeOver, d.autoDispatch, d.note]); // eslint-disable-line
 
   const save = async () => {
     setBusy(true);
     try {
-      await setStoreDelivery({ offers, fee: Number(fee) || 0, freeOver: Number(freeOver) || 0, autoDispatch, note: note.trim() });
+      await setStoreDelivery({ offers, freeOver: Number(freeOver) || 0, autoDispatch, note: note.trim() });
       toast && toast('Delivery rules saved');
     } catch (e) { toast && toast(e.message || 'Could not save delivery rules'); } finally { setBusy(false); }
   };
 
-  const feeN = Number(fee) || 0; const freeN = Number(freeOver) || 0;
+  const freeN = Number(freeOver) || 0;
   return (
     <div className="fadeup" style={{ display:'flex', flexDirection:'column', gap:20, maxWidth:640 }}>
       <div>
@@ -71,12 +69,6 @@ export function DeliverySettings({ toast }){
             <Toggle on={offers} onChange={setOffers} />
           </Row>
           {offers && <>
-            <Row title="Delivery fee" sub="Flat fee added at checkout.">
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span className="ym-cap">KSh</span>
-                <input className="ym-input" value={fee} onChange={(e) => setFee(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" style={{ width:110, height:42 }} />
-              </div>
-            </Row>
             <Row title="Free delivery over" sub={freeN > 0 ? `Orders of ${ksh(freeN)}+ ship free.` : 'No free-delivery threshold (0 = off).'}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span className="ym-cap">KSh</span>
@@ -107,7 +99,7 @@ export function DeliverySettings({ toast }){
       <Btn kind="primary" icon={busy ? 'fa-circle-notch' : 'fa-check'} disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy ? 'Saving…' : 'Save delivery rules'}</Btn>
 
       <div style={{ display:'flex', gap:10, alignItems:'center', color:'var(--m-fg3)', fontSize:12.5 }}>
-        <FA i="fa-store" /> Preview: {offers ? <>Delivery {feeN > 0 ? ksh(feeN) : 'free'}{freeN > 0 ? ` · free over ${ksh(freeN)}` : ''}</> : 'Pickup only'} · {autoDispatch ? 'auto-dispatch' : 'manual decision'}
+        <FA i="fa-store" /> Preview: {offers ? <>Delivery on{freeN > 0 ? ` · free over ${ksh(freeN)}` : ''}</> : 'Pickup only'} · {autoDispatch ? 'auto-dispatch' : 'manual decision'}
       </div>
     </div>
   );
