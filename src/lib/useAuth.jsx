@@ -10,6 +10,7 @@ import {
   signOut,
   updateProfile,
   sendEmailVerification,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider, firebaseEnabled, db } from './firebase.js';
@@ -98,6 +99,17 @@ export function AuthProvider({ children }) {
     if (firebaseEnabled && auth?.currentUser) await sendEmailVerification(auth.currentUser);
   }, []);
 
+  const resetPassword = useCallback(async (email) => {
+    const addr = String(email || '').trim();
+    if (!addr) throw new Error('Enter your email first, then tap “Forgot password”.');
+    if (!firebaseEnabled || !auth) return; // guest/demo mode — nothing to reset
+    try {
+      await sendPasswordResetEmail(auth, addr);
+    } catch (err) {
+      throw new Error(friendlyError(err));
+    }
+  }, []);
+
   // A "real account" is a signed-in user that isn't an anonymous/local guest.
   const isGuest = Boolean(user?.isGuest) || Boolean(user?.isAnonymous);
   const hasAccount = Boolean(user) && !isGuest;
@@ -116,8 +128,9 @@ export function AuthProvider({ children }) {
       continueAsGuest,
       signOutUser,
       resendVerification,
+      resetPassword,
     }),
-    [user, loading, hasAccount, isGuest, signInEmail, registerEmail, signInGoogle, continueAsGuest, signOutUser, resendVerification],
+    [user, loading, hasAccount, isGuest, signInEmail, registerEmail, signInGoogle, continueAsGuest, signOutUser, resendVerification, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

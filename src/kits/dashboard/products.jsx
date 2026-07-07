@@ -6,10 +6,8 @@ import { useMerchant, useStoreOverview } from './merchant.jsx';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { productImagePath } from '../../lib/storage.js';
 import { saveProduct } from '../../lib/firebase.js';
+import { CATEGORY_TREE } from '../storefront/categories.js';
 const { useState: useStateP } = React;
-
-// Map the modal's category labels onto the storefront catalog category ids.
-const CAT_MAP = { Phones:'electronics', Electronics:'electronics', Audio:'electronics', Photography:'electronics', Fashion:'fashion', Groceries:'groceries', Beauty:'beauty', 'Home & Living':'home' };
 
 export function Products({ onAdd, toast }){
   const [filter, setFilter] = useStateP('all');
@@ -82,7 +80,7 @@ export function AddProductModal({ onClose, onSave }){
   const { store } = useMerchant();
   const storeId = store?.id;
   const [step, setStep] = useStateP(1);
-  const [form, setForm] = useStateP({ name:'', category:'Phones', summary:'', desc:'', price:'', discount:'', img:'' });
+  const [form, setForm] = useStateP({ name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', img:'' });
   const [saving, setSaving] = useStateP(false);
   const [err, setErr] = useStateP('');
   const set = (k,v)=>setForm(f=>({ ...f, [k]:v }));
@@ -97,7 +95,7 @@ export function AddProductModal({ onClose, onSave }){
       await saveProduct({
         name: form.name.trim(), price: Number(form.price) || 0,
         was: form.discount ? Number(form.discount) : null,
-        catId: CAT_MAP[form.category] || null, desc: form.desc || form.summary || '',
+        catId: form.catId || null, sub: form.sub || null, desc: form.desc || form.summary || '',
         img: form.img || null,
       });
       onSave(form);
@@ -114,7 +112,17 @@ export function AddProductModal({ onClose, onSave }){
         <div style={{ padding:24 }}>
           {step===1 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <Field label="Product name"><input className="ipt" value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Samsung Galaxy A05" /></Field>
-            <Field label="Category"><select className="ipt" value={form.category} onChange={e=>set('category',e.target.value)}>{['Phones','Electronics','Fashion','Groceries','Beauty','Home & Living','Photography','Audio'].map(c=><option key={c}>{c}</option>)}</select></Field>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <Field label="Category"><select className="ipt" value={form.catId} onChange={e=>setForm(f=>({ ...f, catId:e.target.value, sub:'' }))}>{CATEGORY_TREE.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}</select></Field>
+              {(() => { const node = CATEGORY_TREE.find(c=>c.id===form.catId); return (
+                <Field label="Subcategory" hint="Lets shoppers filter to exactly this type">
+                  <select className="ipt" value={form.sub} onChange={e=>set('sub',e.target.value)} disabled={!node?.subs?.length}>
+                    <option value="">— None —</option>
+                    {node?.subs?.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                </Field>
+              ); })()}
+            </div>
             <Field label="Short summary" hint="One line shown in product listings"><input className="ipt" value={form.summary} onChange={e=>set('summary',e.target.value)} placeholder="6.7&quot; display, 50MP camera, 2-year warranty" /></Field>
             <Field label="Full description"><textarea rows={4} className="ipt" style={{ resize:'none' }} value={form.desc} onChange={e=>set('desc',e.target.value)} placeholder="Tell shoppers what makes this product great…" /></Field>
           </div>}

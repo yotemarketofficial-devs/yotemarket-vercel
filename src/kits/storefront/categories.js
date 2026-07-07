@@ -54,7 +54,41 @@ export const CATEGORY_TREE = [
     id: 'vehicles', label: 'Vehicles', short: 'Vehicles', icon: 'fa-car', tint: '#0ea5e9', match: [],
     subs: ['Cars', 'Motorcycles & Scooters', 'Vehicle Parts & Accessories', 'Buses & Microbuses', 'Trucks & Trailers'],
   },
+  {
+    id: 'general', label: 'General Stores', short: 'General', icon: 'fa-shop', tint: '#0d9488', match: ['general'],
+    subs: ['Convenience & Duka', 'Wholesale & Bulk', 'Stationery & Books', 'Gifts & Novelty', 'Household Essentials', 'Party & Events'],
+  },
 ];
+
+// ── Subcategory matching ─────────────────────────────────────────────────────
+// Products/stores carry a top-level `catId`; a subcategory is a finer refinement.
+// When an item has an explicit `sub` tag we match it exactly; otherwise we fall back
+// to accurate keyword matching against its text (name/description/tagline) so the
+// existing catalog still filters precisely. Connector/filler words are dropped and
+// terms are lightly stemmed so "Laptops & Computers" matches "HP Laptop", etc.
+const SUB_STOP = new Set([
+  'and', 'the', 'for', 'with', 'other', 'general', 'equipment', 'accessories',
+  'accessory', 'products', 'product', 'wear', 'care', 'supplies', 'essentials',
+  'items', 'goods', 'more',
+]);
+const subStem = (t) => t.replace(/ies$/, 'y').replace(/(es|s)$/, '');
+// Significant, stemmed terms for a subcategory label (e.g. "Skin Care" → ["skin"]).
+export function subTerms(subLabel) {
+  return String(subLabel || '')
+    .toLowerCase().replace(/&/g, ' ').split(/[^a-z0-9]+/)
+    .map(subStem)
+    .filter((t) => t.length > 2 && !SUB_STOP.has(t));
+}
+// True when `subLabel` matches an item, given its explicit `itemSub` (exact match)
+// and any free-text fields to keyword-match against. No sub selected ⇒ always true.
+export function matchesSub(subLabel, itemSub, ...texts) {
+  if (!subLabel) return true;
+  if (itemSub && String(itemSub).toLowerCase() === String(subLabel).toLowerCase()) return true;
+  const terms = subTerms(subLabel);
+  if (!terms.length) return true;
+  const hay = [itemSub, ...texts].join(' ').toLowerCase();
+  return terms.some((t) => hay.includes(t));
+}
 
 // The category chip row (and any flat category list) — derived from the tree so it
 // always matches the "All categories" mega-menu. "All" first, then every top node.

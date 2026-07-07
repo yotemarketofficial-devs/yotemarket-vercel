@@ -56,11 +56,12 @@ function BrandPanel({ theme, onTheme }) {
 }
 
 export default function AuthPanel({ overlay = false, onClose, theme, onTheme, stayRole = 'shopper', defaultRole, showGuest = false, onGuest, onAuthed }) {
-  const { signInEmail, registerEmail, signInGoogle } = useAuth();
+  const { signInEmail, registerEmail, signInGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useS('signin');
   const [role, setRole] = useS(defaultRole || stayRole);
   const [busy, setBusy] = useS(false);
   const [err, setErr] = useS('');
+  const [notice, setNotice] = useS('');
   const [name, setName] = useS('');
   const [email, setEmail] = useS('');
   const [phone, setPhone] = useS('');
@@ -74,7 +75,7 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
   };
 
   const submit = async (provider) => {
-    setErr(''); setBusy(true);
+    setErr(''); setNotice(''); setBusy(true);
     try {
       if (provider === 'google') await signInGoogle();
       else if (mode === 'register') await registerEmail(name, email, password, phone);
@@ -86,14 +87,27 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
     }
   };
 
+  const forgot = async () => {
+    setErr(''); setNotice('');
+    try {
+      await resetPassword(email);
+      setNotice(`Password reset link sent to ${email.trim()} — check your inbox.`);
+    } catch (e) {
+      setErr(e.message || 'Could not send the reset email.');
+    }
+  };
+
   const merchantCtx = stayRole === 'merchant';
+  // Overlay uses flex-start + margin:auto so the card CENTERS when it fits and stays
+  // fully scrollable (top corners never clipped) when the viewport is short — it always
+  // floats with all four rounded corners visible.
   const wrapStyle = overlay
-    ? { position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'rgba(10,6,30,.55)', backdropFilter: 'blur(4px)', overflowY: 'auto' }
+    ? { position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 24, background: 'rgba(10,6,30,.55)', backdropFilter: 'blur(4px)', overflowY: 'auto' }
     : { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--m-bg)' };
 
   return (
     <div style={wrapStyle} onClick={(e) => { if (overlay && onClose && e.target === e.currentTarget) onClose(); }}>
-      <div className="ym-card anim-up auth-modal" style={{ position: 'relative', width: '100%', maxWidth: 880, minHeight: 520, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
+      <div className="ym-card anim-up auth-modal" style={{ position: 'relative', margin: 'auto', width: '100%', maxWidth: 880, minHeight: 520, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
         {onClose && (
           <button onClick={onClose} aria-label="Close" className="icon-btn" style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, background: 'rgba(255,255,255,.16)', color: '#fff' }}><FA i="fa-xmark" /></button>
         )}
@@ -109,7 +123,7 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
 
             <div style={{ display: 'flex', gap: 4, background: 'var(--m-surface-2)', borderRadius: 9999, padding: 4, margin: '18px 0' }}>
               {[['signin', 'Sign in'], ['register', 'Register']].map(([id, label]) => (
-                <button key={id} onClick={() => { setMode(id); setErr(''); }} style={{ flex: 1, height: 42, borderRadius: 9999, border: 'none', cursor: 'pointer',
+                <button key={id} onClick={() => { setMode(id); setErr(''); setNotice(''); }} style={{ flex: 1, height: 42, borderRadius: 9999, border: 'none', cursor: 'pointer',
                   fontFamily: 'inherit', fontSize: 14.5, fontWeight: 600, transition: 'all .2s',
                   background: mode === id ? 'var(--m-primary-deep)' : 'transparent', color: mode === id ? '#fff' : 'var(--m-fg3)' }}>{label}</button>
               ))}
@@ -137,8 +151,15 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
               {mode === 'register' && <div><label className="ym-label">Full name</label><input className="ym-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Wanjiru Kamau" /></div>}
               <div><label className="ym-label">Email</label><input className="ym-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" /></div>
               {mode === 'register' && <div><label className="ym-label">Phone number (M-Pesa)</label><input className="ym-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></div>}
-              <div><label className="ym-label">Password</label><input className="ym-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} /></div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <label className="ym-label">Password</label>
+                  {mode === 'signin' && <button type="button" onClick={forgot} disabled={busy} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, color: 'var(--m-link)', padding: 0 }}>Forgot password?</button>}
+                </div>
+                <input className="ym-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+              </div>
 
+              {notice && <div role="status" style={{ display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-active-bg)', color: 'var(--m-active-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13.5, fontWeight: 500 }}><FA i="fa-circle-check" /> {notice}</div>}
               {err && <div role="alert" style={{ display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13.5, fontWeight: 500 }}><FA i="fa-circle-exclamation" /> {err}</div>}
 
               <button className="ym-btn ym-btn-primary" disabled={busy} onClick={() => submit()} style={{ marginTop: 4 }}>

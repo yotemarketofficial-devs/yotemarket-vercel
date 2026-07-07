@@ -46,6 +46,7 @@ const normProduct = (d) => ({
   was: d.was != null ? Number(d.was) : undefined,
   store: d.storeId || d.store,
   cat: d.catId || d.cat,
+  sub: d.sub || d.subcat || d.subcategory || undefined, // subcategory tag → precise sub-filter
   rating: d.rating != null ? Number(d.rating) : undefined,
   reviews: d.reviews,
   desc: d.desc,
@@ -61,6 +62,7 @@ const normStore = (d) => ({
   featured: !!d.featured,     // staff-picked flagship → storefront "Featured stores" circles
   topBrand: !!(d.topBrand || d.enterprise), // enterprise-subscription business → storefront "Top brands" rail (premium placement, set server-side on activation)
   cat: d.catId || d.cat || null, // category id (from signup) — powers category browse/filter
+  sub: d.sub || d.subcat || d.subcategory || undefined, // optional store specialty subcategory
   area: d.area,
   address: d.address || undefined,                          // shown under the store map
   delivery: d.delivery || null,                             // delivery rules → checkout fee/free-over/offer

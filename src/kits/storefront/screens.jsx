@@ -2,7 +2,7 @@
 import React from 'react';
 import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, TopBrandCard, SectionTitle, QtyStepper } from './ui.jsx';
 import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
-import { CATEGORY_TREE, catalogIdsFor } from './categories.js';
+import { CATEGORY_TREE, catalogIdsFor, matchesSub } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
 import { subscribeProductReviews } from '../../lib/reviews.js';
@@ -269,30 +269,40 @@ export function SearchScreen({ params }){
   const { reset } = useYM();
   const [q, setQ] = useSS('');
   const [cat, setCat] = useSS(params.cat || 'all');
+  const [sub, setSub] = useSS(params.sub || null);
   const [tab, setTab] = useSS(params.tab || 'products');
   const ids = catalogIdsFor(cat);
-  const prods = YM_PRODUCTS.filter(p=>(cat==='all'||ids.includes(p.cat))&&(!q||p.name.toLowerCase().includes(q.toLowerCase())));
-  // Stores filter by their own category (catId) as well as the search text.
-  const stores = YM_STORES.filter(s=>(cat==='all'||s.cat===cat||ids.includes(s.cat))&&(!q||s.name.toLowerCase().includes(q.toLowerCase())));
-  // Top brands = enterprise storefronts, within the current category/search filter.
+  const node = CATEGORY_TREE.find(c => c.id === cat);
+  // Picking a category resets the subcategory (a sub belongs to one parent category).
+  const pickCat = (c) => { setCat(c); setSub(null); };
+  const matchQ = (name) => !q || name.toLowerCase().includes(q.toLowerCase());
+  // Products: category + text + PRECISE subcategory (exact `sub` tag, else keyword match).
+  const prods = YM_PRODUCTS.filter(p => (cat==='all'||ids.includes(p.cat)) && matchQ(p.name) && matchesSub(sub, p.sub, p.name, p.desc));
+  // Stores: category + text; when a subcategory is active a store qualifies if it (or one
+  // of its products) matches that sub — so sub-filtering narrows stores precisely too.
+  const storeMatchesSub = (s) => !sub || matchesSub(sub, s.sub, s.name, s.tagline) ||
+    YM_PRODUCTS.some(p => p.store === s.id && matchesSub(sub, p.sub, p.name, p.desc));
+  const stores = YM_STORES.filter(s => (cat==='all'||s.cat===cat||ids.includes(s.cat)) && matchQ(s.name) && storeMatchesSub(s));
+  // Top brands = enterprise storefronts, within the current category/sub/search filter.
   const brands = stores.filter(s=>s.topBrand);
-  const catTitle = (CATEGORY_TREE.find(c=>c.id===cat)||ymCat(cat)||{}).label || '';
-  const showSub = params.sub && cat===(params.cat||'all');
+  const catTitle = (node || ymCat(cat) || {}).label || '';
   return (
     <div className="wrap anim-up" style={{ paddingTop:28 }}>
-      <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+        <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ flexShrink:0 }}><FA i="fa-arrow-left" /></button>
+        <div style={{ position:'relative', flex:1, maxWidth:620 }}>
+          <FA i="fa-magnifying-glass" style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', color:'var(--m-fg4)' }} />
+          <input className="ym-input" autoFocus placeholder="Search products & stores…" value={q} onChange={e=>setQ(e.target.value)} style={{ paddingLeft:46, height:54 }} />
+        </div>
+      </div>
       {cat!=='all' && (
         <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:7, marginBottom:14, flexWrap:'wrap' }}>
-          <button onClick={()=>setCat('all')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12, color:'var(--m-fg3)', padding:0 }}>All categories</button>
+          <button onClick={()=>pickCat('all')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12, color:'var(--m-fg3)', padding:0 }}>All categories</button>
           <FA i="fa-chevron-right" style={{ fontSize:9 }} />
-          <span style={{ color: showSub?'var(--m-fg3)':'var(--m-fg1)', fontWeight:600 }}>{catTitle}</span>
-          {showSub && <><FA i="fa-chevron-right" style={{ fontSize:9 }} /><span style={{ color:'var(--m-primary)', fontWeight:600 }}>{params.sub}</span></>}
+          <button onClick={()=>setSub(null)} style={{ border:'none', background:'none', cursor:sub?'pointer':'default', fontFamily:'inherit', fontSize:12, fontWeight:600, color: sub?'var(--m-fg3)':'var(--m-fg1)', padding:0 }}>{catTitle}</button>
+          {sub && <><FA i="fa-chevron-right" style={{ fontSize:9 }} /><span style={{ color:'var(--m-primary)', fontWeight:600 }}>{sub}</span></>}
         </div>
       )}
-      <div style={{ position:'relative', maxWidth:620, marginBottom:20 }}>
-        <FA i="fa-magnifying-glass" style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', color:'var(--m-fg4)' }} />
-        <input className="ym-input" autoFocus placeholder="Search products & stores…" value={q} onChange={e=>setQ(e.target.value)} style={{ paddingLeft:46, height:54 }} />
-      </div>
       <div style={{ display:'flex', gap:26, borderBottom:'1px solid var(--m-border)', marginBottom:20 }}>
         {[['products','Products',prods.length],['stores','Stores',stores.length],['brands','Top brands',brands.length]].map(([id,label,n])=>(
           <button key={id} onClick={()=>setTab(id)} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:15, fontWeight:600, padding:'4px 2px 12px', position:'relative', color: tab===id?'var(--m-primary)':'var(--m-fg3)' }}>
@@ -302,14 +312,23 @@ export function SearchScreen({ params }){
         ))}
       </div>
       {/* Category chips filter both products and stores (shared category taxonomy). */}
-      <div className="scroll-x" style={{ gap:8, marginBottom:20 }}>
+      <div className="scroll-x" style={{ gap:8, marginBottom:14 }}>
         {YM_CATEGORIES.map(c=>(
-          <button key={c.id} className={'ym-chip'+(cat===c.id?' is-active':'')} onClick={()=>setCat(c.id)} style={{ flexShrink:0 }}><FA i={c.icon} style={{ fontSize:13 }} /> {c.label}</button>
+          <button key={c.id} className={'ym-chip'+(cat===c.id?' is-active':'')} onClick={()=>pickCat(c.id)} style={{ flexShrink:0 }}><FA i={c.icon} style={{ fontSize:13 }} /> {c.label}</button>
         ))}
       </div>
+      {/* Subcategory chips — refine within the chosen category (precise sub-filter). */}
+      {node && node.subs && node.subs.length > 0 && (
+        <div className="scroll-x" style={{ gap:8, marginBottom:20 }}>
+          <button className={'ym-chip'+(!sub?' is-active':'')} onClick={()=>setSub(null)} style={{ flexShrink:0 }}>All {node.short || node.label}</button>
+          {node.subs.map(sName => (
+            <button key={sName} className={'ym-chip'+(sub===sName?' is-active':'')} onClick={()=>setSub(sub===sName?null:sName)} style={{ flexShrink:0 }}>{sName}</button>
+          ))}
+        </div>
+      )}
       {tab==='products' ? (
         prods.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
-        : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${catTitle||'this category'} yet`} s={q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.'} />
+        : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.')} />
       ) : tab==='brands' ? (
         brands.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:18 }}>{brands.map(s=><TopBrandCard key={s.id} s={s} width="100%" />)}</div>
         : <Empty icon="fa-crown" t={q ? `No top brands for “${q}”` : `No top brands in ${catTitle||'this category'} yet`} s="Top brands are our flagship enterprise storefronts — check back soon." />
@@ -320,7 +339,7 @@ export function SearchScreen({ params }){
           (cat==='all' && !q)
             ? <StoresByCategory stores={stores} onPick={setCat} />
             : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
-        ) : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${catTitle||'this category'} yet`} s={q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.'} />
+        ) : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.')} />
       )}
     </div>
   );
