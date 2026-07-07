@@ -358,6 +358,8 @@ function HomePage() {
                 <li><Link to="/pricing">Pricing</Link></li>
                 <li><Link to="/careers">Careers</Link></li>
                 <li><Link to="/contact">Contact</Link></li>
+                <li><Link to="/terms">Terms of Service</Link></li>
+                <li><Link to="/privacy">Privacy Policy</Link></li>
               </ul>
             </div>
             <div>

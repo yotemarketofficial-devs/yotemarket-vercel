@@ -90,6 +90,10 @@ export function FeedManager({ toast }){
                 {products.map((p) => <option key={p.id} value={p.id}>{p.name} · {ksh(p.price)}</option>)}
               </select>
             </div>
+            <div style={{ display:'flex', gap:10, padding:'11px 13px', borderRadius:12, background:'var(--m-surface-2)', border:'1px solid var(--m-line)', fontSize:12.5, color:'var(--m-fg2)', lineHeight:1.55 }}>
+              <FA i="fa-music" style={{ color:'var(--m-primary)', marginTop:2, flexShrink:0 }} />
+              <span><strong style={{ color:'var(--m-fg1)' }}>Music &amp; copyright:</strong> only post clips using audio you own or are licensed to use. Copyrighted music used without permission may be muted, removed, or taken down, and repeat infringement can lead to suspension. You are responsible for the content you upload — see our <a href="/terms" target="_blank" rel="noreferrer" style={{ color:'var(--m-primary)', fontWeight:600 }}>Terms of Service</a>.</span>
+            </div>
             {err && <div style={{ color:'var(--m-danger,#dc2626)', fontSize:13 }}><FA i="fa-triangle-exclamation" /> {err}</div>}
             {busy && <div style={{ fontSize:13, color:'var(--m-fg3)' }}>Uploading… {Math.round(pct * 100)}%</div>}
             <Btn kind="primary" icon={busy ? 'fa-circle-notch' : 'fa-paper-plane'} disabled={busy || !file} onClick={post} style={{ alignSelf:'flex-start' }}>{busy ? 'Posting…' : 'Post clip'}</Btn>

@@ -175,6 +175,9 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
                 {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
               </button>
               {showGuest && <button className="ym-btn ym-btn-ghost" disabled={busy} onClick={() => { (onGuest || onClose || (() => {}))(); }}>Continue browsing as guest</button>}
+              <div className="ym-cap" style={{ textAlign: 'center', marginTop: 2 }}>
+                By continuing, you agree to our <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--m-link)', fontWeight: 600 }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--m-link)', fontWeight: 600 }}>Privacy Policy</a>.
+              </div>
             </div>
           </div>
         </div>

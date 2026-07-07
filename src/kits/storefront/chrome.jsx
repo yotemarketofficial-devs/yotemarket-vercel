@@ -128,6 +128,8 @@ export function Footer(){
           <FLink label="Become a rider" href="/rider" />
           <FLink label="Help center" href="/contact" />
           <FLink label="Contact us" href="/contact" />
+          <FLink label="Terms of Service" href="/terms" />
+          <FLink label="Privacy Policy" href="/privacy" />
         </div>
       </div>
       <div className="wrap" style={{ borderTop:'1px solid var(--m-border)', padding:'18px 24px', display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>

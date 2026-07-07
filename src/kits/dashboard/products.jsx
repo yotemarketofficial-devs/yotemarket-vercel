@@ -153,6 +153,10 @@ export function AddProductModal({ onClose, onSave }){
               </ImageUpload>
               {form.img && <button type="button" onClick={()=>set('img','')} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, color:'var(--m-link)', marginTop:6 }}>Replace / remove photo</button>}
             </div>
+            <div style={{ display:'flex', gap:10, padding:'12px 14px', borderRadius:12, background:'var(--m-surface-3)', fontSize:12.5, color:'var(--m-fg2)', lineHeight:1.55 }}>
+              <FA i="fa-shield-halved" style={{ color:'var(--m-primary)', marginTop:2, flexShrink:0 }} />
+              <span>By publishing, you confirm this product is genuine, lawful, and accurately described, and that you hold any licenses required for regulated goods (e.g. medicines, alcohol). Counterfeit, substandard, misrepresented, unlicensed, or illegal goods will be removed, may forfeit payouts, and can be reported to the authorities — see our <a href="/terms" target="_blank" rel="noreferrer" style={{ color:'var(--m-primary)', fontWeight:600 }}>Terms of Service</a>.</span>
+            </div>
             {err && <div className="ym-sub" style={{ color:'var(--m-danger)', display:'flex', gap:8, alignItems:'center' }}><FA i="fa-triangle-exclamation" /> {err}</div>}
           </div>}
         </div>

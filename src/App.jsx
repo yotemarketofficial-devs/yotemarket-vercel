@@ -8,6 +8,8 @@ import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 import Pricing from './pages/Pricing.jsx';
 import Careers from './pages/Careers.jsx';
+import Terms from './pages/Terms.jsx';
+import Privacy from './pages/Privacy.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
@@ -36,6 +38,8 @@ function App() {
           <Route path="contact" element={<Contact />} />
           <Route path="pricing" element={<Pricing />} />
           <Route path="careers" element={<Careers />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="privacy" element={<Privacy />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
