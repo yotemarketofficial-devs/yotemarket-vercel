@@ -102,7 +102,9 @@ export function Footer(){
     <footer style={{ background:'var(--m-surface)', borderTop:'1px solid var(--m-border)', marginTop:48 }}>
       <div className="wrap ym-footer-grid" style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr 1fr', gap:32, padding:'48px 24px 32px' }}>
         <div>
-          <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:26, marginBottom:14 }} />
+          <button onClick={()=>reset('home')} aria-label="Back to YoteMarket home" style={{ border:'none', background:'none', cursor:'pointer', padding:0, display:'block', marginBottom:14 }}>
+            <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:26, display:'block' }} />
+          </button>
           <p className="ym-sub" style={{ maxWidth:300 }}>Kenya's virtual mall — shop hundreds of local stores, chat &amp; negotiate in the app messenger, pay with M-Pesa, and collect at your nearest hub.</p>
           <div style={{ display:'flex', gap:10, marginTop:16 }}>
             {SOCIAL.map(s=>(

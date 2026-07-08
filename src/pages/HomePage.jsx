@@ -441,7 +441,7 @@ function HomePage() {
         <div className="wrap">
           <div className="foot">
             <div className="brand">
-              <img id="footlogo" src="/assets/logo.png" alt="YoteMarket" />
+              <Link to="/" aria-label="YoteMarket home"><img id="footlogo" src="/assets/logo.png" alt="YoteMarket" /></Link>
               <p>
                 Kenya's virtual mall — bundling commerce, merchant tools, and last-mile delivery into one ecosystem.
               </p>

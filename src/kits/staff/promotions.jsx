@@ -11,6 +11,7 @@ export function Promotions(){
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null); // { ok, text }
   const [months, setMonths] = useState(1);
+  const [capacity, setCapacity] = useState('');
   const [granting, setGranting] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [logoFilling, setLogoFilling] = useState(false);
@@ -30,9 +31,15 @@ export function Promotions(){
   useEffect(() => { load(); }, [load]);
 
   const grant = async () => {
-    if (!window.confirm(`Grant ${months} free month(s) to ALL merchants? This activates or extends every merchant's subscription.`)) return;
+    const cap = capacity ? Number(capacity) : null;
+    const who = cap ? `the first ${cap} merchant(s)` : 'ALL merchants';
+    if (!window.confirm(`Grant ${months} free month(s) to ${who}? This activates or extends their subscription.`)) return;
     setGranting(true); setMsg(null);
-    try { const r = await grantFreeMonths({ months: Number(months) }); setMsg({ ok:true, text:`Granted ${months} free month(s) to ${r.granted} merchant(s).` }); load(); }
+    try {
+      const r = await grantFreeMonths({ months: Number(months), ...(cap ? { capacity: cap } : {}) });
+      const tail = r.remaining != null ? ` · ${r.remaining} slot(s) left` : '';
+      setMsg({ ok:true, text:`Granted ${months} free month(s) to ${r.granted} merchant(s).${tail}` }); load();
+    }
     catch (e) { setMsg({ ok:false, text:e.message || 'Grant failed.' }); } finally { setGranting(false); }
   };
   const backfill = async () => {
@@ -81,6 +88,10 @@ export function Promotions(){
   const toggle = async (p) => { try { await setPromoActive({ id:p.id, active:!p.active }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
   const remove = async (p) => { if (!window.confirm(`Delete ${p.code || p.name}?`)) return; try { await setPromoActive({ id:p.id, remove:true }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
   const offer = (p) => p.type === 'percent' ? `${p.value}% off` : p.type === 'fixed' ? `${kes(p.value)} off` : `${p.value} free month${p.value > 1 ? 's' : ''}`;
+  // Usage / capacity readout: campaigns show granted/capacity, coupons show used/max.
+  const usage = (p) => p.kind === 'campaign'
+    ? (p.grantedCount || p.capacity ? ` · ${p.grantedCount || 0}${p.capacity ? '/' + p.capacity : ''} granted` : '')
+    : (p.redemptions || p.maxRedemptions ? ` · ${p.redemptions || 0}${p.maxRedemptions ? '/' + p.maxRedemptions : ''} used` : '');
 
   return (
     <div className="fadeup space-y-6">
@@ -90,11 +101,13 @@ export function Promotions(){
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card className="p-6 space-y-3">
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--amber-soft, #fef3c7)', color:'var(--amber)' }}><Icon name="gift" /></div><h3 className="font-bold t1">Free-month campaign</h3></div>
-          <p className="text-sm t3">Activate or extend every merchant's subscription by the chosen number of months — free. Idempotent: re-running the same monthly campaign won't double-grant.</p>
+          <p className="text-sm t3">Activate or extend merchants' subscriptions by the chosen number of months — free. Set a <b>capacity</b> to cap it to the first N merchants (e.g. a launch offer); leave blank for all. Idempotent — re-running only tops up to the cap.</p>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm t2">Months</span>
             <select value={months} onChange={e => setMonths(e.target.value)} className="ym-input" style={{ width:80 }}>{[1,2,3,6].map(m => <option key={m} value={m}>{m}</option>)}</select>
-            <Btn kind="primary" size="md" icon={granting ? 'spinner' : 'gift'} onClick={grant} disabled={granting}>{granting ? 'Granting…' : `Grant to all merchants`}</Btn>
+            <span className="text-sm t2">Capacity</span>
+            <input value={capacity} onChange={e => setCapacity(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" placeholder="All" className="ym-input" style={{ width:90 }} title="Max merchants to grant (blank = all)" />
+            <Btn kind="primary" size="md" icon={granting ? 'spinner' : 'gift'} onClick={grant} disabled={granting}>{granting ? 'Granting…' : (capacity ? `Grant to first ${capacity}` : 'Grant to all')}</Btn>
           </div>
         </Card>
 
@@ -170,7 +183,7 @@ export function Promotions(){
                         <Pill tone={p.active ? 'active' : 'inactive'}>{p.active ? 'Active' : 'Off'}</Pill>
                         <span className="text-xs t3">{p.kind === 'campaign' ? 'campaign' : 'coupon'}</span>
                       </div>
-                      <div className="text-xs t3 mt-0.5">{offer(p)}{p.redemptions ? ` · ${p.redemptions} used` : ''}{p.grantedCount ? ` · ${p.grantedCount} granted` : ''}</div>
+                      <div className="text-xs t3 mt-0.5">{offer(p)}{usage(p)}{p.capacity && p.kind === 'campaign' && (p.grantedCount || 0) >= p.capacity ? ' · full' : ''}</div>
                     </div>
                     {p.kind !== 'campaign' && <button onClick={() => toggle(p)} className="text-xs font-semibold" style={{ color:'var(--pri)' }}>{p.active ? 'Disable' : 'Enable'}</button>}
                     <button onClick={() => remove(p)} className="text-xs font-semibold" style={{ color:'var(--red)' }}>Delete</button>
