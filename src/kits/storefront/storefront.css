@@ -107,6 +107,27 @@
 .kit-storefront .genie{transform-origin:bottom center; animation:ym-genie .64s cubic-bezier(.22,.9,.3,1.12); will-change:transform,opacity,filter;}
 @media (prefers-reduced-motion: reduce){ .kit-storefront .genie{animation:none;} }
 
+/* ── YoteFeed store-clips rail — modern hover-preview reel ─────────────────── */
+.kit-storefront .clip-rail{display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none; padding:4px 2px 8px;}
+.kit-storefront .clip-rail::-webkit-scrollbar{display:none;}
+.kit-storefront .clip-card{position:relative; flex-shrink:0; width:150px; aspect-ratio:9/16; border-radius:18px; overflow:hidden;
+  border:1px solid var(--m-border); padding:0; cursor:pointer; background:#000; scroll-snap-align:start;
+  box-shadow:0 6px 18px -8px rgba(20,10,50,.35); transition:transform .28s cubic-bezier(.2,.8,.2,1), box-shadow .28s;}
+.kit-storefront .clip-card:hover{transform:translateY(-6px) scale(1.02); box-shadow:0 22px 42px -14px rgba(90,44,156,.5);}
+.kit-storefront .clip-card video{width:100%; height:100%; object-fit:cover; display:block;}
+.kit-storefront .clip-grad{position:absolute; inset:0; background:linear-gradient(0deg, rgba(0,0,0,.66), transparent 48%); pointer-events:none;}
+.kit-storefront .clip-play{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:46px; height:46px; border-radius:9999px;
+  background:rgba(255,255,255,.92); color:#5b2c9c; display:flex; align-items:center; justify-content:center; font-size:16px;
+  box-shadow:0 6px 16px rgba(0,0,0,.35); transition:opacity .22s, transform .22s; pointer-events:none;}
+.kit-storefront .clip-card:hover .clip-play{opacity:0; transform:translate(-50%,-50%) scale(.8);}
+.kit-storefront .clip-dur{position:absolute; top:9px; right:9px; display:inline-flex; align-items:center; gap:4px; background:rgba(0,0,0,.5);
+  color:#fff; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:9999px; -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);}
+.kit-storefront .clip-foot{position:absolute; left:9px; right:9px; bottom:9px; display:flex; flex-direction:column; align-items:flex-start; gap:5px; pointer-events:none;}
+.kit-storefront .clip-price{background:#fff; color:#111; font-size:11.5px; font-weight:800; padding:3px 8px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.25);}
+.kit-storefront .clip-cap{color:#fff; font-size:11px; line-height:1.32; text-shadow:0 1px 3px rgba(0,0,0,.7); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+.kit-storefront .clip-stats{display:inline-flex; align-items:center; gap:5px; color:rgba(255,255,255,.92); font-size:10.5px; font-weight:600; text-shadow:0 1px 2px rgba(0,0,0,.6);}
+@media (prefers-reduced-motion: reduce){ .kit-storefront .clip-card, .kit-storefront .clip-card:hover{transform:none;} }
+
 .kit-storefront .icon-btn{width:44px; height:44px; border-radius:9999px; border:none; cursor:pointer; background:var(--m-surface-2);
   color:var(--m-fg1); font-size:16px; display:flex; align-items:center; justify-content:center; position:relative; transition:filter .15s;}
 .kit-storefront .icon-btn:hover{filter:brightness(.95);}

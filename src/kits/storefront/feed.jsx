@@ -283,9 +283,34 @@ export function FeedScreen({ params = {} }){
   );
 }
 
-/* StoreClipsRail — a store's YoteFeed clips as a horizontal reel on the store page.
-   Thumbnails are the clip's first frame (data-light: metadata only, no autoplay);
-   tapping opens the immersive feed scoped to this store, starting on that clip. */
+/* A single store clip — a modern reel tile that autoplays a muted preview on hover
+   (and lifts), with a duration badge, price/caption, and like/view stats. Tapping
+   opens the immersive feed scoped to the store, starting on this clip. */
+const fmtDur = (ms) => { const s = Math.round((Number(ms) || 0) / 1000); if (!s) return null; return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+function ClipCard({ c, onOpen }){
+  const vref = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const enter = () => { const v = vref.current; if (!v) return; try { v.currentTime = 0; } catch { /* noop */ } const p = v.play(); if (p && p.catch) p.catch(() => {}); setPlaying(true); };
+  const leave = () => { const v = vref.current; if (!v) return; v.pause(); try { v.currentTime = 0.1; } catch { /* noop */ } setPlaying(false); };
+  const dur = fmtDur(c.durationMs);
+  return (
+    <button className="clip-card" onMouseEnter={enter} onMouseLeave={leave} onFocus={enter} onBlur={leave} onClick={() => onOpen(c.id)} aria-label={c.caption || 'Play clip'}>
+      <video ref={vref} src={`${feedVideoUrl(c)}#t=0.1`} muted loop playsInline preload="metadata" tabIndex={-1} />
+      <span className="clip-grad" />
+      {dur && <span className="clip-dur"><FA i="fa-play" style={{ fontSize:8 }} /> {dur}</span>}
+      <span className="clip-play" style={playing ? { opacity:0 } : null}><FA i="fa-play" /></span>
+      <span className="clip-foot">
+        {c.product && <span className="clip-price">{ymPrice(c.product.price)}</span>}
+        {c.caption && <span className="clip-cap">{c.caption}</span>}
+        {(c.views > 0 || c.likes > 0) && <span className="clip-stats"><FA i="fa-heart" /> {fmtCount(c.likes || 0)} <span style={{ opacity:.5 }}>·</span> <FA i="fa-eye" /> {fmtCount(c.views || 0)}</span>}
+      </span>
+    </button>
+  );
+}
+
+/* StoreClipsRail — a store's YoteFeed clips as a modern horizontal reel on the
+   store page (hover-preview tiles). */
 export function StoreClipsRail({ storeId, storeName }){
   const { nav } = useYM();
   const [clips, setClips] = useState(null);
@@ -293,28 +318,17 @@ export function StoreClipsRail({ storeId, storeName }){
   if (!clips || !clips.length) return null;
   const open = (startId) => nav('feed', { storeId, storeName, startId });
   return (
-    <div style={{ marginBottom:24 }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-          <YoteFeedMark size={20} />
-          <span className="ym-h3" style={{ fontSize:16 }}>Clips</span>
-          <span className="ym-cap">· {clips.length}</span>
+    <div style={{ marginBottom:26 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:14 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <YoteFeedMark size={22} />
+          <span className="ym-h3" style={{ fontSize:16.5 }}>Store clips</span>
+          <span className="ym-pill" style={{ background:'var(--m-surface-2)', color:'var(--m-fg2)' }}>{clips.length}</span>
         </div>
-        <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={() => open(clips[0].id)}>Watch all <FA i="fa-chevron-right" /></button>
+        <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={() => open(clips[0].id)}><FA i="fa-play" style={{ fontSize:11 }} /> Watch all</button>
       </div>
-      <div className="scroll-x" style={{ gap:12 }}>
-        {clips.map((c) => (
-          <button key={c.id} onClick={() => open(c.id)} aria-label="Play clip"
-            style={{ flexShrink:0, width:132, aspectRatio:'9 / 16', borderRadius:14, overflow:'hidden', position:'relative', border:'none', padding:0, cursor:'pointer', background:'#000' }}>
-            <video src={`${feedVideoUrl(c)}#t=0.1`} muted playsInline preload="metadata" tabIndex={-1}
-              style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-            <span style={{ position:'absolute', inset:0, background:'linear-gradient(0deg,rgba(0,0,0,.55),transparent 42%)', pointerEvents:'none' }} />
-            <span style={{ position:'absolute', top:8, right:8, width:26, height:26, borderRadius:9999, background:'rgba(0,0,0,.42)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, backdropFilter:'blur(3px)' }}><FA i="fa-play" /></span>
-            {c.product
-              ? <span style={{ position:'absolute', left:8, bottom:8, background:'rgba(255,255,255,.94)', color:'#111', fontSize:11, fontWeight:700, padding:'3px 7px', borderRadius:8 }}>{ymPrice(c.product.price)}</span>
-              : (c.caption ? <span style={{ position:'absolute', left:8, right:8, bottom:8, color:'#fff', fontSize:11, textAlign:'left', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textShadow:'0 1px 2px rgba(0,0,0,.6)' }}>{c.caption}</span> : null)}
-          </button>
-        ))}
+      <div className="clip-rail">
+        {clips.map((c) => <ClipCard key={c.id} c={c} onOpen={open} />)}
       </div>
     </div>
   );

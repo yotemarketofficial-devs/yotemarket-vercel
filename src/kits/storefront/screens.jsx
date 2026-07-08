@@ -8,6 +8,8 @@ import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.
 import { subscribeProductReviews } from '../../lib/reviews.js';
 import { submitReview, reportReview } from '../../lib/firebase.js';
 import { StoreClipsRail } from './feed.jsx';
+import YoteAiMark from '../../components/YoteAiMark.jsx';
+import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState: useSS, useEffect: useEffSS } = React;
 
 /* ---------- PRODUCT REVIEWS (live, functional) ---------- */
@@ -147,6 +149,27 @@ export function HomeScreen(){
         </div>
       </div>
 
+      {/* Flagship features — YoteAI + YoteFeed, promoted up front so shoppers meet
+          the two headline experiences right after the hero. */}
+      <div className="wrap" style={{ marginTop:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:14 }}>
+          {[
+            { grad:'linear-gradient(135deg,#5B16A8 0%,#A020F0 55%,#E89B0C 120%)', mark:<YoteAiMark size={26} color="#fff" />, kick:'YoteAI', title:'Ask YoteAI — your shopping assistant', sub:'Find anything, compare options & track orders — just ask.', go:()=>nav('ai') },
+            { grad:'linear-gradient(135deg,#7C2BD4 0%,#ec4899 60%,#f43f5e 120%)', mark:<YoteFeedMark size={24} />, kick:'YoteFeed', title:'Shoppable video — watch it, tap it, buy it', sub:'Short clips from local stores. Tap to buy on the spot.', go:()=>nav('feed') },
+          ].map((f) => (
+            <button key={f.kick} onClick={f.go} style={{ textAlign:'left', cursor:'pointer', fontFamily:'inherit', border:'none', borderRadius:20, padding:'20px 22px', color:'#fff', background:f.grad, boxShadow:'var(--m-shadow-float)', position:'relative', overflow:'hidden', display:'flex', alignItems:'center', gap:16 }}>
+              <span style={{ width:52, height:52, borderRadius:15, background:'rgba(255,255,255,.18)', border:'1px solid rgba(255,255,255,.28)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{f.mark}</span>
+              <span style={{ flex:1, minWidth:0 }}>
+                <span style={{ display:'block', fontSize:12, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'rgba(255,255,255,.82)' }}>{f.kick}</span>
+                <span style={{ display:'block', fontSize:16, fontWeight:800, lineHeight:1.2, margin:'3px 0 4px' }}>{f.title}</span>
+                <span style={{ display:'block', fontSize:13, color:'rgba(255,255,255,.85)', lineHeight:1.4 }}>{f.sub}</span>
+              </span>
+              <FA i="fa-arrow-right" style={{ fontSize:16, opacity:.9, flexShrink:0 }} />
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* active order */}
       {activeOrder && (()=>{
         const store = ymStore(activeOrder.store || activeOrder.storeId); const first = activeOrder.items?.[0] ? ymProduct(activeOrder.items[0].pid) : null;
@@ -235,18 +258,7 @@ export function HomeScreen(){
         return (
           <div className="wrap" style={{ marginTop:30 }}>
             <SectionTitle>Featured stores</SectionTitle>
-            <div className="scroll-x" style={{ gap:18, paddingBottom:4 }}>
-              {featured.map(s => (
-                <button key={s.id} onClick={()=>nav('store', { sid:s.id })} style={{ flexShrink:0, width:86, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
-                  <span style={{ width:76, height:76, borderRadius:9999, padding:3, background:'var(--m-grad)', boxShadow:'var(--m-glow)', display:'block', flexShrink:0 }}>
-                    <span style={{ width:'100%', height:'100%', borderRadius:9999, overflow:'hidden', background:'var(--m-surface)', border:'3px solid var(--m-bg)', boxSizing:'border-box', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {s.logo ? <img src={s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:26, color:s.tint || 'var(--m-primary)' }} />}
-                    </span>
-                  </span>
-                  <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%', textAlign:'center' }}>{s.name}</span>
-                </button>
-              ))}
-            </div>
+            <FeaturedStores stores={featured} />
           </div>
         );
       })()}
@@ -344,11 +356,34 @@ export function SearchScreen({ params }){
     </div>
   );
 }
-/* Explore stores — the mall's stores split into category groups (compact rows).
-   Moved here from the home page: the front page stays lean (Shop by category /
-   Top brands / Featured / For you) while the full category browse lives in
-   "Explore stores". "See all" on a group narrows to that category's flat grid. */
+/* Featured stores rail — circle logos with names that STACK (wrap) instead of
+   truncating, so long or multi-word store names stay fully readable. Shared by the
+   home page and the Explore-stores view. */
+function FeaturedStores({ stores }){
+  const { nav } = useYM();
+  if (!stores?.length) return null;
+  return (
+    <div className="scroll-x" style={{ gap:18, paddingBottom:4, alignItems:'flex-start' }}>
+      {stores.map(s => (
+        <button key={s.id} onClick={()=>nav('store', { sid:s.id })} style={{ flexShrink:0, width:88, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
+          <span style={{ width:76, height:76, borderRadius:9999, padding:3, background:'var(--m-grad)', boxShadow:'var(--m-glow)', display:'block', flexShrink:0 }}>
+            <span style={{ width:'100%', height:'100%', borderRadius:9999, overflow:'hidden', background:'var(--m-surface)', border:'3px solid var(--m-bg)', boxSizing:'border-box', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {s.logo ? <img src={s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:26, color:s.tint || 'var(--m-primary)' }} />}
+            </span>
+          </span>
+          <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'break-word' }}>{s.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+/* Explore stores — curated highlights (Top brands, then Products, then Featured
+   stores) above the mall's stores split into category groups (compact rows). The
+   front page stays lean; the full browse lives here. "See all" narrows to a category. */
 function StoresByCategory({ stores, onPick }){
+  const { nav } = useYM();
+  const brands = stores.filter(s => s.topBrand);
+  const featured = stores.filter(s => s.featured);
   const seen = new Set();
   const sections = CATEGORY_TREE.map((node) => {
     const list = stores.filter(s => s.cat === node.id);
@@ -358,7 +393,33 @@ function StoresByCategory({ stores, onPick }){
   const rest = stores.filter(s => !seen.has(s.id));
   if (rest.length) sections.push({ node: { id:'more', label:'Other shops', icon:'fa-store', tint:'#7c3aed' }, list: rest });
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:26 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:30 }}>
+      {/* 1 · Top brands */}
+      {brands.length > 0 && (
+        <div>
+          <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'brands' })}>Top brands</SectionTitle>
+          <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
+            {brands.map(s => <TopBrandCard key={s.id} s={s} />)}
+          </div>
+        </div>
+      )}
+      {/* 2 · Products */}
+      {YM_PRODUCTS.length > 0 && (
+        <div>
+          <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'products' })}>Products</SectionTitle>
+          <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
+            {YM_PRODUCTS.slice(0, 12).map(p => <div key={p.id} style={{ width:200, flexShrink:0 }}><ProductCard p={p} /></div>)}
+          </div>
+        </div>
+      )}
+      {/* 3 · Featured stores — names stack when long / multi-word */}
+      {featured.length > 0 && (
+        <div>
+          <SectionTitle>Featured stores</SectionTitle>
+          <FeaturedStores stores={featured} />
+        </div>
+      )}
+      {/* Browse by category */}
       {sections.map(({ node, list }) => {
         const pick = () => node.id !== 'more' && onPick(node.id);
         return (
@@ -476,8 +537,7 @@ export function StoreScreen({ params }){
         {s.img
           ? (<><img src={s.img} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} /><div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(10,6,40,.55), rgba(10,6,40,.22))' }} /></>)
           : <FA i={s.icon} style={{ position:'absolute', right:-20, top:-10, fontSize:200, color:'rgba(255,255,255,.12)' }} />}
-        <div className="wrap" style={{ padding:'24px 24px 28px', position:'relative' }}>
-          <button onClick={back} aria-label="Back" style={{ width:40, height:40, borderRadius:9999, border:'none', background:'rgba(255,255,255,.92)', color:'#111827', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:15, marginBottom:20, boxShadow:'var(--m-shadow-card)' }}><FA i="fa-arrow-left" /></button>
+        <div className="wrap" style={{ padding:'28px 24px', position:'relative' }}>
           <div style={{ display:'flex', alignItems:'flex-end', gap:18 }}>
             <div style={{ width:88, height:88, borderRadius:22, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'var(--m-shadow-float)', flexShrink:0, position:'relative' }}>
               {s.logo

@@ -439,3 +439,20 @@ h1{font-size:clamp(40px,6vw,68px); letter-spacing:-.02em;}
 .feed-clip.c2{transform:translateY(24px);} .feed-clip.c3{transform:translateY(-14px);}
 @media (max-width:860px){ .feed-grid{grid-template-columns:1fr;} .feed-band{padding:36px;} .feed-clip{width:112px;} }
 @media (max-width:420px){ .feed-clip.c3{display:none;} }
+
+/* ── YoteAI flagship band (reuses .feed-band structure, AI-themed) ─────────── */
+.ai-band{background:linear-gradient(135deg,#26094f 0%,#5B16A8 52%,#7C2BD4 100%);}
+.ai-band .feed-glow{background:radial-gradient(circle,rgba(232,155,12,.5),transparent 62%); right:-120px; top:-150px;}
+.ai-brandrow{display:inline-flex; align-items:center; gap:12px;}
+.ai-badge{width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#A020F0,#E89B0C);
+  display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px -8px rgba(160,32,240,.8); flex-shrink:0;}
+.ai-demo{position:relative; display:flex; flex-direction:column; gap:12px; max-width:400px; margin:0 auto; width:100%;
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:22px; backdrop-filter:blur(6px);}
+.ai-msg{font-size:14.5px; line-height:1.5; padding:12px 15px; border-radius:16px; max-width:85%;}
+.ai-msg.me{align-self:flex-end; background:rgba(255,255,255,.16); color:#fff; border-bottom-right-radius:6px;}
+.ai-msg.bot{align-self:flex-start; background:#fff; color:#1c0a3e; border-bottom-left-radius:6px; box-shadow:0 12px 30px -14px rgba(0,0,0,.55);}
+.ai-chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+.ai-chip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:#3a1466;
+  background:#f3ecff; border:1px solid #e4d5ff; padding:5px 10px 5px 5px; border-radius:9999px;}
+.ai-chip .dot{width:22px; height:22px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px;}
+@media (max-width:860px){ .ai-demo{max-width:none;} }

@@ -97,8 +97,6 @@ export function ProfileScreen({ params }){
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
-      <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
-
       {/* header */}
       <div className="ym-card" style={{ padding:24, marginBottom:20, display:'flex', alignItems:'center', gap:18, flexWrap:'wrap', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
         <ImageUpload aspect={1} round outputSize={512} title="Profile photo"

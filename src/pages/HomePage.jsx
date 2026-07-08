@@ -178,6 +178,49 @@ function HomePage() {
         </div>
       </section>
 
+      {/* YoteAI — flagship shopping assistant */}
+      <section className="pad" style={{ paddingTop: '8px' }}>
+        <div className="wrap">
+          <div className="feed-band ai-band reveal">
+            <div className="feed-glow"></div>
+            <div className="feed-grid">
+              <div>
+                <div className="ai-brandrow">
+                  <span className="ai-badge"><YoteAiMark size={22} color="#fff" /></span>
+                  <div className="kicker" style={{ margin: 0 }}>YoteAI · Shopping assistant</div>
+                </div>
+                <h2 style={{ marginTop: '16px' }}>Just ask. <span className="g">We'll find it.</span></h2>
+                <p className="fb-lead">
+                  YoteAI is your personal shopping assistant — describe what you want in plain words and it
+                  finds the products, compares your options, and tracks your orders. Grounded in real stores
+                  and live stock, so every answer is something you can actually buy.
+                </p>
+                <div className="feed-tags">
+                  <span className="feed-tag"><i className="fas fa-magnifying-glass"></i> Find anything</span>
+                  <span className="feed-tag"><i className="fas fa-scale-balanced"></i> Compare &amp; decide</span>
+                  <span className="feed-tag"><i className="fas fa-truck-fast"></i> Track orders</span>
+                </div>
+                <div className="hero-cta" style={{ marginTop: '28px' }}>
+                  <Link className="btn btn-gold btn-lg" to="/storefront">Ask YoteAI <i className="fas fa-arrow-right"></i></Link>
+                </div>
+              </div>
+              <div className="ai-demo float-a">
+                <div className="ai-msg me">Find me a birthday gift under Ksh 2,000 🎁</div>
+                <div className="ai-msg bot">
+                  Here are two picks in stock near you:
+                  <div className="ai-chips">
+                    <span className="ai-chip"><span className="dot" style={{ background: '#7C2BD4' }}><i className="fas fa-headphones"></i></span> Wireless earbuds · 1,899</span>
+                    <span className="ai-chip"><span className="dot" style={{ background: '#E89B0C' }}><i className="fas fa-mug-hot"></i></span> Gift hamper · 1,750</span>
+                  </div>
+                </div>
+                <div className="ai-msg me">Track my last order</div>
+                <div className="ai-msg bot">Out for delivery 🛵 — arriving at Kilimani hub in ~25 min.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* YoteFeed — shoppable shortform video */}
       <section className="pad" style={{ paddingTop: '8px' }}>
         <div className="wrap">
