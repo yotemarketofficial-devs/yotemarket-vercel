@@ -8,7 +8,7 @@ import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.
 import { subscribeProductReviews } from '../../lib/reviews.js';
 import { submitReview, reportReview } from '../../lib/firebase.js';
 import { StoreClipsRail } from './feed.jsx';
-import { subscribeFeed } from '../../lib/feed.js';
+import { subscribeFeed, subscribeFeedSeen } from '../../lib/feed.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState: useSS, useEffect: useEffSS } = React;
@@ -130,9 +130,13 @@ function EmptyBlock({ icon='fa-store', text }){
 /* ---------- HOME ---------- */
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
+  const { user } = useAuth();
   const [openCat, setOpenCat] = useSS(null); // expanded "Shop by category" tile → subcategory pills
   const [feedClips, setFeedClips] = useSS(null); // all live YoteFeed clips → store feed badges + rail
   useEffSS(() => subscribeFeed(setFeedClips), []);
+  // Clips this user has already watched → drop the NEW badge for those stores.
+  const [seenClips, setSeenClips] = useSS(() => new Set());
+  useEffSS(() => subscribeFeedSeen(user?.uid, setSeenClips), [user?.uid]);
   const clipMap = feedStoreMap(feedClips);                 // storeId → clip info (badges + rail)
   const featured = YM_STORES.filter(s => s.featured);
   const featuredIds = new Set(featured.map(s => s.id));    // exclude these from "Now on YoteFeed"
@@ -261,12 +265,12 @@ export function HomeScreen(){
       {featured.length > 0 && (
         <div className="wrap" style={{ marginTop:30 }}>
           <SectionTitle>Featured stores</SectionTitle>
-          <FeaturedStores stores={featured} clips={clipMap} />
+          <FeaturedStores stores={featured} clips={clipMap} seen={seenClips} />
         </div>
       )}
 
       {/* Now on YoteFeed — NON-featured stores with clips (featured ones show badges above) */}
-      <FeedStoresRail clips={feedClips} exclude={featuredIds} />
+      <FeedStoresRail clips={feedClips} exclude={featuredIds} seen={seenClips} />
 
       {/* for you */}
       {YM_PRODUCTS.length > 0 && (
@@ -386,7 +390,7 @@ function feedStoreMap(clips){
 /* Featured stores rail — circle logos with names that STACK (wrap) instead of
    truncating. A featured store that ALSO has YoteFeed clips gets the story ring +
    feed badge (+ NEW for a fresh upload), so it isn't duplicated in "Now on YoteFeed". */
-function FeaturedStores({ stores, clips }){
+function FeaturedStores({ stores, clips, seen }){
   const { nav } = useYM();
   if (!stores?.length) return null;
   const nowS = Date.now() / 1000;
@@ -394,7 +398,8 @@ function FeaturedStores({ stores, clips }){
     <div className="scroll-x" style={{ gap:18, paddingBottom:4, alignItems:'flex-start' }}>
       {stores.map(s => {
         const ci = clips?.get?.(s.id);
-        const fresh = ci && (nowS - ci.ts) < FRESH_WINDOW_S;
+        // NEW only if the latest clip is fresh AND this user hasn't watched it yet.
+        const fresh = ci && (nowS - ci.ts) < FRESH_WINDOW_S && !seen?.has?.(ci.latestId);
         return (
           <button key={s.id} onClick={()=>nav('store', { sid:s.id })} style={{ flexShrink:0, width:88, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
             <span style={{ position:'relative', width:76, height:76, borderRadius:9999, padding:3, background: ci ? 'conic-gradient(from 210deg, #8b3fea, #ec4899, #f4b530, #8b3fea)' : 'var(--m-grad)', boxShadow: ci ? 'none' : 'var(--m-glow)', display:'block', flexShrink:0 }}>
@@ -415,7 +420,7 @@ function FeaturedStores({ stores, clips }){
 /* Now on YoteFeed rail — story-ring avatars for stores that have clips, with a
    "NEW" badge for fresh uploads (a clip in the last 7 days). Derives the store set
    from the live feed; tapping opens that store's clips in the immersive feed. */
-function FeedStoresRail({ clips, exclude }){
+function FeedStoresRail({ clips, exclude, seen }){
   const { nav } = useYM();
   let stores = [...feedStoreMap(clips).values()].sort((a,b)=>b.ts - a.ts);
   if (exclude && exclude.size) stores = stores.filter(cs => !exclude.has(cs.storeId));
@@ -427,7 +432,7 @@ function FeedStoresRail({ clips, exclude }){
       <div className="scroll-x" style={{ gap:18, paddingBottom:4, alignItems:'flex-start' }}>
         {stores.map(cs => {
           const s = ymStore(cs.storeId) || {};
-          const fresh = (nowS - cs.ts) < 7*86400;
+          const fresh = (nowS - cs.ts) < FRESH_WINDOW_S && !seen?.has?.(cs.latestId);
           return (
             <button key={cs.storeId} onClick={()=>nav('feed', { storeId:cs.storeId, storeName: cs.name || s.name, startId: cs.latestId })}
               style={{ flexShrink:0, width:88, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
