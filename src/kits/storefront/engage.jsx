@@ -246,7 +246,6 @@ function AIResultCard({ r }){
 
 /* ---------- YOTE AI ---------- */
 export function AIScreen(){
-  const { reset } = useYM();
   const { user } = useAuth();
   const suggestions = ['Find me a phone under Ksh 20,000','Which stores sell fresh produce?','Best deals right now','What can I gift under Ksh 1,500?'];
   const [msgs, setMsgs] = useSE([{ role:'assistant', content:'Karibu! I’m YoteAI — your shopping assistant. Tell me what you’re looking for and I’ll point you to the right stores and deals.' }]);
@@ -271,17 +270,17 @@ export function AIScreen(){
   };
 
   return (
-    <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40, maxWidth:760, margin:'0 auto' }}>
-      <button onClick={()=>reset('home')} aria-label="Back to home" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
-      <div className="ym-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:'min(600px, 76vh)', minHeight:420 }}>
+    <div className="ai-screen">
+      <div className="ai-bg" aria-hidden="true"><span className="ai-blob b1" /><span className="ai-blob b2" /></div>
+      <div className="ym-card ai-glass genie" style={{ position:'relative', width:'100%', maxWidth:760, overflow:'hidden', display:'flex', flexDirection:'column', height:'min(620px, 80vh)', minHeight:440 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
           <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={22} color="#fff" /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Shopping assistant</div></div>
         </div>
-        <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+        <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'transparent' }}>
           {msgs.map((m,i)=>(
             <div key={i} style={{ display:'flex', flexDirection:'column', gap:8, alignItems:m.role==='user'?'flex-end':'flex-start' }}>
-              <div style={{ maxWidth:'80%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:m.role==='user'?'pre-wrap':'normal',
+              <div style={{ maxWidth:m.role==='user'?'80%':'94%', padding:'11px 15px', fontSize:14.5, lineHeight:1.5, whiteSpace:m.role==='user'?'pre-wrap':'normal',
                 background:m.role==='user'?'var(--m-primary-deep)':'var(--m-surface)',
                 color:m.role==='user'?'#fff':'var(--m-fg1)', borderRadius:m.role==='user'?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.role==='assistant' ? <Markdown text={m.content} /> : m.content}</div>
               {m.role==='assistant' && m.products && m.products.length>0 && (

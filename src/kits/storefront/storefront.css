@@ -89,6 +89,24 @@
 .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.35);}
 [data-theme="dark"] .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.28);}
 
+/* ── YoteAI — frosted-glass floating panel + genie entrance ────────────────── */
+.kit-storefront .ai-screen{position:relative; min-height:calc(100dvh - 100px); display:flex; align-items:center; justify-content:center; padding:24px 16px 40px; overflow:hidden;}
+.kit-storefront .ai-bg{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;}
+.kit-storefront .ai-blob{position:absolute; border-radius:50%; filter:blur(72px); opacity:.55;}
+.kit-storefront .ai-blob.b1{width:min(46vw,440px); aspect-ratio:1; left:-6%; top:-8%; background:radial-gradient(circle, #8b3fea, transparent 68%);}
+.kit-storefront .ai-blob.b2{width:min(52vw,520px); aspect-ratio:1; right:-8%; bottom:-12%; background:radial-gradient(circle, #5b2c9c, transparent 68%);}
+[data-theme="dark"] .kit-storefront .ai-blob{opacity:.4;}
+.kit-storefront .ai-glass{background:color-mix(in srgb, var(--m-surface) 60%, transparent); -webkit-backdrop-filter:blur(20px) saturate(155%); backdrop-filter:blur(20px) saturate(155%); border:1px solid rgba(255,255,255,.22);}
+[data-theme="dark"] .kit-storefront .ai-glass{background:color-mix(in srgb, var(--m-surface) 52%, transparent); border-color:rgba(255,255,255,.08);}
+@keyframes ym-genie{
+  0%{opacity:0; transform:translateY(64px) scaleX(.42) scaleY(.12); filter:blur(9px);}
+  55%{opacity:1; transform:translateY(-6px) scaleX(1.03) scaleY(1.04); filter:blur(0);}
+  78%{transform:translateY(0) scaleX(.99) scaleY(.99);}
+  100%{opacity:1; transform:none; filter:blur(0);}
+}
+.kit-storefront .genie{transform-origin:bottom center; animation:ym-genie .64s cubic-bezier(.22,.9,.3,1.12); will-change:transform,opacity,filter;}
+@media (prefers-reduced-motion: reduce){ .kit-storefront .genie{animation:none;} }
+
 .kit-storefront .icon-btn{width:44px; height:44px; border-radius:9999px; border:none; cursor:pointer; background:var(--m-surface-2);
   color:var(--m-fg1); font-size:16px; display:flex; align-items:center; justify-content:center; position:relative; transition:filter .15s;}
 .kit-storefront .icon-btn:hover{filter:brightness(.95);}
