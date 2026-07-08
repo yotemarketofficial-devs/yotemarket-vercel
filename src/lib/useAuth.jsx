@@ -72,24 +72,30 @@ function shouldFallbackToRedirect(err) {
 // Make a Google sign-in double as a sign-up: ensure the user has a users/{uid}
 // profile doc (mirrors what registerEmail writes for email accounts) so their
 // name/email/photo are persisted server-side on first Google login.
-async function provisionGoogleProfile(user) {
-  if (!db || !user) return;
+// Ensure the signed-in user has a complete users/{uid} profile doc. Google provides
+// name/email/photo (but no phone); email sign-ups seed name/phone via registerEmail.
+// This backfills any MISSING identity fields — without clobbering user-edited values —
+// so every account, however it signed in, has consistent profile data downstream
+// (profile screen, chat display name, order/customer name). Field names match the rest
+// of the app: account.js + profile.jsx read `photoUrl` (lowercase).
+async function ensureUserProfile(user) {
+  if (!db || !user || !user.uid || user.isGuest || user.uid === 'guest') return;
   try {
     const ref = doc(db, 'users', user.uid);
     const snap = await getDoc(ref).catch(() => null);
-    const isNew = !snap || !snap.exists();
-    await setDoc(
-      ref,
-      {
-        name: user.displayName || '',
-        email: user.email || '',
-        ...(user.photoURL ? { photoURL: user.photoURL } : {}),
-        provider: 'google',
-        updatedAt: serverTimestamp(),
-        ...(isNew ? { createdAt: serverTimestamp() } : {}),
-      },
-      { merge: true },
-    );
+    const data = (snap && snap.exists() && snap.data()) || null;
+    const patch = { updatedAt: serverTimestamp() };
+    if (!data) patch.createdAt = serverTimestamp();
+    if (user.displayName && !(data && data.name)) patch.name = user.displayName;
+    if (user.email && !(data && data.email)) patch.email = user.email;
+    if (user.photoURL && !(data && data.photoUrl)) patch.photoUrl = user.photoURL;
+    if (!(data && data.provider)) {
+      const isGoogle = (user.providerData || []).some((p) => p?.providerId === 'google.com');
+      patch.provider = isGoogle ? 'google' : 'password';
+    }
+    // Existing doc with nothing new to fill → skip the write (avoid churn every load).
+    if (data && Object.keys(patch).length === 1) return;
+    await setDoc(ref, patch, { merge: true });
   } catch {
     /* best-effort — never block sign-in on profile write */
   }
@@ -110,6 +116,9 @@ export function AuthProvider({ children }) {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+      // Backfill/complete the profile doc for every signed-in account — covers session
+      // restore and legacy Google users created before provisioning existed.
+      if (u) ensureUserProfile(u);
     });
   }, []);
 
@@ -121,7 +130,7 @@ export function AuthProvider({ children }) {
     getRedirectResult(auth)
       .then((res) => {
         if (!res?.user) return;
-        provisionGoogleProfile(res.user);
+        ensureUserProfile(res.user);
         const dest = sessionStorage.getItem(REDIRECT_DEST_KEY);
         sessionStorage.removeItem(REDIRECT_DEST_KEY);
         if (dest && dest !== window.location.pathname) window.location.assign(dest);
@@ -184,7 +193,7 @@ export function AuthProvider({ children }) {
 
     try {
       const cred = await signInWithPopup(auth, googleProvider);
-      provisionGoogleProfile(cred.user);
+      ensureUserProfile(cred.user);
       return cred.user;
     } catch (err) {
       if (shouldFallbackToRedirect(err)) return startRedirect();
@@ -198,7 +207,7 @@ export function AuthProvider({ children }) {
     if (!firebaseEnabled || !auth || !idToken) return null;
     const cred = GoogleAuthProvider.credential(idToken);
     const res = await signInWithCredential(auth, cred);
-    provisionGoogleProfile(res.user);
+    ensureUserProfile(res.user);
     return res.user;
   }, []);
 

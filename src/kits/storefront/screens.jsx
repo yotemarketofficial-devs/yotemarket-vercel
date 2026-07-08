@@ -539,7 +539,7 @@ export function ProductScreen({ params }){
             <QtyStepper qty={qty} onChange={setQty} />
             <button className="ym-btn ym-btn-primary" style={{ flex:1, minWidth:220 }} disabled={!p.stock} onClick={()=>addToCart(p.id,qty)}><FA i="fa-cart-plus" /> Add to cart · {ymPrice(p.price*qty)}</button>
           </div>
-          <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>requireAuth(()=>nav('messages',{ store }))}><FA i="fa-comments" style={{ fontSize:17 }} /> Chat with seller · Make an offer</button>
+          <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>requireAuth(()=>nav('messages',{ store, product: { id: p.id, name: p.name, price: p.price, img: p.img || null, storeId: store.id } }))}><FA i="fa-comments" style={{ fontSize:17 }} /> Chat with seller · Make an offer</button>
         </div>
       </div>
 

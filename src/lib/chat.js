@@ -73,7 +73,7 @@ export function otherParticipant(conv, myUid) {
  * full participant `info` map (they know their own name and the store's identity);
  * the merchant never has to seed it.
  */
-export async function openStoreConversation({ store, user, shopperName }) {
+export async function openStoreConversation({ store, user, shopperName, product }) {
   if (!chatEnabled(user)) throw new Error('Sign in to chat with this store.');
   const merchantUid = store?.ownerId;
   if (!merchantUid) throw new Error('This store isn’t available on chat yet.');
@@ -103,48 +103,59 @@ export async function openStoreConversation({ store, user, shopperName }) {
       unread: { [shopperUid]: 0, [merchantUid]: 0 },
       lastMessage: '',
       lastSenderId: '',
+      ...(product ? { product } : {}),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  } else if (product) {
+    // Refresh the pinned product context when re-opening chat from a new product.
+    updateDoc(ref, { product }).catch(() => {});
   }
   return convId;
+}
+
+/**
+ * Guarantee a conversation doc exists before we post into it. The message-create rule
+ * reads the parent conversation, so a just-opened (synthesized) thread whose create is
+ * still in flight would be denied — this closes that race. Throws a clear, user-facing
+ * error when we don't have enough info (e.g. the store has no ownerId).
+ */
+async function ensureConversation({ convId, conv, user }) {
+  const ref = doc(db, 'conversations', convId);
+  const snap = await getDoc(ref).catch(() => null);
+  if (snap && snap.exists()) return;
+  const participants = (Array.isArray(conv?.participants) ? conv.participants : []).filter(Boolean);
+  if (participants.length < 2 || !participants.includes(user.uid)) {
+    throw new Error('This store isn’t available on chat yet.');
+  }
+  await setDoc(ref, {
+    participants,
+    storeId: conv.storeId || null,
+    status: 'active',
+    info: conv.info || {},
+    unread: {},
+    lastMessage: '',
+    lastSenderId: '',
+    ...(conv.product ? { product: conv.product } : {}),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 }
 
 /**
  * Post a message and update the parent thread's inbox preview + unread counter.
  * `recipientUid` is the participant who should see a new unread badge.
  */
-export async function sendChatMessage({ convId, conv, user, text, recipientUid }) {
+export async function sendChatMessage({ convId, conv, user, text, recipientUid, product }) {
   const body = String(text || '').trim();
   if (!convId || !body || !chatEnabled(user)) return;
+  // Make sure the thread exists first, so the message-create rule (which reads the
+  // conversation) can never deny a just-opened chat. Surfaces a clear error otherwise.
+  await ensureConversation({ convId, conv, user });
   const msgsCol = collection(db, 'conversations', convId, 'messages');
   const msg = { senderId: user.uid, text: body, at: serverTimestamp() };
-  try {
-    await addDoc(msgsCol, msg);
-  } catch (e) {
-    // The thread doc may not exist yet (just-opened "Chat with seller" → the
-    // create is still in flight, or a synthesized thread). The message-create
-    // rule reads the conversation, so it's denied until the doc lands. Create it
-    // from the participant info we already have, then retry once.
-    const ref = doc(db, 'conversations', convId);
-    const exists = (await getDoc(ref).catch(() => null))?.exists();
-    if (!exists && conv && Array.isArray(conv.participants) && conv.participants.includes(user.uid)) {
-      await setDoc(ref, {
-        participants: conv.participants,
-        storeId: conv.storeId || null,
-        status: 'active',
-        info: conv.info || {},
-        unread: {},
-        lastMessage: '',
-        lastSenderId: '',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      await addDoc(msgsCol, msg); // retry now that the thread exists
-    } else {
-      throw e;
-    }
-  }
+  if (product) msg.product = product; // product tag rides along on the message
+  await addDoc(msgsCol, msg);
   const patch = {
     lastMessage: body,
     lastSenderId: user.uid,

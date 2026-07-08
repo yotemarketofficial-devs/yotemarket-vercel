@@ -79,10 +79,11 @@ function LiveMessages({ params, user, account }){
   // Opened from a store/product "Chat with seller" CTA → ensure the thread exists
   // and select it (we can derive its id synchronously so selection is instant).
   const paramStore = params?.store;
+  const paramProduct = params?.product || null;
   useEffE(() => {
     if (!paramStore?.id) return;
     setSel(conversationId(paramStore.id, myUid));
-    openStoreConversation({ store: paramStore, user, shopperName: shopperNameOf(account, user) })
+    openStoreConversation({ store: paramStore, user, shopperName: shopperNameOf(account, user), product: paramProduct || undefined })
       .catch((e) => toast(e.message || 'Couldn’t open chat', 'fa-triangle-exclamation'));
   }, [paramStore?.id, myUid]);
 
@@ -92,7 +93,7 @@ function LiveMessages({ params, user, account }){
     || (paramStore && sel === conversationId(paramStore.id, myUid)
       ? { id: sel, storeId: paramStore.id, participants: [myUid, paramStore.ownerId], info: {
           [paramStore.ownerId]: { name: paramStore.name, role: 'merchant', icon: paramStore.icon, tint: paramStore.tint, img: paramStore.img, logo: paramStore.logo },
-        }, unread: {} }
+        }, unread: {}, ...(paramProduct ? { product: paramProduct } : {}) }
       : list[0] || null);
 
   return (
@@ -136,7 +137,7 @@ function LiveMessages({ params, user, account }){
         </div>
         <div className="msg-thread" style={{ minWidth:0, display:'flex', flexDirection:'column' }}>
           {selConv
-            ? <LiveChatThread key={selConv.id} conv={selConv} user={user} onBack={()=>setSel(null)} />
+            ? <LiveChatThread key={selConv.id} conv={selConv} user={user} onBack={()=>setSel(null)} openProduct={paramStore && selConv.storeId === paramStore.id ? paramProduct : null} />
             : <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24, textAlign:'center' }}>Select a conversation to start chatting.</div>}
         </div>
       </div>
@@ -154,17 +155,20 @@ function LiveMessages({ params, user, account }){
   );
 }
 
-function LiveChatThread({ conv, user, onBack }){
-  const { toast } = useYM();
+function LiveChatThread({ conv, user, onBack, openProduct }){
+  const { toast, nav } = useYM();
   const myUid = user.uid;
   const otherId = otherParticipant(conv, myUid);
   const info = (conv.info && conv.info[otherId]) || {};
   const blocked = conv.status === 'blocked';
+  const pinned = conv.product || openProduct || null; // the product this chat is about
   const [msgs, setMsgs] = useSE([]);
+  const [loaded, setLoaded] = useSE(false);
   const [draft, setDraft] = useSE('');
   const scrollRef = useRefE(null);
+  const autoSentRef = useRefE(false);
 
-  useEffE(() => subscribeMessages(conv.id, setMsgs), [conv.id]);
+  useEffE(() => subscribeMessages(conv.id, (list)=>{ setMsgs(list); setLoaded(true); }), [conv.id]);
   // Clear my unread badge whenever I'm viewing the thread and new messages land.
   useEffE(() => { markConversationRead(conv.id, myUid); }, [conv.id, msgs.length]);
   useEffE(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
@@ -175,8 +179,15 @@ function LiveChatThread({ conv, user, onBack }){
     if (blocked) { toast('This conversation is closed.', 'fa-ban'); return; }
     setDraft('');
     sendChatMessage({ convId: conv.id, conv, user, text: t, recipientUid: otherId })
-      .catch(() => toast('Message failed to send', 'fa-triangle-exclamation'));
+      .catch((e) => toast(e?.message || 'Message failed to send', 'fa-triangle-exclamation'));
   };
+  // Opened from a product / YoteFeed → greet with the product named, once, on a fresh
+  // thread (the product also stays pinned above so both sides know what it's about).
+  useEffE(() => {
+    if (!openProduct || !loaded || blocked || autoSentRef.current || msgs.length > 0) return;
+    autoSentRef.current = true;
+    send(`Hi! I'm interested in ${openProduct.name || 'this product'}. Is it still available?`);
+  }, [openProduct, loaded, blocked, msgs.length]);
   const report = () => {
     if (reported) return;
     setReported(true);
@@ -199,6 +210,18 @@ function LiveChatThread({ conv, user, onBack }){
         </div>
         <button className="icon-btn" aria-label="Report conversation" title={reported?'Reported':'Report conversation'} onClick={report} disabled={reported} style={{ color: reported?'var(--m-fg4)':'var(--m-fg3)' }}><FA i="fa-flag" /></button>
       </div>
+      {pinned && (
+        <button onClick={()=> pinned.id && nav('product', { pid: pinned.id })}
+          style={{ display:'flex', alignItems:'center', gap:12, textAlign:'left', width:'100%', border:'none', borderBottom:'1px solid var(--m-border)', cursor: pinned.id?'pointer':'default', fontFamily:'inherit', padding:'10px 16px', background:'var(--m-surface-2)' }}>
+          <span className="ym-cap" style={{ flexShrink:0, color:'var(--m-fg3)' }}><FA i="fa-tag" /> About this product</span>
+          <Thumb icon={pinned.icon || 'fa-box'} tint={pinned.tint || '#7c3aed'} size={38} radius={10} img={pinned.img} />
+          <span style={{ flex:1, minWidth:0 }}>
+            <span className="ym-h3" style={{ fontSize:13.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{pinned.name || 'Product'}</span>
+            {pinned.price!=null && <span className="ym-cap">{ymPrice(pinned.price)}</span>}
+          </span>
+          {pinned.id && <span className="ym-cap" style={{ flexShrink:0, color:'var(--m-link)', fontWeight:600 }}>View <FA i="fa-chevron-right" style={{ fontSize:10 }} /></span>}
+        </button>
+      )}
       <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {msgs.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
         {msgs.map((m) => {

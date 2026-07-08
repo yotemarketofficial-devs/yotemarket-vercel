@@ -238,7 +238,10 @@ export function FeedScreen({ params = {} }){
     deleteFeedPost({ postId: post.id }).then(() => toast('Clip removed', 'fa-trash')).catch((e) => toast(e.message || 'Could not remove', 'fa-triangle-exclamation')); };
   const message = (post) => requireAuth(() => {
     if (!post.ownerId) { toast('This store isn’t on chat yet.', 'fa-comment-slash'); return; }
-    nav('messages', { store: { id: post.storeId, ownerId: post.ownerId, name: post.storeName, logo: post.storeLogo } });
+    const product = post.productId
+      ? { id: post.productId, name: post.productName || post.caption || 'this item', price: post.price != null ? post.price : null, img: post.posterUrl || null, storeId: post.storeId }
+      : undefined;
+    nav('messages', { store: { id: post.storeId, ownerId: post.ownerId, name: post.storeName, logo: post.storeLogo }, product });
   });
 
   const railBtn = { pointerEvents:'auto', width:40, height:40, borderRadius:9999, border:'none', background:'rgba(0,0,0,.38)', color:'#fff', cursor:'pointer', backdropFilter:'blur(4px)', flexShrink:0 };
