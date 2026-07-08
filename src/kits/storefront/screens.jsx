@@ -8,6 +8,7 @@ import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.
 import { subscribeProductReviews } from '../../lib/reviews.js';
 import { submitReview, reportReview } from '../../lib/firebase.js';
 import { StoreClipsRail } from './feed.jsx';
+import { subscribeFeed } from '../../lib/feed.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState: useSS, useEffect: useEffSS } = React;
@@ -130,6 +131,8 @@ function EmptyBlock({ icon='fa-store', text }){
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
   const [openCat, setOpenCat] = useSS(null); // expanded "Shop by category" tile → subcategory pills
+  const [feedClips, setFeedClips] = useSS(null); // all live YoteFeed clips → "Now on YoteFeed" rail
+  useEffSS(() => subscribeFeed(setFeedClips), []);
   const IN_PROGRESS = ['queued','accepted','picked_up','at_hub','out','awaiting'];
   const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>IN_PROGRESS.includes(o.status)) : null;
   return (
@@ -263,6 +266,9 @@ export function HomeScreen(){
         );
       })()}
 
+      {/* Now on YoteFeed — stores that have clips, with a NEW badge for fresh uploads */}
+      <FeedStoresRail clips={feedClips} />
+
       {/* for you */}
       {YM_PRODUCTS.length > 0 && (
         <div className="wrap" style={{ marginTop:40 }}>
@@ -338,18 +344,24 @@ export function SearchScreen({ params }){
           ))}
         </div>
       )}
+      {/* Each tab splits its results into per-category rows when browsing all with no
+          query; a chosen category chip or search term drops to that tab's flat grid. */}
       {tab==='products' ? (
-        prods.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
-        : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.')} />
+        prods.length ? (
+          (cat==='all' && !q)
+            ? <GroupedByCategory items={prods} onPick={pickCat} itemWidth={200} belongs={(p,n)=>catalogIdsFor(n.id).includes(p.cat)} renderItem={(p)=><ProductCard p={p} />} />
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
+        ) : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.')} />
       ) : tab==='brands' ? (
-        brands.length ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:18 }}>{brands.map(s=><TopBrandCard key={s.id} s={s} width="100%" />)}</div>
-        : <Empty icon="fa-crown" t={q ? `No top brands for “${q}”` : `No top brands in ${catTitle||'this category'} yet`} s="Top brands are our flagship enterprise storefronts — check back soon." />
+        brands.length ? (
+          (cat==='all' && !q)
+            ? <GroupedByCategory items={brands} onPick={pickCat} itemWidth={288} renderItem={(s)=><TopBrandCard s={s} width="100%" />} />
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:18 }}>{brands.map(s=><TopBrandCard key={s.id} s={s} width="100%" />)}</div>
+        ) : <Empty icon="fa-crown" t={q ? `No top brands for “${q}”` : `No top brands in ${catTitle||'this category'} yet`} s="Top brands are our flagship enterprise storefronts — check back soon." />
       ) : (
         stores.length ? (
-          // Explore stores: browsing all with no query → the category-split view;
-          // once a category chip or search term is active, the flat filtered grid.
           (cat==='all' && !q)
-            ? <StoresByCategory stores={stores} onPick={setCat} />
+            ? <GroupedByCategory items={stores} onPick={pickCat} itemWidth={232} renderItem={(s)=><StoreCard s={s} />} />
             : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
         ) : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.')} />
       )}
@@ -371,55 +383,73 @@ function FeaturedStores({ stores }){
               {s.logo ? <img src={s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:26, color:s.tint || 'var(--m-primary)' }} />}
             </span>
           </span>
-          <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'break-word' }}>{s.name}</span>
+          <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'break-word', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{s.name}</span>
         </button>
       ))}
     </div>
   );
 }
-/* Explore stores — curated highlights (Top brands, then Products, then Featured
-   stores) above the mall's stores split into category groups (compact rows). The
-   front page stays lean; the full browse lives here. "See all" narrows to a category. */
-function StoresByCategory({ stores, onPick }){
+
+/* Now on YoteFeed rail — story-ring avatars for stores that have clips, with a
+   "NEW" badge for fresh uploads (a clip in the last 7 days). Derives the store set
+   from the live feed; tapping opens that store's clips in the immersive feed. */
+function FeedStoresRail({ clips }){
   const { nav } = useYM();
-  const brands = stores.filter(s => s.topBrand);
-  const featured = stores.filter(s => s.featured);
+  if (!clips || !clips.length) return null;
+  const m = new Map();
+  for (const c of clips){
+    if (!c.storeId) continue;
+    const ts = c.createdAt?.seconds || 0;
+    const cur = m.get(c.storeId) || { storeId:c.storeId, name:c.storeName, logo:c.storeLogo, latestId:c.id, ts:0, count:0 };
+    cur.count += 1;
+    if (ts >= cur.ts){ cur.ts = ts; cur.latestId = c.id; cur.name = c.storeName || cur.name; cur.logo = c.storeLogo || cur.logo; }
+    m.set(c.storeId, cur);
+  }
+  const stores = [...m.values()].sort((a,b)=>b.ts - a.ts);
+  if (!stores.length) return null;
+  const nowS = Date.now()/1000;
+  return (
+    <div className="wrap" style={{ marginTop:30 }}>
+      <SectionTitle action="Open YoteFeed" onAction={()=>nav('feed')}>Now on YoteFeed</SectionTitle>
+      <div className="scroll-x" style={{ gap:18, paddingBottom:4, alignItems:'flex-start' }}>
+        {stores.map(cs => {
+          const s = ymStore(cs.storeId) || {};
+          const fresh = (nowS - cs.ts) < 7*86400;
+          return (
+            <button key={cs.storeId} onClick={()=>nav('feed', { storeId:cs.storeId, storeName: cs.name || s.name, startId: cs.latestId })}
+              style={{ flexShrink:0, width:88, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
+              <span style={{ position:'relative', width:76, height:76, borderRadius:9999, padding:3, background:'conic-gradient(from 210deg, #8b3fea, #ec4899, #f4b530, #8b3fea)', display:'block', flexShrink:0 }}>
+                <span style={{ width:'100%', height:'100%', borderRadius:9999, overflow:'hidden', background:'var(--m-surface)', border:'3px solid var(--m-bg)', boxSizing:'border-box', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {(cs.logo || s.logo) ? <img src={cs.logo || s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:26, color:s.tint || 'var(--m-primary)' }} />}
+                </span>
+                <span style={{ position:'absolute', bottom:-2, right:-2, width:26, height:26, borderRadius:9999, background:'var(--m-surface)', border:'2px solid var(--m-bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteFeedMark size={13} /></span>
+                {fresh && <span style={{ position:'absolute', top:-4, left:'50%', transform:'translateX(-50%)', background:'var(--m-danger)', color:'#fff', fontSize:9.5, fontWeight:800, padding:'1px 7px', borderRadius:9999, letterSpacing:'.04em', boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>NEW</span>}
+              </span>
+              <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'break-word', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{cs.name || s.name || 'Store'}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+/* Grouped-by-category view — the "category split" used by EVERY Explore tab
+   (Products, Stores, Top brands): the tab's results split into per-category rows
+   (compact horizontal rails). `belongs` decides which category node an item falls
+   under — stores/brands carry a node id (default), products resolve via catalogIdsFor.
+   Tapping a row heading or "See all" narrows the current tab to that category. */
+function GroupedByCategory({ items, onPick, renderItem, itemWidth = 232, belongs }){
+  const match = belongs || ((it, node) => it.cat === node.id);
   const seen = new Set();
   const sections = CATEGORY_TREE.map((node) => {
-    const list = stores.filter(s => s.cat === node.id);
-    list.forEach(s => seen.add(s.id));
+    const list = items.filter((it) => !seen.has(it.id) && match(it, node));
+    list.forEach((it) => seen.add(it.id));
     return list.length ? { node, list } : null;
   }).filter(Boolean);
-  const rest = stores.filter(s => !seen.has(s.id));
-  if (rest.length) sections.push({ node: { id:'more', label:'Other shops', icon:'fa-store', tint:'#7c3aed' }, list: rest });
+  const rest = items.filter((it) => !seen.has(it.id));
+  if (rest.length) sections.push({ node: { id:'more', label:'Other', icon:'fa-shapes', tint:'#7c3aed' }, list: rest });
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:30 }}>
-      {/* 1 · Top brands */}
-      {brands.length > 0 && (
-        <div>
-          <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'brands' })}>Top brands</SectionTitle>
-          <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
-            {brands.map(s => <TopBrandCard key={s.id} s={s} />)}
-          </div>
-        </div>
-      )}
-      {/* 2 · Products */}
-      {YM_PRODUCTS.length > 0 && (
-        <div>
-          <SectionTitle action="See all" onAction={()=>nav('search',{ tab:'products' })}>Products</SectionTitle>
-          <div className="scroll-x" style={{ gap:16, paddingBottom:4 }}>
-            {YM_PRODUCTS.slice(0, 12).map(p => <div key={p.id} style={{ width:200, flexShrink:0 }}><ProductCard p={p} /></div>)}
-          </div>
-        </div>
-      )}
-      {/* 3 · Featured stores — names stack when long / multi-word */}
-      {featured.length > 0 && (
-        <div>
-          <SectionTitle>Featured stores</SectionTitle>
-          <FeaturedStores stores={featured} />
-        </div>
-      )}
-      {/* Browse by category */}
+    <div style={{ display:'flex', flexDirection:'column', gap:26 }}>
       {sections.map(({ node, list }) => {
         const pick = () => node.id !== 'more' && onPick(node.id);
         return (
@@ -433,7 +463,7 @@ function StoresByCategory({ stores, onPick }){
               {node.id !== 'more' && list.length > 3 && <button onClick={pick} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ flexShrink:0 }}>See all <FA i="fa-chevron-right" style={{ fontSize:10 }} /></button>}
             </div>
             <div className="scroll-x" style={{ gap:14 }}>
-              {list.slice(0, 10).map(s => <div key={s.id} style={{ width:232, flexShrink:0 }}><StoreCard s={s} /></div>)}
+              {list.slice(0, 10).map((it) => <div key={it.id} style={{ width:itemWidth, flexShrink:0 }}>{renderItem(it)}</div>)}
             </div>
           </div>
         );
