@@ -28,7 +28,7 @@ function Terms() {
 
             <h3>1. About YoteMarket &amp; these Terms</h3>
             <p>
-              YoteMarket Limited (&ldquo;YoteMarket&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
+              Yote Market Limited (&ldquo;YoteMarket&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
               operates a digital virtual mall and logistics-coordination platform serving customers, merchants, and
               independent delivery agents across Kenya, accessible via our website, mobile applications, and related
               tools (together, the &ldquo;Platform&rdquo;). These Terms of Service, together with our Privacy Policy
@@ -255,7 +255,7 @@ function Terms() {
 
             <h3 id="indemnity">13. Indemnification</h3>
             <p>
-              You agree to indemnify, defend, and hold harmless YoteMarket Limited and its directors, officers,
+              You agree to indemnify, defend, and hold harmless Yote Market Limited and its directors, officers,
               employees, agents, and affiliates from and against any claims, liabilities, losses, damages, fines,
               penalties, and expenses (including reasonable legal fees) arising from: your breach of these Terms or
               any policy; your violation of any law or regulation; your infringement of any third-party rights; your
@@ -302,7 +302,7 @@ function Terms() {
             </p>
 
             <p style={{ color: 'var(--t3)', fontSize: '14px', marginTop: '28px' }}>
-              YoteMarket Limited · general@yotemarket.com · 0720 730 861 · Effective 1 February 2026.
+              Yote Market Limited · general@yotemarket.com · 0720 730 861 · Effective 1 February 2026.
             </p>
           </div>
 

@@ -133,7 +133,7 @@ function App(){
           <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={role==='admin'} /></main>
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1240px] mx-auto">
-            <span>© 2026 YoteMarket Limited — Internal Operations</span>
+            <span>© 2026 Yote Market Limited — Internal Operations</span>
             <span>Source: Internal Pricing &amp; Unit Economics v2 · single source of truth: economics.js</span>
           </footer>
         </div>

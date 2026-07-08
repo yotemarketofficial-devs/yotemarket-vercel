@@ -27,7 +27,7 @@ function Privacy() {
 
             <h3>1. Who we are</h3>
             <p>
-              YoteMarket Limited (&ldquo;YoteMarket&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) is the data
+              Yote Market Limited (&ldquo;YoteMarket&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) is the data
               controller for personal data processed through our website, mobile applications, and related tools (the
               &ldquo;Platform&rdquo;). You can reach us at{' '}
               <a href="mailto:general@yotemarket.com">general@yotemarket.com</a> or{' '}
@@ -137,7 +137,7 @@ function Privacy() {
             </p>
 
             <p style={{ color: 'var(--t3)', fontSize: '14px', marginTop: '28px' }}>
-              YoteMarket Limited · general@yotemarket.com · 0720 730 861 · Effective 1 February 2026.
+              Yote Market Limited · general@yotemarket.com · 0720 730 861 · Effective 1 February 2026.
             </p>
           </div>
 

@@ -406,3 +406,34 @@ h1{font-size:clamp(40px,6vw,68px); letter-spacing:-.02em;}
 .stat .l{color:rgba(255,255,255,.78);}
 
 @media (max-width:640px){ .hero{padding:48px 0 52px;} }
+
+/* ── Scroll reveal + motion (landing) ─────────────────────────────────────── */
+.reveal{opacity:0; transform:translateY(26px); transition:opacity .7s cubic-bezier(.22,.7,.2,1), transform .7s cubic-bezier(.22,.7,.2,1); transition-delay:var(--rd,0ms); will-change:opacity,transform;}
+.reveal.in{opacity:1; transform:none;}
+@keyframes ym-float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);}}
+.float-a{animation:ym-float 6.5s ease-in-out infinite;}
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1 !important; transform:none !important; transition:none;}
+  .float-a{animation:none;}
+}
+
+/* ── YoteFeed highlight band ──────────────────────────────────────────────── */
+.feed-band{position:relative; overflow:hidden; border-radius:28px; padding:48px; background:var(--grad-hero); color:#fff;}
+.feed-band .feed-glow{position:absolute; width:440px; height:440px; border-radius:50%; right:-130px; top:-150px;
+  background:radial-gradient(circle, rgba(244,181,48,.34), transparent 62%); pointer-events:none;}
+.feed-grid{position:relative; display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center;}
+.feed-band .kicker{color:var(--gold-bright);}
+.feed-band h2{font-size:clamp(26px,3.4vw,38px); font-weight:800; margin:12px 0 14px; line-height:1.1;}
+.feed-band .fb-lead{font-size:16.5px; color:rgba(255,255,255,.86); line-height:1.62; max-width:460px;}
+.feed-tags{display:flex; gap:10px; flex-wrap:wrap; margin-top:24px;}
+.feed-tag{font-size:13.5px; font-weight:600; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24);
+  padding:8px 14px; border-radius:999px; display:inline-flex; gap:8px; align-items:center;}
+.feed-clips{display:flex; gap:16px; justify-content:center; align-items:center;}
+.feed-clip{position:relative; width:132px; aspect-ratio:9/16; border-radius:18px; overflow:hidden; display:flex; align-items:flex-end;
+  padding:12px; border:1px solid rgba(255,255,255,.16); box-shadow:0 22px 44px -16px rgba(0,0,0,.55);}
+.feed-clip .fc-play{position:absolute; top:12px; left:12px; width:30px; height:30px; border-radius:50%;
+  background:rgba(255,255,255,.92); color:#3a1a78; display:flex; align-items:center; justify-content:center; font-size:12px;}
+.feed-clip .fc-price{font-size:12px; font-weight:700; background:rgba(255,255,255,.96); color:#111; padding:4px 9px; border-radius:8px;}
+.feed-clip.c2{transform:translateY(24px);} .feed-clip.c3{transform:translateY(-14px);}
+@media (max-width:860px){ .feed-grid{grid-template-columns:1fr;} .feed-band{padding:36px;} .feed-clip{width:112px;} }
+@media (max-width:420px){ .feed-clip.c3{display:none;} }

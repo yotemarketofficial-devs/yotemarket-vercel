@@ -1,0 +1,12 @@
+# robots.txt for YoteMarket — https://yotemarket.com
+User-agent: *
+Allow: /
+
+# Internal / gated app areas — keep out of the index
+Disallow: /staff
+Disallow: /admin
+Disallow: /hub
+Disallow: /pos
+Disallow: /marketers/app
+
+Sitemap: https://yotemarket.com/sitemap.xml

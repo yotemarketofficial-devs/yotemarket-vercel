@@ -585,7 +585,7 @@ export default function AdminConsole() {
 
       <footer className="border-t border-gray-100 bg-white py-5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-xs text-gray-400 flex flex-col sm:flex-row justify-between items-center gap-2">
-          <span>© 2026 YoteMarket Limited — Internal Operations</span>
+          <span>© 2026 Yote Market Limited — Internal Operations</span>
           <span>Source: Internal Pricing &amp; Unit Economics v2 · single source of truth: economics.js</span>
         </div>
       </footer>

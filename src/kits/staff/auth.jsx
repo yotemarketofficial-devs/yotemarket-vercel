@@ -48,7 +48,7 @@ export function StaffLogin(){
           </div>
         </form>
         <div className="flex items-center justify-between mt-5 px-1">
-          <span className="text-xs t3">© 2026 YoteMarket Limited</span>
+          <span className="text-xs t3">© 2026 Yote Market Limited</span>
           <ThemeToggle />
         </div>
       </div>
