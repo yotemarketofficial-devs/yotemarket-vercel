@@ -131,8 +131,11 @@ function EmptyBlock({ icon='fa-store', text }){
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
   const [openCat, setOpenCat] = useSS(null); // expanded "Shop by category" tile → subcategory pills
-  const [feedClips, setFeedClips] = useSS(null); // all live YoteFeed clips → "Now on YoteFeed" rail
+  const [feedClips, setFeedClips] = useSS(null); // all live YoteFeed clips → store feed badges + rail
   useEffSS(() => subscribeFeed(setFeedClips), []);
+  const clipMap = feedStoreMap(feedClips);                 // storeId → clip info (badges + rail)
+  const featured = YM_STORES.filter(s => s.featured);
+  const featuredIds = new Set(featured.map(s => s.id));    // exclude these from "Now on YoteFeed"
   const IN_PROGRESS = ['queued','accepted','picked_up','at_hub','out','awaiting'];
   const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>IN_PROGRESS.includes(o.status)) : null;
   return (
@@ -254,20 +257,16 @@ export function HomeScreen(){
         );
       })()}
 
-      {/* Featured — staff-picked flagship stores, shown as circle logos */}
-      {(() => {
-        const featured = YM_STORES.filter(s => s.featured);
-        if (!featured.length) return null;
-        return (
-          <div className="wrap" style={{ marginTop:30 }}>
-            <SectionTitle>Featured stores</SectionTitle>
-            <FeaturedStores stores={featured} />
-          </div>
-        );
-      })()}
+      {/* Featured — staff-picked flagship stores; those with clips get feed badges */}
+      {featured.length > 0 && (
+        <div className="wrap" style={{ marginTop:30 }}>
+          <SectionTitle>Featured stores</SectionTitle>
+          <FeaturedStores stores={featured} clips={clipMap} />
+        </div>
+      )}
 
-      {/* Now on YoteFeed — stores that have clips, with a NEW badge for fresh uploads */}
-      <FeedStoresRail clips={feedClips} />
+      {/* Now on YoteFeed — NON-featured stores with clips (featured ones show badges above) */}
+      <FeedStoresRail clips={feedClips} exclude={featuredIds} />
 
       {/* for you */}
       {YM_PRODUCTS.length > 0 && (
@@ -368,36 +367,12 @@ export function SearchScreen({ params }){
     </div>
   );
 }
-/* Featured stores rail — circle logos with names that STACK (wrap) instead of
-   truncating, so long or multi-word store names stay fully readable. Shared by the
-   home page and the Explore-stores view. */
-function FeaturedStores({ stores }){
-  const { nav } = useYM();
-  if (!stores?.length) return null;
-  return (
-    <div className="scroll-x" style={{ gap:18, paddingBottom:4, alignItems:'flex-start' }}>
-      {stores.map(s => (
-        <button key={s.id} onClick={()=>nav('store', { sid:s.id })} style={{ flexShrink:0, width:88, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
-          <span style={{ width:76, height:76, borderRadius:9999, padding:3, background:'var(--m-grad)', boxShadow:'var(--m-glow)', display:'block', flexShrink:0 }}>
-            <span style={{ width:'100%', height:'100%', borderRadius:9999, overflow:'hidden', background:'var(--m-surface)', border:'3px solid var(--m-bg)', boxSizing:'border-box', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              {s.logo ? <img src={s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:26, color:s.tint || 'var(--m-primary)' }} />}
-            </span>
-          </span>
-          <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'break-word', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{s.name}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/* Now on YoteFeed rail — story-ring avatars for stores that have clips, with a
-   "NEW" badge for fresh uploads (a clip in the last 7 days). Derives the store set
-   from the live feed; tapping opens that store's clips in the immersive feed. */
-function FeedStoresRail({ clips }){
-  const { nav } = useYM();
-  if (!clips || !clips.length) return null;
+/* Build a storeId → {latestId, ts, count, name, logo} map from the live feed.
+   FRESH_WINDOW_S marks a clip as a "fresh upload". Shared by the two store rails. */
+const FRESH_WINDOW_S = 7 * 86400;
+function feedStoreMap(clips){
   const m = new Map();
-  for (const c of clips){
+  for (const c of (clips || [])){
     if (!c.storeId) continue;
     const ts = c.createdAt?.seconds || 0;
     const cur = m.get(c.storeId) || { storeId:c.storeId, name:c.storeName, logo:c.storeLogo, latestId:c.id, ts:0, count:0 };
@@ -405,7 +380,45 @@ function FeedStoresRail({ clips }){
     if (ts >= cur.ts){ cur.ts = ts; cur.latestId = c.id; cur.name = c.storeName || cur.name; cur.logo = c.storeLogo || cur.logo; }
     m.set(c.storeId, cur);
   }
-  const stores = [...m.values()].sort((a,b)=>b.ts - a.ts);
+  return m;
+}
+
+/* Featured stores rail — circle logos with names that STACK (wrap) instead of
+   truncating. A featured store that ALSO has YoteFeed clips gets the story ring +
+   feed badge (+ NEW for a fresh upload), so it isn't duplicated in "Now on YoteFeed". */
+function FeaturedStores({ stores, clips }){
+  const { nav } = useYM();
+  if (!stores?.length) return null;
+  const nowS = Date.now() / 1000;
+  return (
+    <div className="scroll-x" style={{ gap:18, paddingBottom:4, alignItems:'flex-start' }}>
+      {stores.map(s => {
+        const ci = clips?.get?.(s.id);
+        const fresh = ci && (nowS - ci.ts) < FRESH_WINDOW_S;
+        return (
+          <button key={s.id} onClick={()=>nav('store', { sid:s.id })} style={{ flexShrink:0, width:88, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', display:'flex', flexDirection:'column', alignItems:'center', gap:9 }}>
+            <span style={{ position:'relative', width:76, height:76, borderRadius:9999, padding:3, background: ci ? 'conic-gradient(from 210deg, #8b3fea, #ec4899, #f4b530, #8b3fea)' : 'var(--m-grad)', boxShadow: ci ? 'none' : 'var(--m-glow)', display:'block', flexShrink:0 }}>
+              <span style={{ width:'100%', height:'100%', borderRadius:9999, overflow:'hidden', background:'var(--m-surface)', border:'3px solid var(--m-bg)', boxSizing:'border-box', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                {s.logo ? <img src={s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:26, color:s.tint || 'var(--m-primary)' }} />}
+              </span>
+              {ci && <span style={{ position:'absolute', bottom:-2, right:-2, width:26, height:26, borderRadius:9999, background:'var(--m-surface)', border:'2px solid var(--m-bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteFeedMark size={13} /></span>}
+              {fresh && <span style={{ position:'absolute', top:-4, left:'50%', transform:'translateX(-50%)', background:'var(--m-danger)', color:'#fff', fontSize:9.5, fontWeight:800, padding:'1px 7px', borderRadius:9999, letterSpacing:'.04em', boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>NEW</span>}
+            </span>
+            <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'normal', overflowWrap:'normal', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{s.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Now on YoteFeed rail — story-ring avatars for stores that have clips, with a
+   "NEW" badge for fresh uploads (a clip in the last 7 days). Derives the store set
+   from the live feed; tapping opens that store's clips in the immersive feed. */
+function FeedStoresRail({ clips, exclude }){
+  const { nav } = useYM();
+  let stores = [...feedStoreMap(clips).values()].sort((a,b)=>b.ts - a.ts);
+  if (exclude && exclude.size) stores = stores.filter(cs => !exclude.has(cs.storeId));
   if (!stores.length) return null;
   const nowS = Date.now()/1000;
   return (
@@ -425,7 +438,7 @@ function FeedStoresRail({ clips }){
                 <span style={{ position:'absolute', bottom:-2, right:-2, width:26, height:26, borderRadius:9999, background:'var(--m-surface)', border:'2px solid var(--m-bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteFeedMark size={13} /></span>
                 {fresh && <span style={{ position:'absolute', top:-4, left:'50%', transform:'translateX(-50%)', background:'var(--m-danger)', color:'#fff', fontSize:9.5, fontWeight:800, padding:'1px 7px', borderRadius:9999, letterSpacing:'.04em', boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>NEW</span>}
               </span>
-              <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'break-word', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{cs.name || s.name || 'Store'}</span>
+              <span className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg1)', textAlign:'center', maxWidth:'100%', lineHeight:1.25, whiteSpace:'normal', wordBreak:'normal', overflowWrap:'normal', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{cs.name || s.name || 'Store'}</span>
             </button>
           );
         })}
