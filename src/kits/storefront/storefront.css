@@ -89,15 +89,15 @@
 .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.35);}
 [data-theme="dark"] .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.28);}
 
-/* ── YoteAI — frosted-glass floating panel + genie entrance ────────────────── */
-.kit-storefront .ai-screen{position:relative; min-height:calc(100dvh - 100px); display:flex; align-items:center; justify-content:center; padding:24px 16px 40px; overflow:hidden;}
-.kit-storefront .ai-bg{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;}
-.kit-storefront .ai-blob{position:absolute; border-radius:50%; filter:blur(72px); opacity:.55;}
-.kit-storefront .ai-blob.b1{width:min(46vw,440px); aspect-ratio:1; left:-6%; top:-8%; background:radial-gradient(circle, #8b3fea, transparent 68%);}
-.kit-storefront .ai-blob.b2{width:min(52vw,520px); aspect-ratio:1; right:-8%; bottom:-12%; background:radial-gradient(circle, #5b2c9c, transparent 68%);}
-[data-theme="dark"] .kit-storefront .ai-blob{opacity:.4;}
-.kit-storefront .ai-glass{background:color-mix(in srgb, var(--m-surface) 60%, transparent); -webkit-backdrop-filter:blur(20px) saturate(155%); backdrop-filter:blur(20px) saturate(155%); border:1px solid rgba(255,255,255,.22);}
-[data-theme="dark"] .kit-storefront .ai-glass{background:color-mix(in srgb, var(--m-surface) 52%, transparent); border-color:rgba(255,255,255,.08);}
+/* ── YoteAI — frosted-glass panel floating over the (blurred) storefront ────── */
+/* Fixed overlay: its backdrop-blur frosts the real page behind it. Click the
+   backdrop (or the ✕) to dismiss. */
+.kit-storefront .ai-overlay{position:fixed; inset:0; z-index:130; display:flex; align-items:center; justify-content:center; padding:24px 16px; overflow-y:auto;
+  background:color-mix(in srgb, var(--m-bg) 34%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(120%); backdrop-filter:blur(16px) saturate(120%);
+  animation:ym-fade .25s ease;}
+.kit-storefront .ai-glass{background:color-mix(in srgb, var(--m-surface) 74%, transparent); -webkit-backdrop-filter:blur(22px) saturate(150%); backdrop-filter:blur(22px) saturate(150%); border:1px solid rgba(255,255,255,.22);}
+[data-theme="dark"] .kit-storefront .ai-glass{background:color-mix(in srgb, var(--m-surface) 62%, transparent); border-color:rgba(255,255,255,.08);}
 @keyframes ym-genie{
   0%{opacity:0; transform:translateY(64px) scaleX(.42) scaleY(.12); filter:blur(9px);}
   55%{opacity:1; transform:translateY(-6px) scaleX(1.03) scaleY(1.04); filter:blur(0);}

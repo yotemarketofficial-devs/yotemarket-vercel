@@ -103,18 +103,24 @@ export default function StorefrontApp(){
     cartOpen, openCart:()=>setCartOpen(true), closeCart:()=>setCartOpen(false), toast,
     account, openAuth, requireAuth, signOut: doSignOut, liveOrders };
 
-  const Screen = SCREENS[top.screen] || HomeScreen;
+  // YoteAI floats as a glass overlay over the page you were on — so render the
+  // underlying (previous) screen as the base and paint AIScreen on top; its
+  // backdrop-blur then frosts the real storefront behind it.
+  const aiOpen = top.screen === 'ai';
+  const baseEntry = aiOpen ? (stack[stack.length - 2] || { screen: 'home', params: {} }) : top;
+  const Screen = SCREENS[baseEntry.screen] || HomeScreen;
   // YoteFeed runs edge-to-edge (immersive full-screen shortform): hide the site chrome and pin
   // the shell to the viewport so the feed fills the screen with its own overlay bar.
-  const immersive = top.screen === 'feed';
+  const immersive = baseEntry.screen === 'feed';
   return (
     <YMContext.Provider value={ctx}>
       <div data-screen-label={'Storefront — '+top.screen} style={immersive
         ? { height:'100dvh', overflow:'hidden', display:'flex', flexDirection:'column' }
         : { minHeight:'100vh', display:'flex', flexDirection:'column' }}>
         {!immersive && <Header />}
-        <main key={stack.length+top.screen} style={{ flex:1, ...(immersive ? { minHeight:0 } : {}) }}><Screen params={top.params} /></main>
+        <main key={(aiOpen ? stack.length - 1 : stack.length) + baseEntry.screen} style={{ flex:1, ...(immersive ? { minHeight:0 } : {}) }}><Screen params={baseEntry.params} /></main>
         {!immersive && <Footer />}
+        {aiOpen && <AIScreen />}
         <CartDrawer />
         <Toast toast={toastState} />
         {showAuth && (

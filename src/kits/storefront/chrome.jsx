@@ -89,7 +89,7 @@ function FLink({ label, onClick, href }){
 }
 
 export function Footer(){
-  const { theme, reset, requireAuth, openCart } = useYM();
+  const { theme, reset, nav, requireAuth, openCart } = useYM();
   const go = (screen) => reset(screen);              // public screens
   const goAuth = (screen, params) => requireAuth(() => reset(screen, params)); // account-gated
   const SOCIAL = [
@@ -116,7 +116,7 @@ export function Footer(){
           <div className="ym-h3" style={{ marginBottom:14 }}>Shop</div>
           <FLink label="Categories" onClick={()=>go('home')} />
           <FLink label="Search products" onClick={()=>go('search')} />
-          <FLink label="Ask YoteAI" onClick={()=>go('ai')} />
+          <FLink label="Ask YoteAI" onClick={()=>nav('ai')} />
           <FLink label="Your cart" onClick={openCart} />
         </div>
         <div>
