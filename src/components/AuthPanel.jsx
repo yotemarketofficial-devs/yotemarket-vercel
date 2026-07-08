@@ -66,6 +66,11 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
   const [email, setEmail] = useS('');
   const [phone, setPhone] = useS('');
   const [password, setPassword] = useS('');
+  // Email/password is collapsed by default so the whole card fits on screen with Google
+  // as the primary action; the fields reveal on demand (or automatically if a Google
+  // redirect returned an error the user needs to act on).
+  const [showEmail, setShowEmail] = useS(false);
+  useE(() => { if (redirectError) setShowEmail(true); }, [redirectError]);
 
   // If a Google *redirect* sign-in came back with an error, show it once on mount.
   useE(() => { if (redirectError) setErr(redirectError); }, [redirectError]);
@@ -153,32 +158,41 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {mode === 'register' && <div><label className="ym-label">Full name</label><input className="ym-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Wanjiru Kamau" /></div>}
-              <div><label className="ym-label">Email</label><input className="ym-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" /></div>
-              {mode === 'register' && <div><label className="ym-label">Phone number (M-Pesa)</label><input className="ym-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></div>}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                  <label className="ym-label">Password</label>
-                  {mode === 'signin' && <button type="button" onClick={forgot} disabled={busy} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, color: 'var(--m-link)', padding: 0 }}>Forgot password?</button>}
-                </div>
-                <input className="ym-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
-              </div>
-
-              {notice && <div role="status" style={{ display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-active-bg)', color: 'var(--m-active-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13.5, fontWeight: 500 }}><FA i="fa-circle-check" /> {notice}</div>}
-              {err && <div role="alert" style={{ display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13.5, fontWeight: 500 }}><FA i="fa-circle-exclamation" /> {err}</div>}
-
-              <button className="ym-btn ym-btn-primary" disabled={busy} onClick={() => submit()} style={{ marginTop: 4 }}>
-                {busy ? <><FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite' }} /> Please wait…</> : (mode === 'signin' ? 'Sign in' : 'Create account')}
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '2px 0' }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--m-border)' }} /><span className="ym-cap">or</span><div style={{ flex: 1, height: 1, background: 'var(--m-border)' }} />
-              </div>
-
+              {/* Google is the primary, fastest path — shown first so the card fits on
+                  screen without scrolling. Email/password is collapsed until asked for. */}
               <button className="ym-btn" disabled={busy} onClick={() => submit('google')} style={{ background: 'var(--m-surface)', color: 'var(--m-fg1)', border: '1.5px solid var(--m-border)', boxShadow: 'var(--m-shadow-card)' }}>
                 <svg width="19" height="19" viewBox="0 0 48 48" style={{ flexShrink: 0 }}><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" /><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" /><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" /><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" /></svg>
                 {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
               </button>
+
+              {!showEmail ? (
+                <button type="button" className="ym-btn ym-btn-ghost" disabled={busy} onClick={() => { setErr(''); setNotice(''); setShowEmail(true); }}>
+                  <FA i="fa-envelope" /> {mode === 'signin' ? 'Sign in with email' : 'Sign up with email'}
+                </button>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '2px 0' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--m-border)' }} /><span className="ym-cap">or with email</span><div style={{ flex: 1, height: 1, background: 'var(--m-border)' }} />
+                  </div>
+                  {mode === 'register' && <div><label className="ym-label">Full name</label><input className="ym-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Wanjiru Kamau" /></div>}
+                  <div><label className="ym-label">Email</label><input className="ym-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" /></div>
+                  {mode === 'register' && <div><label className="ym-label">Phone number (M-Pesa)</label><input className="ym-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></div>}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                      <label className="ym-label">Password</label>
+                      {mode === 'signin' && <button type="button" onClick={forgot} disabled={busy} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, color: 'var(--m-link)', padding: 0 }}>Forgot password?</button>}
+                    </div>
+                    <input className="ym-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+                  </div>
+                  <button className="ym-btn ym-btn-primary" disabled={busy} onClick={() => submit()} style={{ marginTop: 4 }}>
+                    {busy ? <><FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite' }} /> Please wait…</> : (mode === 'signin' ? 'Sign in' : 'Create account')}
+                  </button>
+                </>
+              )}
+
+              {notice && <div role="status" style={{ display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-active-bg)', color: 'var(--m-active-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13.5, fontWeight: 500 }}><FA i="fa-circle-check" /> {notice}</div>}
+              {err && <div role="alert" style={{ display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13.5, fontWeight: 500 }}><FA i="fa-circle-exclamation" /> {err}</div>}
+
               {showGuest && <button className="ym-btn ym-btn-ghost" disabled={busy} onClick={() => { (onGuest || onClose || (() => {}))(); }}>Continue browsing as guest</button>}
               <div className="ym-cap" style={{ textAlign: 'center', marginTop: 2 }}>
                 By continuing, you agree to our <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--m-link)', fontWeight: 600 }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--m-link)', fontWeight: 600 }}>Privacy Policy</a>.
