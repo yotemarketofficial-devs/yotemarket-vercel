@@ -3,6 +3,8 @@ import React from 'react';
 import { FA, Avatar, Logo, ThemeToggle } from './primitives.jsx';
 import { ksh } from './data.js';
 import { useShop, useSubCard, useMerchant } from './merchant.jsx';
+import YoteAiMark from '../../components/YoteAiMark.jsx';
+import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 
 // `roles` = which store roles see the item. owner = all; manager = everything except
 // money (wallet/subscription) & team; cashier = POS + orders + chat.
@@ -11,11 +13,11 @@ const OM = ['owner', 'manager'];
 export const NAV = [
   { key:'overview', icon:'fa-gauge-high', label:'Dashboard', roles:ALL },
   { key:'pos', icon:'fa-store', label:'Point of sale', roles:ALL },
-  { key:'assistant', icon:'fa-wand-magic-sparkles', label:'YoteAI', roles:OM },
+  { key:'assistant', icon:'fa-wand-magic-sparkles', mark:'ai', label:'YoteAI', roles:OM },
   { key:'insight', icon:'fa-lightbulb', label:'YoteMarket Insight', roles:OM },
   { key:'sales', icon:'fa-cash-register', label:'Sales', roles:OM },
   { key:'products', icon:'fa-box', label:'My Products', roles:OM },
-  { key:'feed', icon:'fa-clapperboard', label:'YoteFeed', roles:OM },
+  { key:'feed', icon:'fa-clapperboard', mark:'feed', label:'YoteFeed', roles:OM },
   { key:'delivery', icon:'fa-truck-fast', label:'Delivery', roles:OM },
   { key:'chat', icon:'fa-comments', label:'Chats', roles:ALL },
   { key:'wallet', icon:'fa-wallet', label:'Wallet', roles:['owner'] },
@@ -49,7 +51,11 @@ export function Sidebar({ active, onChange, onClose }){
               <button key={n.key} onClick={()=>{ onChange(n.key); onClose&&onClose(); }}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 12px', borderRadius:12, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, fontWeight:600, textAlign:'left',
                   background: on?'var(--m-surface-3)':'transparent', color: on?'var(--m-primary)':'var(--m-fg2)' }}>
-                <FA i={n.icon} style={{ width:18, textAlign:'center', color: on?'var(--m-primary)':'var(--m-fg3)' }} />
+                {n.mark === 'ai'
+                  ? <span style={{ width:18, display:'inline-flex', justifyContent:'center', color: on?'var(--m-primary)':'var(--m-fg3)' }}><YoteAiMark size={17} color="currentColor" /></span>
+                  : n.mark === 'feed'
+                    ? <span style={{ width:18, display:'inline-flex', justifyContent:'center' }}><YoteFeedMark size={14} /></span>
+                    : <FA i={n.icon} style={{ width:18, textAlign:'center', color: on?'var(--m-primary)':'var(--m-fg3)' }} />}
                 <span style={{ flex:1 }}>{n.label}</span>
                 {n.badge && <span style={{ minWidth:20, height:20, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px' }}>{n.badge}</span>}
               </button>

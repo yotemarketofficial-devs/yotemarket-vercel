@@ -3,6 +3,7 @@ import React from 'react';
 import { doc, onSnapshot, collection, query, where, limit } from 'firebase/firestore';
 import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './primitives.jsx';
 import Markdown from '../../components/Markdown.jsx';
+import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { OrdersTable } from './overview.jsx';
 import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -692,7 +693,7 @@ export function Assistant(){
       <p className="ym-sub" style={{ marginBottom:20 }}>Your AI growth assistant — grounded in your real {live ? 'store stats and products' : 'store data'}. Ask for listing copy or data-backed insights.</p>
       <Card style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:560 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
-          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-wand-magic-sparkles" style={{ color:'#fff', fontSize:17 }} /></div>
+          <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={22} color="#fff" /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Growth assistant</div></div>
         </div>
         <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px 20px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>

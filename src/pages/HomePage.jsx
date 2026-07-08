@@ -1,24 +1,33 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import YoteAiMark from '../components/YoteAiMark.jsx';
+import YoteFeedMark from '../components/YoteFeedMark.jsx';
 
 const SHOPPER_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'The whole mall, by category', desc: 'Browse hundreds of local stores by category and subcategory — just like walking a real mall.' },
   { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Chat & negotiate', desc: 'Message sellers, agree a price in the app messenger, then pay — no jumping to other apps.' },
   { icon: 'fa-shield-halved', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'M-Pesa wallet & escrow', desc: 'Top up, pay with M-Pesa, and your money stays in escrow until your order arrives.' },
   { icon: 'fa-warehouse', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Pickup hubs near you', desc: 'Collect at your nearest neighbourhood hub, or have it delivered to your door.' },
-  { icon: 'fa-wand-magic-sparkles', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'Ask YoteAI', desc: 'Your shopping assistant — find products, compare options, and track orders just by asking.' },
+  { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'Ask YoteAI', desc: 'Your shopping assistant — find products, compare options, and track orders just by asking.' },
   { icon: 'fa-truck-fast', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Track every order', desc: 'Live rider tracking from the store to your hub or door, with verified-buyer reviews you can trust.' },
 ];
+
+// The YoteAI / YoteFeed brand marks (not generic icons) wherever the brand appears.
+function FeatureIcon({ f }) {
+  if (f.mark === 'ai') return <div className="mfeat-ic" style={{ background: f.tint }}><YoteAiMark size={24} color="#fff" /></div>;
+  if (f.mark === 'feed') return <div className="mfeat-ic mfeat-ic-brand"><YoteFeedMark size={22} /></div>;
+  return <div className="mfeat-ic" style={{ background: f.tint }}><i className={`fas ${f.icon}`}></i></div>;
+}
 
 const MERCHANT_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Branded storefront', desc: 'Your own shopfront in the mall — products, photos and reviews, live in minutes.' },
   { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 1,500 with bundled hub deliveries. Keep 100% of every sale — we never take a cut.' },
-  { icon: 'fa-wand-magic-sparkles', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'YoteAI merchant tools', desc: 'AI writes your product listings, surfaces demand insights, and answers shopper questions for you.' },
+  { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'YoteAI merchant tools', desc: 'AI writes your product listings, surfaces demand insights, and answers shopper questions for you.' },
   { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'In-app messenger', desc: 'Chat and negotiate with buyers inside the app — agree a price, then get paid through escrow.' },
   { icon: 'fa-wallet', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Wallet & M-Pesa payouts', desc: 'Track earnings and withdraw to M-Pesa or your Paybill on demand. Funds are escrow-protected.' },
   { icon: 'fa-chart-line', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Demand insights', desc: 'See what shoppers search for and which products trend in your area — and stock the winners.' },
   { icon: 'fa-cash-register', tint: 'linear-gradient(135deg,#0d9488,#14b8a6)', title: 'Point of sale (POS)', desc: 'Sell in-store and online from one till — stock, receipts and KRA invoices stay in sync.' },
-  { icon: 'fa-clapperboard', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'YoteFeed shoppable video', desc: 'Post short clips to your store and the feed — shoppers watch and tap to buy on the spot.' },
+  { mark: 'feed', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'YoteFeed shoppable video', desc: 'Post short clips to your store and the feed — shoppers watch and tap to buy on the spot.' },
   { icon: 'fa-crown', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Grow to a Top Brand', desc: 'Enterprise storefronts earn premium “Top brands” placement across the mall and search.' },
 ];
 
@@ -156,9 +165,7 @@ function HomePage() {
           <div className="mfeat-grid">
             {SHOPPER_FEATURES.map((f, i) => (
               <article className="mfeat-card reveal" key={f.title} style={{ '--rd': `${i * 60}ms` }}>
-                <div className="mfeat-ic" style={{ background: f.tint }}>
-                  <i className={`fas ${f.icon}`}></i>
-                </div>
+                <FeatureIcon f={f} />
                 <h4>{f.title}</h4>
                 <p>{f.desc}</p>
               </article>
@@ -225,9 +232,7 @@ function HomePage() {
           <div className="mfeat-grid">
             {MERCHANT_FEATURES.map((f, i) => (
               <article className="mfeat-card reveal" key={f.title} style={{ '--rd': `${i * 55}ms` }}>
-                <div className="mfeat-ic" style={{ background: f.tint }}>
-                  <i className={`fas ${f.icon}`}></i>
-                </div>
+                <FeatureIcon f={f} />
                 <h4>{f.title}</h4>
                 <p>{f.desc}</p>
               </article>

@@ -227,6 +227,8 @@ h1{font-size:clamp(36px,5.2vw,58px); line-height:1.03; font-weight:800; margin-t
 .mfeat-card{background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:26px; box-shadow:var(--shadow); transition:transform .25s, box-shadow .25s, border-color .25s;}
 .mfeat-card:hover{transform:translateY(-5px); box-shadow:var(--shadow-lg); border-color:var(--line2);}
 .mfeat-ic{width:50px; height:50px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:21px; color:#fff; box-shadow:0 8px 18px -6px rgba(60,20,110,.4);}
+/* brand-mark tile — light chip so the (fixed-colour) YoteFeed mark reads correctly */
+.mfeat-ic-brand{background:var(--surface); border:1px solid var(--line2); box-shadow:0 8px 18px -8px color-mix(in srgb, var(--purple) 32%, transparent);}
 .mfeat-card h4{font-size:18px; font-weight:700; color:var(--t1); margin:18px 0 8px;}
 .mfeat-card p{font-size:14.5px; color:var(--t3); margin:0; line-height:1.6;}
 .sec-cta{display:flex; align-items:center; gap:18px; justify-content:center; flex-wrap:wrap; margin-top:38px;}
