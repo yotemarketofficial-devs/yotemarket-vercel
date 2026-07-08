@@ -13,6 +13,7 @@ import Privacy from './pages/Privacy.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
+import GoogleOneTap from './components/GoogleOneTap.jsx';
 
 // Imported design kits are full-bleed apps with their own chrome — code-split so the
 // marketing landing stays lean and each kit's scoped CSS only loads on its route.
@@ -28,6 +29,7 @@ function App() {
   return (
     <>
       <ScrollToTop />
+      <GoogleOneTap />
       <Routes>
         {/* Marketing site (shared nav/footer chrome) */}
         <Route path="/" element={<Layout />}>

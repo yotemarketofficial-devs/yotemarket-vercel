@@ -8,3 +8,5 @@ YoteMarket Web Platform.html
 .envrc
 .vercel-token
 *.log
+# Google OAuth client secret files — server-only credential, never in the web bundle/repo
+client_secret_*.json

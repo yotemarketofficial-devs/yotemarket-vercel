@@ -17,7 +17,7 @@
      onAuthed     — called after a successful auth when the chosen role == stayRole */
 import React from 'react';
 import { useAuth } from '../lib/useAuth.jsx';
-const { useState: useS } = React;
+const { useState: useS, useEffect: useE } = React;
 
 const FA = ({ i, brand = false, style, className = '' }) => (
   <i className={`${brand ? 'fab' : 'fas'} ${i} ${className}`} style={style} aria-hidden="true" />
@@ -56,7 +56,7 @@ function BrandPanel({ theme, onTheme }) {
 }
 
 export default function AuthPanel({ overlay = false, onClose, theme, onTheme, stayRole = 'shopper', defaultRole, showGuest = false, onGuest, onAuthed }) {
-  const { signInEmail, registerEmail, signInGoogle, resetPassword } = useAuth();
+  const { signInEmail, registerEmail, signInGoogle, resetPassword, redirectError } = useAuth();
   const [mode, setMode] = useS('signin');
   const [role, setRole] = useS(defaultRole || stayRole);
   const [busy, setBusy] = useS(false);
@@ -66,6 +66,9 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
   const [email, setEmail] = useS('');
   const [phone, setPhone] = useS('');
   const [password, setPassword] = useS('');
+
+  // If a Google *redirect* sign-in came back with an error, show it once on mount.
+  useE(() => { if (redirectError) setErr(redirectError); }, [redirectError]);
 
   const finish = () => {
     if (role === stayRole) { onAuthed && onAuthed(); return; }
@@ -77,7 +80,9 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
   const submit = async (provider) => {
     setErr(''); setNotice(''); setBusy(true);
     try {
-      if (provider === 'google') await signInGoogle();
+      // Pass the cross-app destination so a redirect fallback still lands on the
+      // right app (e.g. a merchant signing in from the storefront → /dashboard).
+      if (provider === 'google') await signInGoogle({ redirectTo: role === stayRole ? null : ROLE_DEST[role] });
       else if (mode === 'register') await registerEmail(name, email, password, phone);
       else await signInEmail(email, password);
       finish();

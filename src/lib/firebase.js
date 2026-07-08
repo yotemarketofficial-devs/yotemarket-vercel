@@ -62,8 +62,25 @@ if (firebaseEnabled) {
 }
 
 export const googleProvider = firebaseEnabled ? new GoogleAuthProvider() : null;
+if (googleProvider) {
+  // Always show the account chooser so a signed-out user can pick / add an account
+  // (prevents silently reusing the wrong Google session) and so "sign in or up" is
+  // one seamless action for new and returning users alike.
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+}
 
 export { app, auth, db, functions, storage };
+
+// Google OAuth *web* client id — the dedicated web client whose "Authorized JavaScript
+// origins" list the production domains (yotemarket.com / yotemarket.co.ke), which is what
+// Google One Tap (GIS) requires to render. Only the client *id* is used here; the client
+// *secret* is a server-only credential and must never ship in the bundle. The id is public
+// (it ships in every client bundle) so it's baked in as a default; VITE_GOOGLE_OAUTH_CLIENT_ID
+// overrides. Empty → One Tap silently disables and the normal sign-in buttons still work.
+export const GOOGLE_OAUTH_CLIENT_ID = firebaseEnabled
+  ? (import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID ||
+     '494092523203-5lpuoneecgi0qbm4s9fpfr1v2g51dn0n.apps.googleusercontent.com')
+  : '';
 
 // Web Push (FCM) — VAPID *public* key from Firebase console → Cloud Messaging →
 // Web Push certificates. Like the rest of the web config it's not a secret (it

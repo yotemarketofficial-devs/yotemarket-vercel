@@ -7,15 +7,23 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithCredential,
+  GoogleAuthProvider,
   signOut,
   updateProfile,
   sendEmailVerification,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider, firebaseEnabled, db } from './firebase.js';
 
 const AuthContext = createContext(null);
+
+// Stash the post-auth destination across a full-page Google redirect so a user who
+// signs in under a role that lives in another app still lands there on return.
+const REDIRECT_DEST_KEY = 'ym:postAuthDest';
 
 function friendlyError(err) {
   const code = err?.code || '';
@@ -27,14 +35,72 @@ function friendlyError(err) {
     'auth/email-already-in-use': 'An account with that email already exists.',
     'auth/weak-password': 'Choose a stronger password (6+ characters).',
     'auth/popup-closed-by-user': 'Sign-in was cancelled.',
+    'auth/cancelled-popup-request': 'Sign-in was cancelled.',
+    'auth/popup-blocked': 'Your browser blocked the sign-in popup — redirecting you instead…',
     'auth/too-many-requests': 'Too many attempts — please wait a moment.',
+    'auth/network-request-failed': 'Network problem — check your connection and try again.',
+    'auth/account-exists-with-different-credential':
+      'You already have an account with this email — sign in with your original method (e.g. email + password), then link Google in settings.',
+    'auth/unauthorized-domain':
+      'This site isn’t authorised for Google sign-in yet. Add this domain under Firebase → Authentication → Settings → Authorized domains.',
+    'auth/operation-not-supported-in-this-environment':
+      'Google sign-in isn’t supported in this browser — try your device’s default browser.',
   };
   return map[code] || err?.message || 'Something went wrong. Please try again.';
+}
+
+// In-app webviews (Instagram, Facebook, TikTok, WhatsApp, …) and some locked-down
+// browsers can't run OAuth popups reliably — go straight to full-page redirect there.
+function popupUnreliable() {
+  if (typeof window === 'undefined') return true;
+  const ua = navigator.userAgent || '';
+  const inApp = /(FBAN|FBAV|Instagram|Line|Twitter|WhatsApp|WeChat|MicroMessenger|TikTok|Musical_ly|Snapchat|GSA)/i.test(ua);
+  return inApp || typeof window.open !== 'function';
+}
+// Popup failed for a reason a redirect can recover from (blocked, unsupported env,
+// or COOP tearing down the popup handle) → fall back to redirect automatically.
+function shouldFallbackToRedirect(err) {
+  const code = err?.code || '';
+  return (
+    code === 'auth/popup-blocked' ||
+    code === 'auth/operation-not-supported-in-this-environment' ||
+    code === 'auth/web-storage-unsupported' ||
+    code === 'auth/internal-error' // often a COOP-severed popup on strict hosts
+  );
+}
+
+// Make a Google sign-in double as a sign-up: ensure the user has a users/{uid}
+// profile doc (mirrors what registerEmail writes for email accounts) so their
+// name/email/photo are persisted server-side on first Google login.
+async function provisionGoogleProfile(user) {
+  if (!db || !user) return;
+  try {
+    const ref = doc(db, 'users', user.uid);
+    const snap = await getDoc(ref).catch(() => null);
+    const isNew = !snap || !snap.exists();
+    await setDoc(
+      ref,
+      {
+        name: user.displayName || '',
+        email: user.email || '',
+        ...(user.photoURL ? { photoURL: user.photoURL } : {}),
+        provider: 'google',
+        updatedAt: serverTimestamp(),
+        ...(isNew ? { createdAt: serverTimestamp() } : {}),
+      },
+      { merge: true },
+    );
+  } catch {
+    /* best-effort — never block sign-in on profile write */
+  }
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(firebaseEnabled);
+  // Surfaced to the sign-in UI when a Google *redirect* comes back with an error
+  // (the popup path throws inline; the redirect path completes after a page reload).
+  const [redirectError, setRedirectError] = useState('');
 
   useEffect(() => {
     if (!firebaseEnabled || !auth) {
@@ -45,6 +111,25 @@ export function AuthProvider({ children }) {
       setUser(u);
       setLoading(false);
     });
+  }, []);
+
+  // Complete a Google sign-in that used the full-page redirect flow: provision the
+  // profile and honour any stashed cross-app destination. Runs once on load; resolves
+  // to null (no-op) when there's no redirect pending.
+  useEffect(() => {
+    if (!firebaseEnabled || !auth) return;
+    getRedirectResult(auth)
+      .then((res) => {
+        if (!res?.user) return;
+        provisionGoogleProfile(res.user);
+        const dest = sessionStorage.getItem(REDIRECT_DEST_KEY);
+        sessionStorage.removeItem(REDIRECT_DEST_KEY);
+        if (dest && dest !== window.location.pathname) window.location.assign(dest);
+      })
+      .catch((err) => {
+        sessionStorage.removeItem(REDIRECT_DEST_KEY);
+        setRedirectError(friendlyError(err));
+      });
   }, []);
 
   const signInEmail = useCallback(async (email, password) => {
@@ -78,19 +163,51 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const signInGoogle = useCallback(async () => {
+  // One button for both sign-in AND sign-up: Google auto-creates the account on first
+  // use, and we provision the profile doc so a first-time Google user is a real "sign up".
+  // Prefers a popup (keeps SPA state) but falls back to a full-page redirect wherever
+  // popups can't work (mobile in-app browsers, popup blockers, strict COOP hosts).
+  // `redirectTo` (optional) is the destination to land on if a redirect is needed.
+  const signInGoogle = useCallback(async ({ redirectTo } = {}) => {
     if (!firebaseEnabled) return guestSignIn(setUser, { displayName: 'Guest Shopper' });
+
+    const startRedirect = async () => {
+      try {
+        if (redirectTo) sessionStorage.setItem(REDIRECT_DEST_KEY, redirectTo);
+      } catch { /* private mode — non-fatal */ }
+      await signInWithRedirect(auth, googleProvider);
+      // Page navigates away; getRedirectResult finishes the flow on return.
+      return null;
+    };
+
+    if (popupUnreliable()) return startRedirect();
+
     try {
       const cred = await signInWithPopup(auth, googleProvider);
+      provisionGoogleProfile(cred.user);
       return cred.user;
     } catch (err) {
+      if (shouldFallbackToRedirect(err)) return startRedirect();
       throw new Error(friendlyError(err));
     }
+  }, []);
+
+  // Complete a Google One Tap / GIS sign-in: exchange the Google ID token for a Firebase
+  // session, then provision the profile (so One Tap is a real sign-in AND sign-up).
+  const signInWithGoogleCredential = useCallback(async (idToken) => {
+    if (!firebaseEnabled || !auth || !idToken) return null;
+    const cred = GoogleAuthProvider.credential(idToken);
+    const res = await signInWithCredential(auth, cred);
+    provisionGoogleProfile(res.user);
+    return res.user;
   }, []);
 
   const continueAsGuest = useCallback(() => guestSignIn(setUser, { displayName: 'Guest' }), []);
 
   const signOutUser = useCallback(async () => {
+    // Stop Google One Tap from instantly re-selecting the account we just left,
+    // otherwise "sign out" appears to do nothing.
+    try { window.google?.accounts?.id?.disableAutoSelect(); } catch { /* GIS not loaded */ }
     if (firebaseEnabled && auth) await signOut(auth);
     setUser(null);
   }, []);
@@ -122,15 +239,17 @@ export function AuthProvider({ children }) {
       hasAccount,
       isGuest,
       emailVerified: user?.emailVerified ?? true,
+      redirectError,
       signInEmail,
       registerEmail,
       signInGoogle,
+      signInWithGoogleCredential,
       continueAsGuest,
       signOutUser,
       resendVerification,
       resetPassword,
     }),
-    [user, loading, hasAccount, isGuest, signInEmail, registerEmail, signInGoogle, continueAsGuest, signOutUser, resendVerification, resetPassword],
+    [user, loading, hasAccount, isGuest, redirectError, signInEmail, registerEmail, signInGoogle, signInWithGoogleCredential, continueAsGuest, signOutUser, resendVerification, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
