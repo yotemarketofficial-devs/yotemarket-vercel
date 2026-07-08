@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Layout from './Layout.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
@@ -30,6 +31,7 @@ function App() {
     <>
       <ScrollToTop />
       <GoogleOneTap />
+      <Analytics />
       <Routes>
         {/* Marketing site (shared nav/footer chrome) */}
         <Route path="/" element={<Layout />}>
