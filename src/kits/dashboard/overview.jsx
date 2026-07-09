@@ -66,8 +66,10 @@ function PickupCode({ orderId }){
 function WelcomeBanner({ onCopy }){
   const shop = useShop();
   const [copied, setCopied] = useStateO(false);
-  const link = `yotemarket.com/store/${shop.shopId}`;
-  const copy = ()=>{ navigator.clipboard && navigator.clipboard.writeText('https://'+link); setCopied(true); onCopy&&onCopy(); setTimeout(()=>setCopied(false),1600); };
+  // Real, working deep link to the store on the live storefront (?store=<id>);
+  // host-relative so it's correct on any domain (prod / preview / localhost).
+  const link = `${window.location.host}/storefront?store=${shop.shopId}`;
+  const copy = ()=>{ try { navigator.clipboard && navigator.clipboard.writeText(`${window.location.origin}/storefront?store=${shop.shopId}`); } catch { /* clipboard blocked */ } setCopied(true); onCopy&&onCopy(); setTimeout(()=>setCopied(false),1600); };
   return (
     <div className="ym-card" style={{ padding:26, marginBottom:22, color:'#fff', position:'relative', overflow:'hidden', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
       <div style={{ position:'absolute', right:-30, top:-40, width:220, height:220, borderRadius:'50%', background:'radial-gradient(circle, rgba(252,211,77,.4), transparent 70%)' }} />

@@ -526,7 +526,7 @@ function HomePage() {
             <span className="cr">© 2026 Yote Market Limited — Shop Local. Delivered Fast.</span>
             <div className="socials">
               <a href="#" aria-label="Facebook"><i className="fab fa-facebook-f"></i></a>
-              <a href="#" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
+              <a href="https://www.instagram.com/yotemarket_" target="_blank" rel="noreferrer" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
               <a href="#" aria-label="WhatsApp"><i className="fab fa-whatsapp"></i></a>
               <a href="#" aria-label="X"><i className="fab fa-x-twitter"></i></a>
             </div>
