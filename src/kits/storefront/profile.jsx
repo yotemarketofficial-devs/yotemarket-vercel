@@ -6,6 +6,7 @@ import React from 'react';
 import { doc, onSnapshot, collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
 import { ymStore, ymProduct, ymPrice } from './data.js';
+import { Receipt, normalizeReceipt } from '../../components/Receipt.jsx';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints } from '../../lib/firebase.js';
@@ -386,55 +387,10 @@ const fmtReceiptWhen = (r) => r?.createdAt?.seconds
 /* Full digital-receipt detail. Every receipt row opens this — it shows the payer,
    method, reference, itemised lines (where present) and the receipt id. */
 function ReceiptDetail({ r, account, onClose }){
-  const lines = Array.isArray(r.lines) ? r.lines : [];
-  const Row = ({ label, value }) => (
-    <div style={{ display:'flex', justifyContent:'space-between', gap:16, padding:'9px 0', borderTop:'1px solid var(--m-border)' }}>
-      <span className="ym-cap" style={{ color:'var(--m-fg3)' }}>{label}</span>
-      <span className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, textAlign:'right', wordBreak:'break-word' }}>{value}</span>
-    </div>
-  );
-  const orderNo = r.orderNo || (r.meta?.orderId ? `#${String(r.meta.orderId).slice(0,8).toUpperCase()}` : null);
+  const model = normalizeReceipt(r, { paidBy: account?.name || account?.email || 'You' });
   return (
     <Modal title="Digital receipt" onClose={onClose}>
-      <div style={{ textAlign:'center', marginBottom:6 }}>
-        {r.storeLogo ? (
-          <img src={r.storeLogo} alt={r.storeName||'Store'} style={{ width:60, height:60, borderRadius:16, margin:'0 auto 12px', objectFit:'cover', display:'block', border:'1px solid var(--m-border)' }} />
-        ) : (
-          <div style={{ width:56, height:56, borderRadius:16, margin:'0 auto 12px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i={RECEIPT_ICON[r.type]||'fa-receipt'} /></div>
-        )}
-        {r.storeName && <div className="ym-h3" style={{ fontSize:15 }}>{r.storeName}</div>}
-        <div className="ym-sub" style={{ color:'var(--m-fg2)', marginTop:r.storeName?2:0 }}>{r.title || RECEIPT_TYPE_LABEL[r.type] || 'Payment'}</div>
-        <div style={{ fontSize:30, fontWeight:800, color:'var(--m-fg1)', marginTop:6 }}>{ymPrice(r.amount||0)}</div>
-        <div className="ym-cap" style={{ color:'var(--m-fg3)', marginTop:4 }}>{fmtReceiptWhen(r)}</div>
-      </div>
-
-      {lines.length > 0 && (
-        <div style={{ margin:'16px 0', padding:'4px 14px', borderRadius:12, background:'var(--m-surface-2)' }}>
-          {lines.map((l,idx)=>(
-            <div key={idx} style={{ display:'flex', justifyContent:'space-between', gap:12, padding:'9px 0', borderTop:idx?'1px solid var(--m-border)':'none' }}>
-              <span className="ym-sub" style={{ color:'var(--m-fg2)' }}>{l.label}</span>
-              <span className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap' }}>{ymPrice(l.amount||0)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ marginTop:16 }}>
-        <Row label="Type" value={RECEIPT_TYPE_LABEL[r.type] || r.type || 'Payment'} />
-        <Row label="Paid with" value={RECEIPT_METHOD_LABEL[r.method] || r.method || '—'} />
-        {r.ref && <Row label={r.method === 'mpesa' ? 'M-Pesa code' : 'Reference'} value={<span style={{ fontFamily:'monospace', fontWeight:700, letterSpacing:'.03em', color: r.method === 'mpesa' ? '#0a9d4a' : 'var(--m-fg1)' }}>{r.ref}</span>} />}
-        {orderNo && <Row label="Order no." value={<span style={{ fontFamily:'monospace' }}>{orderNo}</span>} />}
-        {r.meta?.saleId && <Row label="Sale no." value={r.ref || <span style={{ fontFamily:'monospace' }}>{`#${String(r.meta.saleId).slice(0,8).toUpperCase()}`}</span>} />}
-        <Row label="Paid by" value={account?.name || account?.email || 'You'} />
-        <Row label="Receipt no." value={<span style={{ fontFamily:'monospace', fontSize:12 }}>{r.receiptNo || r.id}</span>} />
-        <Row label="Currency" value={r.currency || 'KES'} />
-      </div>
-
-      <div style={{ marginTop:16, padding:'12px 14px', borderRadius:12, background:'var(--m-surface-2)', display:'flex', gap:10, alignItems:'flex-start' }}>
-        <FA i="fa-shield-halved" style={{ color:'var(--m-primary)', marginTop:2 }} />
-        <span className="ym-cap" style={{ color:'var(--m-fg3)', lineHeight:1.5 }}>Official YoteMarket digital receipt. Keep it as proof of payment for this transaction.</span>
-      </div>
-
+      <Receipt receipt={model} variant="digital" />
       <button className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:16 }} onClick={()=>{ try{ window.print(); }catch(e){} }}><FA i="fa-print" /> Print / save as PDF</button>
     </Modal>
   );
