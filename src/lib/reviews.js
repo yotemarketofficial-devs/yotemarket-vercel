@@ -14,3 +14,15 @@ export function subscribeProductReviews(productId, cb) {
     cb(rows);
   }, () => cb([]));
 }
+
+/** Live-subscribe to all of a store's reviews (across its products), newest first.
+ *  Reviews carry a denormalised `storeId`; sorted client-side (no composite index). */
+export function subscribeStoreReviews(storeId, cb) {
+  if (!firebaseEnabled || !db || !storeId) { cb([]); return () => {}; }
+  const q = query(collection(db, 'reviews'), where('storeId', '==', String(storeId)), limit(100));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    cb(rows);
+  }, () => cb([]));
+}

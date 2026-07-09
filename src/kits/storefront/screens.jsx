@@ -5,7 +5,7 @@ import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPri
 import { CATEGORY_TREE, catalogIdsFor, matchesSub } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFollows, followStore, unfollowStore } from '../../lib/account.js';
-import { subscribeProductReviews } from '../../lib/reviews.js';
+import { subscribeProductReviews, subscribeStoreReviews } from '../../lib/reviews.js';
 import { submitReview, reportReview } from '../../lib/firebase.js';
 import { StoreClipsRail } from './feed.jsx';
 import { subscribeFeed, subscribeFeedSeen } from '../../lib/feed.js';
@@ -557,6 +557,38 @@ export function ProductScreen({ params }){
 }
 
 /* ---------- STORE ---------- */
+/* Store-wide reviews — every review across the store's products (reviews carry a
+   denormalised storeId). Complements the per-product reviews on each product page. */
+function StoreReviews({ store }){
+  const { nav } = useYM();
+  const [reviews, setReviews] = useSS(null);
+  useEffSS(() => subscribeStoreReviews(store.id, setReviews), [store.id]);
+  if (!reviews || reviews.length === 0) return null; // aggregate rating already shows in the stats
+  return (
+    <div style={{ marginTop:40 }}>
+      <SectionTitle>Reviews {store.reviews > 0 ? `· ${store.rating}★ (${fmtK(store.reviews)})` : ''}</SectionTitle>
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        {reviews.slice(0, 20).map((r) => {
+          const prod = ymProduct(r.productId);
+          return (
+            <div key={r.id} className="ym-card" style={{ padding:16 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+                <div style={{ width:34, height:34, borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:13, flexShrink:0 }}>{(r.author||'?').slice(0,1).toUpperCase()}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div className="ym-h3" style={{ fontSize:13.5, display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>{r.author || 'Shopper'}{r.verified && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, color:'#16a34a' }}><FA i="fa-circle-check" /> Verified purchase</span>}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}><Stars rating={r.rating} size={12} /><span className="ym-cap">{fmtReviewDate(r)}</span></div>
+                </div>
+              </div>
+              {r.text && <p className="ym-body" style={{ margin:'0 0 6px', fontSize:14 }}>{r.text}</p>}
+              {prod && <button onClick={()=>nav('product',{ pid:prod.id })} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', color:'var(--m-link)', fontWeight:600, fontSize:12.5, padding:0 }}>on {prod.name} <FA i="fa-arrow-right" style={{ fontSize:10 }} /></button>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function StoreScreen({ params }){
   const { back, nav, toast, requireAuth } = useYM();
   const { user } = useAuth();
@@ -622,6 +654,7 @@ export function StoreScreen({ params }){
           </div>
         )}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18, paddingBottom:8 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
+        <StoreReviews store={s} />
       </div>
       <style>{`@media (max-width:640px){ .store-actions{ width:100%; } }`}</style>
     </div>
