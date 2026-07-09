@@ -12,8 +12,8 @@ import { People, Finance, Legal } from './departments.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { useStaffClaims } from './service.js';
-const { useState: useSApp } = React;
+import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows } from './service.js';
+const { useState: useSApp, useEffect: useEApp } = React;
 
 const NAV = [
   { key:'analytics',    icon:'gauge-high',     label:'Overview',               section:'Operations' },
@@ -78,6 +78,78 @@ function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
   );
 }
 
+/* Quick-jump command palette — type to filter sections and Enter/click to navigate. */
+function QuickSearch({ items, go }){
+  const [q, setQ] = useSApp('');
+  const [open, setOpen] = useSApp(false);
+  const ql = q.trim().toLowerCase();
+  const matches = ql ? items.filter(n => n.label.toLowerCase().includes(ql) || (n.section||'').toLowerCase().includes(ql)) : [];
+  const pick = (key) => { go(key); setQ(''); setOpen(false); };
+  return (
+    <div className="relative hidden md:block" style={{ width:230 }}>
+      <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 t3 text-sm" style={{ pointerEvents:'none' }}/>
+      <input value={q} onChange={e=>{ setQ(e.target.value); setOpen(true); }} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        onKeyDown={e=>{ if(e.key==='Enter' && matches[0]){ pick(matches[0].key); } else if(e.key==='Escape'){ setOpen(false); e.currentTarget.blur(); } }}
+        className="ym-input pl-9 py-2 text-sm" style={{ width:'100%' }} placeholder="Jump to a section…" aria-label="Search sections" />
+      {open && ql && (
+        <div className="absolute left-0 right-0 mt-1.5 rounded-xl overflow-hidden z-50" style={{ background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
+          {matches.length ? matches.slice(0,7).map(n=>(
+            <button key={n.key} onMouseDown={()=>pick(n.key)} className="staff-pop-item flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
+              <Icon name={n.icon} className="w-4 text-center t3"/>
+              <span className="flex-1 t1 font-semibold">{n.label}</span>
+              <span className="text-[11px] t3">{n.section}</span>
+            </button>
+          )) : <div className="px-3.5 py-3 text-sm t3">No section matches “{q}”.</div>}
+        </div>
+      )}
+      <style>{`.staff-pop-item:hover{ background:var(--surface2); }`}</style>
+    </div>
+  );
+}
+
+/* Notifications bell — real pending counts across the staff queues; click to jump. */
+function NotificationsBell({ go }){
+  const [items, setItems] = useSApp([]);
+  const [open, setOpen] = useSApp(false);
+  useEApp(() => {
+    let alive = true;
+    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows()]).then(res => {
+      if (!alive) return;
+      const [reports, reviews, payouts, follows] = res.map(r => (r.status==='fulfilled' && Array.isArray(r.value)) ? r.value : []);
+      setItems([
+        reports.length && { key:'moderation', icon:'comment-slash', label:'Chat reports', count:reports.length },
+        reviews.length && { key:'reviews', icon:'star-half-stroke', label:'Review reports', count:reviews.length },
+        payouts.length && { key:'scouts', icon:'wallet', label:'Scout payouts', count:payouts.length },
+        follows.length && { key:'scouts', icon:'user-check', label:'Follow proofs', count:follows.length },
+      ].filter(Boolean));
+    });
+    return () => { alive = false; };
+  }, []);
+  const total = items.reduce((a,i)=>a+i.count, 0);
+  return (
+    <div className="relative">
+      <button onClick={()=>setOpen(o=>!o)} className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label={`Notifications${total?` (${total} pending)`:''}`}>
+        <Icon name="bell"/>
+        {total>0 && <span className="absolute -top-1 -right-1 num text-[10px] font-bold text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center" style={{background:'var(--red)'}}>{total>9?'9+':total}</span>}
+      </button>
+      {open && (<>
+        <div className="fixed inset-0 z-40" onClick={()=>setOpen(false)} />
+        <div className="absolute right-0 mt-2 rounded-xl overflow-hidden z-50" style={{ width:256, background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
+          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid var(--line)' }}><span className="font-bold t1 text-sm">Needs attention</span>{total>0 && <span className="num text-xs t3">{total}</span>}</div>
+          {items.length ? items.map((n,i)=>(
+            <button key={i} onClick={()=>{ go(n.key); setOpen(false); }} className="staff-pop-item flex items-center gap-3 w-full px-4 py-3 text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
+              <Icon name={n.icon} className="w-4 text-center" style={{ color:'var(--pri)' }}/>
+              <span className="flex-1 t1 text-sm font-semibold">{n.label}</span>
+              <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{ background:'var(--amber)' }}>{n.count}</span>
+            </button>
+          )) : <div className="px-4 py-6 text-sm t3 text-center"><Icon name="circle-check" style={{ color:'var(--green)' }}/><div className="mt-1">All clear — nothing pending.</div></div>}
+        </div>
+        <style>{`.staff-pop-item:hover{ background:var(--surface2); }`}</style>
+      </>)}
+    </div>
+  );
+}
+
 function App(){
   const { user, loading, isStaff, role } = useStaffClaims();
   const { signOutUser } = useAuth();
@@ -91,6 +163,7 @@ function App(){
   const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
   const staffRole = role === 'admin' ? 'Operations Admin' : 'Moderator';
   const activeNav = NAV.find(n => n.key === active);
+  const visibleNav = NAV.filter(n => !n.adminOnly || role === 'admin');
   const effective = (activeNav && activeNav.adminOnly && role !== 'admin') ? 'analytics' : active;
   const Screen = SCREENS[effective] || Analytics;
   return (
@@ -115,13 +188,8 @@ function App(){
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="relative hidden md:block">
-                <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 t3 text-sm"/>
-                <input className="ym-input pl-9 py-2 text-sm" style={{width:200}} placeholder="Search merchants, runs…" />
-              </div>
-              <button className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label="Notifications">
-                <Icon name="bell"/><span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{background:'var(--red)'}}/>
-              </button>
+              <QuickSearch items={visibleNav} go={setActive} />
+              <NotificationsBell go={setActive} />
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
                 <Avatar src={user.photoURL} name={staffName} size={34} />
