@@ -18,7 +18,7 @@ const fmtWhen = (t) => t?.when || (t?.createdAt?.seconds ? new Date(t.createdAt.
 
 /* Live shopper profile from users/{uid} (+ meta/wallet, wallet_tx, addresses). */
 function useProfileData(uid){
-  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[], receipts:[], follows:[] });
+  const [data, setData] = useSP({ points:0, walletBalance:0, walletTx:[], defaultHubId:'', phone:'', name:'', addresses:[], receipts:[], receiptsError:'', follows:[] });
   useEffP(() => {
     if (!firebaseEnabled || !db || !uid) return undefined;
     const unsubs = [];
@@ -28,7 +28,11 @@ function useProfileData(uid){
     unsubs.push(subscribeAddresses(uid, (a)=>setData(p=>({ ...p, addresses:a }))));
     unsubs.push(subscribeFollows(uid, (f)=>setData(p=>({ ...p, follows:f }))));
     // Digital receipts (equality-only query → no composite index; sorted client-side).
-    unsubs.push(onSnapshot(query(collection(db,'receipts'), where('userId','==',uid), limit(40)), (s)=>{ const r=s.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>x.type!=='pos').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); setData(p=>({ ...p, receipts:r })); }, ()=>{}));
+    // Surface the error instead of swallowing it, so a permission/index failure shows
+    // in the UI rather than silently leaving the card empty.
+    unsubs.push(onSnapshot(query(collection(db,'receipts'), where('userId','==',uid), limit(40)),
+      (s)=>{ const r=s.docs.map(d=>({ id:d.id, ...d.data() })).filter(x=>x.type!=='pos').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)); setData(p=>({ ...p, receipts:r, receiptsError:'' })); },
+      (err)=>{ console.warn('[receipts] load failed', err); setData(p=>({ ...p, receiptsError: err?.code || err?.message || 'Could not load receipts' })); }));
     return () => unsubs.forEach(u=>u());
   }, [uid]);
   return data;
@@ -251,7 +255,9 @@ export function ProfileScreen({ params }){
           </div>
 
           <Card title="Receipts" icon="fa-receipt">
-            {prof.receipts.length === 0 ? (
+            {prof.receiptsError ? (
+              <EmptyRow icon="fa-triangle-exclamation" text={`Couldn’t load your receipts (${prof.receiptsError}). Pull to refresh or try again shortly.`} />
+            ) : prof.receipts.length === 0 ? (
               <EmptyRow icon="fa-receipt" text="Your digital receipts for every payment will appear here." />
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
@@ -260,7 +266,7 @@ export function ProfileScreen({ params }){
                     {r.storeLogo
                       ? <img src={r.storeLogo} alt={r.storeName||''} style={{ width:38, height:38, borderRadius:11, flexShrink:0, objectFit:'cover' }} />
                       : <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, background:'var(--m-surface-2)', color:'var(--m-primary)' }}><FA i={RECEIPT_ICON[r.type]||'fa-receipt'} /></div>}
-                    <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.storeName ? `${r.storeName} · ${r.title||'Payment'}` : (r.title||'Payment')}</div><div className="ym-cap">{fmtWhen(r)}{r.orderNo?` · ${r.orderNo}`:(r.ref?` · ${r.ref}`:'')}</div></div>
+                    <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.storeName ? `${r.storeName} · ${r.title||'Payment'}` : (r.title||'Payment')}</div><div className="ym-cap" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{fmtWhen(r)}{r.orderNo?` · ${r.orderNo}`:''}{r.ref?` · ${r.ref}`:''}</div></div>
                     <div style={{ fontWeight:700, fontSize:14, color:'var(--m-fg1)' }}>{ymPrice(r.amount||0)}</div>
                     <FA i="fa-chevron-right" style={{ color:'var(--m-fg3)', fontSize:12 }} />
                   </button>
@@ -416,7 +422,7 @@ function ReceiptDetail({ r, account, onClose }){
       <div style={{ marginTop:16 }}>
         <Row label="Type" value={RECEIPT_TYPE_LABEL[r.type] || r.type || 'Payment'} />
         <Row label="Paid with" value={RECEIPT_METHOD_LABEL[r.method] || r.method || '—'} />
-        {r.ref && <Row label="Reference" value={r.ref} />}
+        {r.ref && <Row label={r.method === 'mpesa' ? 'M-Pesa code' : 'Reference'} value={<span style={{ fontFamily:'monospace', fontWeight:700, letterSpacing:'.03em', color: r.method === 'mpesa' ? '#0a9d4a' : 'var(--m-fg1)' }}>{r.ref}</span>} />}
         {orderNo && <Row label="Order no." value={<span style={{ fontFamily:'monospace' }}>{orderNo}</span>} />}
         {r.meta?.saleId && <Row label="Sale no." value={r.ref || <span style={{ fontFamily:'monospace' }}>{`#${String(r.meta.saleId).slice(0,8).toUpperCase()}`}</span>} />}
         <Row label="Paid by" value={account?.name || account?.email || 'You'} />
