@@ -117,7 +117,7 @@ export function TopBar({ onMenu, onChange }){
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <button onClick={()=>window.open('/storefront','_blank')} className="ym-btn ym-btn-ghost ym-btn-sm view-shop"><FA i="fa-store" /> View storefront</button>
-          <button className="icon-btn" aria-label="Notifications"><FA i="fa-bell" /><span style={{ position:'absolute', top:8, right:8, width:8, height:8, borderRadius:9999, background:'var(--m-danger)', border:'2px solid var(--m-surface)' }} /></button>
+          <button onClick={()=>onChange&&onChange('chat')} className="icon-btn" aria-label="Messages" title="Messages"><FA i="fa-bell" /></button>
           <ThemeToggle />
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
             <Avatar src={shop.photo} name={shop.owner} size={36} />

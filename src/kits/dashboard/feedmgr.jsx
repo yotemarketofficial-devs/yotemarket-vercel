@@ -64,7 +64,7 @@ export function FeedManager({ toast }){
   return (
     <div className="fadeup" style={{ display:'flex', flexDirection:'column', gap:20 }}>
       <SectionCard title="Post a clip" sub="Shortform videos that appear on your store page and in the YoteFeed.">
-        <div style={{ display:'flex', gap:18, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:18, flexWrap:'wrap', padding:20 }}>
           <input ref={inputRef} type="file" accept="video/*" onChange={pick} style={{ display:'none' }} />
           {!url ? (
             <button onClick={() => inputRef.current?.click()} style={{ width:150, aspectRatio:'9 / 16', borderRadius:14, border:'2px dashed var(--m-line)', background:'var(--m-surface-2)', color:'var(--m-fg3)', display:'flex', flexDirection:'column', gap:8, alignItems:'center', justifyContent:'center', cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
@@ -103,11 +103,11 @@ export function FeedManager({ toast }){
 
       <SectionCard title={`Your clips${list.length ? ` · ${list.length}` : ''}`} sub="Views, likes and shop-taps update as shoppers watch. Remove a clip with the bin.">
         {clips === null ? (
-          <div style={{ color:'var(--m-fg3)', fontSize:14, padding:'8px 0' }}>Loading…</div>
+          <div style={{ color:'var(--m-fg3)', fontSize:14, padding:'20px' }}>Loading…</div>
         ) : list.length === 0 ? (
-          <div style={{ color:'var(--m-fg3)', fontSize:14, padding:'8px 0' }}>No clips yet — post your first one above.</div>
+          <div style={{ color:'var(--m-fg3)', fontSize:14, padding:'20px' }}>No clips yet — post your first one above.</div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:14 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:14, padding:16 }}>
             {list.map((c) => (
               <Card key={c.id} style={{ padding:0, overflow:'hidden' }}>
                 <div style={{ position:'relative', aspectRatio:'9 / 16', background:'#000' }}>

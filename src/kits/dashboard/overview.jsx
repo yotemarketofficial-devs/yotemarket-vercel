@@ -95,11 +95,8 @@ function WeekChart({ data }){
   const max = Math.max(1, ...week.map(d=>d.v));
   return (
     <Card style={{ padding:22, marginBottom:22 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:18 }}>
-        <div><div className="ym-h2" style={{ fontSize:17 }}>Orders this week</div><div className="ym-cap" style={{ marginTop:2 }}>Daily orders across all products</div></div>
-        <div className="scroll-x" style={{ gap:4, background:'var(--m-surface-2)', borderRadius:10, padding:4 }}>
-          {['Day','Week','Month'].map((t,i)=>(<button key={t} style={{ padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, background:i===1?'var(--m-surface)':'transparent', color:i===1?'var(--m-fg1)':'var(--m-fg3)', boxShadow:i===1?'var(--m-shadow-card)':'none' }}>{t}</button>))}
-        </div>
+      <div style={{ marginBottom:18 }}>
+        <div className="ym-h2" style={{ fontSize:17 }}>Orders this week</div><div className="ym-cap" style={{ marginTop:2 }}>Daily orders across all products</div>
       </div>
       <div style={{ display:'flex', alignItems:'flex-end', gap:12, height:180 }}>
         {week.map((d,i)=>(

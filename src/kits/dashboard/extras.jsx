@@ -486,8 +486,8 @@ function TaxSettings({ toast }){
 export function Settings({ toast }){
   const { theme, setTheme } = useTheme();
   const shop = useShop();
-  const [n, setN] = useStateX({ orders:true, payouts:true, chat:true, promos:false });
-  const tg = k=>setN(s=>({ ...s, [k]:!s[k] }));
+  const [n, setN] = useStateX(() => { try { return { orders:true, payouts:true, chat:true, promos:false, ...JSON.parse(localStorage.getItem('ym_merchant_notif') || '{}') }; } catch { return { orders:true, payouts:true, chat:true, promos:false }; } });
+  const tg = k=>setN(s=>{ const next={ ...s, [k]:!s[k] }; try { localStorage.setItem('ym_merchant_notif', JSON.stringify(next)); } catch { /* private mode */ } return next; });
   return (
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Settings</h1>
@@ -495,8 +495,8 @@ export function Settings({ toast }){
         <SectionCard title="Shop profile">
           <StoreBranding toast={toast} />
           <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16 }}>
-            <F label="Shop name" v={shop.name} /><F label="Owner" v={shop.owner} /><F label="Area" v={shop.area} /><F label="M-Pesa till" v="174379" last />
-            <Btn kind="primary" icon="fa-check" style={{ alignSelf:'flex-start' }}>Save changes</Btn>
+            <F label="Shop name" v={shop.name} /><F label="Owner" v={shop.owner} /><F label="Area" v={shop.area} last />
+            <div className="ym-cap" style={{ color:'var(--m-fg3)' }}>Update your logo &amp; cover photo above. To change your shop name or area, contact support.</div>
           </div>
         </SectionCard>
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
@@ -519,7 +519,7 @@ export function Settings({ toast }){
     </div>
   );
 }
-function F({ label, v }){ return <div><label className="ym-label">{label}</label><input className="ipt" defaultValue={v} /></div>; }
+function F({ label, v }){ return <div><label className="ym-label">{label}</label><div className="ipt" style={{ display:'flex', alignItems:'center', minHeight:44, color:'var(--m-fg1)' }}>{v || '—'}</div></div>; }
 function Row({ label, sub, children, last }){ return <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, padding:'12px 0', borderBottom:last?'none':'1px solid var(--m-border)' }}><div><div className="ym-h3" style={{ fontSize:14 }}>{label}</div><div className="ym-cap">{sub}</div></div>{children}</div>; }
 
 /* Dismissible opt-in to browser push (only shows when permission is unanswered). */
