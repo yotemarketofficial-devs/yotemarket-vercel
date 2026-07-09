@@ -209,6 +209,9 @@ export const setMerchantTaxInfo = callable('setMerchantTaxInfo');
 export const posSale = callable('posSale');
 /** Admin: grant N free months to every merchant → { granted, months }. { months?, campaignId? }. */
 export const grantFreeMonths = callable('grantFreeMonths');
+/** Admin: grant N free months to ONE merchant on a chosen package → { ok, uid, plan, months }.
+ *  { email, months, kind:'delivery'|'software', subTier?, plan }. */
+export const grantMerchantFreeMonths = callable('grantMerchantFreeMonths');
 /** Staff: backfill digital receipts for all past paid transactions → { orders, pos, topups, subs }. */
 export const backfillReceipts = callable('backfillReceipts');
 /** Staff: patch store logos into existing chats + followed-store records → { conversations, follows }. */

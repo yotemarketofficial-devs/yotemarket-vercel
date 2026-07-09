@@ -3,7 +3,9 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
+import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
+import { DELIVERY_TIERS, PLAN_ORDER } from '../dashboard/pricing.js';
+const SOFTWARE_PLANS = ['Entry', 'Growth', 'Pro'];
 const { useState, useEffect, useCallback } = React;
 
 export function Promotions(){
@@ -23,6 +25,21 @@ export function Promotions(){
   const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
   const [creating, setCreating] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Targeted (single-merchant) free-month offer on a chosen package.
+  const [tgt, setTgt] = useState({ email:'', kind:'delivery', tierId: DELIVERY_TIERS[0].id, plan:'Starter', months:1 });
+  const [tgtBusy, setTgtBusy] = useState(false);
+  const setTgtKind = (k) => setTgt(t => ({ ...t, kind:k, plan: k === 'software' ? 'Entry' : 'Starter' }));
+  const grantTargeted = async () => {
+    if (!tgt.email.trim()) { setMsg({ ok:false, text:'Enter the merchant’s email.' }); return; }
+    setTgtBusy(true); setMsg(null);
+    try {
+      const r = await grantMerchantFreeMonths({
+        email: tgt.email.trim(), months: Number(tgt.months), kind: tgt.kind, plan: tgt.plan,
+        ...(tgt.kind === 'delivery' ? { subTier: tgt.tierId } : {}),
+      });
+      setMsg({ ok:true, text:`Granted ${tgt.months} free month(s) of the ${r.plan} plan to ${tgt.email}.` }); load();
+    } catch (e) { setMsg({ ok:false, text:e.message || 'Grant failed.' }); } finally { setTgtBusy(false); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,6 +126,30 @@ export function Promotions(){
             <input value={capacity} onChange={e => setCapacity(e.target.value.replace(/[^0-9]/g,''))} inputMode="numeric" placeholder="All" className="ym-input" style={{ width:90 }} title="Max merchants to grant (blank = all)" />
             <Btn kind="primary" size="md" icon={granting ? 'spinner' : 'gift'} onClick={grant} disabled={granting}>{granting ? 'Granting…' : (capacity ? `Grant to first ${capacity}` : 'Grant to all')}</Btn>
           </div>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="user-tag" /></div><h3 className="font-bold t1">Targeted free-month offer</h3></div>
+          <p className="text-sm t3">Grant free months to <b>one merchant</b> on a specific package — a bespoke deal or comp. Activates or extends their subscription on the chosen plan, free (stacks on any time left).</p>
+          <input value={tgt.email} onChange={e=>setTgt(t=>({ ...t, email:e.target.value }))} placeholder="Merchant email" className="ym-input" type="email" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <select value={tgt.kind} onChange={e=>setTgtKind(e.target.value)} className="ym-input" style={{ width:132 }} title="Package type">
+              <option value="delivery">Delivery plan</option>
+              <option value="software">Software plan</option>
+            </select>
+            {tgt.kind === 'delivery' && (
+              <select value={tgt.tierId} onChange={e=>setTgt(t=>({ ...t, tierId:e.target.value }))} className="ym-input" style={{ flex:1, minWidth:170 }} title="Distance band / tier">
+                {DELIVERY_TIERS.map(t=><option key={t.id} value={t.id}>Band {t.band} · {t.range}</option>)}
+              </select>
+            )}
+            <select value={tgt.plan} onChange={e=>setTgt(t=>({ ...t, plan:e.target.value }))} className="ym-input" style={{ width:120 }} title="Plan">
+              {(tgt.kind === 'software' ? SOFTWARE_PLANS : PLAN_ORDER).map(p=><option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={tgt.months} onChange={e=>setTgt(t=>({ ...t, months:e.target.value }))} className="ym-input" style={{ width:88 }} title="Free months">
+              {[1,2,3,6,12].map(m=><option key={m} value={m}>{m} mo</option>)}
+            </select>
+          </div>
+          <Btn kind="primary" size="md" icon={tgtBusy ? 'spinner' : 'gift'} onClick={grantTargeted} disabled={tgtBusy}>{tgtBusy ? 'Granting…' : 'Grant to this merchant'}</Btn>
         </Card>
 
         <Card className="p-6 space-y-3">
