@@ -124,7 +124,9 @@ export function CheckoutScreen(){
       const res = await mpesaStkPush({ orderId: ref.id, phone, amount: total, storeName });
       const checkoutRequestId = res && res.checkoutRequestId;
       setBusy(false);
-      if (!checkoutRequestId) { settle(fallbackRcpt, 'mpesa'); return; }
+      // No STK id back means the request never started — surface an error instead of
+      // marking the order paid (the order stays unpaid; the shopper can retry).
+      if (!checkoutRequestId) { setErr('Couldn’t start the M-Pesa request. Please try again.'); return; }
       cidRef.current = checkoutRequestId;
       setPhase('waiting');
       // Watch the payment doc that paid/failed flips (callback OR confirmPayment).
