@@ -16,6 +16,7 @@ import {
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
+import { Receipt, normalizeReceipt } from '../../components/Receipt.jsx';
 import { coverPath, logoPath } from '../../lib/storage.js';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
 
@@ -195,25 +196,12 @@ function WithdrawSheet({ balance, payout, onClose, toast }){
 
 /* Receipt detail — opened from the Wallet receipts list. */
 function RcptRow({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
+/* Renders the shared modular <Receipt> so merchant + shopper receipts stay identical
+   (and it's crash-safe — a bad field can't take down the dashboard). */
 function ReceiptSheet({ r, onClose }){
-  const out = r.type === 'payout';
   return (
     <Sheet title="Receipt" onClose={onClose}>
-      <div style={{ textAlign:'center', marginBottom:14 }}>
-        <div style={{ width:56, height:56, borderRadius:16, margin:'0 auto 10px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, background:out?'var(--m-surface-2)':'var(--m-active-bg)', color:out?'var(--m-fg3)':'var(--m-active-fg)' }}><FA i={RCPT_ICON[r.type]||'fa-receipt'} /></div>
-        <div className="ym-h2" style={{ fontSize:22 }}>{out?'−':'+'}{ksh(r.amount||0)}</div>
-        <div className="ym-cap" style={{ marginTop:2 }}>{r.title||'Payment'}{r.storeName?` · ${r.storeName}`:''}</div>
-      </div>
-      {Array.isArray(r.lines) && r.lines.length>0 && (
-        <div style={{ borderTop:'1px solid var(--m-border)', padding:'12px 0', display:'flex', flexDirection:'column', gap:8 }}>
-          {r.lines.map((l,i)=>(<div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:13.5 }}><span className="ym-sub">{l.label}</span><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(l.amount||0)}</span></div>))}
-        </div>
-      )}
-      <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:12, display:'flex', flexDirection:'column', gap:8 }}>
-        <RcptRow l="Reference" v={r.ref || r.receiptNo || '—'} />
-        {r.method && <RcptRow l="Method" v={{ mpesa:'M-Pesa', cash:'Cash', wallet:'YoteWallet' }[r.method] || r.method} />}
-        <RcptRow l="Date" v={fmtRcptWhen(r)} />
-      </div>
+      <Receipt receipt={normalizeReceipt(r)} variant="digital" />
       <Btn kind="primary" style={{ width:'100%', marginTop:16 }} onClick={onClose}>Done</Btn>
     </Sheet>
   );
