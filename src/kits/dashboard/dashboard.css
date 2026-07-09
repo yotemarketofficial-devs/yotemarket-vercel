@@ -76,3 +76,20 @@
 @media (prefers-reduced-motion: no-preference){ .kit-dashboard .anim-up{animation:ym-fade-up .3s ease;} }
 
 .kit-dashboard{min-height:100vh;}
+
+/* Sidebar internal scroll — long nav never gets cut off on short viewports. */
+.kit-dashboard .dash-aside{scrollbar-width:none;}
+.kit-dashboard .dash-aside::-webkit-scrollbar{display:none;}
+
+/* Mobile primary nav — a sticky horizontally-scrollable pill strip (hidden on desktop). */
+.kit-dashboard .dash-mobilenav{display:none;}
+.kit-dashboard .dmn-pill{display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 15px; border-radius:9999px;
+  border:1px solid var(--m-border); background:var(--m-surface); color:var(--m-fg2); font-family:inherit; font-size:13.5px; font-weight:600;
+  white-space:nowrap; cursor:pointer; flex-shrink:0; transition:background .15s, color .15s, border-color .15s;}
+.kit-dashboard .dmn-pill.on{background:var(--m-primary); color:#fff; border-color:var(--m-primary);}
+@media (max-width:900px){
+  .kit-dashboard .dash-mobilenav{display:block; position:sticky; top:64px; z-index:35; background:var(--m-nav-bg);
+    -webkit-backdrop-filter:saturate(180%) blur(12px); backdrop-filter:saturate(180%) blur(12px); border-bottom:1px solid var(--m-border);}
+  .kit-dashboard .dash-mobilenav-in{display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:10px 16px;}
+  .kit-dashboard .dash-mobilenav-in::-webkit-scrollbar{display:none;}
+}

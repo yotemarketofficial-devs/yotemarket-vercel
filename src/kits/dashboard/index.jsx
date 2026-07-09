@@ -4,7 +4,7 @@ import React from 'react';
 import './dashboard.css';
 import { ThemeCtx, FA } from './primitives.jsx';
 import { MerchantProvider, useMerchant } from './merchant.jsx';
-import { Sidebar, TopBar, Footer, navForRole } from './layout.jsx';
+import { Sidebar, MobileNav, TopBar, Footer, navForRole } from './layout.jsx';
 import { Overview } from './overview.jsx';
 import { Products, AddProductModal } from './products.jsx';
 import { Sales, Wallet, Subscription, Settings, Chat, Assistant, Insight } from './extras.jsx';
@@ -56,9 +56,10 @@ export default function DashboardApp(){
     <ThemeCtx.Provider value={{ theme, setTheme }}>
       <div data-screen-label={'Dashboard — '+LABELS[active]} style={{ minHeight:'100vh', display:'flex', flexDirection:'column' }}>
         <TopBar onMenu={()=>setMenu(true)} onChange={setActive} />
+        <MobileNav active={active} onChange={setActive} />
         <main style={{ flex:1, padding:'28px 0' }}>
           <div className="wrap dash-shell" style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:28, alignItems:'start' }}>
-            <aside className="dash-aside" style={{ position:'sticky', top:88 }}><Sidebar active={active} onChange={setActive} /></aside>
+            <aside className="dash-aside" style={{ position:'sticky', top:88, maxHeight:'calc(100dvh - 108px)', overflowY:'auto' }}><Sidebar active={active} onChange={setActive} /></aside>
             <div style={{ minWidth:0 }}><GuardedScreen active={active} setActive={setActive} screenProps={props} /></div>
           </div>
         </main>
