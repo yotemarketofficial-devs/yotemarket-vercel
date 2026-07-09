@@ -29,7 +29,7 @@ const FEED_DEMO = [
 ];
 
 /* One full-height video card. Plays when >60% visible, pauses otherwise. */
-function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish }){
+function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish, onShare }){
   const secRef = useRef(null);
   const vRef = useRef(null);
   const viewedRef = useRef(false);
@@ -68,8 +68,10 @@ function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, on
 
       {/* right action rail */}
       <div style={{ position:'absolute', right:12, bottom:120, display:'flex', flexDirection:'column', gap:18, alignItems:'center' }}>
-        <RailBtn icon={liked?'fa-heart':'fa-heart'} filled={liked} label={fmtCount(post.likes)} onClick={onLike} activeColor="#ff375f" />
+        <RailBtn icon="fa-heart" filled={liked} label={fmtCount(post.likes)} onClick={onLike} activeColor="#ff375f" />
         {canMessage && <RailBtn icon="fa-comment-dots" label="Message" onClick={onMessage} />}
+        <RailBtn icon="fa-arrow-up-from-bracket" label="Share" onClick={onShare} />
+        <RailStat icon="fa-eye" label={fmtCount(post.views)} />
         <RailBtn icon="fa-flag" label="Report" onClick={onReport} />
         {canDelete && <RailBtn icon="fa-trash" label="Delete" onClick={onDelete} />}
       </div>
@@ -108,6 +110,16 @@ function RailBtn({ icon, label, onClick, filled, activeColor }){
       <span style={{ width:46, height:46, borderRadius:9999, background:'rgba(0,0,0,.35)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, color: filled ? activeColor : '#fff', backdropFilter:'blur(4px)' }}><FA i={icon} /></span>
       <span style={{ fontSize:11, fontWeight:600 }}>{label}</span>
     </button>
+  );
+}
+
+/* A non-interactive rail stat (e.g. view count) — same footprint as RailBtn. */
+function RailStat({ icon, label }){
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, color:'#fff' }}>
+      <span style={{ width:46, height:46, borderRadius:9999, background:'rgba(0,0,0,.35)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, backdropFilter:'blur(4px)' }}><FA i={icon} /></span>
+      <span style={{ fontSize:11, fontWeight:600 }}>{label}</span>
+    </div>
   );
 }
 
@@ -243,8 +255,21 @@ export function FeedScreen({ params = {} }){
       : undefined;
     nav('messages', { store: { id: post.storeId, ownerId: post.ownerId, name: post.storeName, logo: post.storeLogo }, product });
   });
+  // Share a clip: native share sheet where available, else copy the link.
+  const share = async (post) => {
+    const url = `${window.location.origin}/storefront`;
+    const text = post.caption ? `${post.caption} — on YoteFeed` : `Check out ${post.storeName || 'this store'} on YoteFeed`;
+    try {
+      if (navigator.share) { await navigator.share({ title: 'YoteFeed', text, url }); return; }
+      await navigator.clipboard.writeText(url);
+      toast('Link copied — share it anywhere', 'fa-link');
+    } catch { /* user dismissed the share sheet — ignore */ }
+  };
+  // Jump one clip up (-1) or down (+1) — the visible equivalent of the arrow keys.
+  const scrollByClip = (dir) => { const el = scrollRef.current; if (el) el.scrollBy({ top: dir * el.clientHeight, behavior: 'smooth' }); };
 
   const railBtn = { pointerEvents:'auto', width:40, height:40, borderRadius:9999, border:'none', background:'rgba(0,0,0,.38)', color:'#fff', cursor:'pointer', backdropFilter:'blur(4px)', flexShrink:0 };
+  const navBtn = { width:46, height:46, borderRadius:9999, border:'none', background:'rgba(255,255,255,.16)', color:'#fff', cursor:'pointer', backdropFilter:'blur(6px)', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center' };
   return (
     <div style={{ position:'relative', height:'100%', background:'#000', color:'#fff' }}>
       {/* Portrait column: full-bleed on phones, letterboxed on wide screens. */}
@@ -273,7 +298,7 @@ export function FeedScreen({ params = {} }){
             {list.map((post) => (
               <FeedItem key={post.id} post={post} muted={muted} liked={likes.has(post.id)}
                 onLike={() => like(post)} onReport={() => report(post)}
-                onProduct={() => onShop(post)}
+                onProduct={() => onShop(post)} onShare={() => share(post)}
                 onStore={() => post.storeId && nav('store', { sid: post.storeId })}
                 onMessage={() => message(post)} canMessage={!!post.ownerId && post.ownerId !== uid}
                 onView={() => onView(post)} onFinish={() => onFinish(post)}
@@ -282,6 +307,15 @@ export function FeedScreen({ params = {} }){
           </div>
         )}
       </div>
+
+      {/* Up/down clip navigation — Shorts-style arrows on desktop; mobile users swipe. */}
+      {list.length > 1 && (
+        <div className="feed-nav" style={{ position:'absolute', right:24, top:'50%', transform:'translateY(-50%)', zIndex:7, display:'flex', flexDirection:'column', gap:14 }}>
+          <button onClick={() => scrollByClip(-1)} aria-label="Previous clip" style={navBtn}><FA i="fa-chevron-up" /></button>
+          <button onClick={() => scrollByClip(1)} aria-label="Next clip" style={navBtn}><FA i="fa-chevron-down" /></button>
+        </div>
+      )}
+      <style>{`@media (max-width:560px){ .feed-nav{ display:none !important; } }`}</style>
     </div>
   );
 }

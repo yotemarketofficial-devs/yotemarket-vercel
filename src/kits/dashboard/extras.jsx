@@ -97,7 +97,7 @@ const SETTLE_LBL = { paid:'Paid', processing:'Processing', failed:'Failed' };
 function Sheet({ title, onClose, children }){
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(8,10,24,.5)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:440, maxHeight:'88vh', overflowY:'auto' }}>
+      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:440, maxHeight:'88vh', overflowY:'auto', padding:20 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <h3 className="ym-h2" style={{ fontSize:18 }}>{title}</h3>
           <button onClick={onClose} className="icon-btn" aria-label="Close"><FA i="fa-xmark" /></button>
