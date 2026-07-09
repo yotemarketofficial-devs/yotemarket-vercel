@@ -71,6 +71,42 @@ function PayoutChangeReview(){
 }
 const { useState: useSS, useEffect: useES } = React;
 
+/* ── Record audit — click any merchant/store/scout to inspect its full record ── */
+const prettyKey = (k) => k.replace(/([A-Z])/g, ' $1').replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase()).trim();
+function AuditField({ k, v }){
+  let display;
+  if (v == null || v === '') display = <span className="t3">—</span>;
+  else if (typeof v === 'boolean') display = v ? 'Yes' : 'No';
+  else if (v && (v.seconds != null || v._seconds != null)) display = new Date((v.seconds ?? v._seconds) * 1000).toLocaleString('en-KE');
+  else if (Array.isArray(v)) display = v.length ? v.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ') : <span className="t3">—</span>;
+  else if (typeof v === 'object') display = <span className="num text-xs" style={{ whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{JSON.stringify(v)}</span>;
+  else display = String(v);
+  return (
+    <div className="flex gap-3 py-2" style={{ borderTop:'1px solid var(--line)' }}>
+      <span className="t3 text-xs" style={{ width:132, flexShrink:0 }}>{prettyKey(k)}</span>
+      <span className="t1 text-sm font-medium" style={{ flex:1, minWidth:0, wordBreak:'break-word' }}>{display}</span>
+    </div>
+  );
+}
+function RecordAudit({ title, subtitle, record, onClose, hide = [] }){
+  const skip = new Set(['_busy', 'photo', 'avatar', ...hide]);
+  const entries = Object.entries(record || {}).filter(([k]) => !skip.has(k));
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background:'rgba(8,12,24,.55)', backdropFilter:'blur(3px)' }}>
+      <div onClick={(e)=>e.stopPropagation()} className="w-full rounded-2xl overflow-hidden flex flex-col" style={{ maxWidth:520, maxHeight:'86vh', background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 24px 60px -18px rgba(0,0,0,.5)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--line)' }}>
+          <div className="min-w-0"><div className="font-bold t1 truncate">{title || 'Record'}</div>{subtitle && <div className="text-xs t3 truncate">{subtitle}</div>}</div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center t3 flex-shrink-0" style={{ background:'var(--surface2)' }} aria-label="Close"><Icon name="xmark"/></button>
+        </div>
+        <div className="px-5 py-1 overflow-y-auto">
+          {entries.length ? entries.map(([k, v]) => <AuditField key={k} k={k} v={v} />) : <div className="py-6 text-center t3">No details.</div>}
+        </div>
+        <div className="px-5 py-3 text-[11px] t3" style={{ borderTop:'1px solid var(--line)' }}><Icon name="lock" className="mr-1"/> Confidential · staff audit view</div>
+      </div>
+    </div>
+  );
+}
+
 /* ============ ANALYTICS OVERVIEW ============ */
 const OVERVIEW_FALLBACK = { kpis:KPIS, gmvTrend:GMV_TREND, subMix:SUB_MIX, funnel:FUNNEL };
 export function Analytics(){
@@ -179,6 +215,7 @@ export function Approvals({ isAdmin }){
 
   // Enterprise activation modal (quote-based; price grounded in per-package-per-km).
   const [entFor, setEntFor] = useSS(null);
+  const [auditM, setAuditM] = useSS(null); // click a store to inspect its full record
   const onEnterpriseDone = (m, patch) => setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,...patch}:r));
 
   // One-off: delete the seeded non-Google test accounts (admin only).
@@ -213,8 +250,8 @@ export function Approvals({ isAdmin }){
         return (<Card key={m.id} className="p-4" style={suspended?{opacity:.7}:null}>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name="store"/></div>
-            <div className="min-w-0 flex-1">
-              <div className="font-bold t1 flex items-center gap-2">{m.shop}
+            <div className="min-w-0 flex-1" onClick={()=>setAuditM(m)} style={{ cursor:'pointer' }} title="View full record (audit)">
+              <div className="font-bold t1 flex items-center gap-2" style={{ textDecoration:'underline', textDecorationColor:'var(--line)', textUnderlineOffset:3 }}>{m.shop}
                 {verified && <Pill tone="ok">Verified</Pill>}
                 {suspended && <Pill tone="red">Suspended</Pill>}
                 {m.featured && <Pill tone="blue">Featured</Pill>}
@@ -259,6 +296,7 @@ export function Approvals({ isAdmin }){
     )}
 
     {entFor && <EnterpriseModal m={entFor} onClose={()=>setEntFor(null)} onDone={onEnterpriseDone} />}
+    {auditM && <RecordAudit title={auditM.shop} subtitle={`${auditM.owner || ''}${auditM.county ? ` · ${auditM.county}` : ''}`} record={auditM} onClose={()=>setAuditM(null)} />}
   </div>);
 }
 function Chk({ ok, label }){
@@ -444,6 +482,7 @@ export function Scouts({ isAdmin }){
   const followList = follows || [];
   const [reqs,setReqs] = useSS(null);
   const [snapMsg,setSnapMsg] = useSS('');
+  const [auditS, setAuditS] = useSS(null); // click a scout to inspect its full record
   useES(()=>{ setReqs(payoutData); }, [payoutData]);
   const list = reqs || [];
 
@@ -505,7 +544,7 @@ export function Scouts({ isAdmin }){
             <th className="px-4 py-2.5 font-semibold text-right">Balance</th><th className="px-5 py-2.5 font-semibold text-right">Pending</th>
           </tr></thead>
           <tbody>{scouts.map(s=>(
-            <tr key={s.id} style={{borderTop:'1px solid var(--line)'}}>
+            <tr key={s.id} onClick={()=>setAuditS(s)} style={{borderTop:'1px solid var(--line)', cursor:'pointer'}} title="View full record (audit)">
               <td className="px-5 py-3"><div className="flex items-center gap-2.5"><Avatar src={s.photo} name={s.name} size={30}/><div><div className="font-semibold t1">{s.name}</div><div className="text-xs t3">{s.county}</div></div></div></td>
               <td className="px-4 py-3 text-right num t2">{s.referred ?? '—'}</td>
               <td className="px-4 py-3 text-right num font-semibold t1">{s.verified}</td>
@@ -549,6 +588,7 @@ export function Scouts({ isAdmin }){
             })}</tbody>
           </table></div>}
     </Card>
+    {auditS && <RecordAudit title={auditS.name} subtitle={auditS.county} record={auditS} onClose={()=>setAuditS(null)} />}
   </div>);
 }
 
