@@ -774,7 +774,7 @@ export function Insight(){
       setReport(r); setProducts(Array.isArray(prods) ? prods : []);
       if (!r) setErr('Could not generate the report just now — please try again.');
     } catch (e) {
-      setErr('Sorry, I couldn’t reach the AI service. Please try again in a moment.'); setReport('');
+      setErr(e?.message || 'Sorry, I couldn’t reach the AI service. Please try again in a moment.'); setReport('');
     } finally { setBusy(false); }
   };
 

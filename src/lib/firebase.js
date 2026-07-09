@@ -106,20 +106,22 @@ export async function getMessagingInstance() {
 
 // ── Callable helpers ─────────────────────────────────────────────────────────
 // Each returns the function payload directly, or throws a friendly Error.
-function callable(name) {
+function callable(name, opts) {
   return async (data) => {
     if (!functions) throw new Error('Backend not configured');
-    const fn = httpsCallable(functions, name);
+    const fn = httpsCallable(functions, name, opts);
     const res = await fn(data);
     return res.data;
   };
 }
 
+// AI calls run multi-round tool-calling against a large model — a full report can take
+// a few minutes, well past the 70s httpsCallable default, so give them real headroom.
 /** AI chat completion → { reply, model }. messages:[{role,content}], system? */
-export const aiChat = callable('aiChat');
+export const aiChat = callable('aiChat', { timeout: 300000 });
 /** Grounded YoteAI assistant → { reply, products }. { role?, messages:[{role,content}] }.
  *  Roles: shopper | search | merchant | support. Reads the caller's real data server-side. */
-export const aiAssistant = callable('aiAssistant');
+export const aiAssistant = callable('aiAssistant', { timeout: 300000 });
 /** Lipa na M-Pesa STK push → { checkoutRequestId, merchantRequestId }. */
 export const mpesaStkPush = callable('mpesaStkPush');
 /** Merchant subscription STK push → { checkoutRequestId, merchantRequestId }. */
@@ -267,7 +269,7 @@ export const deleteLegalRecord = callable('deleteLegalRecord');
 /** Staff: cross-platform commercial data repository → { data }. */
 export const platformIntelligence = callable('platformIntelligence');
 /** Staff: AI business-intelligence brief from live platform data → { insights, data }. */
-export const platformInsights = callable('platformInsights');
+export const platformInsights = callable('platformInsights', { timeout: 300000 });
 
 // Lazily initialise Analytics only in the browser when supported + measurementId set.
 export async function initAnalytics() {
