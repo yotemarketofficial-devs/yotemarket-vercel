@@ -20,33 +20,55 @@ const MPESA_GREEN = '#0a9d4a';
 export const fmtKsh = (n) => 'Ksh ' + Number(n || 0).toLocaleString('en-KE');
 const shortId = (v) => `#${String(v).slice(0, 8).toUpperCase()}`;
 
-/** Map a raw receipts/{id} doc (+ context) to the canonical receipt model. */
+// Coerce any Firestore/JS date shape (Timestamp, {seconds}, ms, ISO, Date) → Date|null.
+function toDate(v) {
+  if (!v) return null;
+  if (typeof v === 'object') {
+    if (typeof v.toDate === 'function') { try { return v.toDate(); } catch { return null; } }
+    if (typeof v.seconds === 'number') return new Date(v.seconds * 1000);
+    if (typeof v._seconds === 'number') return new Date(v._seconds * 1000);
+    return null;
+  }
+  if (typeof v === 'number') return new Date(v);
+  const p = Date.parse(v);
+  return Number.isNaN(p) ? null : new Date(p);
+}
+// Force a plain, renderable string — objects/arrays never leak through as a React child.
+const str = (v, fallback = '') => {
+  if (v == null) return fallback;
+  if (typeof v === 'string') return v || fallback;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return fallback;
+};
+
+/** Map a raw receipts/{id} doc (+ context) to the canonical receipt model. Every
+ *  rendered field is coerced to a primitive so a stray object can't crash rendering. */
 export function normalizeReceipt(raw = {}, opts = {}) {
-  const type = raw.type || 'order';
-  const when = raw.createdAt?.seconds ? new Date(raw.createdAt.seconds * 1000)
-    : (raw.when && !Number.isNaN(Date.parse(raw.when)) ? new Date(raw.when) : null);
+  const type = str(raw.type, 'order');
+  const when = toDate(raw.createdAt) || toDate(raw.when);
+  const method = str(raw.method);
   return {
     type,
     typeLabel: TYPE_LABEL[type] || type || 'Payment',
     icon: TYPE_ICON[type] || 'fa-receipt',
-    title: raw.title || TYPE_LABEL[type] || 'Payment',
-    storeName: raw.storeName || '',
-    storeLogo: raw.storeLogo || '',
+    title: str(raw.title, TYPE_LABEL[type] || 'Payment'),
+    storeName: str(raw.storeName),
+    storeLogo: str(raw.storeLogo),
     amount: Number(raw.amount || 0),
-    currency: raw.currency || 'KES',
-    method: raw.method || '',
-    methodLabel: METHOD_LABEL[raw.method] || raw.method || '—',
+    currency: str(raw.currency, 'KES'),
+    method,
+    methodLabel: METHOD_LABEL[method] || method || '—',
     // The M-Pesa transaction code lives on `ref` for M-Pesa payments.
-    mpesaCode: raw.method === 'mpesa' ? (raw.ref || '') : '',
-    ref: raw.ref || '',
-    orderNo: raw.orderNo || (raw.meta?.orderId ? shortId(raw.meta.orderId) : ''),
+    mpesaCode: method === 'mpesa' ? str(raw.ref) : '',
+    ref: str(raw.ref),
+    orderNo: str(raw.orderNo) || (raw.meta?.orderId ? shortId(raw.meta.orderId) : ''),
     saleNo: raw.meta?.saleId ? shortId(raw.meta.saleId) : '',
-    receiptNo: raw.receiptNo || raw.id || '',
-    paidBy: opts.paidBy || raw.customerName || raw.buyerName || 'Customer',
-    whenText: when ? when.toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : (raw.when || '—'),
-    lines: Array.isArray(raw.lines) ? raw.lines.map((l) => ({ label: l.label || 'Item', qty: l.qty || null, amount: Number(l.amount || 0) })) : [],
-    footerNote: opts.footerNote || 'Official YoteMarket receipt. Keep it as proof of payment for this transaction.',
-    brand: opts.brand || 'YoteMarket',
+    receiptNo: str(raw.receiptNo) || str(raw.id),
+    paidBy: str(opts.paidBy) || str(raw.customerName) || str(raw.buyerName) || 'Customer',
+    whenText: when ? when.toLocaleString('en-KE', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+    lines: Array.isArray(raw.lines) ? raw.lines.map((l) => ({ label: str(l?.label, 'Item'), qty: (typeof l?.qty === 'number' ? l.qty : null), amount: Number(l?.amount || 0) })) : [],
+    footerNote: str(opts.footerNote, 'Official YoteMarket receipt. Keep it as proof of payment for this transaction.'),
+    brand: str(opts.brand, 'YoteMarket'),
   };
 }
 
@@ -154,11 +176,24 @@ function ThermalReceipt({ r, width = 300 }) {
   );
 }
 
+// A render failure in one receipt must never take down the whole screen.
+class ReceiptBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(err) { try { console.warn('[receipt] render failed', err); } catch { /* noop */ } }
+  render() {
+    if (this.state.failed) return <div style={{ padding: 24, textAlign: 'center', opacity: 0.7, fontSize: 13 }}>Couldn’t display this receipt.</div>;
+    return this.props.children;
+  }
+}
+
 export function Receipt({ receipt, variant = 'digital', width }) {
   if (!receipt) return null;
-  return variant === 'thermal'
-    ? <ThermalReceipt r={receipt} width={width} />
-    : <DigitalReceipt r={receipt} />;
+  return (
+    <ReceiptBoundary>
+      {variant === 'thermal' ? <ThermalReceipt r={receipt} width={width} /> : <DigitalReceipt r={receipt} />}
+    </ReceiptBoundary>
+  );
 }
 
 /** Fixed-width monospace text for raw ESC/POS thermal printers (default 32 cols). */

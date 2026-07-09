@@ -103,6 +103,12 @@ export async function fetchRuns() {
   return d;
 }
 
+/** Staff/hub: recompute optimized routes (nearest-neighbour + ETA/payout) for open
+ *  runs, optionally scoped to a hub → { runs, updated }. */
+export async function optimizeRuns(hubId) {
+  return call('optimizeRuns')(hubId ? { hubId } : {});
+}
+
 export async function fetchReports() {
   const d = await call('staffListReports')();
   return Array.isArray(d?.reports) ? d.reports : [];

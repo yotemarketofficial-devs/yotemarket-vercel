@@ -7,7 +7,7 @@ import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes } from 
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   enterpriseQuote, setEnterprise,
-  fetchRuns, fetchSubscriptions, fetchReports, fetchTranscript,
+  fetchRuns, optimizeRuns, fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
@@ -554,13 +554,24 @@ export function Scouts({ isAdmin }){
 
 /* ============ ORDERS & LOGISTICS ============ */
 export function Logistics(){
-  const { data, live } = useStaffResource(fetchRuns, { runs:RUNS, fleet:FLEET });
+  const { useState } = React;
+  const { data, live, reload } = useStaffResource(fetchRuns, { runs:RUNS, fleet:FLEET });
   const runs = data.runs || RUNS;
   const fleet = data.fleet || FLEET;
   const tone = { in_transit:'blue', delivered:'ok', delayed:'red' };
   const label = { in_transit:'In transit', delivered:'Delivered', delayed:'Delayed' };
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const optimize = async () => {
+    setBusy(true); setMsg(null);
+    try { const r = await optimizeRuns(); setMsg({ ok:true, text:`Re-optimized ${r.updated} of ${r.runs} open run(s).` }); reload(); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Optimize failed.' }); }
+    finally { setBusy(false); }
+  };
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="truck-fast" title="Orders & logistics" sub={live ? 'Live batched-run operations across all bands' : 'Sample runs — connect the backend for live operations'} />
+    <SectionHead icon="truck-fast" title="Orders & logistics" sub={live ? 'Live batched-run operations across all bands' : 'Sample runs — connect the backend for live operations'}
+      action={<Btn kind="primary" size="sm" icon={busy?'spinner':'route'} onClick={optimize} disabled={busy}>{busy?'Optimizing…':'Optimize routes'}</Btn>} />
+    {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Stat label="Runs in transit" value={runs.filter(r=>r.status==='in_transit').length} icon="motorcycle" tone="blue" />
       <Stat label="Delivered today" value={runs.filter(r=>r.status==='delivered').length} icon="box-open" tone="green" />
