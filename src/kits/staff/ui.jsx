@@ -137,25 +137,86 @@ export function EmptyState({ icon='inbox', title='Nothing here yet.', sub, tone=
 }
 
 /* DataTable — config-driven table with the house header/row styling, its own
-   horizontal-scroll wrapper and a built-in empty state.
-   columns: [{ key, header, align?, width?, render?(row) }]. */
-export function DataTable({ columns, rows, keyField='id', onRowClick, empty, minWidth=520 }){
+   horizontal-scroll wrapper and a built-in empty state. Optional column sorting
+   (set `sort:true` or a `sortValue(row)`) and pagination (`pageSize`).
+   columns: [{ key, header, align?, width?, render?(row), sort?, sortValue?(row), csvValue?(row), csv? }]. */
+export function DataTable({ columns, rows, keyField='id', onRowClick, empty, minWidth=520, pageSize, initialSort }){
+  const [sort, setSort] = useState(initialSort || null); // { key, dir }
+  const [page, setPage] = useState(0);
+  const total0 = (rows || []).length;
+  useEffect(() => { setPage(0); }, [total0, sort && sort.key, sort && sort.dir]);
+
+  const sortable = (c) => c.sort === true || typeof c.sortValue === 'function';
+  let view = rows || [];
+  if (sort) {
+    const col = columns.find((c) => c.key === sort.key);
+    if (col) {
+      const val = (r) => (col.sortValue ? col.sortValue(r) : r[col.key]);
+      view = [...view].sort((a, b) => {
+        const av = val(a); const bv = val(b);
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1; if (bv == null) return -1;
+        const cmp = (typeof av === 'number' && typeof bv === 'number')
+          ? av - bv : String(av).localeCompare(String(bv), undefined, { numeric: true });
+        return sort.dir === 'desc' ? -cmp : cmp;
+      });
+    }
+  }
+  const total = view.length;
+  const pages = pageSize ? Math.max(1, Math.ceil(total / pageSize)) : 1;
+  const p = Math.min(page, pages - 1);
+  const pageRows = pageSize ? view.slice(p * pageSize, p * pageSize + pageSize) : view;
+  const toggleSort = (c) => { if (sortable(c)) setSort((s) => (s && s.key === c.key ? { key: c.key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: c.key, dir: 'asc' })); };
+
   if (!rows || rows.length === 0) return empty || <EmptyState />;
   return (
-    <div className="overflow-x-auto no-bar">
-      <table className="w-full text-sm" style={{ minWidth }}>
-        <thead><tr className="t3" style={{ textAlign:'left', background:'var(--surface2)' }}>
-          {columns.map((c) => <th key={c.key} className="px-4 py-2.5 font-semibold" style={{ textAlign:c.align||'left', whiteSpace:'nowrap', width:c.width }}>{c.header}</th>)}
-        </tr></thead>
-        <tbody>{rows.map((r, i) => (
-          <tr key={r[keyField] ?? i} onClick={onRowClick ? () => onRowClick(r) : undefined}
-            style={{ borderTop:'1px solid var(--line)', cursor:onRowClick ? 'pointer' : 'default' }}>
-            {columns.map((c) => <td key={c.key} className="px-4 py-3" style={{ textAlign:c.align||'left' }}>{c.render ? c.render(r) : r[c.key]}</td>)}
-          </tr>
-        ))}</tbody>
-      </table>
+    <div>
+      <div className="overflow-x-auto no-bar">
+        <table className="w-full text-sm" style={{ minWidth }}>
+          <thead><tr className="t3" style={{ textAlign:'left', background:'var(--surface2)' }}>
+            {columns.map((c) => (
+              <th key={c.key} onClick={() => toggleSort(c)} className="px-4 py-2.5 font-semibold select-none"
+                style={{ textAlign:c.align||'left', whiteSpace:'nowrap', width:c.width, cursor: sortable(c) ? 'pointer' : 'default' }}>
+                {c.header}
+                {sortable(c) && <Icon name={sort && sort.key === c.key ? (sort.dir === 'asc' ? 'caret-up' : 'caret-down') : 'sort'} className="ml-1.5" style={{ opacity: sort && sort.key === c.key ? 0.8 : 0.35 }} />}
+              </th>
+            ))}
+          </tr></thead>
+          <tbody>{pageRows.map((r, i) => (
+            <tr key={r[keyField] ?? i} onClick={onRowClick ? () => onRowClick(r) : undefined}
+              style={{ borderTop:'1px solid var(--line)', cursor:onRowClick ? 'pointer' : 'default' }}>
+              {columns.map((c) => <td key={c.key} className="px-4 py-3" style={{ textAlign:c.align||'left' }}>{c.render ? c.render(r) : r[c.key]}</td>)}
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      {pageSize && total > pageSize && (
+        <div className="flex items-center justify-between px-4 py-3 text-xs t3" style={{ borderTop:'1px solid var(--line)' }}>
+          <span className="num">{p * pageSize + 1}–{Math.min(total, (p + 1) * pageSize)} of {total}</span>
+          <div className="flex items-center gap-1.5">
+            <button disabled={p === 0} onClick={() => setPage(p - 1)} className="px-2.5 py-1 rounded-md font-semibold disabled:opacity-40" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}><Icon name="chevron-left"/></button>
+            <span className="num px-1">Page {p + 1} / {pages}</span>
+            <button disabled={p >= pages - 1} onClick={() => setPage(p + 1)} className="px-2.5 py-1 rounded-md font-semibold disabled:opacity-40" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}><Icon name="chevron-right"/></button>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+/* Download rows as a CSV. Uses each column's `csvValue(row)` when given, else its
+   `key`; columns with `csv:false` (e.g. an Actions column) are skipped. */
+export function exportCsv(filename, columns, rows){
+  const cols = columns.filter((c) => c.csv !== false && (c.csvValue || (!c.render && c.key)));
+  const esc = (v) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const lines = [cols.map((c) => esc(c.header)).join(',')];
+  (rows || []).forEach((r) => lines.push(cols.map((c) => esc(c.csvValue ? c.csvValue(r) : r[c.key])).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename.endsWith('.csv') ? filename : filename + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // Modal — one shell for every dialog: overlay + panel + header (icon/title/close)

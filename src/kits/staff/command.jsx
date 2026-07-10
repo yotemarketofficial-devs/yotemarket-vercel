@@ -4,7 +4,7 @@
    with a jump-to link) on top of the live platform KPIs. Deep charts stay in the
    separate Analytics section. `go(sectionKey)` navigates the shell. */
 import React from 'react';
-import { KPIS } from './data.js';
+import { KPIS, FUNNEL } from './data.js';
 import { Card, SectionHead, Stat, Btn, Pill, Icon } from './ui.jsx';
 import {
   useStaffResource, fetchOverview,
@@ -85,22 +85,29 @@ function ActionCenter({ go }) {
   );
 }
 
-const HEALTH = [
-  { label:'Route completion', v:'96.2%', tone:'green', icon:'route' },
-  { label:'Avg drops / run',   v:'6.4',   tone:'pri',   icon:'layer-group' },
-  { label:'Merchant retention',v:'91%',   tone:'blue',  icon:'repeat' },
-  { label:'Insurance claims',  v:'0.4%',  tone:'amber', icon:'shield-halved' },
-];
-function Health() {
+/* Merchant funnel health — REAL conversion rates derived from the live activation
+   funnel (staffOverview): signed up → listed ≥2 → first sale → repeat seller. */
+function Health({ funnel }) {
+  const f = (Array.isArray(funnel) && funnel.length) ? funnel : FUNNEL;
+  const v = (i) => (f[i] ? Number(f[i].v) || 0 : 0);
+  const signed = v(0); const listed = v(1); const sale = v(2); const repeat = v(3);
+  const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
+  const metrics = [
+    { label:'Activation rate', sub:'made a first sale', val:`${pct(sale, signed)}%`, tone:'green', icon:'rocket' },
+    { label:'Listing rate',    sub:'listed ≥2 items',   val:`${pct(listed, signed)}%`, tone:'pri',  icon:'box' },
+    { label:'Repeat sellers',  sub:'sold more than once', val:`${pct(repeat, sale)}%`, tone:'blue', icon:'repeat' },
+    { label:'Signed-up stores', sub:'total merchants',   val: signed.toLocaleString(), tone:'amber', icon:'store' },
+  ];
   const tones = { green:['var(--green-bg)','var(--green)'], pri:['var(--pri-soft)','var(--pri)'], blue:['var(--blue-bg)','var(--blue)'], amber:['var(--amber-bg)','var(--amber)'] };
   return (
     <Card className="p-6">
-      <h3 className="font-bold t1 mb-4">Operational health</h3>
+      <h3 className="font-bold t1 mb-1">Merchant funnel</h3>
+      <p className="text-xs t3 mb-4">Live conversion across the merchant lifecycle</p>
       <div className="grid grid-cols-2 gap-4">
-        {HEALTH.map((m) => { const c = tones[m.tone]; return (
+        {metrics.map((m) => { const c = tones[m.tone]; return (
           <div key={m.label} className="rounded-xl p-4" style={{ background:'var(--surface2)' }}>
             <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background:c[0], color:c[1] }}><Icon name={m.icon} /></div>
-            <div className="text-xl font-bold t1 num">{m.v}</div><div className="text-xs t3">{m.label}</div>
+            <div className="text-xl font-bold t1 num">{m.val}</div><div className="text-xs t1 font-semibold">{m.label}</div><div className="text-[11px] t3">{m.sub}</div>
           </div>
         ); })}
       </div>
@@ -120,7 +127,7 @@ export function CommandCenter({ go = () => {} }) {
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2"><ActionCenter go={go} /></div>
-        <Health />
+        <Health funnel={data.funnel} />
       </div>
 
       <div>

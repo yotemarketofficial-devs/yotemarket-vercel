@@ -3,7 +3,7 @@
    provider. Search + role filter; merchants get a sandbox "credit test balance"
    action so withdrawals can be exercised. Admin-only. */
 import React from 'react';
-import { Card, SectionHead, Btn, Pill, Avatar, Icon } from './ui.jsx';
+import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv } from './ui.jsx';
 import { staffListUsers, staffCreditTestBalance } from '../../lib/firebase.js';
 const { useState, useEffect, useCallback } = React;
 
@@ -43,10 +43,31 @@ export function Accounts(){
     (!ql || (u.email||'').toLowerCase().includes(ql) || (u.name||'').toLowerCase().includes(ql) || (u.uid||'').toLowerCase().includes(ql)));
   const count = (role) => role === 'all' ? users.length : users.filter(u => u.roles.includes(role)).length;
 
+  const columns = [
+    { key:'user', header:'User', sortValue:(u)=>(u.name||u.email||'').toLowerCase(), csvValue:(u)=> u.name || (u.email||'').split('@')[0] || u.uid,
+      render:(u)=>(
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar name={u.name || u.email || '?'} size={34} />
+          <div className="min-w-0">
+            <div className="font-semibold t1 truncate flex items-center gap-2">{u.name || (u.email||'').split('@')[0] || 'User'}{u.disabled && <Pill tone="red">disabled</Pill>}{!u.verified && <span className="text-xs t3 font-normal">unverified</span>}</div>
+            <div className="text-xs t3 truncate">{u.email || 'no email'}</div>
+          </div>
+        </div>) },
+    { key:'roles', header:'Roles', csvValue:(u)=>(u.roles||[]).join(' '), render:(u)=>(<div className="flex gap-1 flex-wrap">{u.roles.map(r => <Pill key={r} tone={ROLE_TONE[r]||'ok'}>{r}</Pill>)}</div>) },
+    { key:'provider', header:'Provider', sort:true, render:(u)=><span className="t2">{u.provider}</span> },
+    { key:'created', header:'Joined', sortValue:(u)=>u.created||0, csvValue:(u)=>fmtDate(u.created), render:(u)=><span className="t3">{fmtDate(u.created)}</span> },
+    { key:'actions', header:'', align:'right', csv:false, render:(u)=> u.roles.includes('merchant')
+      ? <Btn kind="soft" size="sm" icon={creditFor===u.uid ? 'spinner' : 'flask'} onClick={(e)=>{ e.stopPropagation(); credit(u); }} disabled={creditFor===u.uid}>Credit test</Btn>
+      : null },
+  ];
+
   return (
     <div className="fadeup space-y-6">
       <SectionHead icon="address-book" title="Accounts" sub={`${users.length} user account${users.length!==1?'s':''} across the platform`}
-        action={<Btn kind="soft" size="md" icon={loading ? 'spinner' : 'rotate'} onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Btn>} />
+        action={<div className="flex items-center gap-2">
+          <Btn kind="ghost" size="md" icon="file-arrow-down" onClick={()=>exportCsv(`accounts-${new Date().toISOString().slice(0,10)}`, columns, rows)} disabled={!rows.length}>Export</Btn>
+          <Btn kind="soft" size="md" icon={loading ? 'spinner' : 'rotate'} onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Btn>
+        </div>} />
       {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
       {!loading && source === 'firestore' && <div className="text-xs t3 flex items-center gap-2" style={{ background:'var(--amber-bg)', color:'var(--amber)', padding:'8px 12px', borderRadius:10 }}><Icon name="triangle-exclamation" />Limited directory — the functions service account can't list Auth users, so this is built from Firestore (merchants, riders, staff, profiles). Grant it the "Firebase Authentication Admin" role for the full list + email lookups.</div>}
 
@@ -65,29 +86,9 @@ export function Accounts(){
 
       <Card className="p-0 overflow-hidden">
         {loading ? <div className="text-sm t3 py-10 text-center"><Icon name="spinner" className="mr-2" />Loading accounts…</div>
-          : rows.length === 0 ? <div className="text-sm t3 py-10 text-center">No accounts match.</div>
-            : (
-              <div className="divide-y" style={{ borderColor:'var(--line)' }}>
-                {rows.slice(0, 400).map(u => (
-                  <div key={u.uid} className="flex items-center gap-3 p-3.5" style={{ borderTop:'1px solid var(--line)' }}>
-                    <Avatar name={u.name || u.email || '?'} size={38} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold t1 text-sm truncate">{u.name || u.email.split('@')[0] || 'User'}</span>
-                        {u.roles.map(r => <Pill key={r} tone={ROLE_TONE[r]||'ok'}>{r}</Pill>)}
-                        {!u.verified && <span className="text-xs t3">· unverified</span>}
-                        {u.disabled && <Pill tone="red">disabled</Pill>}
-                      </div>
-                      <div className="text-xs t3 mt-0.5 truncate">{u.email || 'no email'} · {u.provider} · joined {fmtDate(u.created)}</div>
-                    </div>
-                    {u.roles.includes('merchant') && (
-                      <Btn kind="soft" size="sm" icon={creditFor===u.uid ? 'spinner' : 'flask'} onClick={()=>credit(u)} disabled={creditFor===u.uid}>Credit test</Btn>
-                    )}
-                  </div>
-                ))}
-                {rows.length > 400 && <div className="text-xs t3 p-3 text-center">Showing first 400 of {rows.length} — refine your search.</div>}
-              </div>
-            )}
+          : <DataTable columns={columns} rows={rows} keyField="uid" pageSize={40} minWidth={720}
+              initialSort={{ key:'created', dir:'desc' }}
+              empty={<EmptyState icon="user" title="No accounts match." sub="Try a different search or role filter." />} />}
       </Card>
     </div>
   );

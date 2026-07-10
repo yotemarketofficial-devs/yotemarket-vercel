@@ -3,7 +3,7 @@
    Structure is real (server-only collections via staff/admin callables); live
    platform figures are wired in a follow-up. Uses the shared staff primitives. */
 import React from 'react';
-import { Card, SectionHead, Btn, Pill, Icon, Avatar, Stat, kes } from './ui.jsx';
+import { Card, SectionHead, Btn, Pill, Icon, Avatar, Stat, kes, exportCsv } from './ui.jsx';
 import {
   listStaff, onboardEmployee, offboardEmployee,
   listFinanceEntries, addFinanceEntry, deleteFinanceEntry,
@@ -155,7 +155,11 @@ export function Finance({ isAdmin }){
   const live = data.live || {};
   return (
     <div className="fadeup space-y-6">
-      <SectionHead icon="chart-line" title="Finance" sub="Live platform revenue and the internal ledger" />
+      <SectionHead icon="chart-line" title="Finance" sub="Live platform revenue and the internal ledger"
+        action={<Btn kind="ghost" size="md" icon="file-arrow-down" disabled={!data.entries.length} onClick={()=>exportCsv(`finance-${new Date().toISOString().slice(0,10)}`, [
+          { header:'Type', key:'type' }, { header:'Category', csvValue:e=>e.category||'General' }, { header:'Amount (KSh)', csvValue:e=>e.amount },
+          { header:'Note', csvValue:e=>e.note||'' }, { header:'Date', csvValue:e=>e.date||'' },
+        ], data.entries)}>Export ledger</Btn>} />
       <Banner msg={msg} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -229,8 +233,10 @@ export function Legal({ isAdmin }){
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState(null); // record id being edited, or null
   const [form, setForm] = useState({ title:'', type:'contract', status:'active', counterparty:'', note:'', date:'' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const blank = { title:'', type:'contract', status:'active', counterparty:'', note:'', date:'' };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -240,21 +246,31 @@ export function Legal({ isAdmin }){
   }, []);
   useEffect(() => { load(); }, [load]);
 
+  const startEdit = (r) => {
+    setEditingId(r.id);
+    setForm({ title:r.title||'', type:r.type||'contract', status:r.status||'active', counterparty:r.counterparty||'', note:r.note||'', date:r.date||'' });
+    if (typeof window !== 'undefined') window.scrollTo({ top:0, behavior:'smooth' });
+  };
+  const cancelEdit = () => { setEditingId(null); setForm(blank); };
   const save = async () => {
     setBusy(true); setMsg(null);
     try {
-      await saveLegalRecord({ title: form.title, type: form.type, status: form.status, counterparty: form.counterparty || undefined, note: form.note || undefined, date: form.date || undefined });
-      setForm({ title:'', type:'contract', status:'active', counterparty:'', note:'', date:'' }); setMsg({ ok:true, text:'Record saved.' }); load();
+      await saveLegalRecord({ ...(editingId ? { id: editingId } : {}), title: form.title, type: form.type, status: form.status, counterparty: form.counterparty || undefined, note: form.note || undefined, date: form.date || undefined });
+      setForm(blank); setMsg({ ok:true, text: editingId ? 'Record updated.' : 'Record saved.' }); setEditingId(null); load();
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not save record.' }); }
     finally { setBusy(false); }
   };
-  const remove = async (r) => { if (!window.confirm(`Delete "${r.title}"?`)) return; try { await deleteLegalRecord({ id: r.id }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
+  const remove = async (r) => { if (!window.confirm(`Delete "${r.title}"?`)) return; try { await deleteLegalRecord({ id: r.id }); if (editingId === r.id) cancelEdit(); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
 
   const counts = LEGAL_TYPES.map(t => ({ ...t, n: rows.filter(r => r.type === t.key).length }));
 
   return (
     <div className="fadeup space-y-6">
-      <SectionHead icon="scale-balanced" title="Legal" sub="Contracts, policies, cases and compliance records" />
+      <SectionHead icon="scale-balanced" title="Legal" sub="Contracts, policies, cases and compliance records"
+        action={<Btn kind="ghost" size="md" icon="file-arrow-down" disabled={!rows.length} onClick={()=>exportCsv(`legal-${new Date().toISOString().slice(0,10)}`, [
+          { header:'Title', key:'title' }, { header:'Type', key:'type' }, { header:'Status', key:'status' },
+          { header:'Counterparty', csvValue:r=>r.counterparty||'' }, { header:'Note', csvValue:r=>r.note||'' }, { header:'Date', csvValue:r=>r.date||'' },
+        ], rows)}>Export</Btn>} />
       <Banner msg={msg} />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -262,7 +278,7 @@ export function Legal({ isAdmin }){
       </div>
 
       <Card className="p-6 space-y-4">
-        <h3 className="font-bold t1">Add a record</h3>
+        <div className="flex items-center justify-between"><h3 className="font-bold t1">{editingId ? 'Edit record' : 'Add a record'}</h3>{editingId && <button onClick={cancelEdit} className="text-xs font-semibold t3">Cancel edit</button>}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Title *" className="ym-input" />
           <select value={form.type} onChange={e => set('type', e.target.value)} className="ym-input">
@@ -273,7 +289,7 @@ export function Legal({ isAdmin }){
           <input type="date" value={form.date} onChange={e => set('date', e.target.value)} className="ym-input" />
           <input value={form.note} onChange={e => set('note', e.target.value)} placeholder="Note (optional)" className="ym-input sm:col-span-2 lg:col-span-1" />
         </div>
-        <Btn kind="primary" icon={busy ? 'spinner' : 'plus'} onClick={save} disabled={busy || !form.title}>{busy ? 'Saving…' : 'Add record'}</Btn>
+        <Btn kind="primary" icon={busy ? 'spinner' : (editingId ? 'check' : 'plus')} onClick={save} disabled={busy || !form.title}>{busy ? 'Saving…' : (editingId ? 'Update record' : 'Add record')}</Btn>
       </Card>
 
       <Card className="p-6">
@@ -295,7 +311,10 @@ export function Legal({ isAdmin }){
                         </div>
                         <div className="text-xs t3 mt-0.5 truncate">{r.counterparty ? r.counterparty + ' · ' : ''}{r.note || ''}{r.date ? ` · ${r.date}` : ''}</div>
                       </div>
-                      {isAdmin && <button onClick={() => remove(r)} className="text-xs font-semibold" style={{ color:'var(--red)' }}>Delete</button>}
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <button onClick={() => startEdit(r)} className="text-xs font-semibold" style={{ color: editingId===r.id ? 'var(--pri)' : 'var(--t2)' }}>Edit</button>
+                        {isAdmin && <button onClick={() => remove(r)} className="text-xs font-semibold" style={{ color:'var(--red)' }}>Delete</button>}
+                      </div>
                     </div>
                   );
                 })}
