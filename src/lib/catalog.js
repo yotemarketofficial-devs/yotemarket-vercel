@@ -53,6 +53,7 @@ const normProduct = (d) => ({
   stock: d.inStock !== false && d.stock !== false,
   icon: faIcon(d.icon, 'fa-box'),
   img: d.img || d.imageUrl || d.photo || undefined,
+  createdAt: d.createdAt || null,   // Firestore Timestamp — powers "Latest products"
 });
 const normStore = (d) => ({
   id: d.id,
@@ -75,6 +76,7 @@ const normStore = (d) => ({
   followers: d.followers,
   responds: d.responds,
   since: d.since,
+  createdAt: d.createdAt || null,   // Firestore Timestamp — powers the "New stores" rail
   isHub: !!d.isHub,
   verified: !!d.verified,
   tagline: d.tagline,

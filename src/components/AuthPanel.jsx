@@ -66,6 +66,7 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
   const [email, setEmail] = useS('');
   const [phone, setPhone] = useS('');
   const [password, setPassword] = useS('');
+  const [showPw, setShowPw] = useS(false);
   // Email/password is collapsed by default so the whole card fits on screen with Google
   // as the primary action; the fields reveal on demand (or automatically if a Google
   // redirect returned an error the user needs to act on).
@@ -182,7 +183,12 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
                       <label className="ym-label">Password</label>
                       {mode === 'signin' && <button type="button" onClick={forgot} disabled={busy} style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600, color: 'var(--m-link)', padding: 0 }}>Forgot password?</button>}
                     </div>
-                    <input className="ym-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
+                    <div style={{ position: 'relative' }}>
+                      <input className="ym-input" type={showPw ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'register' ? 'Min. 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} style={{ paddingRight: 44 }} />
+                      <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide password' : 'Show password'} aria-pressed={showPw} title={showPw ? 'Hide password' : 'Show password'} style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--m-fg3)', padding: 0 }}>
+                        <FA i={showPw ? 'fa-eye-slash' : 'fa-eye'} />
+                      </button>
+                    </div>
                   </div>
                   <button className="ym-btn ym-btn-primary" disabled={busy} onClick={() => submit()} style={{ marginTop: 4 }}>
                     {busy ? <><FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite' }} /> Please wait…</> : (mode === 'signin' ? 'Sign in' : 'Create account')}

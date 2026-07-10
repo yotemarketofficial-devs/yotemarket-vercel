@@ -15,6 +15,8 @@ const { useState: useSS, useEffect: useEffSS } = React;
 
 /* ---------- PRODUCT REVIEWS (live, functional) ---------- */
 function fmtReviewDate(r){ return r?.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short', year:'numeric' }) : ''; }
+/* Seconds from a Firestore Timestamp (or 0) — for newest-first sorting. */
+const tsSec = (t) => (t && (t.seconds != null ? t.seconds : t._seconds)) || 0;
 
 function StarPicker({ value, onChange }){
   const [hover, setHover] = useSS(0);
@@ -140,6 +142,12 @@ export function HomeScreen(){
   const clipMap = feedStoreMap(feedClips);                 // storeId → clip info (badges + rail)
   const featured = YM_STORES.filter(s => s.featured);
   const featuredIds = new Set(featured.map(s => s.id));    // exclude these from "Now on YoteFeed"
+  // New stores — recently joined storefronts (needs a real join date), newest first,
+  // excluding the featured ones (already surfaced above) so the sections don't repeat.
+  const newStores = [...YM_STORES]
+    .filter(s => !s.featured && tsSec(s.createdAt) > 0)
+    .sort((a, b) => tsSec(b.createdAt) - tsSec(a.createdAt))
+    .slice(0, 12);
   const IN_PROGRESS = ['queued','accepted','picked_up','at_hub','out','awaiting'];
   const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>IN_PROGRESS.includes(o.status)) : null;
   return (
@@ -269,18 +277,33 @@ export function HomeScreen(){
         </div>
       )}
 
+      {/* New stores — recently joined storefronts */}
+      {newStores.length > 0 && (
+        <div className="wrap" style={{ marginTop:30 }}>
+          <SectionTitle action="Explore stores" onAction={()=>nav('search',{ tab:'stores' })}>New stores</SectionTitle>
+          <NewStores stores={newStores} />
+        </div>
+      )}
+
       {/* Now on YoteFeed — NON-featured stores with clips (featured ones show badges above) */}
       <FeedStoresRail clips={feedClips} exclude={featuredIds} seen={seenClips} />
 
-      {/* for you */}
-      {YM_PRODUCTS.length > 0 && (
-        <div className="wrap" style={{ marginTop:40 }}>
-          <SectionTitle action="Browse all" onAction={()=>nav('search')}>For you</SectionTitle>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>
-            {YM_PRODUCTS.map(p=><ProductCard key={p.id} p={p} />)}
+      {/* For you (signed in) / Latest products (guests) — guests have no curated
+          shopping habits yet, so show the freshest arrivals instead of "For you". */}
+      {YM_PRODUCTS.length > 0 && (() => {
+        const guest = !account.hasAccount;
+        const items = guest
+          ? [...YM_PRODUCTS].sort((a, b) => tsSec(b.createdAt) - tsSec(a.createdAt)).slice(0, 24)
+          : YM_PRODUCTS;
+        return (
+          <div className="wrap" style={{ marginTop:40 }}>
+            <SectionTitle action="Browse all" onAction={()=>nav('search')}>{guest ? 'Latest products' : 'For you'}</SectionTitle>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>
+              {items.map(p=><ProductCard key={p.id} p={p} />)}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -413,6 +436,36 @@ function FeaturedStores({ stores, clips, seen }){
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/* New stores rail — recently joined storefronts as compact cover+logo cards with a
+   NEW ribbon, so it reads distinctly from the Featured circle-logos above. */
+function NewStores({ stores }){
+  const { nav } = useYM();
+  if (!stores?.length) return null;
+  return (
+    <div className="scroll-x" style={{ gap:14, paddingBottom:4 }}>
+      {stores.map(s => (
+        <button key={s.id} onClick={()=>nav('store', { sid:s.id })} className="ym-card"
+          style={{ flexShrink:0, width:210, textAlign:'left', cursor:'pointer', fontFamily:'inherit', padding:0, overflow:'hidden', border:'none' }}>
+          <div style={{ position:'relative', height:84, background: s.img ? 'var(--m-surface-2)' : `linear-gradient(135deg, ${s.tint}, ${s.tint}aa)` }}>
+            {s.img && <img src={s.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+            <span style={{ position:'absolute', top:8, left:8, background:'var(--m-primary)', color:'#fff', fontSize:10, fontWeight:800, letterSpacing:'.05em', padding:'2px 8px', borderRadius:9999, boxShadow:'0 2px 6px rgba(0,0,0,.25)' }}>NEW</span>
+          </div>
+          <div style={{ padding:'0 14px 14px' }}>
+            <span style={{ display:'flex', width:48, height:48, borderRadius:14, marginTop:-24, background:'var(--m-surface)', border:'3px solid var(--m-bg)', boxShadow:'var(--m-shadow-card)', alignItems:'center', justifyContent:'center', overflow:'hidden', position:'relative' }}>
+              {s.logo ? <img src={s.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon || 'fa-store'} style={{ fontSize:20, color:s.tint || 'var(--m-primary)' }} />}
+            </span>
+            <div className="ym-h3" style={{ fontSize:14, marginTop:8, display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</span>
+              {s.verified && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:11, flexShrink:0 }} />}
+            </div>
+            <div className="ym-cap" style={{ marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.area || (s.products ? `${s.products} product${s.products!==1?'s':''}` : 'New on YoteMarket')}</div>
+          </div>
+        </button>
+      ))}
     </div>
   );
 }
