@@ -120,3 +120,66 @@ export const ThemeToggle = () => {
 };
 
 export const kes = n => 'KSh ' + Number(Math.round(n)).toLocaleString('en-KE');
+
+/* ── Shared data primitives (consistent tables / modals / empty states) ────── */
+
+// EmptyState — one look for every "nothing here" moment.
+export function EmptyState({ icon='inbox', title='Nothing here yet.', sub, tone='t3' }){
+  const tones = { t3:['var(--surface2)','var(--t3)'], green:['var(--green-bg)','var(--green)'], amber:['var(--amber-bg)','var(--amber)'], red:['var(--red-bg)','var(--red)'] };
+  const c = tones[tone] || tones.t3;
+  return (
+    <div className="px-5 py-10 text-center">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background:c[0], color:c[1] }}><Icon name={icon} className="text-xl"/></div>
+      <div className="font-semibold t1">{title}</div>
+      {sub && <div className="text-sm t3 mt-1 max-w-md mx-auto">{sub}</div>}
+    </div>
+  );
+}
+
+/* DataTable — config-driven table with the house header/row styling, its own
+   horizontal-scroll wrapper and a built-in empty state.
+   columns: [{ key, header, align?, width?, render?(row) }]. */
+export function DataTable({ columns, rows, keyField='id', onRowClick, empty, minWidth=520 }){
+  if (!rows || rows.length === 0) return empty || <EmptyState />;
+  return (
+    <div className="overflow-x-auto no-bar">
+      <table className="w-full text-sm" style={{ minWidth }}>
+        <thead><tr className="t3" style={{ textAlign:'left', background:'var(--surface2)' }}>
+          {columns.map((c) => <th key={c.key} className="px-4 py-2.5 font-semibold" style={{ textAlign:c.align||'left', whiteSpace:'nowrap', width:c.width }}>{c.header}</th>)}
+        </tr></thead>
+        <tbody>{rows.map((r, i) => (
+          <tr key={r[keyField] ?? i} onClick={onRowClick ? () => onRowClick(r) : undefined}
+            style={{ borderTop:'1px solid var(--line)', cursor:onRowClick ? 'pointer' : 'default' }}>
+            {columns.map((c) => <td key={c.key} className="px-4 py-3" style={{ textAlign:c.align||'left' }}>{c.render ? c.render(r) : r[c.key]}</td>)}
+          </tr>
+        ))}</tbody>
+      </table>
+    </div>
+  );
+}
+
+// Modal — one shell for every dialog: overlay + panel + header (icon/title/close)
+// + scrollable body + optional footer. Escape and backdrop-click close it.
+export function Modal({ title, subtitle, icon, onClose, children, footer, maxWidth=520 }){
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onClose]);
+  return (
+    <div onClick={(e) => e.target === e.currentTarget && onClose()} className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      style={{ background:'rgba(8,12,24,.55)', backdropFilter:'blur(3px)' }}>
+      <div className="rounded-2xl overflow-hidden flex flex-col w-full" style={{ maxWidth, maxHeight:'86vh', background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 24px 60px -18px rgba(0,0,0,.5)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--line)' }}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            {icon && <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name={icon}/></div>}
+            <div className="min-w-0"><div className="font-bold t1 truncate">{title}</div>{subtitle && <div className="text-xs t3 truncate">{subtitle}</div>}</div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center t3 flex-shrink-0" style={{ background:'var(--surface2)' }} aria-label="Close"><Icon name="xmark"/></button>
+        </div>
+        <div className="px-5 py-4 overflow-y-auto">{children}</div>
+        {footer && <div className="px-5 py-3 flex items-center gap-2 justify-end" style={{ borderTop:'1px solid var(--line)' }}>{footer}</div>}
+      </div>
+    </div>
+  );
+}

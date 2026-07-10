@@ -3,7 +3,7 @@
    and falls back to the bundled demo data when the backend isn't reachable. */
 import React from 'react';
 import { KPIS, GMV_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, RUNS, FLEET, WALLET, SUBSCRIPTIONS } from './data.js';
-import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes } from './ui.jsx';
+import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState } from './ui.jsx';
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   enterpriseQuote, setEnterprise,
@@ -93,18 +93,10 @@ export function RecordAudit({ title, subtitle, record, onClose, hide = [] }){
   const skip = new Set(['_busy', 'photo', 'avatar', ...hide]);
   const entries = Object.entries(record || {}).filter(([k]) => !skip.has(k));
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ background:'rgba(8,12,24,.55)', backdropFilter:'blur(3px)' }}>
-      <div onClick={(e)=>e.stopPropagation()} className="w-full rounded-2xl overflow-hidden flex flex-col" style={{ maxWidth:520, maxHeight:'86vh', background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 24px 60px -18px rgba(0,0,0,.5)' }}>
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--line)' }}>
-          <div className="min-w-0"><div className="font-bold t1 truncate">{title || 'Record'}</div>{subtitle && <div className="text-xs t3 truncate">{subtitle}</div>}</div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center t3 flex-shrink-0" style={{ background:'var(--surface2)' }} aria-label="Close"><Icon name="xmark"/></button>
-        </div>
-        <div className="px-5 py-1 overflow-y-auto">
-          {entries.length ? entries.map(([k, v]) => <AuditField key={k} k={k} v={v} />) : <div className="py-6 text-center t3">No details.</div>}
-        </div>
-        <div className="px-5 py-3 text-[11px] t3" style={{ borderTop:'1px solid var(--line)' }}><Icon name="lock" className="mr-1"/> Confidential · staff audit view</div>
-      </div>
-    </div>
+    <Modal title={title || 'Record'} subtitle={subtitle} icon="fingerprint" onClose={onClose}
+      footer={<span className="text-[11px] t3 mr-auto"><Icon name="lock" className="mr-1"/> Confidential · staff audit view</span>}>
+      {entries.length ? entries.map(([k, v]) => <AuditField key={k} k={k} v={v} />) : <div className="py-6 text-center t3">No details.</div>}
+    </Modal>
   );
 }
 
@@ -546,22 +538,13 @@ export function Scouts({ isAdmin }){
       {/* scout table */}
       <Card className="p-0 overflow-hidden lg:col-span-3">
         <h3 className="font-bold t1 p-5 pb-3">Top scouts</h3>
-        <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:480}}>
-          <thead><tr className="t3" style={{textAlign:'left',background:'var(--surface2)'}}>
-            <th className="px-5 py-2.5 font-semibold">Scout</th><th className="px-4 py-2.5 font-semibold text-right">Referred</th>
-            <th className="px-4 py-2.5 font-semibold text-right">Activated</th>
-            <th className="px-4 py-2.5 font-semibold text-right">Balance</th><th className="px-5 py-2.5 font-semibold text-right">Pending</th>
-          </tr></thead>
-          <tbody>{scouts.map(s=>(
-            <tr key={s.id} onClick={()=>setAuditS(s)} style={{borderTop:'1px solid var(--line)', cursor:'pointer'}} title="View full record (audit)">
-              <td className="px-5 py-3"><div className="flex items-center gap-2.5"><Avatar src={s.photo} name={s.name} size={30}/><div><div className="font-semibold t1">{s.name}</div><div className="text-xs t3">{s.county}</div></div></div></td>
-              <td className="px-4 py-3 text-right num t2">{s.referred ?? '—'}</td>
-              <td className="px-4 py-3 text-right num font-semibold t1">{s.verified}</td>
-              <td className="px-4 py-3 text-right num t2">{kes(s.balance)}</td>
-              <td className="px-5 py-3 text-right num" style={{color: s.pending>0?'var(--amber)':'var(--t3)'}}>{s.pending>0?kes(s.pending):'—'}</td>
-            </tr>))}
-            {scouts.length===0 && <tr><td colSpan={5} className="px-5 py-8 text-center t3">No active scouts yet.</td></tr>}</tbody>
-        </table></div>
+        <DataTable minWidth={480} rows={scouts} onRowClick={setAuditS} empty={<EmptyState icon="people-group" title="No active scouts yet." />} columns={[
+          { key:'name', header:'Scout', render:s=><div className="flex items-center gap-2.5"><Avatar src={s.photo} name={s.name} size={30}/><div><div className="font-semibold t1">{s.name}</div><div className="text-xs t3">{s.county}</div></div></div> },
+          { key:'referred', header:'Referred', align:'right', render:s=><span className="num t2">{s.referred ?? '—'}</span> },
+          { key:'verified', header:'Activated', align:'right', render:s=><span className="num font-semibold t1">{s.verified}</span> },
+          { key:'balance', header:'Balance', align:'right', render:s=><span className="num t2">{kes(s.balance)}</span> },
+          { key:'pending', header:'Pending', align:'right', render:s=><span className="num" style={{color: s.pending>0?'var(--amber)':'var(--t3)'}}>{s.pending>0?kes(s.pending):'—'}</span> },
+        ]} />
       </Card>
     </div>
 
@@ -571,31 +554,15 @@ export function Scouts({ isAdmin }){
         <h3 className="font-bold t1 flex items-center gap-2">Merchant-follow proofs {followList.length>0 && <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--amber)'}}>{followList.length}</span>}</h3>
         <span className="text-xs t3">Open the handle, confirm they follow us, then approve to credit the scout.</span>
       </div>
-      {followList.length===0
-        ? <div className="p-8 text-center t3"><Icon name="circle-check" className="text-2xl mb-2" style={{color:'var(--green)'}}/><div>No follow proofs waiting.</div></div>
-        : <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:600}}>
-            <thead><tr className="t3" style={{textAlign:'left',background:'var(--surface2)'}}>
-              <th className="px-5 py-2.5 font-semibold">Merchant</th><th className="px-4 py-2.5 font-semibold">Platform</th>
-              <th className="px-4 py-2.5 font-semibold">Handle</th><th className="px-4 py-2.5 font-semibold text-right">Reward</th>
-              <th className="px-5 py-2.5 font-semibold text-right">Verify</th>
-            </tr></thead>
-            <tbody>{followList.map(f=>{
-              const url = socialProfileUrl(f.platform, f.handle);
-              return (
-              <tr key={f.id} style={{borderTop:'1px solid var(--line)'}}>
-                <td className="px-5 py-3"><div className="font-semibold t1">{f.storeName}</div><div className="text-xs t3">{f.date}</div></td>
-                <td className="px-4 py-3 t2" style={{textTransform:'capitalize'}}>{f.platform}</td>
-                <td className="px-4 py-3">{url
-                  ? <a href={url} target="_blank" rel="noreferrer" className="accent font-semibold">@{String(f.handle).replace(/^@+/,'')} <Icon name="arrow-up-right-from-square" className="text-xs"/></a>
-                  : <span className="t2">@{f.handle}</span>}</td>
-                <td className="px-4 py-3 text-right num t2">{kes(f.reward)}</td>
-                <td className="px-5 py-3"><div className="flex gap-2 justify-end">
-                  <Btn kind="success" size="sm" icon="check" onClick={()=>resolveFollow(f.id,true)}>Approve</Btn>
-                  <Btn kind="soft" size="sm" onClick={()=>resolveFollow(f.id,false)}>Reject</Btn>
-                </div></td>
-              </tr>);
-            })}</tbody>
-          </table></div>}
+      <DataTable minWidth={600} rows={followList} empty={<EmptyState icon="circle-check" tone="green" title="No follow proofs waiting." />} columns={[
+        { key:'merchant', header:'Merchant', render:f=><div><div className="font-semibold t1">{f.storeName}</div><div className="text-xs t3">{f.date}</div></div> },
+        { key:'platform', header:'Platform', render:f=><span className="t2" style={{textTransform:'capitalize'}}>{f.platform}</span> },
+        { key:'handle', header:'Handle', render:f=>{ const url=socialProfileUrl(f.platform,f.handle); return url
+          ? <a href={url} target="_blank" rel="noreferrer" className="accent font-semibold">@{String(f.handle).replace(/^@+/,'')} <Icon name="arrow-up-right-from-square" className="text-xs"/></a>
+          : <span className="t2">@{f.handle}</span>; } },
+        { key:'reward', header:'Reward', align:'right', render:f=><span className="num t2">{kes(f.reward)}</span> },
+        { key:'verify', header:'Verify', align:'right', render:f=><div className="flex gap-2 justify-end"><Btn kind="success" size="sm" icon="check" onClick={()=>resolveFollow(f.id,true)}>Approve</Btn><Btn kind="soft" size="sm" onClick={()=>resolveFollow(f.id,false)}>Reject</Btn></div> },
+      ]} />
     </Card>
     {auditS && <RecordAudit title={auditS.name} subtitle={auditS.county} record={auditS} onClose={()=>setAuditS(null)} />}
   </div>);
@@ -630,21 +597,15 @@ export function Logistics(){
     <div className="grid lg:grid-cols-3 gap-6">
       <Card className="p-0 overflow-hidden lg:col-span-2">
         <h3 className="font-bold t1 p-5 pb-3">Active runs</h3>
-        <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:620}}>
-          <thead><tr className="t3" style={{textAlign:'left',background:'var(--surface2)'}}>
-            {['Run','Band','Rider','Drops','Distance','ETA','Status'].map(h=><th key={h} className="px-4 py-2.5 font-semibold">{h}</th>)}
-          </tr></thead>
-          <tbody>{runs.map(r=>(
-            <tr key={r.id} style={{borderTop:'1px solid var(--line)'}}>
-              <td className="px-4 py-3 num font-semibold t1">{r.id}</td>
-              <td className="px-4 py-3"><span className="pill pill-blue">{r.band}</span></td>
-              <td className="px-4 py-3 t2">{r.rider}<div className="text-xs t3">{r.vehicle}</div></td>
-              <td className="px-4 py-3 num t1">{r.drops}</td>
-              <td className="px-4 py-3 num t2">{r.dist}</td>
-              <td className="px-4 py-3 num t2">{r.eta}</td>
-              <td className="px-4 py-3"><Pill tone={tone[r.status]}>{label[r.status]}</Pill></td>
-            </tr>))}</tbody>
-        </table></div>
+        <DataTable minWidth={620} rows={runs} empty={<EmptyState icon="route" title="No active runs." />} columns={[
+          { key:'id', header:'Run', render:r=><span className="num font-semibold t1">{r.id}</span> },
+          { key:'band', header:'Band', render:r=><span className="pill pill-blue">{r.band}</span> },
+          { key:'rider', header:'Rider', render:r=><span className="t2">{r.rider}<div className="text-xs t3">{r.vehicle}</div></span> },
+          { key:'drops', header:'Drops', render:r=><span className="num t1">{r.drops}</span> },
+          { key:'dist', header:'Distance', render:r=><span className="num t2">{r.dist}</span> },
+          { key:'eta', header:'ETA', render:r=><span className="num t2">{r.eta}</span> },
+          { key:'status', header:'Status', render:r=><Pill tone={tone[r.status]}>{label[r.status]}</Pill> },
+        ]} />
       </Card>
       <Card className="p-6">
         <h3 className="font-bold t1 mb-4">Fleet by band</h3>
@@ -676,20 +637,14 @@ export function Wallet(){
     </div>
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between p-5 pb-3"><h3 className="font-bold t1">Merchant subscriptions</h3><Btn kind="soft" size="sm" icon="download">Export</Btn></div>
-      <div className="overflow-x-auto no-bar"><table className="w-full text-sm" style={{minWidth:600}}>
-        <thead><tr className="t3" style={{textAlign:'left',background:'var(--surface2)'}}>
-          {['Shop','Plan','Band','Amount','Next billing','Status'].map(h=><th key={h} className="px-5 py-2.5 font-semibold">{h}</th>)}
-        </tr></thead>
-        <tbody>{subs.map(s=>(
-          <tr key={s.id} style={{borderTop:'1px solid var(--line)'}}>
-            <td className="px-5 py-3 font-semibold t1">{s.shop}</td>
-            <td className="px-5 py-3 t2">{s.plan}</td>
-            <td className="px-5 py-3 t3">{s.band}</td>
-            <td className="px-5 py-3 num t1">{kes(s.amount)}<span className="text-xs t3">/mo</span></td>
-            <td className="px-5 py-3 num" style={{color: s.status==='overdue'?'var(--red)':'var(--t2)'}}>{s.next}</td>
-            <td className="px-5 py-3"><Pill tone={tone[s.status]}>{s.status}</Pill></td>
-          </tr>))}</tbody>
-      </table></div>
+      <DataTable minWidth={600} rows={subs} empty={<EmptyState icon="wallet" title="No subscriptions yet." />} columns={[
+        { key:'shop', header:'Shop', render:s=><span className="font-semibold t1">{s.shop}</span> },
+        { key:'plan', header:'Plan', render:s=><span className="t2">{s.plan}</span> },
+        { key:'band', header:'Band', render:s=><span className="t3">{s.band}</span> },
+        { key:'amount', header:'Amount', render:s=><span className="num t1">{kes(s.amount)}<span className="text-xs t3">/mo</span></span> },
+        { key:'next', header:'Next billing', render:s=><span className="num" style={{color: s.status==='overdue'?'var(--red)':'var(--t2)'}}>{s.next}</span> },
+        { key:'status', header:'Status', render:s=><Pill tone={tone[s.status]}>{s.status}</Pill> },
+      ]} />
     </Card>
   </div>);
 }
@@ -812,29 +767,22 @@ export function ReviewModeration(){
 function TranscriptModal({ view, onClose }){
   const fmt = (ms) => { try { return new Date(ms).toLocaleString('en-KE', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' }); } catch { return ''; } };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="absolute inset-0" style={{background:'rgba(8,12,24,.55)'}} />
-      <div className="card relative w-full max-h-[80vh] flex flex-col" style={{maxWidth:560}}>
-        <div className="flex items-center justify-between p-4" style={{borderBottom:'1px solid var(--line)'}}>
-          <div className="font-bold t1 flex items-center gap-2"><Icon name="comments"/> Conversation transcript</div>
-          <button onClick={onClose} className="w-8 h-8 t3" aria-label="Close"><Icon name="xmark"/></button>
-        </div>
-        <div className="p-4 overflow-y-auto flex-1 space-y-2">
-          {view.loading && <div className="text-center t3 py-8"><Icon name="spinner" className="fa-spin text-xl"/></div>}
-          {view.error && <div className="text-center py-8" style={{color:'var(--red)'}}>{view.error}</div>}
-          {!view.loading && !view.error && (view.messages||[]).length===0 && <div className="text-center t3 py-8">No messages in this thread.</div>}
-          {!view.loading && (view.messages||[]).map(m=>(
-            <div key={m.id} className="rounded-lg p-3" style={{background:'var(--surface2)'}}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold t2 num">{m.senderId?.slice(0,8) || 'user'}…</span>
-                <span className="text-[10px] t3">{m.at?fmt(m.at):''}</span>
-              </div>
-              <div className="text-sm t1">{m.text}</div>
+    <Modal title="Conversation transcript" icon="comments" onClose={onClose} maxWidth={560}>
+      <div className="space-y-2">
+        {view.loading && <div className="text-center t3 py-8"><Icon name="spinner" className="fa-spin text-xl"/></div>}
+        {view.error && <div className="text-center py-8" style={{color:'var(--red)'}}>{view.error}</div>}
+        {!view.loading && !view.error && (view.messages||[]).length===0 && <div className="text-center t3 py-8">No messages in this thread.</div>}
+        {!view.loading && (view.messages||[]).map(m=>(
+          <div key={m.id} className="rounded-lg p-3" style={{background:'var(--surface2)'}}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold t2 num">{m.senderId?.slice(0,8) || 'user'}…</span>
+              <span className="text-[10px] t3">{m.at?fmt(m.at):''}</span>
             </div>
-          ))}
-        </div>
+            <div className="text-sm t1">{m.text}</div>
+          </div>
+        ))}
       </div>
-    </div>
+    </Modal>
   );
 }
 
