@@ -233,5 +233,17 @@ export async function fetchAuditLog(limit = 200) {
   return d.events;
 }
 
+// ── Customer support (help desk) ──────────────────────────────────────────────
+/** All support tickets (optionally filtered by status) → { tickets, counts }. */
+export async function fetchSupportTickets(status) {
+  const d = await call('staffListSupportTickets')(status ? { status } : {});
+  if (!d || !Array.isArray(d.tickets)) throw new Error('staffListSupportTickets: unexpected shape');
+  return d;
+}
+/** Reply to / triage a ticket. { id, message?, status?, priority?, assignToMe? }. */
+export async function replySupportTicket(args) {
+  return call('staffReplySupportTicket')(args);
+}
+
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };

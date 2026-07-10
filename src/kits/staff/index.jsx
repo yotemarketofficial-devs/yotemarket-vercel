@@ -11,6 +11,7 @@ import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
 import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, ReviewModeration, Team, Maintenance } from './screens.jsx';
 import { CommandCenter } from './command.jsx';
+import { Support } from './support.jsx';
 import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
@@ -19,7 +20,7 @@ import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests } from './service.js';
+import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets } from './service.js';
 const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 
 /* ── Workspace model ─────────────────────────────────────────────────────────
@@ -41,6 +42,9 @@ const WORKSPACES = [
   { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', sections:[
     { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
     { key:'reviews', label:'Review moderation', icon:'star-half-stroke', desc:'Reported reviews — remove fraud or dismiss' },
+  ]},
+  { key:'support', label:'Support', icon:'headset', blurb:'Customer care', sections:[
+    { key:'support', label:'Tickets', icon:'ticket', desc:'Help Center requests — reply, resolve & route' },
   ]},
   { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', sections:[
     { key:'applications', label:'Applications', icon:'briefcase', desc:'Marketer hiring funnel' },
@@ -68,7 +72,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
@@ -142,11 +146,14 @@ function NotificationsBell({ go }) {
   const [open, setOpen] = useSApp(false);
   useEApp(() => {
     let alive = true;
-    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests()]).then((res) => {
+    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests(), fetchSupportTickets('open')]).then((res) => {
       if (!alive) return;
-      const [reports, reviews, payouts, follows, closures] = res.map((r) => (r.status === 'fulfilled' && Array.isArray(r.value)) ? r.value : []);
-      const pendingClosures = closures.filter((c) => c.status === 'pending');
+      const arr = (i) => (res[i].status === 'fulfilled' && Array.isArray(res[i].value)) ? res[i].value : [];
+      const reports = arr(0), reviews = arr(1), payouts = arr(2), follows = arr(3);
+      const pendingClosures = arr(4).filter((c) => c.status === 'pending');
+      const support = (res[5].status === 'fulfilled' && res[5].value && Array.isArray(res[5].value.tickets)) ? res[5].value.tickets : [];
       setItems([
+        support.length && { key:'support', icon:'headset', label:'Support tickets', count:support.length },
         reports.length && { key:'moderation', icon:'comment-slash', label:'Chat reports', count:reports.length },
         reviews.length && { key:'reviews', icon:'star-half-stroke', label:'Review reports', count:reviews.length },
         payouts.length && { key:'scouts', icon:'wallet', label:'Scout payouts', count:payouts.length },

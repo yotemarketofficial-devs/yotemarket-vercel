@@ -8,7 +8,7 @@ import { KPIS } from './data.js';
 import { Card, SectionHead, Stat, Btn, Pill, Icon } from './ui.jsx';
 import {
   useStaffResource, fetchOverview,
-  fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests,
+  fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets,
 } from './service.js';
 import { staffListPayoutChanges } from '../../lib/firebase.js';
 const { useState, useEffect } = React;
@@ -16,6 +16,7 @@ const { useState, useEffect } = React;
 /* Every actionable queue, in priority order. Each resolves to a count + the
    section a click should jump to. */
 const QUEUES = [
+  { key:'support',    icon:'headset',       label:'Support tickets',        desc:'Open Help Center requests to answer',      tone:'red',   load: async () => (await fetchSupportTickets('open')).tickets },
   { key:'moderation', icon:'comment-slash', label:'Chat reports',          desc:'Reported conversations awaiting review',   tone:'red',   load:fetchReports },
   { key:'reviews',    icon:'star-half-stroke', label:'Review reports',      desc:'Flagged product reviews to triage',        tone:'red',   load:fetchReviewReports },
   { key:'approvals',  icon:'store-slash',   label:'Store-closure requests', desc:'Merchants asking to close their store',     tone:'amber', load: async () => (await fetchDeletionRequests()).filter((c) => c.status === 'pending') },

@@ -10,6 +10,7 @@ import Pricing from './pages/Pricing.jsx';
 import Careers from './pages/Careers.jsx';
 import Terms from './pages/Terms.jsx';
 import Privacy from './pages/Privacy.jsx';
+import HelpCenter from './pages/HelpCenter.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
@@ -42,6 +43,7 @@ function App() {
           <Route path="careers" element={<Careers />} />
           <Route path="terms" element={<Terms />} />
           <Route path="privacy" element={<Privacy />} />
+          <Route path="help" element={<HelpCenter />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
