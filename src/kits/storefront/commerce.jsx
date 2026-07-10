@@ -357,6 +357,19 @@ const STATUS_TONE = { placed:'pending', queued:'pending', accepted:'pending', pi
 const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted:'Rider assigned', picked_up:'Picked up', at_hub:'Ready for pickup', preparing:'Preparing', ready_pickup:'Ready for pickup', delivered:'Collected', confirmed:'Confirmed', out:'Out for delivery', awaiting:'Ready for pickup', cancelled:'Cancelled' };
 // A buyer/merchant can cancel until the goods physically move (mirrors the server).
 const CANCELLABLE = ['placed','queued','preparing','ready_pickup'];
+// Which orders a shopper can remove from their list (mirrors the server dismissOrder
+// rule): finished (delivered/cancelled) OR abandoned — an unpaid online-payment order
+// past the STK window (cash-on-collection stays active until picked up).
+const ORDER_ABANDON_MIN = 20;
+function orderRemovable(raw){
+  if (!raw) return false;
+  if (raw.status === 'cancelled' || raw.status === 'delivered') return true;
+  if (raw.paid === true || raw.payMethod === 'cash') return false;
+  const c = raw.createdAt;
+  const ms = c ? (c.seconds != null ? c.seconds * 1000 : (c.toMillis ? c.toMillis() : 0)) : 0;
+  const ageMin = ms ? (Date.now() - ms) / 60000 : Infinity; // no timestamp → treat as old
+  return ageMin >= ORDER_ABANDON_MIN;
+}
 
 /* Inline per-product rating for a delivered order — the natural place to review
    after receiving your items. Submits via the same submitReview callable. */
@@ -400,7 +413,7 @@ function OrderDetail({ view, onClose }){
   const orderNo = o.orderNo || view.code;
   const delivered = view.status === 'delivered';
   const canCancel = CANCELLABLE.includes(view.status);
-  const canRemove = view.status === 'delivered' || view.status === 'cancelled';
+  const canRemove = orderRemovable(o);
   const [cancelling, setCancelling] = useSCm(false);
   const [removing, setRemoving] = useSCm(false);
   const cancel = async () => {
@@ -536,7 +549,7 @@ export function OrdersScreen(){
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span className="ym-cap">{o.placedTxt}</span>
-                  {(o.status==='cancelled' || o.status==='delivered') && (
+                  {orderRemovable(o.raw) && (
                     <button onClick={()=>removeOrder(o.raw.id)} aria-label="Remove from my orders" title="Remove from my orders" style={{ width:30, height:30, borderRadius:8, border:'none', background:'transparent', color:'var(--m-fg3)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><FA i="fa-trash-can" style={{ fontSize:13 }} /></button>
                   )}
                 </div>
