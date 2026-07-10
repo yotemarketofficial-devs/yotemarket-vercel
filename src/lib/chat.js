@@ -186,6 +186,18 @@ export function markConversationRead(convId, uid) {
   updateDoc(doc(db, 'conversations', convId), { [`unread.${uid}`]: 0 }).catch(() => {});
 }
 
+/**
+ * "Delete for me" — hide a thread from MY inbox by stamping a per-participant
+ * `hiddenAt`. The other party's copy is untouched (a shared thread is never really
+ * deleted), and it RESURFACES for me if they send a new message (which advances
+ * `updatedAt` past my hide time). Allowed by the rules — it's not a
+ * participants/status/moderation change.
+ */
+export function hideConversation(convId, uid) {
+  if (!firebaseEnabled || !db || !convId || !uid) return Promise.resolve();
+  return updateDoc(doc(db, 'conversations', convId), { [`hiddenAt.${uid}`]: serverTimestamp() });
+}
+
 /** Live list of my conversations, newest-first. Returns an unsubscribe fn. */
 export function subscribeConversations(uid, cb) {
   if (!firebaseEnabled || !db || !uid) return () => {};
@@ -193,7 +205,12 @@ export function subscribeConversations(uid, cb) {
   return onSnapshot(
     q,
     (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        // Drop threads I've "deleted for me" — unless a newer message arrived since.
+        .filter((c) => {
+          const h = c.hiddenAt && c.hiddenAt[uid];
+          return !(h && tsMillis(h) >= tsMillis(c.updatedAt));
+        });
       list.sort((a, b) => tsMillis(b.updatedAt) - tsMillis(a.updatedAt));
       cb(list);
     },

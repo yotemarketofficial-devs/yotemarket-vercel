@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  reportConversation, fmtTime, fmtWhen,
+  hideConversation, reportConversation, fmtTime, fmtWhen,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -88,6 +88,11 @@ function LiveMessages({ params, user, account }){
   }, [paramStore?.id, myUid]);
 
   const list = convos || [];
+  const removeConv = (c) => {
+    if (!window.confirm('Remove this conversation from your inbox? It’ll come back if they message you again.')) return;
+    if (sel === c.id) setSel(null);
+    hideConversation(c.id, myUid).then(()=>toast && toast('Conversation removed')).catch(()=>toast && toast('Could not remove', 'fa-triangle-exclamation'));
+  };
   // Fall back to a synthesized thread for a just-opened store not yet in the snapshot.
   const selConv = list.find((c) => c.id === sel)
     || (paramStore && sel === conversationId(paramStore.id, myUid)
@@ -122,16 +127,19 @@ function LiveMessages({ params, user, account }){
             const info = (c.info && c.info[otherId]) || {};
             const unread = (c.unread && c.unread[myUid]) || 0;
             return (
-              <button key={c.id} onClick={()=>setSel(c.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', alignItems:'center', gap:12, background: sel===c.id?'var(--m-surface-3)':'transparent' }}>
-                <div style={{ position:'relative', flexShrink:0 }}>
-                  <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={46} radius={9999} img={info.logo || info.img} />
-                  {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}><span className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{info.name || 'Store'}</span><span className="ym-cap" style={{ flexShrink:0 }}>{fmtWhen(c.updatedAt)}</span></div>
-                  <div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:unread?600:400 }}>{c.lastMessage || 'Say hello 👋'}</div>
-                </div>
-              </button>
+              <div key={c.id} className="conv-row" style={{ position:'relative', borderBottom:'1px solid var(--m-border)' }}>
+                <button onClick={()=>setSel(c.id)} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:'13px 42px 13px 14px', display:'flex', alignItems:'center', gap:12, background: sel===c.id?'var(--m-surface-3)':'transparent' }}>
+                  <div style={{ position:'relative', flexShrink:0 }}>
+                    <Thumb icon={info.icon || 'fa-store'} tint={info.tint || '#4f46e5'} size={46} radius={9999} img={info.logo || info.img} />
+                    {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}><span className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{info.name || 'Store'}</span><span className="ym-cap" style={{ flexShrink:0 }}>{fmtWhen(c.updatedAt)}</span></div>
+                    <div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:unread?600:400 }}>{c.lastMessage || 'Say hello 👋'}</div>
+                  </div>
+                </button>
+                <button onClick={(e)=>{ e.stopPropagation(); removeConv(c); }} className="conv-del" aria-label="Delete conversation" title="Delete conversation" style={{ position:'absolute', top:'50%', right:6, transform:'translateY(-50%)', width:30, height:30, borderRadius:8, border:'none', background:'transparent', color:'var(--m-fg4)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-trash" style={{ fontSize:12 }} /></button>
+              </div>
             );
           })}
         </div>

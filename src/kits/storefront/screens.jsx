@@ -554,15 +554,29 @@ export function ProductScreen({ params }){
   const store = ymStore(p.store);
   const tint = (ymCat(p.cat)||{}).tint || '#4f46e5';
   const [qty, setQty] = useSS(1);
+  const [sel, setSel] = useSS(0);
+  const gallery = (p.images && p.images.length) ? p.images : (p.img ? [p.img] : []);
+  const cover = gallery[sel] || p.img;
   const related = YM_PRODUCTS.filter(x=>x.cat===p.cat && x.id!==p.id).slice(0,4);
   return (
     <div className="wrap anim-up" style={{ paddingTop:20 }}>
       <button onClick={back} aria-label="Back" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:36, alignItems:'start' }} className="prod-detail">
-        <div className="ym-img" style={{ height:420, borderRadius:22, background:`linear-gradient(135deg, ${tint}30, ${tint}60)`, position:'relative' }}>
-          <FA i={p.icon} style={{ fontSize:130, color:tint, position:'relative' }} />
-          <PhotoOverlay src={p.img} radius={22} />
-          {p.was && <span style={{ position:'absolute', bottom:18, left:18, zIndex:2, background:'var(--m-danger)', color:'#fff', fontSize:13, fontWeight:700, padding:'5px 14px', borderRadius:9999 }}>Save {ymPrice(p.was-p.price)}</span>}
+        <div>
+          <div className="ym-img" style={{ height:420, borderRadius:22, background:`linear-gradient(135deg, ${tint}30, ${tint}60)`, position:'relative' }}>
+            <FA i={p.icon} style={{ fontSize:130, color:tint, position:'relative' }} />
+            <PhotoOverlay src={cover} radius={22} />
+            {p.was && <span style={{ position:'absolute', bottom:18, left:18, zIndex:2, background:'var(--m-danger)', color:'#fff', fontSize:13, fontWeight:700, padding:'5px 14px', borderRadius:9999 }}>Save {ymPrice(p.was-p.price)}</span>}
+          </div>
+          {gallery.length > 1 && (
+            <div className="scroll-x" style={{ gap:10, marginTop:12 }}>
+              {gallery.map((url, i) => (
+                <button key={i} onClick={()=>setSel(i)} aria-label={`Photo ${i+1}`} style={{ width:66, height:66, flexShrink:0, borderRadius:12, overflow:'hidden', cursor:'pointer', padding:0, background:'var(--m-surface-2)', border: i===sel ? '2px solid var(--m-primary)' : '2px solid var(--m-border)' }}>
+                  <img src={url} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div>
           <h1 className="ym-h1" style={{ fontSize:26 }}>{p.name}</h1>

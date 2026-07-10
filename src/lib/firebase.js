@@ -132,6 +132,8 @@ export const registerStore = callable('registerStore');
 export const updateStoreMedia = callable('updateStoreMedia');
 /** Store owner: create/update a product (incl. edited image) → { ok, id }. */
 export const saveProduct = callable('saveProduct');
+/** Store owner/manager: delete a product (removes it from the storefront) → { ok }. { id }. */
+export const deleteProduct = callable('deleteProduct');
 /** Authoritative rider payout breakdown → { base, multi, distance, total, km }. */
 export const computeRiderPayout = callable('computeRiderPayout');
 /** Merchant: set payout destination (first time only) → { ok, payout }. { type, phone?|till?|paybill?, account? }. */
@@ -152,6 +154,16 @@ export const staffReconcilePayouts = callable('staffReconcilePayouts');
 export const staffCreditTestBalance = callable('staffCreditTestBalance');
 /** Staff: full account directory → { users, total }. */
 export const staffListUsers = callable('staffListUsers');
+
+// ── Customer support (help desk) ──────────────────────────────────────────────
+/** Open a support ticket from the Help Center → { id, ref }. Works signed-in or as a guest. */
+export const createSupportTicket = callable('createSupportTicket');
+/** The signed-in user's own tickets (newest first) → { tickets }. */
+export const listMySupportTickets = callable('listMySupportTickets');
+/** Staff: list support tickets → { tickets, counts }. { status?, limit? }. */
+export const staffListSupportTickets = callable('staffListSupportTickets');
+/** Staff: reply to / triage a ticket → { ok }. { id, message?, status?, priority?, assignToMe? }. */
+export const staffReplySupportTicket = callable('staffReplySupportTicket');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query

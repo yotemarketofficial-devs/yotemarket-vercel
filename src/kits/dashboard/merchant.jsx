@@ -130,7 +130,11 @@ export function useStoreOverview() {
       id: p.id, name: p.name || 'Unnamed', cat: p.catId || '—', price: Number(p.price) || 0,
       stock: p.inStock === false ? 0 : (typeof p.stock === 'number' ? p.stock : 1),
       sales: p.sales || 0, status: p.inStock === false ? 'inactive' : 'active',
-      icon: faIcon(p.icon), tint: '#7c3aed',
+      icon: faIcon(p.icon), tint: '#7c3aed', sku: p.sku || null,
+      // raw fields carried through for the edit modal:
+      catId: p.catId || null, sub: p.sub || '', desc: p.desc || '',
+      was: p.was != null ? Number(p.was) : null, inStock: p.inStock !== false,
+      img: p.img || null, images: Array.isArray(p.images) ? p.images.filter(Boolean) : (p.img ? [p.img] : []),
     }));
     const orderRows = os.map((o) => ({
       id: o.id, orderNo: o.orderNo || null, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',

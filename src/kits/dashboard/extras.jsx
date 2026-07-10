@@ -12,7 +12,7 @@ import SubscribeFlow from './SubscribeFlow.jsx';
 import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
-  markConversationRead, otherParticipant, fmtTime, fmtWhen,
+  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
@@ -721,6 +721,11 @@ export function Chat(){
 
   const list = convos || [];
   const selConv = list.find((c) => c.id === sel) || list[0] || null;
+  const removeConv = (c) => {
+    if (!window.confirm('Remove this conversation from your inbox? It’ll come back if the customer messages you again.')) return;
+    if (sel === c.id) setSel(null);
+    hideConversation(c.id, uid).catch(() => {});
+  };
 
   return (
     <div className="anim-up">
@@ -747,10 +752,13 @@ export function Chat(){
             const info = (x.info && x.info[otherId]) || {};
             const unread = (x.unread && x.unread[uid]) || 0;
             return (
-              <button key={x.id} onClick={()=>setSel(x.id)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid var(--m-border)', cursor:'pointer', fontFamily:'inherit', padding:'13px 14px', display:'flex', gap:12, alignItems:'center', background:(selConv&&selConv.id===x.id)?'var(--m-surface-3)':'transparent' }}>
-                <div style={{ position:'relative', flexShrink:0 }}><Avatar name={info.name || 'Customer'} size={44} />{unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}</div>
-                <div style={{ flex:1, minWidth:0 }}><div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-h3" style={{ fontSize:14 }}>{info.name || 'Customer'}</span><span className="ym-cap">{fmtWhen(x.updatedAt)}</span></div><div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:unread?600:400 }}>{x.lastMessage || 'New conversation'}</div></div>
-              </button>
+              <div key={x.id} className="conv-row" style={{ position:'relative', borderBottom:'1px solid var(--m-border)' }}>
+                <button onClick={()=>setSel(x.id)} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:'13px 42px 13px 14px', display:'flex', gap:12, alignItems:'center', background:(selConv&&selConv.id===x.id)?'var(--m-surface-3)':'transparent' }}>
+                  <div style={{ position:'relative', flexShrink:0 }}><Avatar name={info.name || 'Customer'} size={44} />{unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid var(--m-surface)' }}>{unread}</span>}</div>
+                  <div style={{ flex:1, minWidth:0 }}><div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-h3" style={{ fontSize:14 }}>{info.name || 'Customer'}</span><span className="ym-cap">{fmtWhen(x.updatedAt)}</span></div><div className="ym-sub" style={{ fontSize:12.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', color:unread?'var(--m-fg1)':'var(--m-fg3)', fontWeight:unread?600:400 }}>{x.lastMessage || 'New conversation'}</div></div>
+                </button>
+                <button onClick={(e)=>{ e.stopPropagation(); removeConv(x); }} className="conv-del" aria-label="Delete conversation" title="Delete conversation" style={{ position:'absolute', top:'50%', right:6, transform:'translateY(-50%)', width:30, height:30, borderRadius:8, border:'none', background:'transparent', color:'var(--m-fg4)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-trash" style={{ fontSize:12 }} /></button>
+              </div>
             );
           })}
         </div>

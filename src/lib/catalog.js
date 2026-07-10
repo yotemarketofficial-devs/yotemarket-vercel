@@ -53,6 +53,7 @@ const normProduct = (d) => ({
   stock: d.inStock !== false && d.stock !== false,
   icon: faIcon(d.icon, 'fa-box'),
   img: d.img || d.imageUrl || d.photo || undefined,
+  images: Array.isArray(d.images) ? d.images.filter(Boolean) : (d.img ? [d.img] : []),  // gallery (first = cover)
   createdAt: d.createdAt || null,   // Firestore Timestamp — powers "Latest products"
 });
 const normStore = (d) => ({
