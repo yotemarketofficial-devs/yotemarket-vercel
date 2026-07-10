@@ -136,7 +136,7 @@ export function Footer(){
     <footer style={{ borderTop:'1px solid var(--m-border)', background:'var(--m-surface)', marginTop:40 }}>
       <div className="wrap" style={{ padding:'20px 24px', display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
         <span className="ym-cap">© 2026 YoteMarket — Merchant Dashboard</span>
-        <span className="ym-cap" style={{ display:'flex', gap:16 }}><a href="/contact">Help center</a><a href="/terms" target="_blank" rel="noreferrer">Terms</a></span>
+        <span className="ym-cap" style={{ display:'flex', gap:16 }}><a href="/help?topic=selling">Help center</a><a href="/help?topic=selling#faqs">Seller FAQs</a><a href="/terms" target="_blank" rel="noreferrer">Terms</a></span>
       </div>
     </footer>
   );

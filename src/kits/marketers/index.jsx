@@ -164,7 +164,7 @@ function App(){
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1180px] mx-auto">
             <span>© 2026 YoteMarket — Marketer Program · Founding cohort</span>
-            <span className="flex gap-4"><a className="accent" href="#">Marketer terms</a><a className="accent" href="#">Help</a><span className="t3">v1.0</span></span>
+            <span className="flex gap-4"><a className="accent" href="/terms">Terms</a><a className="accent" href="/help">Help Center</a><a className="accent" href="/help#faqs">FAQs</a><span className="t3">v1.0</span></span>
           </footer>
         </div>
       </div>

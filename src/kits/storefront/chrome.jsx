@@ -130,7 +130,8 @@ export function Footer(){
           <div className="ym-h3" style={{ marginBottom:14 }}>Company</div>
           <FLink label="Sell on YoteMarket" href="/dashboard" />
           <FLink label="Become a rider" href="/rider" />
-          <FLink label="Help center" href="/contact" />
+          <FLink label="Help center" href="/help" />
+          <FLink label="FAQs" href="/help#faqs" />
           <FLink label="Contact us" href="/contact" />
           <FLink label="Terms of Service" href="/terms" />
           <FLink label="Privacy Policy" href="/privacy" />

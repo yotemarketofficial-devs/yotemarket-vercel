@@ -34,10 +34,21 @@ function FaqItem({ item, open, onToggle }) {
 export default function HelpCenter() {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
-  const [cat, setCat] = useState('all');
+  // Deep-link support: /help?topic=selling opens on the seller FAQs, etc., so each
+  // audience's footer can land on the version of the Help Center they need.
+  const [cat, setCat] = useState(() => {
+    try { const t = new URLSearchParams(window.location.search).get('topic'); return FAQ_CATEGORIES.some((c) => c.id === t) ? t : 'all'; } catch { return 'all'; }
+  });
   const [openIdx, setOpenIdx] = useState(null);
 
   useEffect(() => { document.title = 'Help Center — YoteMarket'; }, []);
+  // /help#faqs jumps straight to the questions.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#faqs') {
+      const el = document.getElementById('faqs');
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    }
+  }, []);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -71,7 +82,7 @@ export default function HelpCenter() {
 
       <div className="wrap help-body">
         {/* Category chips */}
-        <div className="help-cats">
+        <div className="help-cats" id="faqs">
           <button className={`help-chip ${cat === 'all' ? 'on' : ''}`} onClick={() => { setCat('all'); setOpenIdx(null); }}>
             <i className="fas fa-border-all" /> All topics
           </button>

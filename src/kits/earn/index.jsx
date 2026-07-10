@@ -300,6 +300,8 @@ export default function EarnLanding() {
           <div className="footer-strip">
             <span>© 2026 YoteMarket — Marketer Recruitment Program</span>
             <span className="contact">
+              <Link to="/help"><i className="fas fa-life-ring"></i>Help Center</Link>
+              <Link to="/help#faqs"><i className="fas fa-circle-question"></i>FAQs</Link>
               <a href="mailto:general@yotemarket.com"><i className="fas fa-envelope"></i>general@yotemarket.com</a>
               <a href="https://marketers.yotemarket.com"><i className="fas fa-globe"></i>marketers.yotemarket.com</a>
             </span>
