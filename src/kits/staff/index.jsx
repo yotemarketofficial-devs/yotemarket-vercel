@@ -1,5 +1,9 @@
-/* index.jsx — Staff console shell: secure login gate, sidebar, confidential strip, routing.
-   Native React port of the design prototype (Tailwind utilities + scoped theme CSS). */
+/* index.jsx — Staff Operations Console shell.
+   Corporate two-tier navigation: a left WORKSPACE rail (departments) + a
+   contextual SECTION nav for the active workspace, so each department is its
+   own console instead of one flat list. Secure login gate + confidential chrome.
+   Screens themselves live in ./screens.jsx, ./departments.jsx, etc. and are
+   re-homed here into workspaces (nothing removed). */
 import React from 'react';
 import './staff.css';
 import './tailwind.css';
@@ -13,91 +17,139 @@ import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests } from './service.js';
-const { useState: useSApp, useEffect: useEApp } = React;
+const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 
-const NAV = [
-  { key:'analytics',    icon:'gauge-high',     label:'Overview',               section:'Operations' },
-  { key:'approvals',    icon:'user-check',     label:'Merchant approvals',     section:'Operations' },
-  { key:'logistics',    icon:'truck-fast',     label:'Orders & logistics',     section:'Operations' },
-  { key:'moderation',   icon:'comment-slash',  label:'Chat moderation',        section:'Operations' },
-  { key:'reviews',      icon:'star-half-stroke', label:'Review moderation',     section:'Operations' },
-
-  { key:'applications', icon:'briefcase',      label:'Marketer applications',  section:'Growth' },
-  { key:'scouts',       icon:'people-group',   label:'Scouts & payouts',       section:'Growth' },
-  { key:'wallet',       icon:'wallet',         label:'Subscriptions & wallet', section:'Growth' },
-  { key:'promotions',   icon:'tags',           label:'Promotions & offers',    section:'Growth', adminOnly:true },
-
-  { key:'intelligence', icon:'chart-pie',      label:'Business intelligence',  section:'Company', adminOnly:true },
-  { key:'people',       icon:'users',          label:'People & HR',            section:'Company' },
-  { key:'finance',      icon:'chart-line',     label:'Finance',                section:'Company' },
-  { key:'legal',        icon:'gavel',          label:'Legal',                  section:'Company' },
-
-  { key:'accounts',     icon:'address-book',   label:'Accounts',               section:'Admin', adminOnly:true },
-  { key:'team',         icon:'user-shield',    label:'Team & roles',           section:'Admin', adminOnly:true },
-  { key:'economics',    icon:'scale-balanced', label:'Pricing & economics',    section:'Admin', lock:true },
+/* ── Workspace model ─────────────────────────────────────────────────────────
+   Each workspace is a department console with its own sections. `adminOnly`
+   restricts a whole workspace or a single section to admins; moderators see
+   Command, Marketplace, Logistics, Trust & Safety and Growth. */
+const WORKSPACES = [
+  { key:'command', label:'Command', icon:'gauge-high', blurb:'Platform pulse', sections:[
+    { key:'analytics', label:'Overview', icon:'chart-simple', desc:'Live KPIs & operational health' },
+  ]},
+  { key:'marketplace', label:'Marketplace', icon:'store', blurb:'Merchants & billing', sections:[
+    { key:'approvals', label:'Merchants', icon:'user-check', desc:'Verify, feature, suspend & audit stores' },
+    { key:'wallet', label:'Subscriptions & billing', icon:'wallet', desc:'Plans, float and payout-change approvals' },
+  ]},
+  { key:'logistics', label:'Logistics', icon:'truck-fast', blurb:'Delivery ops', sections:[
+    { key:'logistics', label:'Runs & routes', icon:'route', desc:'Batched-run operations across all bands' },
+  ]},
+  { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', sections:[
+    { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
+    { key:'reviews', label:'Review moderation', icon:'star-half-stroke', desc:'Reported reviews — remove fraud or dismiss' },
+  ]},
+  { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', sections:[
+    { key:'applications', label:'Applications', icon:'briefcase', desc:'Marketer hiring funnel' },
+    { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
+    { key:'promotions', label:'Promotions & offers', icon:'tags', desc:'Campaigns & coupons', adminOnly:true },
+  ]},
+  { key:'finance', label:'Finance', icon:'coins', blurb:'Money', adminOnly:true, sections:[
+    { key:'finance', label:'Revenue & ledger', icon:'chart-line', desc:'Live platform revenue and internal ledger' },
+  ]},
+  { key:'people', label:'People', icon:'users', blurb:'HR', adminOnly:true, sections:[
+    { key:'people', label:'Directory', icon:'address-book', desc:'Employee directory, onboarding & offboarding' },
+  ]},
+  { key:'intelligence', label:'Intelligence', icon:'chart-pie', blurb:'BI', adminOnly:true, sections:[
+    { key:'intelligence', label:'Business intelligence', icon:'chart-pie', desc:'Cross-platform data repository + AI brief' },
+  ]},
+  { key:'legal', label:'Legal', icon:'gavel', blurb:'Compliance', adminOnly:true, sections:[
+    { key:'legal', label:'Records', icon:'scale-balanced', desc:'Contracts, policies, cases & compliance' },
+  ]},
+  { key:'admin', label:'Admin', icon:'user-shield', blurb:'Platform control', adminOnly:true, sections:[
+    { key:'team', label:'Team & roles', icon:'user-gear', desc:'Grant or revoke staff access' },
+    { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
+    { key:'economics', label:'Pricing & economics', icon:'scale-balanced', desc:'Unit-economics reference (read-only)', lock:true },
+  ]},
 ];
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, economics:Economics };
-const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
-function Sidebar({ active, go, onClose, onSignOut, isAdmin }){
-  const items = NAV.filter(n => !n.adminOnly || isAdmin);
+const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, economics:Economics };
+
+// Flat lookup: section key → { section, workspace }
+const SECTION_INDEX = {};
+WORKSPACES.forEach((w) => w.sections.forEach((s) => { SECTION_INDEX[s.key] = { section: s, workspace: w }; }));
+
+const canSee = (node, isAdmin) => isAdmin || !node.adminOnly;
+function visibleWorkspaces(isAdmin) {
+  return WORKSPACES
+    .filter((w) => canSee(w, isAdmin))
+    .map((w) => ({ ...w, sections: w.sections.filter((s) => canSee(s, isAdmin)) }))
+    .filter((w) => w.sections.length > 0);
+}
+
+/* ── Tier 1: workspace rail (departments) ─────────────────────────────────── */
+function WorkspaceRail({ workspaces, activeWs, onPick }) {
+  return (
+    <div className="flex flex-col items-center gap-1 py-4 h-full overflow-y-auto no-bar">
+      {workspaces.map((w) => {
+        const on = w.key === activeWs;
+        return (
+          <button key={w.key} onClick={() => onPick(w)} title={w.label}
+            className="relative flex flex-col items-center gap-1 w-full py-2 px-1 rounded-xl transition-colors"
+            style={on ? { background:'var(--pri-soft)', color:'var(--pri)' } : { color:'var(--t3)' }}>
+            {on && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full" style={{ background:'var(--pri)' }} />}
+            <Icon name={w.icon} className="text-lg" />
+            <span className="text-[10px] font-semibold leading-none text-center" style={{ letterSpacing:'.01em' }}>{w.label.split(' ')[0]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Tier 2: section nav for the active workspace ─────────────────────────── */
+function SectionNav({ workspace, active, go, onClose }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-5 flex items-center justify-between">
-        <button onClick={()=>{go('analytics'); onClose&&onClose();}} className="flex items-center gap-2.5" style={{ background:'none', border:'none', cursor:'pointer', padding:0 }} aria-label="Go to overview"><Logo size={26} /><span className="text-xs font-semibold t3 border-l pl-2.5 b-line">Ops</span></button>
-        <button onClick={onClose} className="lg:hidden t3 w-8 h-8" aria-label="Close menu"><Icon name="xmark"/></button>
+      <div className="px-5 pt-5 pb-4">
+        <div className="text-[11px] font-bold uppercase t3" style={{ letterSpacing:'.1em' }}>{workspace.blurb}</div>
+        <div className="text-lg font-bold t1 leading-tight mt-0.5 flex items-center gap-2"><Icon name={workspace.icon} style={{ color:'var(--pri)' }} className="text-base" />{workspace.label}</div>
       </div>
       <nav className="px-3 flex flex-col gap-0.5 flex-1 overflow-y-auto pb-3">
-        {items.map((n,i)=>{
-          const on = active===n.key;
-          const newSection = n.section && n.section !== (items[i-1] && items[i-1].section);
+        {workspace.sections.map((s) => {
+          const on = active === s.key;
           return (
-            <React.Fragment key={n.key}>
-              {newSection && <div className="px-3 pt-4 pb-1 text-[11px] font-bold uppercase t3" style={{letterSpacing:'.08em'}}>{n.section}</div>}
-              <button onClick={()=>{go(n.key); onClose&&onClose();}}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                style={ on?{background:'var(--pri-soft)',color:'var(--pri)'}:{color:'var(--t2)'}}>
-                <Icon name={n.icon} className="w-5 text-center" style={{color: on?'var(--pri)':'var(--t3)'}} />
-                <span className="flex-1 text-left">{n.label}</span>
-                {n.badge>0 && <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--amber)'}}>{n.badge}</span>}
-                {n.lock && <Icon name="lock" className="text-xs" style={{color:'var(--red)'}} />}
-              </button>
-            </React.Fragment>
+            <button key={s.key} onClick={() => { go(s.key); onClose && onClose(); }}
+              className="flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors"
+              style={on ? { background:'var(--pri-soft)' } : null}>
+              <Icon name={s.icon} className="w-5 text-center mt-0.5" style={{ color: on ? 'var(--pri)' : 'var(--t3)' }} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold" style={{ color: on ? 'var(--pri)' : 'var(--t1)' }}>{s.label}</span>
+                <span className="block text-[11px] t3 leading-snug mt-0.5">{s.desc}</span>
+              </span>
+              {s.lock && <Icon name="lock" className="text-xs mt-0.5" style={{ color:'var(--t3)' }} />}
+            </button>
           );
         })}
       </nav>
-      <div className="p-3">
-        <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2" style={{background:'var(--surface2)'}}>
-          <Icon name="grid-2" className="w-5 text-center t3"/> All subdomains
+      <div className="p-3" style={{ borderTop:'1px solid var(--line)' }}>
+        <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2" style={{ background:'var(--surface2)' }}>
+          <Icon name="grid-2" className="w-5 text-center t3" /> All subdomains
         </a>
-        <button onClick={onSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2 w-full mt-1">
-          <Icon name="right-from-bracket" className="w-5 text-center t3"/> Sign out
-        </button>
       </div>
     </div>
   );
 }
 
-/* Quick-jump command palette — type to filter sections and Enter/click to navigate. */
-function QuickSearch({ items, go }){
+/* Quick-jump command palette — filters every section across workspaces. */
+function QuickSearch({ items, go }) {
   const [q, setQ] = useSApp('');
   const [open, setOpen] = useSApp(false);
   const ql = q.trim().toLowerCase();
-  const matches = ql ? items.filter(n => n.label.toLowerCase().includes(ql) || (n.section||'').toLowerCase().includes(ql)) : [];
+  const matches = ql ? items.filter((n) => n.label.toLowerCase().includes(ql) || n.wsLabel.toLowerCase().includes(ql) || (n.desc || '').toLowerCase().includes(ql)) : [];
   const pick = (key) => { go(key); setQ(''); setOpen(false); };
   return (
-    <div className="relative hidden md:block" style={{ width:230 }}>
-      <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 t3 text-sm" style={{ pointerEvents:'none' }}/>
-      <input value={q} onChange={e=>{ setQ(e.target.value); setOpen(true); }} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
-        onKeyDown={e=>{ if(e.key==='Enter' && matches[0]){ pick(matches[0].key); } else if(e.key==='Escape'){ setOpen(false); e.currentTarget.blur(); } }}
-        className="ym-input pl-9 py-2 text-sm" style={{ width:'100%' }} placeholder="Jump to a section…" aria-label="Search sections" />
+    <div className="relative hidden md:block" style={{ width: 250 }}>
+      <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 t3 text-sm" style={{ pointerEvents:'none' }} />
+      <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { pick(matches[0].key); } else if (e.key === 'Escape') { setOpen(false); e.currentTarget.blur(); } }}
+        className="ym-input pl-9 py-2 text-sm" style={{ width:'100%' }} placeholder="Jump to…  (⌘K)" aria-label="Search sections" />
       {open && ql && (
         <div className="absolute left-0 right-0 mt-1.5 rounded-xl overflow-hidden z-50" style={{ background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
-          {matches.length ? matches.slice(0,7).map(n=>(
-            <button key={n.key} onMouseDown={()=>pick(n.key)} className="staff-pop-item flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
-              <Icon name={n.icon} className="w-4 text-center t3"/>
+          {matches.length ? matches.slice(0, 8).map((n) => (
+            <button key={n.key} onMouseDown={() => pick(n.key)} className="staff-pop-item flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
+              <Icon name={n.icon} className="w-4 text-center t3" />
               <span className="flex-1 t1 font-semibold">{n.label}</span>
-              <span className="text-[11px] t3">{n.section}</span>
+              <span className="text-[11px] t3">{n.wsLabel}</span>
             </button>
           )) : <div className="px-3.5 py-3 text-sm t3">No section matches “{q}”.</div>}
         </div>
@@ -108,15 +160,15 @@ function QuickSearch({ items, go }){
 }
 
 /* Notifications bell — real pending counts across the staff queues; click to jump. */
-function NotificationsBell({ go }){
+function NotificationsBell({ go }) {
   const [items, setItems] = useSApp([]);
   const [open, setOpen] = useSApp(false);
   useEApp(() => {
     let alive = true;
-    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests()]).then(res => {
+    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests()]).then((res) => {
       if (!alive) return;
-      const [reports, reviews, payouts, follows, closures] = res.map(r => (r.status==='fulfilled' && Array.isArray(r.value)) ? r.value : []);
-      const pendingClosures = closures.filter(c=>c.status==='pending');
+      const [reports, reviews, payouts, follows, closures] = res.map((r) => (r.status === 'fulfilled' && Array.isArray(r.value)) ? r.value : []);
+      const pendingClosures = closures.filter((c) => c.status === 'pending');
       setItems([
         reports.length && { key:'moderation', icon:'comment-slash', label:'Chat reports', count:reports.length },
         reviews.length && { key:'reviews', icon:'star-half-stroke', label:'Review reports', count:reviews.length },
@@ -127,24 +179,24 @@ function NotificationsBell({ go }){
     });
     return () => { alive = false; };
   }, []);
-  const total = items.reduce((a,i)=>a+i.count, 0);
+  const total = items.reduce((a, i) => a + i.count, 0);
   return (
     <div className="relative">
-      <button onClick={()=>setOpen(o=>!o)} className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label={`Notifications${total?` (${total} pending)`:''}`}>
-        <Icon name="bell"/>
-        {total>0 && <span className="absolute -top-1 -right-1 num text-[10px] font-bold text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center" style={{background:'var(--red)'}}>{total>9?'9+':total}</span>}
+      <button onClick={() => setOpen((o) => !o)} className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }} aria-label={`Notifications${total ? ` (${total} pending)` : ''}`}>
+        <Icon name="bell" />
+        {total > 0 && <span className="absolute -top-1 -right-1 num text-[10px] font-bold text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center" style={{ background:'var(--red)' }}>{total > 9 ? '9+' : total}</span>}
       </button>
       {open && (<>
-        <div className="fixed inset-0 z-40" onClick={()=>setOpen(false)} />
+        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
         <div className="absolute right-0 mt-2 rounded-xl overflow-hidden z-50" style={{ width:256, background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
-          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid var(--line)' }}><span className="font-bold t1 text-sm">Needs attention</span>{total>0 && <span className="num text-xs t3">{total}</span>}</div>
-          {items.length ? items.map((n,i)=>(
-            <button key={i} onClick={()=>{ go(n.key); setOpen(false); }} className="staff-pop-item flex items-center gap-3 w-full px-4 py-3 text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
-              <Icon name={n.icon} className="w-4 text-center" style={{ color:'var(--pri)' }}/>
+          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:'1px solid var(--line)' }}><span className="font-bold t1 text-sm">Needs attention</span>{total > 0 && <span className="num text-xs t3">{total}</span>}</div>
+          {items.length ? items.map((n, i) => (
+            <button key={i} onClick={() => { go(n.key); setOpen(false); }} className="staff-pop-item flex items-center gap-3 w-full px-4 py-3 text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
+              <Icon name={n.icon} className="w-4 text-center" style={{ color:'var(--pri)' }} />
               <span className="flex-1 t1 text-sm font-semibold">{n.label}</span>
               <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{ background:'var(--amber)' }}>{n.count}</span>
             </button>
-          )) : <div className="px-4 py-6 text-sm t3 text-center"><Icon name="circle-check" style={{ color:'var(--green)' }}/><div className="mt-1">All clear — nothing pending.</div></div>}
+          )) : <div className="px-4 py-6 text-sm t3 text-center"><Icon name="circle-check" style={{ color:'var(--green)' }} /><div className="mt-1">All clear — nothing pending.</div></div>}
         </div>
         <style>{`.staff-pop-item:hover{ background:var(--surface2); }`}</style>
       </>)}
@@ -152,59 +204,92 @@ function NotificationsBell({ go }){
   );
 }
 
-function App(){
+function App() {
   const { user, loading, isStaff, role } = useStaffClaims();
   const { signOutUser } = useAuth();
+  const isAdmin = role === 'admin';
   const [active, setActive] = useSApp('analytics');
   const [menu, setMenu] = useSApp(false);
+
+  const wsList = useMApp(() => visibleWorkspaces(isAdmin), [isAdmin]);
+  const searchItems = useMApp(() => wsList.flatMap((w) => w.sections.map((s) => ({ ...s, wsLabel: w.label }))), [wsList]);
 
   if (loading) return <StaffSplash />;
   if (!user) return <StaffLogin />;
   if (!isStaff) return <StaffDenied email={user.email} onSignOut={signOutUser} />;
 
+  // Resolve the active section → its workspace; fall back to Command/Overview if
+  // the current selection isn't visible for this role.
+  const resolved = SECTION_INDEX[active] && canSee(SECTION_INDEX[active].section, isAdmin) && canSee(SECTION_INDEX[active].workspace, isAdmin)
+    ? active : 'analytics';
+  const { section: activeSection, workspace: activeWorkspace } = SECTION_INDEX[resolved];
+  const Screen = SCREENS[resolved] || Analytics;
+
   const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
-  const staffRole = role === 'admin' ? 'Operations Admin' : 'Moderator';
-  const activeNav = NAV.find(n => n.key === active);
-  const visibleNav = NAV.filter(n => !n.adminOnly || role === 'admin');
-  const effective = (activeNav && activeNav.adminOnly && role !== 'admin') ? 'analytics' : active;
-  const Screen = SCREENS[effective] || Analytics;
+  const staffRole = isAdmin ? 'Operations Admin' : 'Moderator';
+
+  // Selecting a workspace jumps to its first section.
+  const pickWorkspace = (w) => { setActive(w.sections[0].key); };
+
+  const NavPanels = ({ onClose }) => (
+    <div className="flex h-full">
+      <div className="w-[76px] flex-shrink-0 h-full" style={{ background:'var(--surface2)', borderRight:'1px solid var(--line)' }}>
+        <div className="flex flex-col h-full">
+          <a href="/" className="flex items-center justify-center h-14 flex-shrink-0" style={{ borderBottom:'1px solid var(--line)' }} title="YoteMarket"><Logo size={22} /></a>
+          <WorkspaceRail workspaces={wsList} activeWs={activeWorkspace.key} onPick={(w) => { pickWorkspace(w); }} />
+        </div>
+      </div>
+      <div className="w-[224px] flex-shrink-0 h-full" style={{ background:'var(--surface)' }}>
+        <SectionNav workspace={activeWorkspace} active={resolved} go={setActive} onClose={onClose} />
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-page" data-screen-label={'Staff — '+LABELS[active]}>
+    <div className="min-h-screen bg-page" data-screen-label={'Staff — ' + activeSection.label}>
       <div className="flex">
-        <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
-          <Sidebar active={active} go={setActive} onSignOut={signOutUser} isAdmin={role==='admin'} />
+        {/* desktop two-tier nav */}
+        <aside className="hidden lg:block flex-shrink-0 sticky top-0 h-screen" style={{ borderRight:'1px solid var(--line)' }}>
+          <NavPanels />
         </aside>
 
-        {menu && (<div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0" style={{background:'rgba(8,12,24,.5)'}} onClick={()=>setMenu(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} onSignOut={signOutUser} isAdmin={role==='admin'} /></div>
-        </div>)}
+        {/* mobile drawer */}
+        {menu && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0" style={{ background:'rgba(8,12,24,.5)' }} onClick={() => setMenu(false)} />
+            <div className="absolute left-0 top-0 bottom-0" style={{ width:300 }}><NavPanels onClose={() => setMenu(false)} /></div>
+          </div>
+        )}
 
         <div className="flex-1 min-w-0">
-          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-7 h-16" style={{background:'var(--surface)', borderBottom:'1px solid var(--line)'}}>
-            <div className="flex items-center gap-3">
-              <button onClick={()=>setMenu(true)} className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center t2" style={{background:'var(--surface2)'}} aria-label="Menu"><Icon name="bars"/></button>
-              <span className="text-sm font-semibold t3 hidden sm:flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-xs" style={{background:'var(--pri-soft)',color:'var(--pri)'}}>staff.yotemarket.com</span>
-                <span className="hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold" style={{background:'var(--surface2)',color:'var(--t3)'}} title="Internal staff & admins only — not visible to merchants, riders, marketers or shoppers."><Icon name="lock" className="text-[10px]"/> Confidential · Internal</span>
-              </span>
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-7 h-16" style={{ background:'var(--surface)', borderBottom:'1px solid var(--line)' }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <button onClick={() => setMenu(true)} className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center t2" style={{ background:'var(--surface2)' }} aria-label="Menu"><Icon name="bars" /></button>
+              <nav className="text-sm font-semibold hidden sm:flex items-center gap-2 min-w-0" aria-label="Breadcrumb">
+                <span className="t3">{activeWorkspace.label}</span>
+                <Icon name="chevron-right" className="text-[10px] t3" />
+                <span className="t1 truncate">{activeSection.label}</span>
+              </nav>
+              <span className="sm:hidden font-bold t1 truncate">{activeSection.label}</span>
+              <span className="hidden xl:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold" style={{ background:'var(--surface2)', color:'var(--t3)' }} title="Internal staff & admins only — not visible to merchants, riders, marketers or shoppers."><Icon name="lock" className="text-[10px]" /> Confidential · Internal</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <QuickSearch items={visibleNav} go={setActive} />
+              <QuickSearch items={searchItems} go={setActive} />
               <NotificationsBell go={setActive} />
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
                 <Avatar src={user.photoURL} name={staffName} size={34} />
                 <div className="hidden sm:block leading-tight"><div className="text-sm font-semibold t1">{staffName}</div><div className="text-xs t3">{staffRole}</div></div>
+                <button onClick={signOutUser} className="ml-1 w-9 h-9 rounded-full flex items-center justify-center t3" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }} title="Sign out" aria-label="Sign out"><Icon name="right-from-bracket" /></button>
               </div>
             </div>
           </header>
 
-          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={role==='admin'} /></main>
+          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={isAdmin} /></main>
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1240px] mx-auto">
-            <span>© 2026 Yote Market Limited — Internal Operations</span>
-            <span>Source: Internal Pricing &amp; Unit Economics v2 · single source of truth: economics.js</span>
+            <span>© 2026 Yote Market Limited — Internal Operations Console</span>
+            <span>Confidential · staff.yotemarket.com</span>
           </footer>
         </div>
       </div>
@@ -212,6 +297,6 @@ function App(){
   );
 }
 
-export default function StaffApp(){
+export default function StaffApp() {
   return <ThemeProvider><App /></ThemeProvider>;
 }
