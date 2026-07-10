@@ -2,7 +2,7 @@
 import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
 import { INSIGHTS, ksh } from './data.js';
-import { useShop, useStoreOverview } from './merchant.jsx';
+import { useShop, useStoreOverview, useMerchant } from './merchant.jsx';
 import { getHandoverCode, markOrderReady, confirmStorePickup, cancelOrder, setOrderDeliveryDecision } from '../../lib/firebase.js';
 const { useState: useStateO } = React;
 
@@ -86,6 +86,60 @@ function WelcomeBanner({ onCopy }){
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Get-started checklist — actionable setup tasks that auto-tick from real store
+   state (profile, first product, delivery, plan, payout). Owner-only; hides once
+   everything is done or the merchant dismisses it. Each open task jumps to where
+   it's completed; a footer link replays the guided tour. */
+function GetStartedChecklist({ onNav, onAdd, onTour }){
+  const { live, role, uid, store, merchant, products, sub } = useMerchant();
+  const [dismissed, setDismissed] = useStateO(() => { try { return localStorage.getItem('ym_dash_checklist_dismissed_' + (uid || '')) === '1'; } catch { return false; } });
+  if (!live || role !== 'owner') return null;
+  const tasks = [
+    { key:'profile',  label:'Complete your shop profile', hint:'Add a logo and your area',   icon:'fa-store',      done: !!(store?.logo && store?.area),                 go:()=>onNav && onNav('settings') },
+    { key:'product',  label:'Add your first product',     hint:'Photo, price and stock',      icon:'fa-box',        done: (products?.length || 0) > 0,                    go:()=>onAdd ? onAdd() : (onNav && onNav('products')) },
+    { key:'delivery', label:'Set your delivery rules',    hint:'Fee & free-delivery',         icon:'fa-truck-fast', done: !!store?.delivery,                              go:()=>onNav && onNav('delivery') },
+    { key:'plan',     label:'Activate a subscription',    hint:'Choose a plan to start',      icon:'fa-id-card',    done: sub?.status === 'active',                       go:()=>onNav && onNav('subscription') },
+    { key:'payout',   label:'Set your payout method',     hint:'Where earnings are sent',     icon:'fa-wallet',     done: !!(merchant?.payout && merchant.payout.method), go:()=>onNav && onNav('wallet') },
+  ];
+  const doneCount = tasks.filter((t) => t.done).length;
+  const pct = Math.round((doneCount / tasks.length) * 100);
+  if (dismissed || doneCount === tasks.length) return null;
+  const dismiss = () => { setDismissed(true); try { localStorage.setItem('ym_dash_checklist_dismissed_' + (uid || ''), '1'); } catch { /* private mode */ } };
+  return (
+    <div className="ym-card" style={{ padding:22, marginBottom:22 }}>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:14 }}>
+        <div>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-rocket" style={{ color:'var(--m-primary)' }} /> Get your store ready</div>
+          <div className="ym-cap" style={{ marginTop:3 }}>{doneCount} of {tasks.length} done — finish these to start selling.</div>
+        </div>
+        <button onClick={dismiss} className="icon-btn" aria-label="Dismiss checklist" title="Dismiss"><FA i="fa-xmark" /></button>
+      </div>
+      <div style={{ height:8, borderRadius:9999, background:'var(--m-surface-3)', overflow:'hidden', marginBottom:16 }}>
+        <div style={{ width:pct + '%', height:'100%', borderRadius:9999, background:'var(--m-grad)', transition:'width .4s' }} />
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {tasks.map((t) => (
+          <button key={t.key} onClick={t.done ? undefined : t.go} disabled={t.done}
+            style={{ display:'flex', alignItems:'center', gap:13, padding:'12px 14px', borderRadius:13, border:'1px solid var(--m-border)', background: t.done ? 'var(--m-surface-2)' : 'var(--m-surface)', cursor: t.done ? 'default' : 'pointer', fontFamily:'inherit', textAlign:'left', width:'100%', opacity: t.done ? 0.72 : 1 }}>
+            <span style={{ width:26, height:26, borderRadius:9999, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background: t.done ? 'var(--m-success)' : 'transparent', border: t.done ? 'none' : '2px solid var(--m-border)', color:'#fff', fontSize:12 }}>{t.done && <FA i="fa-check" />}</span>
+            <span style={{ width:34, height:34, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface-3)', color:'var(--m-primary)' }}><FA i={t.icon} /></span>
+            <span style={{ flex:1, minWidth:0 }}>
+              <span className="ym-h3" style={{ fontSize:14, display:'block', textDecoration: t.done ? 'line-through' : 'none' }}>{t.label}</span>
+              <span className="ym-cap">{t.hint}</span>
+            </span>
+            {!t.done && <FA i="fa-chevron-right" style={{ color:'var(--m-fg3)', fontSize:13 }} />}
+          </button>
+        ))}
+      </div>
+      {onTour && (
+        <div style={{ marginTop:14, textAlign:'center' }}>
+          <button onClick={onTour} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, color:'var(--m-link)' }}><FA i="fa-circle-play" style={{ marginRight:6 }} />Take the dashboard tour</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -259,11 +313,12 @@ export function OrdersTable({ rows, title = 'Recent orders' }){
   );
 }
 
-export function Overview({ onAdd, onCopyLink, onOpenProducts }){
+export function Overview({ onAdd, onCopyLink, onOpenProducts, onNav, onTour }){
   const ov = useStoreOverview();
   return (
     <div className="anim-up">
       <WelcomeBanner onCopy={onCopyLink} />
+      <GetStartedChecklist onNav={onNav} onAdd={onAdd} onTour={onTour} />
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
         {ov.kpis.map(k=><Stat key={k.label} {...k} delta={k.delta} up={k.up} />)}
       </div>

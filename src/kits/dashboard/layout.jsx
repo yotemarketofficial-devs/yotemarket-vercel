@@ -77,7 +77,7 @@ export function Sidebar({ active, onChange, onClose }){
           {items.map(n=>{
             const on = active===n.key;
             return (
-              <button key={n.key} onClick={()=>{ onChange(n.key); onClose&&onClose(); }}
+              <button key={n.key} data-tour={n.key} onClick={()=>{ onChange(n.key); onClose&&onClose(); }}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 12px', borderRadius:12, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, fontWeight:600, textAlign:'left',
                   background: on?'var(--m-surface-3)':'transparent', color: on?'var(--m-primary)':'var(--m-fg2)' }}>
                 <NavIcon n={n} color={on ? 'var(--m-primary)' : 'var(--m-fg3)'} />
@@ -105,7 +105,7 @@ export function Sidebar({ active, onChange, onClose }){
   );
 }
 
-export function TopBar({ onMenu, onChange }){
+export function TopBar({ onMenu, onChange, onHelp }){
   const shop = useShop();
   return (
     <header style={{ position:'sticky', top:0, zIndex:40, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
@@ -117,6 +117,7 @@ export function TopBar({ onMenu, onChange }){
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <button onClick={()=>window.open('/storefront','_blank')} className="ym-btn ym-btn-ghost ym-btn-sm view-shop"><FA i="fa-store" /> View storefront</button>
+          {onHelp && <button onClick={onHelp} className="icon-btn" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
           <button onClick={()=>onChange&&onChange('chat')} className="icon-btn" aria-label="Messages" title="Messages"><FA i="fa-bell" /></button>
           <ThemeToggle />
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
