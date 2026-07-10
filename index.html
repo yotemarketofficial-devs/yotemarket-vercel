@@ -49,43 +49,28 @@
          so it disappears automatically once the app is interactive. -->
     <style>
       #ym-boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-        background:radial-gradient(60% 55% at 50% 32%,rgba(124,43,212,.12),transparent 70%),#FFFFFF;
+        background:radial-gradient(60% 55% at 50% 40%,rgba(124,43,212,.10),transparent 70%),#FFFFFF;
         font-family:'Poppins',system-ui,sans-serif;z-index:9999;}
-      #ym-boot .s{display:flex;flex-direction:column;align-items:center;gap:22px;}
-      #ym-boot .m{position:relative;width:96px;height:96px;display:grid;place-items:center;}
-      #ym-boot .ic{width:72px;height:72px;border-radius:20px;display:block;
-        box-shadow:0 18px 40px -14px rgba(124,43,212,.65);animation:ymb-breathe 2.4s cubic-bezier(.65,.05,.36,1) infinite;}
-      #ym-boot .rg{position:absolute;inset:0;border-radius:50%;
-        background:conic-gradient(from 90deg,transparent 0%,transparent 28%,rgba(124,43,212,.55) 72%,#7C2BD4 100%);
-        -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3.5px));
-                mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3.5px));
-        animation:ymb-spin 1.05s linear infinite;}
-      #ym-boot .wd{font-weight:800;font-size:24px;letter-spacing:-.02em;line-height:1;}
-      #ym-boot .wd .a{color:#1C1233;}
-      #ym-boot .wd .b{background:linear-gradient(115deg,#7C2BD4,#A020F0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
-      #ym-boot .bar{position:relative;width:168px;height:4px;border-radius:999px;overflow:hidden;background:rgba(124,43,212,.14);}
+      #ym-boot .s{display:flex;flex-direction:column;align-items:center;gap:26px;}
+      #ym-boot .lg{width:190px;max-width:56vw;height:auto;display:block;animation:ymb-rise .7s cubic-bezier(.22,.7,.2,1) both;}
+      #ym-boot .lg-dark{display:none;}
+      #ym-boot .bar{position:relative;width:150px;height:4px;border-radius:999px;overflow:hidden;background:rgba(124,43,212,.14);}
       #ym-boot .bar>i{position:absolute;top:0;bottom:0;width:45%;border-radius:999px;
         background:linear-gradient(90deg,transparent,#7C2BD4,transparent);animation:ymb-prog 1.25s cubic-bezier(.65,.05,.36,1) infinite;}
-      @keyframes ymb-spin{to{transform:rotate(360deg)}}
-      @keyframes ymb-breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.06);opacity:1}}
+      @keyframes ymb-rise{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
       @keyframes ymb-prog{0%{transform:translateX(-140%)}100%{transform:translateX(320%)}}
       @media (prefers-color-scheme:dark){
-        #ym-boot{background:radial-gradient(60% 55% at 50% 32%,rgba(124,43,212,.28),transparent 70%),#0E0620;}
-        #ym-boot .wd .a{color:#F3ECFD;}
+        #ym-boot{background:radial-gradient(60% 55% at 50% 40%,rgba(124,43,212,.26),transparent 70%),#0E0620;}
+        #ym-boot .lg-light{display:none;}
+        #ym-boot .lg-dark{display:block;}
       }
-      @media (prefers-reduced-motion:reduce){
-        #ym-boot .ic,#ym-boot .bar>i{animation:none;}
-        #ym-boot .rg{animation-duration:2s;}
-      }
+      @media (prefers-reduced-motion:reduce){ #ym-boot .bar>i{animation:none;} }
     </style>
     <div id="root">
       <div id="ym-boot">
         <div class="s">
-          <div class="m">
-            <span class="rg"></span>
-            <img class="ic" src="/assets/app_icon.png" alt="YoteMarket" />
-          </div>
-          <div class="wd"><span class="a">Yote</span><span class="b">Market</span></div>
+          <img class="lg lg-light" src="/assets/logo.png" alt="YoteMarket" />
+          <img class="lg lg-dark" src="/assets/logo-white.png" alt="YoteMarket" />
           <div class="bar"><i></i></div>
         </div>
       </div>

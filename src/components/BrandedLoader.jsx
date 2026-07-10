@@ -1,33 +1,28 @@
 /* BrandedLoader — the YoteMarket loading screen.
    One component for every "we're fetching/booting" moment so the whole system
-   loads the same way: the animated bag mark (orbiting ring + pulsing halo),
-   the wordmark, and an indeterminate shimmer bar. Styles live in styles/motion.css
-   (global) so it renders identically on the marketing site and inside every kit.
+   loads the same way: the YoteMarket logo (its own brand font) with a single
+   indeterminate shimmer bar underneath — no spinner, kept intentionally clean.
+   Styles live in styles/motion.css (global) so it renders identically on the
+   marketing site and inside every kit. The light/dark logo swaps via CSS on
+   html.dark, so the component needs no theme awareness.
 
    Props:
      variant  'full'  → fixed full-screen overlay (boot / route chunk) [default]
               'block' → fills its container (in-page sections)
-     label    caption under the bar (default "Loading…"); pass null to hide
-     showWord show the YoteMarket wordmark (default true) */
-export default function BrandedLoader({ variant = 'full', label = 'Loading…', showWord = true }) {
+     label    optional caption under the bar (default none) */
+export default function BrandedLoader({ variant = 'full', label = null }) {
   return (
-    <div className={`ym-loader ym-loader--${variant === 'block' ? 'block' : 'full'}`} role="status" aria-live="polite" aria-busy="true">
+    <div
+      className={`ym-loader ym-loader--${variant === 'block' ? 'block' : 'full'}`}
+      role="status"
+      aria-label={label || 'Loading'}
+      aria-busy="true"
+    >
       <div className="ym-loader-stack">
-        <div className="ym-loader-mark">
-          <span className="ym-loader-halo" aria-hidden="true" />
-          <span className="ym-loader-ring" aria-hidden="true" />
-          <img className="ym-loader-icon" src="/assets/app_icon.png" alt="" aria-hidden="true" />
-        </div>
-        {showWord && (
-          <div className="ym-loader-word" aria-hidden="true">
-            <span className="a">Yote</span><span className="b">Market</span>
-          </div>
-        )}
+        <img className="ym-loader-logo ym-loader-logo--light" src="/assets/logo.png" alt="YoteMarket" />
+        <img className="ym-loader-logo ym-loader-logo--dark" src="/assets/logo-white.png" alt="" aria-hidden="true" />
         <div className="ym-loader-bar" aria-hidden="true"><span /></div>
         {label && <div className="ym-loader-label">{label}</div>}
-        <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-          {label || 'Loading'}
-        </span>
       </div>
     </div>
   );

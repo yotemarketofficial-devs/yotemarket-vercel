@@ -71,46 +71,22 @@
 .ym-loader--full{
   position: fixed; inset: 0; z-index: 9999; min-height: 100vh;
   background:
-    radial-gradient(60% 55% at 50% 32%, color-mix(in srgb, var(--purple, #7C2BD4) 12%, transparent), transparent 70%),
+    radial-gradient(60% 55% at 50% 40%, color-mix(in srgb, var(--purple, #7C2BD4) 10%, transparent), transparent 70%),
     var(--bg, #FFFFFF);
 }
 .ym-loader--block{ min-height: 60vh; width: 100%; }
-.ym-loader-stack{ display: flex; flex-direction: column; align-items: center; gap: 22px; animation: ym-fade var(--ym-dur) var(--ym-ease) both; }
+.ym-loader-stack{ display: flex; flex-direction: column; align-items: center; gap: 26px; animation: ym-fade var(--ym-dur) var(--ym-ease) both; }
 
-/* mark: app-icon tile with an orbiting conic ring + pulsing halo */
-.ym-loader-mark{ position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
-.ym-loader-icon{
-  width: 72px; height: 72px; border-radius: 20px; display: block;
-  box-shadow: 0 18px 40px -14px color-mix(in srgb, var(--purple, #7C2BD4) 65%, transparent);
-  animation: ym-breathe 2.4s var(--ym-ease-inout) infinite;
-}
-.ym-loader-ring{
-  position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(from 90deg,
-    transparent 0%, transparent 28%,
-    color-mix(in srgb, var(--ym-ring) 55%, transparent) 72%,
-    var(--ym-ring) 100%);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
-          mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
-  animation: ym-spin 1.05s linear infinite;
-}
-.ym-loader-halo{
-  position: absolute; inset: 6px; border-radius: 50%; z-index: -1;
-  background: radial-gradient(circle, color-mix(in srgb, var(--purple, #7C2BD4) 40%, transparent), transparent 70%);
-  animation: ym-pulse-ring 2s var(--ym-ease) infinite;
-}
+/* brand = the real logo (its own font); light/dark variants swap with the theme */
+.ym-loader-logo{ width: 190px; max-width: 56vw; height: auto; display: block; animation: ym-loader-rise .7s var(--ym-ease) both; }
+.ym-loader-logo--dark{ display: none; }
+html.dark .ym-loader-logo--light{ display: none; }
+html.dark .ym-loader-logo--dark{ display: block; }
+@keyframes ym-loader-rise{ from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
 
-/* wordmark */
-.ym-loader-word{ display: flex; align-items: baseline; gap: 0; font-weight: 800; font-size: 24px; letter-spacing: -.02em; line-height: 1; }
-.ym-loader-word .a{ color: var(--t1, #1C1233); }
-.ym-loader-word .b{
-  background: linear-gradient(115deg, var(--purple, #7C2BD4), #A020F0);
-  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
-}
-
-/* indeterminate shimmer bar */
+/* one indeterminate shimmer bar — the only motion (no spinner) */
 .ym-loader-bar{
-  position: relative; width: 168px; height: 4px; border-radius: 999px; overflow: hidden;
+  position: relative; width: 150px; height: 4px; border-radius: 999px; overflow: hidden;
   background: color-mix(in srgb, var(--purple, #7C2BD4) 14%, transparent);
 }
 .ym-loader-bar::before{
@@ -138,8 +114,6 @@
 /* ── accessibility: honour reduced-motion everywhere ───────────────────────── */
 @media (prefers-reduced-motion: reduce){
   .reveal{ opacity: 1 !important; transform: none !important; transition: none; }
-  .float-a,
-  .ym-loader-icon, .ym-loader-ring, .ym-loader-halo,
+  .float-a, .ym-loader-logo,
   .ym-loader-bar::before, .ym-dots i, .ym-skel{ animation-duration: .001s !important; animation-iteration-count: 1 !important; }
-  .ym-loader-ring{ opacity: .6; }
 }
