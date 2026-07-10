@@ -219,17 +219,6 @@ export function Approvals({ isAdmin }){
   const [auditM, setAuditM] = useSS(null); // click a store to inspect its full record
   const onEnterpriseDone = (m, patch) => setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,...patch}:r));
 
-  // One-off: delete the seeded non-Google test accounts (admin only).
-  const [cleanBusy, setCleanBusy] = useSS(false);
-  const [cleanDone, setCleanDone] = useSS(null);
-  const runCleanup = async () => {
-    if (!window.confirm('Permanently delete the 18 seeded non-Google (@yotemarket.com) test accounts and their test stores/products? This cannot be undone. Google sign-in accounts are NOT affected.')) return;
-    setCleanBusy(true);
-    try { const r = await cleanupSeededTestAccounts(); setCleanDone(r?.counts || {}); }
-    catch (e) { setCleanDone({ error: e.message || 'Cleanup failed' }); }
-    finally { setCleanBusy(false); }
-  };
-
   // Store-closure requests (merchant asks to close → staff approve/reject).
   const { data: delReqs, reload: reloadDel } = useStaffResource(fetchDeletionRequests, []);
   const [delBusy, setDelBusy] = useSS(null);
@@ -313,21 +302,6 @@ export function Approvals({ isAdmin }){
           </Card>
         ))}
       </div>
-    )}
-
-    {isAdmin && (
-      <Card className="p-4" style={{border:'1px solid var(--red)'}}>
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'rgba(239,68,68,.12)',color:'var(--red)'}}><Icon name="triangle-exclamation"/></div>
-          <div className="min-w-0 flex-1">
-            <div className="font-bold t1">Delete seeded test accounts</div>
-            <div className="text-xs t3">One-off cleanup — removes the 18 non-Google (@yotemarket.com) seed accounts and their test stores/products. Google sign-in accounts are untouched.</div>
-            {cleanDone && !cleanDone.error && <div className="text-xs mt-1" style={{color:'var(--green)'}}>Done — deleted {cleanDone.auth} accounts, {cleanDone.stores} stores, {cleanDone.products} products.</div>}
-            {cleanDone && cleanDone.error && <div className="text-xs mt-1" style={{color:'var(--red)'}}>{cleanDone.error}</div>}
-          </div>
-          <Btn kind="danger" size="sm" icon={cleanBusy?'spinner':'trash'} onClick={runCleanup} disabled={cleanBusy || (cleanDone && !cleanDone.error)}>{cleanBusy?'Deleting…':((cleanDone && !cleanDone.error)?'Done':'Delete test accounts')}</Btn>
-        </div>
-      </Card>
     )}
 
     {entFor && <EnterpriseModal m={entFor} onClose={()=>setEntFor(null)} onDone={onEnterpriseDone} />}
@@ -903,6 +877,38 @@ export function Team(){
     <Card className="p-5 flex items-start gap-3" style={{maxWidth:560,background:'var(--surface2)'}}>
       <Icon name="circle-info" style={{color:'var(--pri)'}}/>
       <div className="text-sm t2">Role changes take effect on the person’s next sign-in (or token refresh). Ask them to sign out and back in to the staff console.</div>
+    </Card>
+  </div>);
+}
+
+/* ============ MAINTENANCE (admin — one-off data/cleanup tools) ============ */
+export function Maintenance(){
+  const [cleanBusy, setCleanBusy] = useSS(false);
+  const [cleanDone, setCleanDone] = useSS(null);
+  const runCleanup = async () => {
+    if (!window.confirm('Permanently delete the 18 seeded non-Google (@yotemarket.com) test accounts and their test stores/products? This cannot be undone. Google sign-in accounts are NOT affected.')) return;
+    setCleanBusy(true);
+    try { const r = await cleanupSeededTestAccounts(); setCleanDone(r?.counts || {}); }
+    catch (e) { setCleanDone({ error: e.message || 'Cleanup failed' }); }
+    finally { setCleanBusy(false); }
+  };
+  return (<div className="fadeup space-y-6">
+    <SectionHead icon="screwdriver-wrench" title="Maintenance" sub="One-off data and cleanup operations — handle with care" />
+    <Card className="p-5 flex items-start gap-3" style={{maxWidth:640,background:'var(--surface2)'}}>
+      <Icon name="triangle-exclamation" style={{color:'var(--amber)'}}/>
+      <div className="text-sm t2">These are destructive, irreversible operations reserved for admins. Double-check before running any of them.</div>
+    </Card>
+    <Card className="p-4" style={{maxWidth:640, border:'1px solid var(--red)'}}>
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'rgba(239,68,68,.12)',color:'var(--red)'}}><Icon name="user-slash"/></div>
+        <div className="min-w-0 flex-1">
+          <div className="font-bold t1">Delete seeded test accounts</div>
+          <div className="text-xs t3">Removes the 18 non-Google (@yotemarket.com) seed accounts and their test stores/products. Google sign-in accounts are untouched.</div>
+          {cleanDone && !cleanDone.error && <div className="text-xs mt-1" style={{color:'var(--green)'}}>Done — deleted {cleanDone.auth} accounts, {cleanDone.stores} stores, {cleanDone.products} products.</div>}
+          {cleanDone && cleanDone.error && <div className="text-xs mt-1" style={{color:'var(--red)'}}>{cleanDone.error}</div>}
+        </div>
+        <Btn kind="danger" size="sm" icon={cleanBusy?'spinner':'trash'} onClick={runCleanup} disabled={cleanBusy || (cleanDone && !cleanDone.error)}>{cleanBusy?'Deleting…':((cleanDone && !cleanDone.error)?'Done':'Delete test accounts')}</Btn>
+      </div>
     </Card>
   </div>);
 }

@@ -9,7 +9,8 @@ import './staff.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
-import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, ReviewModeration, Team } from './screens.jsx';
+import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, ReviewModeration, Team, Maintenance } from './screens.jsx';
+import { CommandCenter } from './command.jsx';
 import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
@@ -25,7 +26,8 @@ const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
    Command, Marketplace, Logistics, Trust & Safety and Growth. */
 const WORKSPACES = [
   { key:'command', label:'Command', icon:'gauge-high', blurb:'Platform pulse', sections:[
-    { key:'analytics', label:'Overview', icon:'chart-simple', desc:'Live KPIs & operational health' },
+    { key:'command', label:'Command center', icon:'bolt', desc:'Action queue & live pulse' },
+    { key:'analytics', label:'Analytics', icon:'chart-simple', desc:'GMV, funnel & deep charts' },
   ]},
   { key:'marketplace', label:'Marketplace', icon:'store', blurb:'Merchants & billing', sections:[
     { key:'approvals', label:'Merchants', icon:'user-check', desc:'Verify, feature, suspend & audit stores' },
@@ -58,11 +60,12 @@ const WORKSPACES = [
   { key:'admin', label:'Admin', icon:'user-shield', blurb:'Platform control', adminOnly:true, sections:[
     { key:'team', label:'Team & roles', icon:'user-gear', desc:'Grant or revoke staff access' },
     { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
+    { key:'maintenance', label:'Maintenance', icon:'screwdriver-wrench', desc:'One-off data & cleanup tools' },
     { key:'economics', label:'Pricing & economics', icon:'scale-balanced', desc:'Unit-economics reference (read-only)', lock:true },
   ]},
 ];
 
-const SCREENS = { analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
@@ -208,7 +211,7 @@ function App() {
   const { user, loading, isStaff, role } = useStaffClaims();
   const { signOutUser } = useAuth();
   const isAdmin = role === 'admin';
-  const [active, setActive] = useSApp('analytics');
+  const [active, setActive] = useSApp('command');
   const [menu, setMenu] = useSApp(false);
 
   const wsList = useMApp(() => visibleWorkspaces(isAdmin), [isAdmin]);
@@ -221,9 +224,9 @@ function App() {
   // Resolve the active section → its workspace; fall back to Command/Overview if
   // the current selection isn't visible for this role.
   const resolved = SECTION_INDEX[active] && canSee(SECTION_INDEX[active].section, isAdmin) && canSee(SECTION_INDEX[active].workspace, isAdmin)
-    ? active : 'analytics';
+    ? active : 'command';
   const { section: activeSection, workspace: activeWorkspace } = SECTION_INDEX[resolved];
-  const Screen = SCREENS[resolved] || Analytics;
+  const Screen = SCREENS[resolved] || CommandCenter;
 
   const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
   const staffRole = isAdmin ? 'Operations Admin' : 'Moderator';
@@ -285,7 +288,7 @@ function App() {
             </div>
           </header>
 
-          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={isAdmin} /></main>
+          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={isAdmin} go={setActive} /></main>
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1240px] mx-auto">
             <span>© 2026 Yote Market Limited — Internal Operations Console</span>
