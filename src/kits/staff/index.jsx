@@ -16,6 +16,7 @@ import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
+import { AuditLog } from './audit.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests } from './service.js';
@@ -61,12 +62,13 @@ const WORKSPACES = [
   { key:'admin', label:'Admin', icon:'user-shield', blurb:'Platform control', adminOnly:true, sections:[
     { key:'team', label:'Team & roles', icon:'user-gear', desc:'Grant or revoke staff access' },
     { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
+    { key:'audit', label:'Audit log', icon:'clock-rotate-left', desc:'Who did what, across the platform' },
     { key:'maintenance', label:'Maintenance', icon:'screwdriver-wrench', desc:'One-off data & cleanup tools' },
     { key:'economics', label:'Pricing & economics', icon:'scale-balanced', desc:'Unit-economics reference (read-only)', lock:true },
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

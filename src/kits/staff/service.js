@@ -224,5 +224,14 @@ export async function resolveDeletionRequest(id, approve, note = '') {
   return call('staffResolveDeletionRequest')({ id, approve, note });
 }
 
+// ── Audit log (who did what across the staff mutations) ───────────────────────
+/** Recent staff actions, newest first. Throws until staffListAuditLog is deployed
+ *  so the screen can show a "activates after next deploy" state. */
+export async function fetchAuditLog(limit = 200) {
+  const d = await call('staffListAuditLog')({ limit });
+  if (!d || !Array.isArray(d.events)) throw new Error('staffListAuditLog: unexpected shape');
+  return d.events;
+}
+
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };
