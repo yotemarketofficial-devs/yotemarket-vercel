@@ -1,0 +1,145 @@
+/* ============================================================================
+   YoteMarket — unified motion system (global, single source of truth)
+   Imported once in main.jsx so its tokens + keyframes are available to every
+   kit (keyframe names are global in CSS). Replaces the ad-hoc per-kit
+   ym-spin / ym-fade-up / fadeUp / pulse / pop definitions with one vocabulary.
+   ========================================================================== */
+
+:root{
+  /* easing — one house curve for exits/entrances, a spring for playful pops */
+  --ym-ease:        cubic-bezier(.22,.7,.2,1);      /* standard ease-out */
+  --ym-ease-spring: cubic-bezier(.34,1.56,.64,1);   /* overshoot / pop */
+  --ym-ease-inout:  cubic-bezier(.65,.05,.36,1);    /* symmetric */
+  /* durations — keep UI motion in a tight, consistent band */
+  --ym-dur-fast: .16s;
+  --ym-dur:      .3s;
+  --ym-dur-slow: .6s;
+  /* brand ring colour for loaders (kits may override inside their scope) */
+  --ym-ring: var(--purple, #7C2BD4);
+}
+
+/* ── canonical keyframe library ─────────────────────────────────────────────
+   These names intentionally match what the kits already reference, so this
+   file becomes the authoritative definition once loaded first. */
+@keyframes ym-spin      { to   { transform: rotate(360deg); } }
+@keyframes ym-fade      { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ym-fade-up   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes ym-fade-down { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+@keyframes ym-scale-in  { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes ym-float     { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes ym-breathe   { 0%,100% { transform: scale(1); opacity: .85; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes ym-pulse-ring{ 0% { transform: scale(.85); opacity: .55; } 70%,100% { transform: scale(1.5); opacity: 0; } }
+@keyframes ym-sheen     { 0% { background-position: -160% 0; } 100% { background-position: 160% 0; } }
+@keyframes ym-progress  { 0% { transform: translateX(-140%); } 100% { transform: translateX(320%); } }
+@keyframes ym-dots      { 0%,80%,100% { transform: scale(.6); opacity: .4; } 40% { transform: scale(1); opacity: 1; } }
+/* aliases for legacy kit names so older markup keeps animating uniformly */
+@keyframes fadeUp       { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes pop          { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes pulse        { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+/* ── scroll-reveal + ambient motion (marketing + kits) ─────────────────────── */
+.reveal{
+  opacity: 0; transform: translateY(26px);
+  transition: opacity var(--ym-dur-slow) var(--ym-ease), transform var(--ym-dur-slow) var(--ym-ease);
+  transition-delay: var(--rd, 0ms); will-change: opacity, transform;
+}
+.reveal.in{ opacity: 1; transform: none; }
+/* reveal variants — same trigger (.in), different entrance */
+.reveal.from-left{  transform: translateX(-30px); }
+.reveal.from-right{ transform: translateX(30px); }
+.reveal.zoom{       transform: scale(.94); }
+.reveal.from-left.in, .reveal.from-right.in, .reveal.zoom.in{ transform: none; }
+/* stagger: tag a container `.stagger`; its .reveal children cascade in */
+.stagger > .reveal:nth-child(1){ --rd: 0ms; }
+.stagger > .reveal:nth-child(2){ --rd: 70ms; }
+.stagger > .reveal:nth-child(3){ --rd: 140ms; }
+.stagger > .reveal:nth-child(4){ --rd: 210ms; }
+.stagger > .reveal:nth-child(5){ --rd: 280ms; }
+.stagger > .reveal:nth-child(6){ --rd: 350ms; }
+.stagger > .reveal:nth-child(7){ --rd: 420ms; }
+.stagger > .reveal:nth-child(8){ --rd: 490ms; }
+
+.float-a{ animation: ym-float 6.5s ease-in-out infinite; }
+
+/* ============================================================================
+   Branded loading screen  (BrandedLoader.jsx + KitFrame + index.html splash)
+   ========================================================================== */
+.ym-loader{
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; color: var(--t2, #574B70);
+}
+.ym-loader--full{
+  position: fixed; inset: 0; z-index: 9999; min-height: 100vh;
+  background:
+    radial-gradient(60% 55% at 50% 32%, color-mix(in srgb, var(--purple, #7C2BD4) 12%, transparent), transparent 70%),
+    var(--bg, #FFFFFF);
+}
+.ym-loader--block{ min-height: 60vh; width: 100%; }
+.ym-loader-stack{ display: flex; flex-direction: column; align-items: center; gap: 22px; animation: ym-fade var(--ym-dur) var(--ym-ease) both; }
+
+/* mark: app-icon tile with an orbiting conic ring + pulsing halo */
+.ym-loader-mark{ position: relative; width: 96px; height: 96px; display: grid; place-items: center; }
+.ym-loader-icon{
+  width: 72px; height: 72px; border-radius: 20px; display: block;
+  box-shadow: 0 18px 40px -14px color-mix(in srgb, var(--purple, #7C2BD4) 65%, transparent);
+  animation: ym-breathe 2.4s var(--ym-ease-inout) infinite;
+}
+.ym-loader-ring{
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 90deg,
+    transparent 0%, transparent 28%,
+    color-mix(in srgb, var(--ym-ring) 55%, transparent) 72%,
+    var(--ym-ring) 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
+  animation: ym-spin 1.05s linear infinite;
+}
+.ym-loader-halo{
+  position: absolute; inset: 6px; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--purple, #7C2BD4) 40%, transparent), transparent 70%);
+  animation: ym-pulse-ring 2s var(--ym-ease) infinite;
+}
+
+/* wordmark */
+.ym-loader-word{ display: flex; align-items: baseline; gap: 0; font-weight: 800; font-size: 24px; letter-spacing: -.02em; line-height: 1; }
+.ym-loader-word .a{ color: var(--t1, #1C1233); }
+.ym-loader-word .b{
+  background: linear-gradient(115deg, var(--purple, #7C2BD4), #A020F0);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* indeterminate shimmer bar */
+.ym-loader-bar{
+  position: relative; width: 168px; height: 4px; border-radius: 999px; overflow: hidden;
+  background: color-mix(in srgb, var(--purple, #7C2BD4) 14%, transparent);
+}
+.ym-loader-bar::before{
+  content: ""; position: absolute; top: 0; bottom: 0; width: 45%; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--purple, #7C2BD4), transparent);
+  animation: ym-progress 1.25s var(--ym-ease-inout) infinite;
+}
+.ym-loader-label{ font-size: 13.5px; font-weight: 600; color: var(--t3, #897EA0); letter-spacing: .01em; }
+
+/* inline dots (small waiting affordance, reusable in kits) */
+.ym-dots{ display: inline-flex; gap: 5px; align-items: center; }
+.ym-dots i{ width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: ym-dots 1.2s var(--ym-ease-inout) infinite; }
+.ym-dots i:nth-child(2){ animation-delay: .15s; }
+.ym-dots i:nth-child(3){ animation-delay: .3s; }
+
+/* skeleton shimmer helper */
+.ym-skel{
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--t3, #897EA0) 12%, transparent) 30%,
+    color-mix(in srgb, var(--t3, #897EA0) 22%, transparent) 50%,
+    color-mix(in srgb, var(--t3, #897EA0) 12%, transparent) 70%);
+  background-size: 200% 100%; animation: ym-sheen 1.4s linear infinite; border-radius: 10px;
+}
+
+/* ── accessibility: honour reduced-motion everywhere ───────────────────────── */
+@media (prefers-reduced-motion: reduce){
+  .reveal{ opacity: 1 !important; transform: none !important; transition: none; }
+  .float-a,
+  .ym-loader-icon, .ym-loader-ring, .ym-loader-halo,
+  .ym-loader-bar::before, .ym-dots i, .ym-skel{ animation-duration: .001s !important; animation-iteration-count: 1 !important; }
+  .ym-loader-ring{ opacity: .6; }
+}

@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
 import { FA, Card, Btn } from './primitives.jsx';
 import AuthPanel from '../../components/AuthPanel.jsx';
+import BrandedLoader from '../../components/BrandedLoader.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
 import { CATEGORY_TREE } from '../storefront/categories.js';
 const { useState, useEffect } = React;
@@ -39,14 +40,7 @@ function Field({ label, children }) {
 }
 
 function Loading() {
-  return (
-    <Shell>
-      <div style={{ textAlign: 'center', color: 'var(--m-fg3)' }}>
-        <FA i="fa-circle-notch" style={{ fontSize: 28, color: 'var(--m-primary)', animation: 'ym-spin 1s linear infinite' }} />
-        <div style={{ marginTop: 12, fontSize: 14 }}>Loading…</div>
-      </div>
-    </Shell>
-  );
+  return <BrandedLoader variant="full" />;
 }
 
 /* Hard-navigate to another route (used to bounce cashiers into the POS terminal). */
