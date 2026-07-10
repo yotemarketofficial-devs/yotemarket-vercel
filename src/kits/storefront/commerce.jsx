@@ -400,12 +400,20 @@ function OrderDetail({ view, onClose }){
   const orderNo = o.orderNo || view.code;
   const delivered = view.status === 'delivered';
   const canCancel = CANCELLABLE.includes(view.status);
+  const canRemove = view.status === 'delivered' || view.status === 'cancelled';
   const [cancelling, setCancelling] = useSCm(false);
+  const [removing, setRemoving] = useSCm(false);
   const cancel = async () => {
     if (!window.confirm(o.paid ? 'Cancel this order? You’ll be refunded to your YoteWallet.' : 'Cancel this order?')) return;
     setCancelling(true);
     try { const r = await cancelOrder({ orderId:o.id }); toast(r.refunded>0 ? `Order cancelled · ${ymPrice(r.refunded)} refunded to wallet` : 'Order cancelled', 'fa-circle-check'); onClose(); }
     catch (e) { toast(e.message || 'Could not cancel', 'fa-triangle-exclamation'); setCancelling(false); }
+  };
+  const remove = async () => {
+    if (!window.confirm('Remove this order from your list? This can’t be undone.')) return;
+    setRemoving(true);
+    try { await dismissOrder({ orderId:o.id }); toast('Removed from your orders', 'fa-check'); onClose(); }
+    catch (e) { toast(e.message || 'Could not remove', 'fa-triangle-exclamation'); setRemoving(false); }
   };
   return (
     <Modal title="Order details" onClose={onClose} maxWidth={540}>
@@ -477,6 +485,11 @@ function OrderDetail({ view, onClose }){
           {cancelling ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Cancelling…</> : <><FA i="fa-ban" /> Cancel order{o.paid?' & refund':''}</>}
         </button>
       )}
+      {canRemove && (
+        <button onClick={remove} disabled={removing} className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:10, color:'var(--m-fg3)' }}>
+          {removing ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Removing…</> : <><FA i="fa-trash-can" /> Remove from my orders</>}
+        </button>
+      )}
     </Modal>
   );
 }
@@ -521,7 +534,12 @@ export function OrdersScreen(){
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <span className="ym-h3" style={{ fontFamily:'monospace' }}>{o.raw?.orderNo || o.code}</span><span className={'ym-pill ym-pill-'+(tone[o.status]||'pending')}>{label[o.status]||o.status}</span>
                 </div>
-                <span className="ym-cap">{o.placedTxt}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span className="ym-cap">{o.placedTxt}</span>
+                  {(o.status==='cancelled' || o.status==='delivered') && (
+                    <button onClick={()=>removeOrder(o.raw.id)} aria-label="Remove from my orders" title="Remove from my orders" style={{ width:30, height:30, borderRadius:8, border:'none', background:'transparent', color:'var(--m-fg3)', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><FA i="fa-trash-can" style={{ fontSize:13 }} /></button>
+                  )}
+                </div>
               </div>
               <button onClick={()=>setDetail(o)} style={{ display:'flex', gap:14, alignItems:'center', marginBottom:16, width:'100%', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:0 }}>
                 <Thumb icon={first?.icon || 'fa-box'} tint={store?.tint || '#7c3aed'} size={56} radius={14} img={first?.img} />
@@ -564,11 +582,6 @@ export function OrdersScreen(){
                     : null
               )}
               {o.status!=='placed' && <OrderInvoice orderId={o.raw.id} />}
-              {(o.status==='cancelled' || o.status==='delivered') && (
-                <div style={{ marginTop:12, textAlign:'right' }}>
-                  <button onClick={()=>removeOrder(o.raw.id)} style={{ background:'none', border:'none', color:'var(--m-fg3)', cursor:'pointer', fontFamily:'inherit', fontSize:13, display:'inline-flex', alignItems:'center', gap:6, padding:'4px 0' }}><FA i="fa-trash-can" style={{ fontSize:12 }} /> Remove from my orders</button>
-                </div>
-              )}
             </div>
           );
         })}
