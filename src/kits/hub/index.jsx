@@ -11,10 +11,10 @@ import { HUBS, findHub } from '../storefront/hubs.js';
 const { useState, useEffect, useCallback } = React;
 
 const OWNER_EMAILS = ['007arnogichuche@gmail.com', 'yotemarketofficial@gmail.com'];
-const C = {
-  page: '#f5f6fa', card: '#ffffff', border: '#e6e8ee', fg1: '#111827', fg3: '#6b7280',
-  pri: '#7c3aed', priSoft: '#f1ebfe', ok: '#10b981', amber: '#f59e0b', red: '#ef4444',
-};
+// Theme-aware palette — follows the operator's OS light/dark preference (at load).
+const LIGHT = { page:'#f5f6fa', card:'#ffffff', soft:'#eef0f4', border:'#e6e8ee', row:'#fbfbfd', fg1:'#111827', fg3:'#6b7280', pri:'#7c3aed', priSoft:'#f1ebfe', ok:'#10b981', amber:'#f59e0b', red:'#ef4444' };
+const DARK  = { page:'#0e1017', card:'#171a24', soft:'#232733', border:'#262a38', row:'#1c202b', fg1:'#f3f4f6', fg3:'#9aa3b2', pri:'#a78bfa', priSoft:'#241b3a', ok:'#34d399', amber:'#fbbf24', red:'#f87171' };
+const C = (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? DARK : LIGHT;
 const FA = ({ i, style }) => <i className={`fas ${i}`} style={style} aria-hidden="true" />;
 
 /* Resolve the hub claim from the ID token (owner/staff fall through to a picker). */
@@ -89,7 +89,7 @@ function HubDenied({ email, onSignOut }) {
         <div style={{ width: 48, height: 48, borderRadius: 14, margin: '0 auto 12px', background: C.red, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}><FA i="fa-ban" /></div>
         <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>Not a hub operator</h1>
         <p style={{ fontSize: 13.5, color: C.fg3, marginTop: 8 }}><b>{email}</b> isn't assigned to a hub. Ask an admin to assign your account to a hub from the admin console.</p>
-        <button onClick={onSignOut} style={{ ...btn('#eef0f4', C.fg1), marginTop: 18 }}>Sign out</button>
+        <button onClick={onSignOut} style={{ ...btn(C.soft, C.fg1), marginTop: 18 }}>Sign out</button>
       </div>
     </div></Shell>
   );
@@ -101,14 +101,15 @@ function HubConsole({ fixedHubId, isStaff, email, onSignOut }) {
   const hub = findHub(hubId);
   const [data, setData] = useState({ orders: [], incoming: 0, atHub: 0, enRoute: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState('');
   const [toast, setToast] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await hubListOrders(fixedHubId ? {} : { hubId });
-      setData(r || { orders: [] });
-    } catch { /* keep last */ } finally { setLoading(false); }
+      setData(r || { orders: [] }); setLoadErr('');
+    } catch (e) { setLoadErr(e?.message || 'Couldn’t load hub orders — will retry.'); } finally { setLoading(false); }
   }, [hubId, fixedHubId]);
 
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
@@ -131,11 +132,12 @@ function HubConsole({ fixedHubId, isStaff, email, onSignOut }) {
             {HUBS.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         )}
-        <button onClick={load} style={{ ...btn('#eef0f4', C.fg1), padding: '9px 14px' }}><FA i="fa-rotate" /> Refresh</button>
-        <button onClick={onSignOut} style={{ ...btn('#eef0f4', C.fg1), padding: '9px 14px' }}><FA i="fa-right-from-bracket" /></button>
+        <button onClick={load} style={{ ...btn(C.soft, C.fg1), padding: '9px 14px' }}><FA i="fa-rotate" /> Refresh</button>
+        <button onClick={onSignOut} style={{ ...btn(C.soft, C.fg1), padding: '9px 14px' }}><FA i="fa-right-from-bracket" /></button>
       </div>
 
       <div style={{ maxWidth: 920, margin: '0 auto', padding: 20 }}>
+        {loadErr && <div style={{ background: C.red + '18', color: C.red, border: `1px solid ${C.red}44`, borderRadius: 12, padding: '12px 14px', marginBottom: 16, fontSize: 13.5, display: 'flex', gap: 9, alignItems: 'center' }}><FA i="fa-triangle-exclamation" /> {loadErr}</div>}
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           <Stat label="En route to you" value={enRoute.length} icon="fa-motorcycle" tint={C.amber} />
           <Stat label="To receive ②" value={incoming.length} icon="fa-inbox" tint={C.pri} />
@@ -236,7 +238,7 @@ function Section({ title, sub, icon, children, empty, emptyText }) {
 }
 
 const lbl = { display: 'block', fontSize: 11.5, fontWeight: 700, color: C.fg3, textTransform: 'uppercase', letterSpacing: .4, marginBottom: 6 };
-const ipt = { width: '100%', padding: '11px 13px', borderRadius: 11, border: `1px solid ${C.border}`, background: '#fff', color: C.fg1, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
-const rowBox = { display: 'flex', alignItems: 'center', gap: 12, padding: 13, borderRadius: 13, border: `1px solid ${C.border}`, background: '#fbfbfd', flexWrap: 'wrap' };
+const ipt = { width: '100%', padding: '11px 13px', borderRadius: 11, border: `1px solid ${C.border}`, background: C.card, color: C.fg1, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+const rowBox = { display: 'flex', alignItems: 'center', gap: 12, padding: 13, borderRadius: 13, border: `1px solid ${C.border}`, background: C.row, flexWrap: 'wrap' };
 const pill = (c) => ({ background: c + '22', color: c, fontSize: 12, fontWeight: 700, padding: '4px 11px', borderRadius: 9999 });
 function btn(bg, fg = '#fff') { return { background: bg, color: fg, border: 'none', borderRadius: 11, padding: '11px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }; }
