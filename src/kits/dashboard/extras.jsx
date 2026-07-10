@@ -18,7 +18,13 @@ import { usePushPrompt } from '../../lib/push.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { Receipt, normalizeReceipt } from '../../components/Receipt.jsx';
 import { coverPath, logoPath } from '../../lib/storage.js';
+import { ScreenCoach } from './ScreenCoach.jsx';
 const { useState: useStateX, useRef: useRefX, useEffect: useEffX } = React;
+
+const WALLET_COACH = [
+  { selector: '[data-coach="wallet-balance"]', title: 'Your earnings', body: 'This is your available balance from sales. Withdraw it straight to M-Pesa whenever you like.' },
+  { selector: '[data-coach="wallet-payout"]', title: 'Set your payout method', body: 'Add where you want to be paid — M-Pesa number, Pochi, Till or Paybill. For your security, changing it later needs a quick staff approval.' },
+];
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
 
@@ -239,10 +245,11 @@ export function Wallet({ toast }){
   const onWithdraw = () => { if (!payout || !payout.method) setModal('setup'); else if (balance < 1) toast && toast('You have no balance to withdraw yet'); else setModal('withdraw'); };
   return (
     <div className="anim-up">
+      <ScreenCoach id="wallet" steps={WALLET_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Wallet</h1>
       <div style={{ display:'grid', gridTemplateColumns:'1.3fr 1fr', gap:20, alignItems:'start' }} className="wallet-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-          <Card style={{ padding:24, color:'#fff', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', position:'relative', overflow:'hidden' }}>
+          <Card style={{ padding:24, color:'#fff', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', position:'relative', overflow:'hidden' }} data-coach="wallet-balance">
             <FA i="fa-wallet" style={{ position:'absolute', right:14, bottom:-10, fontSize:96, color:'rgba(255,255,255,.1)' }} />
             <div style={{ color:'rgba(255,255,255,.78)', fontSize:13 }}>Available payout</div>
             <div style={{ fontSize:40, fontWeight:800, margin:'4px 0' }}>{ksh(balance)}</div>
@@ -251,7 +258,7 @@ export function Wallet({ toast }){
           </Card>
 
           {/* payout method */}
-          <SectionCard title="Payout method" sub="Where your withdrawals are sent">
+          <SectionCard title="Payout method" sub="Where your withdrawals are sent" data-coach="wallet-payout">
             <div style={{ padding:'4px 18px 18px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>

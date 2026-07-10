@@ -7,7 +7,13 @@ import { FA, Card, Btn, SectionCard } from './primitives.jsx';
 import { useMerchant } from './merchant.jsx';
 import { ksh } from './data.js';
 import { setStoreDelivery } from '../../lib/firebase.js';
+import { ScreenCoach } from './ScreenCoach.jsx';
 const { useState, useEffect } = React;
+
+const DELIVERY_COACH = [
+  { selector: '[data-coach="delivery-rules"]', title: 'Set your delivery rules', body: 'Choose whether you offer delivery, a free-delivery threshold, and an optional note. Shoppers see all of this at checkout.' },
+  { selector: '[data-coach="delivery-save"]', title: 'Save to go live', body: 'Save and your rules apply at checkout right away. Above, you can also decide whether paid orders auto-dispatch to a rider or wait for your OK.' },
+];
 
 function Toggle({ on, onChange, disabled }){
   return (
@@ -58,12 +64,13 @@ export function DeliverySettings({ toast }){
   const freeN = Number(freeOver) || 0;
   return (
     <div className="fadeup" style={{ display:'flex', flexDirection:'column', gap:20, maxWidth:640 }}>
+      <ScreenCoach id="delivery" steps={DELIVERY_COACH} />
       <div>
         <h1 className="ym-h1" style={{ marginBottom:6 }}>Delivery rules</h1>
         <p className="ym-sub">How shoppers get their orders — this drives your checkout and how new orders are handled.</p>
       </div>
 
-      <SectionCard title="Delivery" sub="Shown to shoppers at checkout for your store.">
+      <SectionCard title="Delivery" sub="Shown to shoppers at checkout for your store." data-coach="delivery-rules">
         <div style={{ padding:'0 16px 8px' }}>
           <Row title="Offer delivery" sub={offers ? 'Shoppers can choose delivery at checkout.' : 'Store pickup only — delivery is hidden at checkout.'}>
             <Toggle on={offers} onChange={setOffers} />
@@ -96,7 +103,7 @@ export function DeliverySettings({ toast }){
         </div>
       </SectionCard>
 
-      <Btn kind="primary" icon={busy ? 'fa-circle-notch' : 'fa-check'} disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy ? 'Saving…' : 'Save delivery rules'}</Btn>
+      <Btn kind="primary" icon={busy ? 'fa-circle-notch' : 'fa-check'} disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }} data-coach="delivery-save">{busy ? 'Saving…' : 'Save delivery rules'}</Btn>
 
       <div style={{ display:'flex', gap:10, alignItems:'center', color:'var(--m-fg3)', fontSize:12.5 }}>
         <FA i="fa-store" /> Preview: {offers ? <>Delivery on{freeN > 0 ? ` · free over ${ksh(freeN)}` : ''}</> : 'Pickup only'} · {autoDispatch ? 'auto-dispatch' : 'manual decision'}

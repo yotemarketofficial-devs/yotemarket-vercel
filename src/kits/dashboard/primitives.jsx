@@ -9,13 +9,13 @@ export const FA = ({ i, brand=false, style, className='' }) => (
   <i className={`${brand?'fab':'fas'} ${i.startsWith('fa-')?i:'fa-'+i} ${className}`} style={style} aria-hidden="true" />
 );
 
-export const Card = ({ children, className='', style, onClick }) => (
-  <div onClick={onClick} className={`ym-card ${className}`} style={style}>{children}</div>
+export const Card = ({ children, className='', style, onClick, ...rest }) => (
+  <div onClick={onClick} className={`ym-card ${className}`} style={style} {...rest}>{children}</div>
 );
 
-export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, children, onClick, disabled, type='button', className='', style }){
+export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, children, onClick, disabled, type='button', className='', style, ...rest }){
   const cls = `ym-btn ym-btn-${kind} ${size==='sm'?'ym-btn-sm':''} ${className}`;
-  return <button type={type} onClick={onClick} disabled={disabled} className={cls} style={style}>
+  return <button type={type} onClick={onClick} disabled={disabled} className={cls} style={style} {...rest}>
     {icon && <FA i={icon} />}{brandIcon && <FA i={brandIcon} brand />}{children}{iconRight && <FA i={iconRight} />}
   </button>;
 }
@@ -52,9 +52,9 @@ export function Stat({ label, value, delta, up, icon, tone='#7c3aed' }){
   );
 }
 
-export function SectionCard({ title, sub, action, onAction, children }){
+export function SectionCard({ title, sub, action, onAction, children, ...rest }){
   return (
-    <Card style={{ padding:0, overflow:'hidden' }}>
+    <Card style={{ padding:0, overflow:'hidden' }} {...rest}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid var(--m-border)' }}>
         <div><div className="ym-h2" style={{ fontSize:17 }}>{title}</div>{sub && <div className="ym-cap" style={{ marginTop:2 }}>{sub}</div>}</div>
         {action}

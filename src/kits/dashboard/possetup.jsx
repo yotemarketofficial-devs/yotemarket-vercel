@@ -5,7 +5,12 @@ import React from 'react';
 import { FA, Btn, SectionCard } from './primitives.jsx';
 import { useMerchant } from './merchant.jsx';
 import { listPosDevices, removePosDevice } from '../../lib/firebase.js';
+import { ScreenCoach } from './ScreenCoach.jsx';
 const { useState, useEffect } = React;
+
+const POS_COACH = [
+  { selector: '[data-coach="pos-open"]', title: 'Sell in person', body: 'Open the register in a new tab to ring up in-store sales and print receipts. The first device you authorize becomes a locked till, sharing the same products and stock as your online store.' },
+];
 
 export function PosSetup({ toast }){
   const { role } = useMerchant();
@@ -19,6 +24,7 @@ export function PosSetup({ toast }){
   };
   return (
     <div className="fadeup" style={{ display:'flex', flexDirection:'column', gap:20, maxWidth:680 }}>
+      <ScreenCoach id="pos" steps={POS_COACH} />
       <div>
         <h1 className="ym-h1" style={{ marginBottom:6 }}>Point of sale</h1>
         <p className="ym-sub">The register runs full-screen as its own app. Open it here, and (as the owner) control which devices are allowed to sell.</p>
@@ -26,7 +32,7 @@ export function PosSetup({ toast }){
 
       <SectionCard title="Open the register" sub="Runs full-screen — cashiers can bookmark it on the till.">
         <div style={{ padding:16, display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
-          <Btn kind="primary" icon="fa-store" onClick={() => window.open('/pos', '_blank')}>Open POS terminal</Btn>
+          <Btn kind="primary" icon="fa-store" onClick={() => window.open('/pos', '_blank')} data-coach="pos-open">Open POS terminal</Btn>
           <span className="ym-cap">Opens <b>/pos</b> in a new tab.</span>
         </div>
       </SectionCard>

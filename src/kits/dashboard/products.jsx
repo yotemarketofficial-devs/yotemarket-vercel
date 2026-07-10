@@ -7,7 +7,13 @@ import ImageUpload from '../../components/ImageUpload.jsx';
 import { productImagePath } from '../../lib/storage.js';
 import { saveProduct } from '../../lib/firebase.js';
 import { CATEGORY_TREE } from '../storefront/categories.js';
+import { ScreenCoach } from './ScreenCoach.jsx';
 const { useState: useStateP } = React;
+
+const PRODUCTS_COACH = [
+  { selector: '[data-coach="products-add"]', title: 'Add your products', body: 'Tap here to list an item — photo, price and stock. Each one gets an automatic SKU and appears on your storefront the moment you publish.' },
+  { selector: '[data-coach="products-list"]', title: 'Manage your catalogue', body: 'Everything you sell lives here. Search by name or SKU, filter by status, and update price or stock anytime.' },
+];
 
 export function Products({ onAdd, toast }){
   const [filter, setFilter] = useStateP('all');
@@ -20,9 +26,10 @@ export function Products({ onAdd, toast }){
   const rows = all.filter(p=>(filter==='all'||p.status===filter||(filter==='out'&&p.stock===0))&&(search===''||p.name.toLowerCase().includes(search.toLowerCase())||(p.sku||'').toLowerCase().includes(search.toLowerCase())));
   return (
     <div className="anim-up">
+      <ScreenCoach id="products" steps={PRODUCTS_COACH} />
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:14, marginBottom:20 }}>
         <div><h1 className="ym-h1">My Products</h1><p className="ym-sub" style={{ marginTop:4 }}>{total} product{total!==1?'s':''}{out?` · ${out} out of stock`:''}</p></div>
-        <Btn kind="primary" icon="fa-plus" onClick={onAdd}>Add product</Btn>
+        <Btn kind="primary" icon="fa-plus" onClick={onAdd} data-coach="products-add">Add product</Btn>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:16, marginBottom:20 }}>
         <Stat label="Total" value={String(total)} icon="fa-box" tone="#7c3aed" />
@@ -30,7 +37,7 @@ export function Products({ onAdd, toast }){
         <Stat label="Inactive" value={String(total-active)} icon="fa-eye-slash" tone="#f59e0b" />
         <Stat label="Out of stock" value={String(out)} icon="fa-triangle-exclamation" tone="#ef4444" />
       </div>
-      <Card style={{ padding:0, overflow:'hidden' }}>
+      <Card style={{ padding:0, overflow:'hidden' }} data-coach="products-list">
         <div style={{ padding:'16px 18px', borderBottom:'1px solid var(--m-border)', display:'flex', gap:12, flexWrap:'wrap', alignItems:'center' }}>
           <div style={{ position:'relative', flex:1, minWidth:220, maxWidth:380 }}>
             <FA i="fa-magnifying-glass" style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:'var(--m-fg4)' }} />
