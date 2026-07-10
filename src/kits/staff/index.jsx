@@ -16,6 +16,7 @@ import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
+import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests } from './service.js';
 const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
@@ -133,35 +134,6 @@ function SectionNav({ workspace, active, go, onClose }) {
   );
 }
 
-/* Quick-jump command palette — filters every section across workspaces. */
-function QuickSearch({ items, go }) {
-  const [q, setQ] = useSApp('');
-  const [open, setOpen] = useSApp(false);
-  const ql = q.trim().toLowerCase();
-  const matches = ql ? items.filter((n) => n.label.toLowerCase().includes(ql) || n.wsLabel.toLowerCase().includes(ql) || (n.desc || '').toLowerCase().includes(ql)) : [];
-  const pick = (key) => { go(key); setQ(''); setOpen(false); };
-  return (
-    <div className="relative hidden md:block" style={{ width: 250 }}>
-      <Icon name="magnifying-glass" className="absolute left-3 top-1/2 -translate-y-1/2 t3 text-sm" style={{ pointerEvents:'none' }} />
-      <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { pick(matches[0].key); } else if (e.key === 'Escape') { setOpen(false); e.currentTarget.blur(); } }}
-        className="ym-input pl-9 py-2 text-sm" style={{ width:'100%' }} placeholder="Jump to…  (⌘K)" aria-label="Search sections" />
-      {open && ql && (
-        <div className="absolute left-0 right-0 mt-1.5 rounded-xl overflow-hidden z-50" style={{ background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
-          {matches.length ? matches.slice(0, 8).map((n) => (
-            <button key={n.key} onMouseDown={() => pick(n.key)} className="staff-pop-item flex items-center gap-3 w-full px-3.5 py-2.5 text-sm text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
-              <Icon name={n.icon} className="w-4 text-center t3" />
-              <span className="flex-1 t1 font-semibold">{n.label}</span>
-              <span className="text-[11px] t3">{n.wsLabel}</span>
-            </button>
-          )) : <div className="px-3.5 py-3 text-sm t3">No section matches “{q}”.</div>}
-        </div>
-      )}
-      <style>{`.staff-pop-item:hover{ background:var(--surface2); }`}</style>
-    </div>
-  );
-}
-
 /* Notifications bell — real pending counts across the staff queues; click to jump. */
 function NotificationsBell({ go }) {
   const [items, setItems] = useSApp([]);
@@ -213,9 +185,16 @@ function App() {
   const isAdmin = role === 'admin';
   const [active, setActive] = useSApp('command');
   const [menu, setMenu] = useSApp(false);
+  const [palette, setPalette] = useSApp(false);
 
   const wsList = useMApp(() => visibleWorkspaces(isAdmin), [isAdmin]);
   const searchItems = useMApp(() => wsList.flatMap((w) => w.sections.map((s) => ({ ...s, wsLabel: w.label }))), [wsList]);
+
+  useEApp(() => {
+    const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(true); } };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
 
   if (loading) return <StaffSplash />;
   if (!user) return <StaffLogin />;
@@ -277,7 +256,12 @@ function App() {
               <span className="hidden xl:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold" style={{ background:'var(--surface2)', color:'var(--t3)' }} title="Internal staff & admins only — not visible to merchants, riders, marketers or shoppers."><Icon name="lock" className="text-[10px]" /> Confidential · Internal</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <QuickSearch items={searchItems} go={setActive} />
+              <button onClick={() => setPalette(true)} className="hidden md:flex items-center gap-2 px-3 h-9 rounded-lg text-sm t3" style={{ background:'var(--surface2)', border:'1px solid var(--line)', width:250 }} aria-label="Search">
+                <Icon name="magnifying-glass" className="text-sm" />
+                <span className="flex-1 text-left">Search everything…</span>
+                <kbd className="text-[11px] px-1.5 py-0.5 rounded num" style={{ background:'var(--surface)', border:'1px solid var(--line)' }}>⌘K</kbd>
+              </button>
+              <button onClick={() => setPalette(true)} className="md:hidden w-9 h-9 rounded-full flex items-center justify-center t2" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }} aria-label="Search"><Icon name="magnifying-glass" /></button>
               <NotificationsBell go={setActive} />
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
@@ -296,6 +280,7 @@ function App() {
           </footer>
         </div>
       </div>
+      <GlobalSearch open={palette} onClose={() => setPalette(false)} sections={searchItems} go={setActive} isAdmin={isAdmin} />
     </div>
   );
 }

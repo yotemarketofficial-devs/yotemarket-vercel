@@ -89,7 +89,7 @@ function AuditField({ k, v }){
     </div>
   );
 }
-function RecordAudit({ title, subtitle, record, onClose, hide = [] }){
+export function RecordAudit({ title, subtitle, record, onClose, hide = [] }){
   const skip = new Set(['_busy', 'photo', 'avatar', ...hide]);
   const entries = Object.entries(record || {}).filter(([k]) => !skip.has(k));
   return (
