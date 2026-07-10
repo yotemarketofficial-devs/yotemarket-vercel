@@ -12,7 +12,7 @@ import { People, Finance, Legal } from './departments.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows } from './service.js';
+import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests } from './service.js';
 const { useState: useSApp, useEffect: useEApp } = React;
 
 const NAV = [
@@ -113,14 +113,16 @@ function NotificationsBell({ go }){
   const [open, setOpen] = useSApp(false);
   useEApp(() => {
     let alive = true;
-    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows()]).then(res => {
+    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests()]).then(res => {
       if (!alive) return;
-      const [reports, reviews, payouts, follows] = res.map(r => (r.status==='fulfilled' && Array.isArray(r.value)) ? r.value : []);
+      const [reports, reviews, payouts, follows, closures] = res.map(r => (r.status==='fulfilled' && Array.isArray(r.value)) ? r.value : []);
+      const pendingClosures = closures.filter(c=>c.status==='pending');
       setItems([
         reports.length && { key:'moderation', icon:'comment-slash', label:'Chat reports', count:reports.length },
         reviews.length && { key:'reviews', icon:'star-half-stroke', label:'Review reports', count:reviews.length },
         payouts.length && { key:'scouts', icon:'wallet', label:'Scout payouts', count:payouts.length },
         follows.length && { key:'scouts', icon:'user-check', label:'Follow proofs', count:follows.length },
+        pendingClosures.length && { key:'approvals', icon:'store-slash', label:'Store closures', count:pendingClosures.length },
       ].filter(Boolean));
     });
     return () => { alive = false; };

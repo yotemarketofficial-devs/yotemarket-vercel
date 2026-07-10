@@ -249,6 +249,28 @@ export const staffListReviewReports = callable('staffListReviewReports');
 export const staffRemoveReview = callable('staffRemoveReview');
 /** Buyer or selling merchant: cancel an order (auto-refunds paid orders to wallet) → { ok, cancelledBy, refunded }. { orderId, reason? }. */
 export const cancelOrder = callable('cancelOrder');
+/** Buyer: remove a completed/cancelled order from your list (kept for records) → { ok }. { orderId }. */
+export const dismissOrder = callable('dismissOrder');
+/** Merchant: remove a failed withdrawal from your payouts list → { ok }. { settlementId }. */
+export const dismissSettlement = callable('dismissSettlement');
+/** Self-serve: permanently close your account (shopper only; merchants file a request) → { ok }. */
+export const deleteMyAccount = callable('deleteMyAccount');
+/** Store owner: request closure of your store → staff review → { ok, status }. { reason? }. */
+export const requestAccountDeletion = callable('requestAccountDeletion');
+/** Staff: list store-closure requests → { requests }. */
+export const staffListDeletionRequests = callable('staffListDeletionRequests');
+/** Staff/admin: approve or reject a store-closure request → { ok, status }. { id, approve, note? }. */
+export const staffResolveDeletionRequest = callable('staffResolveDeletionRequest');
+
+// ── Store profile, socials & followers (owner-editable) ─────────────────────
+/** Store owner/manager: edit shop name/area/tagline/address/phone → { ok, storeId }. */
+export const updateStoreProfile = callable('updateStoreProfile');
+/** Store owner/manager: set social links → { ok, socials }. { instagram?, facebook?, tiktok?, x?, youtube?, whatsapp?, website? }. */
+export const setStoreSocials = callable('setStoreSocials');
+/** Store owner/manager: list the store's followers → { ok, count, followers:[{uid,name,photoUrl,followedAt}] }. */
+export const listStoreFollowers = callable('listStoreFollowers');
+/** Staff: reconcile every store's follower count from the follow records → { ok, stores, followers }. */
+export const backfillFollowerCounts = callable('backfillFollowerCounts');
 
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */

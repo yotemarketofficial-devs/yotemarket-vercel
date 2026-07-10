@@ -9,7 +9,7 @@ import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
-import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, fmtTime, fmtWhen,
@@ -215,6 +215,7 @@ export function Wallet({ toast }){
   const [pendingChange, setPendingChange] = useStateX(false);
   const [modal, setModal] = useStateX(null); // 'setup' | 'change' | 'withdraw'
   const [rcpt, setRcpt] = useStateX(null);   // open receipt detail
+  const [dismissing, setDismissing] = useStateX(null); // settlement id being removed
   useEffX(() => {
     if (!firebaseEnabled || !db || !user?.uid) return undefined;
     const u = onSnapshot(query(collection(db, 'receipts'), where('userId', '==', user.uid), limit(40)),
@@ -227,6 +228,7 @@ export function Wallet({ toast }){
       (s) => setPendingChange(!s.empty), () => {});
     return () => { u(); us(); uc(); };
   }, [user?.uid]);
+  const visibleSettlements = settlements.filter((s) => !s.merchantHidden);
   const balance = live ? (merchant?.balanceAvailable || 0) : 0;
   const processing = live ? (merchant?.balanceProcessing || 0) : 0;
   const payout = merchant?.payout || null;
@@ -266,12 +268,17 @@ export function Wallet({ toast }){
           {/* withdrawals history */}
           <SectionCard title="Withdrawals" sub="Your M-Pesa payouts">
             <div>
-              {settlements.length === 0 && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No withdrawals yet.</div>}
-              {settlements.map((s,i)=>(
+              {visibleSettlements.length === 0 && <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>No withdrawals yet.</div>}
+              {visibleSettlements.map((s,i)=>(
                 <div key={s.id||i} style={{ display:'flex', alignItems:'center', gap:13, padding:'13px 18px', borderTop:i?'1px solid var(--m-border)':'none' }}>
                   <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface-2)', color:'var(--m-fg3)' }}><FA i="fa-money-bill-transfer" /></div>
                   <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14 }}>{ksh(s.amount||0)}</div><div className="ym-cap">{payoutLabel(s.payout)}{s.receipt?` · ${s.receipt}`:''}{s.status==='failed'&&(s.resultDesc||s.reason)?` · ${s.resultDesc||s.reason}`:''}</div></div>
                   <Pill tone={SETTLE_TONE[s.status]||'pending'}>{SETTLE_LBL[s.status]||s.status}</Pill>
+                  {s.status==='failed' && (
+                    <button title="Remove" aria-label="Remove failed withdrawal" disabled={dismissing===s.id}
+                      onClick={()=>{ setDismissing(s.id); dismissSettlement({ settlementId:s.id }).then(()=>toast&&toast('Removed')).catch((e)=>toast&&toast(e?.message||'Could not remove')).finally(()=>setDismissing(null)); }}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', padding:6, flexShrink:0 }}><FA i="fa-xmark" /></button>
+                  )}
                 </div>
               ))}
             </div>
@@ -492,13 +499,14 @@ export function Settings({ toast }){
     <div className="anim-up">
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Settings</h1>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="set-grid">
-        <SectionCard title="Shop profile">
-          <StoreBranding toast={toast} />
-          <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16 }}>
-            <F label="Shop name" v={shop.name} /><F label="Owner" v={shop.owner} /><F label="Area" v={shop.area} last />
-            <div className="ym-cap" style={{ color:'var(--m-fg3)' }}>Update your logo &amp; cover photo above. To change your shop name or area, contact support.</div>
-          </div>
-        </SectionCard>
+        <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+          <SectionCard title="Shop profile">
+            <StoreBranding toast={toast} />
+            <ShopProfileForm shop={shop} toast={toast} />
+          </SectionCard>
+          <StoreSocialsForm shop={shop} toast={toast} />
+          <FollowersCard toast={toast} />
+        </div>
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           <TaxSettings toast={toast} />
           <StorePickupLocation toast={toast} />
@@ -513,14 +521,168 @@ export function Settings({ toast }){
               <Row label="Promotions" sub="YoteMarket tips & offers" last><Toggle on={n.promos} onClick={()=>tg('promos')} /></Row>
             </div>
           </SectionCard>
+          <CloseStoreCard shop={shop} toast={toast} />
         </div>
       </div>
       <style>{`@media (max-width:820px){ .set-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
   );
 }
+
+/* Danger zone — a merchant requests store closure; STAFF must approve it. Shows
+   the pending/approved/rejected state live from deletion_requests/{storeId}. */
+function CloseStoreCard({ shop, toast }){
+  const [req, setReq] = useStateX(null);   // { status } | null
+  const [confirm, setConfirm] = useStateX(false);
+  const [reason, setReason] = useStateX('');
+  const [busy, setBusy] = useStateX(false);
+  useEffX(() => {
+    if (!firebaseEnabled || !db || !shop.shopId) return undefined;
+    return onSnapshot(doc(db, 'deletion_requests', shop.shopId),
+      (s) => setReq(s.exists() ? s.data() : null), () => {});
+  }, [shop.shopId]);
+  const pending = req && req.status === 'pending';
+  const submit = () => {
+    setBusy(true);
+    requestAccountDeletion({ reason: reason.trim() })
+      .then(()=>{ toast && toast('Closure request sent for review','fa-check'); setConfirm(false); })
+      .catch((e)=>toast && toast(e?.message||'Could not send request'))
+      .finally(()=>setBusy(false));
+  };
+  return (
+    <SectionCard title="Close store">
+      <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14 }}>
+        {pending ? (
+          <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+            <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-warning, #d97706)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-hourglass-half" /></div>
+            <div><div className="ym-h3" style={{ fontSize:14 }}>Closure request under review</div><div className="ym-cap">Our team is reviewing your request. Your store stays live until it's approved.</div></div>
+          </div>
+        ) : req && req.status === 'rejected' ? (
+          <>
+            <div className="ym-cap" style={{ color:'var(--m-fg2)' }}>Your last closure request was declined{req.resolution?`: ${req.resolution}`:'.'} You can request again below.</div>
+            <Btn kind="ghost" icon="fa-store-slash" onClick={()=>setConfirm(true)} style={{ alignSelf:'flex-start', color:'var(--m-danger,#dc2626)' }}>Request store closure</Btn>
+          </>
+        ) : (
+          <>
+            <div className="ym-cap" style={{ color:'var(--m-fg2)', lineHeight:1.5 }}>Closing removes your store from the marketplace and ends your subscription. Because orders, payouts and employees are involved, closure needs <b>staff approval</b>.</div>
+            <Btn kind="ghost" icon="fa-store-slash" onClick={()=>setConfirm(true)} style={{ alignSelf:'flex-start', color:'var(--m-danger,#dc2626)' }}>Request store closure</Btn>
+          </>
+        )}
+      </div>
+      {confirm && (
+        <Sheet title="Request store closure" onClose={()=>!busy&&setConfirm(false)}>
+          <p className="ym-sub" style={{ marginBottom:14 }}>This sends a request to our team. Once approved, your store is removed from the marketplace and your subscription ends. This can’t be undone.</p>
+          <label className="ym-label">Reason (optional)</label>
+          <textarea className="ipt" value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} rows={3} placeholder="Tell us why you're closing (helps us improve)" style={{ resize:'vertical', minHeight:76, paddingTop:10 }} />
+          <div style={{ display:'flex', gap:10, marginTop:18 }}>
+            <Btn kind="ghost" onClick={()=>setConfirm(false)} disabled={busy} style={{ flex:1 }}>Cancel</Btn>
+            <Btn kind="primary" onClick={submit} disabled={busy} style={{ flex:1, background:'var(--m-danger,#dc2626)' }}>{busy?'Sending…':'Send request'}</Btn>
+          </div>
+        </Sheet>
+      )}
+    </SectionCard>
+  );
+}
 function F({ label, v }){ return <div><label className="ym-label">{label}</label><div className="ipt" style={{ display:'flex', alignItems:'center', minHeight:44, color:'var(--m-fg1)' }}>{v || '—'}</div></div>; }
 function Row({ label, sub, children, last }){ return <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:14, padding:'12px 0', borderBottom:last?'none':'1px solid var(--m-border)' }}><div><div className="ym-h3" style={{ fontSize:14 }}>{label}</div><div className="ym-cap">{sub}</div></div>{children}</div>; }
+
+/* Editable shop name / area / tagline → updateStoreProfile callable. */
+function ShopProfileForm({ shop, toast }){
+  const [name, setName] = useStateX(shop.name || '');
+  const [area, setArea] = useStateX(shop.area || '');
+  const [tagline, setTagline] = useStateX(shop.tagline || '');
+  const [busy, setBusy] = useStateX(false);
+  useEffX(()=>{ setName(shop.name||''); setArea(shop.area||''); setTagline(shop.tagline||''); }, [shop.shopId, shop.name, shop.area, shop.tagline]);
+  const dirty = name.trim() !== (shop.name||'').trim() || area.trim() !== (shop.area||'').trim() || tagline.trim() !== (shop.tagline||'').trim();
+  const save = () => {
+    if (name.trim().length < 2) { toast && toast('Enter a shop name'); return; }
+    setBusy(true);
+    updateStoreProfile({ name:name.trim(), area:area.trim(), tagline:tagline.trim() })
+      .then(()=>toast&&toast('Shop profile updated','fa-check'))
+      .catch((e)=>toast&&toast(e?.message||'Could not update'))
+      .finally(()=>setBusy(false));
+  };
+  return (
+    <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16 }}>
+      <div><label className="ym-label">Shop name</label><input className="ipt" value={name} onChange={e=>setName(e.target.value)} maxLength={80} placeholder="Your shop name" /></div>
+      <div><label className="ym-label">Owner</label><div className="ipt" style={{ display:'flex', alignItems:'center', minHeight:44, color:'var(--m-fg3)' }}>{shop.owner || '—'}</div></div>
+      <div><label className="ym-label">Area / town</label><input className="ipt" value={area} onChange={e=>setArea(e.target.value)} maxLength={80} placeholder="e.g. Westlands, Nairobi" /></div>
+      <div><label className="ym-label">Tagline</label><input className="ipt" value={tagline} onChange={e=>setTagline(e.target.value)} maxLength={160} placeholder="A short line shoppers see on your store" /></div>
+      <Btn kind="primary" icon="fa-check" disabled={busy || !dirty} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save changes'}</Btn>
+    </div>
+  );
+}
+
+const SOCIAL_FIELDS = [
+  { k:'instagram', label:'Instagram', icon:'fa-instagram', ph:'@handle or link' },
+  { k:'facebook',  label:'Facebook',  icon:'fa-facebook',  ph:'Page name or link' },
+  { k:'tiktok',    label:'TikTok',    icon:'fa-tiktok',    ph:'@handle or link' },
+  { k:'x',         label:'X',         icon:'fa-x-twitter', ph:'@handle or link' },
+  { k:'whatsapp',  label:'WhatsApp',  icon:'fa-whatsapp',  ph:'2547XXXXXXXX' },
+  { k:'website',   label:'Website',   icon:'fa-globe',     ph:'yourshop.co.ke' },
+];
+/* Social links shown on the public store page → setStoreSocials callable. */
+function StoreSocialsForm({ shop, toast }){
+  const init = () => { const o = {}; SOCIAL_FIELDS.forEach(f => o[f.k] = (shop.socials && shop.socials[f.k]) || ''); return o; };
+  const [vals, setVals] = useStateX(init);
+  const [busy, setBusy] = useStateX(false);
+  useEffX(()=>{ setVals(init()); /* eslint-disable-next-line */ }, [shop.shopId, shop.socials]);
+  const save = () => {
+    setBusy(true);
+    setStoreSocials(vals)
+      .then(()=>toast&&toast('Social links saved','fa-check'))
+      .catch((e)=>toast&&toast(e?.message||'Could not save'))
+      .finally(()=>setBusy(false));
+  };
+  return (
+    <SectionCard title="Social links" sub="Shown on your public store page">
+      <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14 }}>
+        {SOCIAL_FIELDS.map(f=>(
+          <div key={f.k}>
+            <label className="ym-label"><FA i={f.icon} brand={f.k!=='website'} style={{ width:16, marginRight:6, color:'var(--m-fg3)' }} />{f.label}</label>
+            <input className="ipt" value={vals[f.k]||''} onChange={e=>setVals(v=>({ ...v, [f.k]:e.target.value }))} maxLength={200} placeholder={f.ph} />
+          </div>
+        ))}
+        <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save links'}</Btn>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* Who follows this store → listStoreFollowers callable (loaded on demand). */
+function FollowersCard({ toast }){
+  const [open, setOpen] = useStateX(false);
+  const [state, setState] = useStateX({ loading:false, loaded:false, list:[], count:0 });
+  const load = () => {
+    setState(s=>({ ...s, loading:true }));
+    listStoreFollowers({})
+      .then((r)=>{ const d = r?.data || r || {}; setState({ loading:false, loaded:true, list:d.followers||[], count:d.count||0 }); })
+      .catch((e)=>{ setState({ loading:false, loaded:true, list:[], count:0 }); toast&&toast(e?.message||'Could not load followers'); });
+  };
+  const toggle = () => { const nx = !open; setOpen(nx); if (nx && !state.loaded && !state.loading) load(); };
+  return (
+    <SectionCard title="Followers" sub="Shoppers who follow your store">
+      <div style={{ padding:'8px 20px 18px' }}>
+        <button onClick={toggle} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', gap:12, background:'none', border:'none', cursor:'pointer', padding:'8px 0', fontFamily:'inherit' }}>
+          <span style={{ display:'flex', alignItems:'center', gap:10 }}><FA i="fa-heart" style={{ color:'var(--m-primary)' }} /><span className="ym-h3" style={{ fontSize:14 }}>{state.loaded ? `${state.count} follower${state.count===1?'':'s'}` : 'View followers'}</span></span>
+          <FA i={open?'fa-chevron-up':'fa-chevron-down'} style={{ color:'var(--m-fg3)', fontSize:12 }} />
+        </button>
+        {open && (
+          <div style={{ marginTop:10 }}>
+            {state.loading && <div className="ym-cap" style={{ padding:'12px 0' }}>Loading…</div>}
+            {!state.loading && state.loaded && state.list.length===0 && <div className="ym-cap" style={{ padding:'12px 0' }}>No followers yet. Share your store link to grow your following.</div>}
+            {!state.loading && state.list.map((f)=>(
+              <div key={f.uid} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop:'1px solid var(--m-border)' }}>
+                <Avatar name={f.name} src={f.photoUrl} size={34} />
+                <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:13.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name||'Shopper'}</div>{f.followedAt && <div className="ym-cap">{new Date(f.followedAt).toLocaleDateString('en-KE',{ day:'numeric', month:'short', year:'numeric' })}</div>}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </SectionCard>
+  );
+}
 
 /* Dismissible opt-in to browser push (only shows when permission is unanswered). */
 function MerchantNotifyBanner({ user }){

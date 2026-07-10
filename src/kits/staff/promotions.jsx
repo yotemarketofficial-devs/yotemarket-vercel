@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
+import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, backfillFollowerCounts, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, PLAN_ORDER } from '../dashboard/pricing.js';
 const SOFTWARE_PLANS = ['Entry', 'Growth', 'Pro'];
 const { useState, useEffect, useCallback } = React;
@@ -19,6 +19,7 @@ export function Promotions(){
   const [logoFilling, setLogoFilling] = useState(false);
   const [pointsFilling, setPointsFilling] = useState(false);
   const [ordersFilling, setOrdersFilling] = useState(false);
+  const [followersFilling, setFollowersFilling] = useState(false);
   const [credit, setCredit] = useState({ email:'', amount:'500' });
   const [crediting, setCrediting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
@@ -78,6 +79,11 @@ export function Promotions(){
     setOrdersFilling(true); setMsg(null);
     try { const r = await backfillOrders(); setMsg({ ok:true, text:`Orders updated — ${r.numbered} numbered, ${r.named} customer name(s) filled in.` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Order backfill failed.' }); } finally { setOrdersFilling(false); }
+  };
+  const fillFollowers = async () => {
+    setFollowersFilling(true); setMsg(null);
+    try { const r = await backfillFollowerCounts(); setMsg({ ok:true, text:`Follower counts reconciled — ${r.stores} store(s), ${r.followers} follower record(s).` }); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Follower backfill failed.' }); } finally { setFollowersFilling(false); }
   };
   const creditBalance = async () => {
     setCrediting(true); setMsg(null);
@@ -174,6 +180,12 @@ export function Promotions(){
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--blue-bg)', color:'var(--blue)' }}><Icon name="bag-shopping" /></div><h3 className="font-bold t1">Order details</h3></div>
           <p className="text-sm t3">Fill the store-scoped order number and the customer's real name onto existing orders so they show in the merchant sales lists. Idempotent — only touches orders missing them.</p>
           <Btn kind="primary" size="md" icon={ordersFilling ? 'spinner' : 'bag-shopping'} onClick={fillOrders} disabled={ordersFilling}>{ordersFilling ? 'Updating…' : 'Backfill order details'}</Btn>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="heart" /></div><h3 className="font-bold t1">Follower counts</h3></div>
+          <p className="text-sm t3">Reconcile every store's follower count from the actual follow records and rebuild the merchant-visible follower list. Run once after shipping followers; safe to re-run (authoritative recount).</p>
+          <Btn kind="primary" size="md" icon={followersFilling ? 'spinner' : 'heart'} onClick={fillFollowers} disabled={followersFilling}>{followersFilling ? 'Reconciling…' : 'Backfill follower counts'}</Btn>
         </Card>
 
         <Card className="p-6 space-y-3">

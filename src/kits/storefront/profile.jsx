@@ -9,7 +9,7 @@ import { ymStore, ymProduct, ymPrice } from './data.js';
 import { Receipt, normalizeReceipt } from '../../components/Receipt.jsx';
 import { findHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints } from '../../lib/firebase.js';
+import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints, deleteMyAccount } from '../../lib/firebase.js';
 import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, updateAvatar, subscribeFollows, unfollowStore } from '../../lib/account.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { avatarPath } from '../../lib/storage.js';
@@ -67,7 +67,7 @@ const STATUS_LABEL = { placed:'Order placed', queued:'Finding a rider', accepted
 
 export function ProfileScreen({ params }){
   const { nav, reset, theme, setTheme, toast, account, liveOrders } = useYM();
-  const { user } = useAuth();
+  const { user, signOutUser } = useAuth();
   const uid = user?.uid;
   const prof = useProfileData(uid);
   const [notif, setNotif] = useSP({ orders:true, deliveries:true, promos:false, chat:true });
@@ -77,6 +77,7 @@ export function ProfileScreen({ params }){
   const [topupOpen, setTopupOpen] = useSP(false);
   const [redeemOpen, setRedeemOpen] = useSP(false);
   const [receiptOpen, setReceiptOpen] = useSP(null); // selected receipt or null
+  const [delOpen, setDelOpen] = useSP(false);        // close-account confirmation
   const tg = k => setNotif(n=>({ ...n, [k]:!n[k] }));
 
   // Deep-link from the footer "My wallet" link → scroll to the wallet card.
@@ -283,6 +284,7 @@ export function ProfileScreen({ params }){
             <Setting label="Chat messages" sub="Seller replies"><Toggle on={notif.chat} onClick={()=>tg('chat')} /></Setting>
             <Setting label="Promotions" sub="Deals & new arrivals" last><Toggle on={notif.promos} onClick={()=>tg('promos')} /></Setting>
             <button className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:16, color:'var(--m-inactive-fg)' }} onClick={()=>reset('auth')}><FA i="fa-arrow-right-from-bracket" /> Sign out</button>
+            <button style={{ width:'100%', marginTop:10, background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, color:'var(--m-danger, #dc2626)', padding:'8px 0' }} onClick={()=>setDelOpen(true)}><FA i="fa-user-slash" style={{ fontSize:12, marginRight:6 }} />Close my account</button>
           </Card>
         </div>
       </div>
@@ -293,6 +295,7 @@ export function ProfileScreen({ params }){
       {topupOpen && <WalletTopUp defaultPhone={phone} holderName={fullName} onClose={()=>setTopupOpen(false)} toast={toast} />}
       {redeemOpen && <RedeemPoints points={prof.points} onClose={()=>setRedeemOpen(false)} toast={toast} />}
       {receiptOpen && <ReceiptDetail r={receiptOpen} account={account} onClose={()=>setReceiptOpen(null)} />}
+      {delOpen && <DeleteAccountModal onClose={()=>setDelOpen(false)} onDone={signOutUser} toast={toast} />}
 
       <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
@@ -300,6 +303,46 @@ export function ProfileScreen({ params }){
 }
 
 const linkBtn = { border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, color:'var(--m-link)', padding:0 };
+
+/* Permanent account closure with a typed confirmation → deleteMyAccount callable.
+   The callable guards merchants/staff (support-only) and shoppers with wallet
+   balance or an in-progress order, surfacing that reason here. */
+function DeleteAccountModal({ onClose, onDone, toast }){
+  const [confirm, setConfirm] = useSP('');
+  const [busy, setBusy] = useSP(false);
+  const [err, setErr] = useSP('');
+  const ok = confirm.trim().toUpperCase() === 'CLOSE';
+  const go = async () => {
+    if (!ok || busy) return;
+    setBusy(true); setErr('');
+    try {
+      await deleteMyAccount({});
+      toast && toast('Your account has been closed','fa-check');
+      onClose();
+      if (onDone) await onDone();
+    } catch (e) {
+      setErr(e?.message || 'Could not close your account. Please try again.');
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title="Close your account" onClose={busy?undefined:onClose}>
+      <div style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'2px 0 12px' }}>
+        <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, background:'rgba(220,38,38,.12)', color:'var(--m-danger,#dc2626)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-triangle-exclamation" /></div>
+        <div className="ym-sub" style={{ fontSize:13.5, lineHeight:1.5 }}>This permanently deletes your profile, saved addresses, followed stores and wallet history. <b>This can’t be undone.</b> Make sure your wallet is empty and no order is in progress.</div>
+      </div>
+      {err && <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(220,38,38,.1)', color:'var(--m-danger,#dc2626)', fontSize:13, marginBottom:12 }}>{err}</div>}
+      <label className="ym-label">Type <b>CLOSE</b> to confirm</label>
+      <input className="ym-input" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="CLOSE" autoCapitalize="characters" />
+      <div style={{ display:'flex', gap:10, marginTop:20 }}>
+        <button className="ym-btn ym-btn-ghost" style={{ flex:1 }} disabled={busy} onClick={onClose}>Keep my account</button>
+        <button className="ym-btn" style={{ flex:1, background:'var(--m-danger,#dc2626)', color:'#fff', opacity:ok&&!busy?1:.5, cursor:ok&&!busy?'pointer':'not-allowed' }} disabled={!ok||busy} onClick={go}>
+          {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Closing…</> : 'Close account'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
 
 /* Edit name, phone and default pickup hub → users/{uid}. */
 function ProfileEditor({ uid, initial, onClose, toast }){

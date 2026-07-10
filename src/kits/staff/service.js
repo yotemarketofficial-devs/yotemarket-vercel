@@ -213,5 +213,16 @@ export async function snapshotScoutFloors() {
   return call('staffSnapshotScoutFloors')();
 }
 
+// ── Store-closure requests (merchant asks to close → staff approve/reject) ─────
+/** All store-closure requests (pending first in the UI). */
+export async function fetchDeletionRequests() {
+  const d = await call('staffListDeletionRequests')();
+  return Array.isArray(d?.requests) ? d.requests : [];
+}
+/** Approve (closes the store + merchant account) or reject a closure request. */
+export async function resolveDeletionRequest(id, approve, note = '') {
+  return call('staffResolveDeletionRequest')({ id, approve, note });
+}
+
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };

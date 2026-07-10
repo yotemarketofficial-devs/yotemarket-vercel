@@ -644,6 +644,7 @@ export function StoreScreen({ params }){
             </div>
           ))}
         </div>
+        <StoreSocials socials={s.socials} />
         <StoreClipsRail storeId={s.id} storeName={s.name} />
         <SectionTitle>{prods.length} product{prods.length!==1?'s':''}</SectionTitle>
         {cats.length>2 && (
@@ -661,3 +662,40 @@ export function StoreScreen({ params }){
   );
 }
 function fmtK(n){ return n>=1000?(n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+'k':String(n); }
+
+// Store social links → { icon, brand, url }. Handles are normalised to full links;
+// full URLs are passed through. Empty/blank platforms are skipped.
+const SOCIAL_META = {
+  instagram: { icon:'fa-instagram', brand:true,  base:'https://instagram.com/', at:true },
+  facebook:  { icon:'fa-facebook',  brand:true,  base:'https://facebook.com/' },
+  tiktok:    { icon:'fa-tiktok',    brand:true,  base:'https://tiktok.com/@', at:true },
+  x:         { icon:'fa-x-twitter', brand:true,  base:'https://x.com/', at:true },
+  youtube:   { icon:'fa-youtube',   brand:true,  base:'https://youtube.com/@', at:true },
+  whatsapp:  { icon:'fa-whatsapp',  brand:true,  wa:true },
+  website:   { icon:'fa-globe',     brand:false, base:'https://' },
+};
+function socialUrl(key, raw){
+  const v = String(raw||'').trim();
+  if (!v) return null;
+  const m = SOCIAL_META[key]; if (!m) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (m.wa) { const d = v.replace(/[^\d]/g,''); return d ? 'https://wa.me/'+d : null; }
+  return m.base + (m.at ? v.replace(/^@/,'') : v);
+}
+export function StoreSocials({ socials }){
+  if (!socials) return null;
+  const links = Object.keys(SOCIAL_META)
+    .map((k)=>({ k, meta:SOCIAL_META[k], url:socialUrl(k, socials[k]) }))
+    .filter((x)=>x.url);
+  if (!links.length) return null;
+  return (
+    <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:24 }}>
+      {links.map(({ k, meta, url })=>(
+        <a key={k} href={url} target="_blank" rel="noopener noreferrer" title={k} aria-label={k}
+          style={{ width:42, height:42, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--m-surface2, rgba(120,120,140,.1))', color:'var(--m-fg1)', textDecoration:'none', border:'1px solid var(--m-line, rgba(120,120,140,.18))' }}>
+          <FA i={meta.icon} brand={meta.brand} style={{ fontSize:18 }} />
+        </a>
+      ))}
+    </div>
+  );
+}

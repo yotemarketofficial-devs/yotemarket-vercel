@@ -13,6 +13,7 @@ import {
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
   cleanupSeededTestAccounts,
+  fetchDeletionRequests, resolveDeletionRequest,
 } from './service.js';
 
 // Official YoteMarket socials — the accounts a referred merchant must follow.
@@ -229,6 +230,19 @@ export function Approvals({ isAdmin }){
     finally { setCleanBusy(false); }
   };
 
+  // Store-closure requests (merchant asks to close → staff approve/reject).
+  const { data: delReqs, reload: reloadDel } = useStaffResource(fetchDeletionRequests, []);
+  const [delBusy, setDelBusy] = useSS(null);
+  const resolveClosure = async (id, approve) => {
+    if (approve && !window.confirm('Approve closure? This removes the store from the marketplace, closes the merchant account and ends the subscription.')) return;
+    const note = approve ? '' : (window.prompt('Reason for declining (optional):') || '');
+    setDelBusy(id);
+    try { await resolveDeletionRequest(id, approve, note); reloadDel(); }
+    catch (e) { window.alert(e.message || 'Could not resolve.'); }
+    finally { setDelBusy(null); }
+  };
+  const pendingClosures = (delReqs || []).filter(r=>r.status==='pending');
+
   const isPending = s => s==='pending' || s==='review';
   const shown = list.filter(r=> filter==='all' || (filter==='pending' ? isPending(r.status) : r.status===filter));
   const count = s => list.filter(r=> s==='pending' ? isPending(r.status) : r.status===s).length;
@@ -279,6 +293,27 @@ export function Approvals({ isAdmin }){
       })}
       {shown.length===0 && <Card className="p-10 text-center t3"><Icon name="inbox" className="text-3xl mb-2"/><div>Nothing here.</div></Card>}
     </div>
+
+    {pendingClosures.length > 0 && (
+      <div className="space-y-3">
+        <h3 className="font-bold t1 flex items-center gap-2">Store-closure requests <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--red)'}}>{pendingClosures.length}</span></h3>
+        {pendingClosures.map(r=>(
+          <Card key={r.id} className="p-4" style={{border:'1px solid var(--red)'}}>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'rgba(239,68,68,.12)',color:'var(--red)'}}><Icon name="store-slash"/></div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold t1">{r.storeName || r.storeId}</div>
+                <div className="text-xs t3">{r.reason ? `“${r.reason}”` : 'No reason given'}{r.createdAt?` · ${new Date(r.createdAt).toLocaleDateString('en-KE',{ day:'numeric', month:'short' })}`:''}</div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Btn kind="soft" size="sm" icon="xmark" onClick={()=>resolveClosure(r.id,false)} disabled={delBusy===r.id}>Decline</Btn>
+                <Btn kind="danger" size="sm" icon="trash" onClick={()=>resolveClosure(r.id,true)} disabled={delBusy===r.id}>{delBusy===r.id?'Working…':'Approve closure'}</Btn>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    )}
 
     {isAdmin && (
       <Card className="p-4" style={{border:'1px solid var(--red)'}}>

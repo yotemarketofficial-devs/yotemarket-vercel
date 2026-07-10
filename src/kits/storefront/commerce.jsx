@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from 
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, submitReview, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -482,10 +482,17 @@ function OrderDetail({ view, onClose }){
 }
 
 export function OrdersScreen(){
-  const { reset, account, liveOrders } = useYM();
+  const { reset, account, liveOrders, toast } = useYM();
   const [detail, setDetail] = useSCm(null);
+  const [hidden, setHidden] = useSCm([]); // optimistic: orders being removed from the list
   if (!account.hasAccount) return <GuestGate icon="fa-box" title="Your orders" sub="Sign in to view and track your orders, deliveries, and hub pickups." />;
-  const orders = (liveOrders || []).map(orderView); // live-only — no mock fallback
+  const orders = (liveOrders || []).filter(o=>!o.buyerHidden && !hidden.includes(o.id)).map(orderView); // live-only — no mock fallback
+  const removeOrder = (id) => {
+    setHidden(h=>[...h, id]);
+    dismissOrder({ orderId:id })
+      .then(()=>toast && toast('Removed from your orders','fa-check'))
+      .catch((e)=>{ setHidden(h=>h.filter(x=>x!==id)); toast && toast(e?.message||'Could not remove order'); });
+  };
   const tone = STATUS_TONE;
   const label = STATUS_LABEL;
 
@@ -557,6 +564,11 @@ export function OrdersScreen(){
                     : null
               )}
               {o.status!=='placed' && <OrderInvoice orderId={o.raw.id} />}
+              {(o.status==='cancelled' || o.status==='delivered') && (
+                <div style={{ marginTop:12, textAlign:'right' }}>
+                  <button onClick={()=>removeOrder(o.raw.id)} style={{ background:'none', border:'none', color:'var(--m-fg3)', cursor:'pointer', fontFamily:'inherit', fontSize:13, display:'inline-flex', alignItems:'center', gap:6, padding:'4px 0' }}><FA i="fa-trash-can" style={{ fontSize:12 }} /> Remove from my orders</button>
+                </div>
+              )}
             </div>
           );
         })}
