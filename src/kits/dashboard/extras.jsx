@@ -931,7 +931,7 @@ export function Insight(){
     setFocus(item.key); setBusy(true); setErr('');
     try {
       if (!ready) { setErr('Sign in to your merchant account to generate insights from your real store data.'); setReport(''); return; }
-      const { reply, products:prods } = await aiAssistant({ role:'merchant', messages:[{ role:'user', content: REPORT_PROMPT(item.prompt) }] });
+      const { reply, products:prods } = await aiAssistant({ role:'merchant', variant:'insight', messages:[{ role:'user', content: REPORT_PROMPT(item.prompt) }] });
       const r = (reply||'').trim();
       setReport(r); setProducts(Array.isArray(prods) ? prods : []);
       if (!r) setErr('Could not generate the report just now — please try again.');
