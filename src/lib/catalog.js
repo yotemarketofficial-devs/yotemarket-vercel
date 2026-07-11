@@ -2,7 +2,7 @@
 // (categories / stores / products) and the signed-in user's orders. Live-only:
 // the storefront shows real Firestore data (empty states where there's none);
 // no demo catalog fallback in production.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase.js';
 
@@ -119,24 +119,43 @@ export async function fetchCatalog() {
 }
 
 /**
- * Fetch the catalog on mount and hand it to a kit-supplied `apply(data)` that swaps
- * the kit's live-binding demo arrays for real data. Returns a version counter the
- * caller can use to force a re-render once real data has landed.
+ * LIVE-subscribe to the public catalog (categories/stores/products) and hand the
+ * normalised shape to `cb(data)` on every change — so new/edited products, stores
+ * and categories appear without a manual refresh. onSnapshot only re-reads CHANGED
+ * docs after the first load, so this stays cheap at the current scale. Waits for all
+ * three collections' first snapshot before the first emit (avoids a half-empty flash).
+ * Returns an unsubscribe fn.
+ */
+export function subscribeCatalog(cb) {
+  if (!firebaseEnabled || !db) { cb(null); return () => {}; }
+  let cats = null; let stores = null; let prods = null;
+  const emit = () => {
+    if (cats === null || stores === null || prods === null) return; // wait for all three
+    const storeList = stores.map(normStore).filter((s) => !s.suspended);
+    const liveIds = new Set(storeList.map((s) => s.id));
+    const products = prods.map(normProduct).filter((p) => !p.store || liveIds.has(p.store));
+    const categories = cats.map(normCat).sort((a, b) => a.order - b.order);
+    cb({ categories, stores: storeList, products });
+  };
+  const u1 = onSnapshot(collection(db, 'categories'), (s) => { cats = toArray(s); emit(); }, (e) => { console.warn('[catalog] categories', e); if (cats === null) cats = []; emit(); });
+  const u2 = onSnapshot(collection(db, 'stores'), (s) => { stores = toArray(s); emit(); }, (e) => { console.warn('[catalog] stores', e); if (stores === null) stores = []; emit(); });
+  const u3 = onSnapshot(collection(db, 'products'), (s) => { prods = toArray(s); emit(); }, (e) => { console.warn('[catalog] products', e); if (prods === null) prods = []; emit(); });
+  return () => { u1(); u2(); u3(); };
+}
+
+/**
+ * LIVE-sync the catalog into a kit-supplied `apply(data)` (swaps the kit's live-
+ * binding arrays for real data) and bump a version counter so the caller re-renders
+ * on every catalog change. `apply` is read through a ref so the subscription is set
+ * up ONCE (a fresh `apply` each render won't churn the listeners).
  */
 export function useCatalogSync(apply) {
   const [version, setVersion] = useState(0);
-  useEffect(() => {
-    let active = true;
-    fetchCatalog().then((data) => {
-      if (active && data) {
-        apply(data);
-        setVersion((v) => v + 1);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [apply]);
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+  useEffect(() => subscribeCatalog((data) => {
+    if (data) { applyRef.current(data); setVersion((v) => v + 1); }
+  }), []);
   return version;
 }
 

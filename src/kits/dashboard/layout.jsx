@@ -5,6 +5,7 @@ import { ksh } from './data.js';
 import { useShop, useSubCard, useMerchant } from './merchant.jsx';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
+import SubscriptionMark from '../../components/SubscriptionMark.jsx';
 
 // `roles` = which store roles see the item. owner = all; manager = everything except
 // money (wallet/subscription) & team; cashier = POS + orders + chat.
@@ -18,11 +19,12 @@ export const NAV = [
   { key:'sales', icon:'fa-cash-register', label:'Sales', roles:OM },
   { key:'products', icon:'fa-box', label:'My Products', roles:OM },
   { key:'feed', icon:'fa-clapperboard', mark:'feed', label:'YoteFeed', roles:OM },
+  { key:'followers', icon:'fa-users', label:'Followers', roles:OM },
   { key:'delivery', icon:'fa-truck-fast', label:'Delivery', roles:OM },
   { key:'refunds', icon:'fa-rotate-left', label:'Refunds', roles:OM },
   { key:'chat', icon:'fa-comments', label:'Chats', roles:ALL },
   { key:'wallet', icon:'fa-wallet', label:'Wallet', roles:['owner'] },
-  { key:'subscription', icon:'fa-id-card', label:'Subscription', roles:['owner'] },
+  { key:'subscription', icon:'fa-id-card', mark:'sub', label:'Subscription', roles:['owner'] },
   { key:'team', icon:'fa-user-group', label:'Team', roles:['owner'] },
   { key:'settings', icon:'fa-gear', label:'Settings', roles:['owner'] },
 ];
@@ -34,6 +36,7 @@ export const navForRole = (role) => NAV.filter((n) => n.roles.includes(role || '
 function NavIcon({ n, color, size = 18 }){
   if (n.mark === 'ai') return <span style={{ width:size, display:'inline-flex', justifyContent:'center', color }}><YoteAiMark size={size - 1} color="currentColor" /></span>;
   if (n.mark === 'feed') return <span style={{ width:size, display:'inline-flex', justifyContent:'center' }}><YoteFeedMark size={size - 4} /></span>;
+  if (n.mark === 'sub') return <span style={{ width:size, display:'inline-flex', justifyContent:'center', color }}><SubscriptionMark size={size + 1} color="currentColor" strokeWidth={5.5} /></span>;
   return <FA i={n.icon} style={{ width:size, textAlign:'center', color }} />;
 }
 
@@ -93,7 +96,7 @@ export function Sidebar({ active, onChange, onClose }){
 
       {/* subscription card — brand gradient */}
       <div className="ym-card" style={{ padding:18, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', cursor:'pointer' }} onClick={()=>onChange&&onChange('subscription')}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, color:'#fff', fontWeight:700, fontSize:14 }}><FA i="fa-crown" style={{ color:'var(--m-amber)' }} /> {subc.active ? (subc.kind==='software' ? subc.plan + ' · Software' : subc.plan + ' plan') : 'No active plan'}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:9, color:'#fff', fontWeight:700, fontSize:14 }}><SubscriptionMark size={20} color="#fff" strokeWidth={5.5} style={{ flexShrink:0 }} /> {subc.active ? (subc.kind==='software' ? subc.plan + ' · Software' : subc.plan + ' plan') : 'No active plan'}</div>
         <div style={{ color:'rgba(255,255,255,.8)', fontSize:12.5, margin:'6px 0 12px' }}>{subc.active ? `${ksh(subc.price)}/mo · renews ${subc.next}` : 'Choose a plan to start selling'}</div>
         {subc.active && subc.kind!=='software' ? (<>
           <div style={{ height:7, borderRadius:9999, background:'rgba(255,255,255,.18)', overflow:'hidden' }}><div style={{ width:(subc.deliveriesCap ? subc.deliveriesUsed/subc.deliveriesCap*100 : 0)+'%', height:'100%', background:'linear-gradient(90deg,var(--m-amber),#fff)' }} /></div>
