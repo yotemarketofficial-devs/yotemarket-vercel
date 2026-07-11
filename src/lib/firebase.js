@@ -164,6 +164,20 @@ export const listMySupportTickets = callable('listMySupportTickets');
 export const staffListSupportTickets = callable('staffListSupportTickets');
 /** Staff: reply to / triage a ticket → { ok }. { id, message?, status?, priority?, assignToMe? }. */
 export const staffReplySupportTicket = callable('staffReplySupportTicket');
+
+// ── Returns, refunds & disputes ──────────────────────────────────────────────
+/** Buyer: open a return/refund request on a paid order → { id }. { orderId, reason, detail, photos? }. */
+export const openDispute = callable('openDispute');
+/** Buyer: my return/refund requests → { disputes }. */
+export const listMyDisputes = callable('listMyDisputes');
+/** Merchant: disputes against my store → { disputes }. */
+export const listStoreDisputes = callable('listStoreDisputes');
+/** Merchant: add a response note to a dispute → { ok }. { id, note }. */
+export const respondDispute = callable('respondDispute');
+/** Staff: list disputes → { disputes, counts }. { status? }. */
+export const staffListDisputes = callable('staffListDisputes');
+/** Staff: resolve a dispute → { ok, refundAmt }. { id, resolution:'refund'|'partial'|'replace'|'decline', refundAmount?, note? }. */
+export const staffResolveDispute = callable('staffResolveDispute');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query

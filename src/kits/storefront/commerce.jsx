@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from 
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -414,8 +414,11 @@ function OrderDetail({ view, onClose }){
   const delivered = view.status === 'delivered';
   const canCancel = CANCELLABLE.includes(view.status);
   const canRemove = orderRemovable(o);
+  // Post-cancellation refund: paid, no longer cancellable, not already refunded/disputed.
+  const canRefund = o.paid && !o.refunded && !o.disputed && view.status !== 'cancelled' && !canCancel;
   const [cancelling, setCancelling] = useSCm(false);
   const [removing, setRemoving] = useSCm(false);
+  const [refundOpen, setRefundOpen] = useSCm(false);
   const cancel = async () => {
     if (!window.confirm(o.paid ? 'Cancel this order? You’ll be refunded to your YoteWallet.' : 'Cancel this order?')) return;
     setCancelling(true);
@@ -498,11 +501,64 @@ function OrderDetail({ view, onClose }){
           {cancelling ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Cancelling…</> : <><FA i="fa-ban" /> Cancel order{o.paid?' & refund':''}</>}
         </button>
       )}
+      {o.refunded && (
+        <div className="ym-card" style={{ marginTop:12, padding:'12px 14px', display:'flex', gap:9, alignItems:'center', fontSize:13, color:'var(--m-success)' }}>
+          <FA i="fa-rotate-left" /> Refunded to your YoteWallet{o.refundAmount ? ` · ${ymPrice(o.refundAmount)}` : ''}.
+        </div>
+      )}
+      {!o.refunded && o.disputed && (
+        <div className="ym-card" style={{ marginTop:12, padding:'12px 14px', display:'flex', gap:9, alignItems:'center', fontSize:13, color:'var(--m-fg2)' }}>
+          <FA i="fa-clock" style={{ color:'var(--m-primary)' }} /> Refund request under review — we’ll update you here.
+        </div>
+      )}
+      {canRefund && (
+        <button onClick={()=>setRefundOpen(true)} className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:12, color:'var(--m-primary)' }}>
+          <FA i="fa-rotate-left" /> Request a refund / report a problem
+        </button>
+      )}
       {canRemove && (
         <button onClick={remove} disabled={removing} className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:10, color:'var(--m-fg3)' }}>
           {removing ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Removing…</> : <><FA i="fa-trash-can" /> Remove from my orders</>}
         </button>
       )}
+      {refundOpen && <RefundModal order={o} onClose={()=>setRefundOpen(false)} onDone={onClose} />}
+    </Modal>
+  );
+}
+
+const REFUND_REASONS = [
+  ['not_received', 'I didn’t receive it'],
+  ['damaged', 'It arrived damaged'],
+  ['not_as_described', 'Not as described'],
+  ['wrong_item', 'Wrong item'],
+  ['other', 'Something else'],
+];
+/* Buyer-facing return/refund request. Opens a dispute (staff-reviewed); approved
+   refunds are credited to the YoteWallet. */
+function RefundModal({ order, onClose, onDone }){
+  const { toast } = useYM();
+  const [reason, setReason] = useSCm('not_received');
+  const [detail, setDetail] = useSCm('');
+  const [busy, setBusy] = useSCm(false);
+  const inp = { width:'100%', marginTop:6, padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
+  const submit = async () => {
+    if (detail.trim().length < 5) { toast('Please describe the problem', 'fa-triangle-exclamation'); return; }
+    setBusy(true);
+    try { await openDispute({ orderId: order.id, reason, detail: detail.trim() }); toast('Refund request sent — we’ll review it', 'fa-circle-check'); onClose(); onDone && onDone(); }
+    catch (e) { toast(e.message || 'Could not send request', 'fa-triangle-exclamation'); setBusy(false); }
+  };
+  return (
+    <Modal title="Request a refund" onClose={onClose} maxWidth={460}>
+      <p className="ym-sub" style={{ marginBottom:14 }}>Tell us what went wrong. Our team reviews every request — approved refunds go straight to your YoteWallet.</p>
+      <label className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg2)' }}>What’s the problem?
+        <select value={reason} onChange={e=>setReason(e.target.value)} style={inp}>{REFUND_REASONS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+      </label>
+      <label className="ym-cap" style={{ fontWeight:600, color:'var(--m-fg2)', display:'block', marginTop:14 }}>Details
+        <textarea value={detail} onChange={e=>setDetail(e.target.value)} rows={4} placeholder="e.g. The item was cracked when I collected it at the hub." style={{ ...inp, resize:'vertical' }} />
+      </label>
+      <button onClick={submit} disabled={busy} className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:16, justifyContent:'center' }}>
+        {busy ? <><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite' }} /> Sending…</> : <><FA i="fa-paper-plane" /> Submit request</>}
+      </button>
     </Modal>
   );
 }

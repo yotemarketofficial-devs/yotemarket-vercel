@@ -19,6 +19,7 @@ export const NAV = [
   { key:'products', icon:'fa-box', label:'My Products', roles:OM },
   { key:'feed', icon:'fa-clapperboard', mark:'feed', label:'YoteFeed', roles:OM },
   { key:'delivery', icon:'fa-truck-fast', label:'Delivery', roles:OM },
+  { key:'refunds', icon:'fa-rotate-left', label:'Refunds', roles:OM },
   { key:'chat', icon:'fa-comments', label:'Chats', roles:ALL },
   { key:'wallet', icon:'fa-wallet', label:'Wallet', roles:['owner'] },
   { key:'subscription', icon:'fa-id-card', label:'Subscription', roles:['owner'] },

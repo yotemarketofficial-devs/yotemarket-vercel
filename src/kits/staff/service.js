@@ -277,5 +277,17 @@ export async function replySupportTicket(args) {
   return call('staffReplySupportTicket')(args);
 }
 
+// ── Returns, refunds & disputes ───────────────────────────────────────────────
+/** All return/refund disputes (optionally filtered) → { disputes, counts }. */
+export async function fetchDisputes(status) {
+  const d = await call('staffListDisputes')(status ? { status } : {});
+  if (!d || !Array.isArray(d.disputes)) throw new Error('staffListDisputes: unexpected shape');
+  return d;
+}
+/** Resolve a dispute. { id, resolution:'refund'|'partial'|'replace'|'decline', refundAmount?, note? }. */
+export async function resolveDispute(args) {
+  return call('staffResolveDispute')(args);
+}
+
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };
