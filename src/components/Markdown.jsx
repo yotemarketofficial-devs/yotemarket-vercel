@@ -20,7 +20,7 @@ function renderInline(text, kp) {
     if (t.startsWith('`')) out.push(<code key={key} style={codeStyle}>{t.slice(1, -1)}</code>);
     else if (t.startsWith('**') || t.startsWith('__')) out.push(<strong key={key}>{t.slice(2, -2)}</strong>);
     else if (t.startsWith('*') || t.startsWith('_')) out.push(<em key={key}>{t.slice(1, -1)}</em>);
-    else { const mm = t.match(/\[([^\]]+)\]\(([^)]+)\)/); out.push(<a key={key} href={mm[2]} target="_blank" rel="noopener noreferrer" style={{ color:'var(--m-link, #4f46e5)', textDecoration:'underline' }}>{mm[1]}</a>); }
+    else { const mm = t.match(/\[([^\]]+)\]\(([^)]+)\)/); if (mm) out.push(<a key={key} href={mm[2]} target="_blank" rel="noopener noreferrer" style={{ color:'var(--m-link, #4f46e5)', textDecoration:'underline' }}>{mm[1]}</a>); else out.push(t); }
     rest = rest.slice(m.index + t.length);
   }
   return out;
@@ -38,7 +38,7 @@ function parseChart(text) {
   }).filter(Boolean);
 }
 
-export default function Markdown({ text, style }) {
+function MarkdownInner({ text, style }) {
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
   const blocks = []; let i = 0;
   const listRe = /^\s*([-*•]|\d+\.)\s+/;
@@ -105,3 +105,21 @@ export default function Markdown({ text, style }) {
     </div>
   );
 }
+
+// Rendering LLM-authored Markdown (tables, charts, arbitrary text) must never
+// white-screen the app. This boundary catches any render error and falls back to
+// the raw text — still readable — and logs the real cause to the console.
+class Markdown extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(err) { try { console.error('[YoteAI] Markdown render failed:', err); } catch { /* ignore */ } }
+  componentDidUpdate(prev) { if (prev.text !== this.props.text && this.state.failed) this.setState({ failed: false }); }
+  render() {
+    if (this.state.failed) {
+      return <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6, ...this.props.style }}>{String(this.props.text || '')}</div>;
+    }
+    return <MarkdownInner {...this.props} />;
+  }
+}
+
+export default Markdown;
