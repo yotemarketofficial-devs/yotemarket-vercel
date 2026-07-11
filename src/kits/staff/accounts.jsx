@@ -5,7 +5,7 @@
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv, Modal, kes } from './ui.jsx';
 import { staffListUsers, staffCreditTestBalance } from '../../lib/firebase.js';
-import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole } from './service.js';
+import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, sendPasswordReset, revokeUserSessions } from './service.js';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
@@ -149,6 +149,23 @@ function UserConsole({ row, onClose, onChanged }){
     catch (e) { window.alert(e.message || 'Could not add note.'); }
     finally { setBusy(null); }
   };
+  const resetPassword = async () => {
+    setBusy('reset');
+    try {
+      const r = await sendPasswordReset(uid);
+      const link = r && r.link;
+      if (link && navigator.clipboard) await navigator.clipboard.writeText(link).catch(()=>{});
+      window.alert(`Password-reset link generated for ${(r && r.email) || p.email}.${link ? '\n\nIt’s been copied to your clipboard — send it to the customer.' : ''}`);
+    } catch (e) { window.alert(e.message || 'Could not generate a reset link.'); }
+    finally { setBusy(null); }
+  };
+  const forceSignOut = async () => {
+    if (!window.confirm(`Sign ${p.email || uid} out of all devices? They'll have to sign in again.`)) return;
+    setBusy('revoke');
+    try { await revokeUserSessions(uid); window.alert('Done — the user has been signed out of all sessions.'); }
+    catch (e) { window.alert(e.message || 'Could not sign the user out.'); }
+    finally { setBusy(null); }
+  };
 
   const isStaff = roles.includes('admin') || roles.includes('staff');
   return (
@@ -157,6 +174,8 @@ function UserConsole({ row, onClose, onChanged }){
         <div className="flex items-center gap-2 flex-wrap w-full">
           {d && <>
             <Btn kind={disabled?'success':'danger'} size="sm" icon={disabled?'unlock':'ban'} onClick={toggleDisable} disabled={busy==='disable'}>{disabled?'Enable sign-in':'Disable'}</Btn>
+            <Btn kind="soft" size="sm" icon={busy==='reset'?'spinner':'key'} onClick={resetPassword} disabled={busy==='reset'}>Reset password</Btn>
+            <Btn kind="soft" size="sm" icon={busy==='revoke'?'spinner':'right-from-bracket'} onClick={forceSignOut} disabled={busy==='revoke'} title="Revoke all sessions">Sign out</Btn>
             {!isStaff && <Btn kind="soft" size="sm" icon="user-shield" onClick={()=>changeRole('moderator')} disabled={busy==='role'}>Make staff</Btn>}
             {isStaff && !roles.includes('admin') && <Btn kind="soft" size="sm" icon="crown" onClick={()=>changeRole('admin')} disabled={busy==='role'}>Make admin</Btn>}
             {isStaff && <Btn kind="ghost" size="sm" icon="user-slash" onClick={()=>changeRole('none')} disabled={busy==='role'}>Revoke staff</Btn>}

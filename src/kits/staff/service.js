@@ -147,6 +147,16 @@ export async function setUserDisabled(uid, disabled) {
   return call('staffSetUserDisabled')({ uid, disabled });
 }
 
+/** Staff: generate a password-reset link to send the customer → { email, link }. */
+export async function sendPasswordReset(uid) {
+  return call('staffSendPasswordReset')({ uid });
+}
+
+/** Admin: force sign-out (revoke all refresh tokens) on a user. */
+export async function revokeUserSessions(uid) {
+  return call('staffRevokeSessions')({ uid });
+}
+
 /** Enterprise unit-economics rate card (price per package + per km, per delivery
  *  sub-tier) and — when subTier+packages are supplied — a live monthly quote. */
 export async function enterpriseQuote(args = {}) {
