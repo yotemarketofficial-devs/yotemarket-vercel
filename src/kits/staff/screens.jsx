@@ -14,6 +14,7 @@ import {
   fetchReviewReports, removeReview, dismissReviewReport,
   cleanupSeededTestAccounts,
   fetchDeletionRequests, resolveDeletionRequest,
+  fetchMerchantDetail, addStaffNote,
 } from './service.js';
 
 // Official YoteMarket socials — the accounts a referred merchant must follow.
@@ -100,6 +101,204 @@ export function RecordAudit({ title, subtitle, record, onClose, hide = [] }){
   );
 }
 
+/* ── Merchant console — the full operational dossier for one store, in one drawer:
+   profile + owner, live stats, subscription & balance, recent orders/products/
+   withdrawals, closure status, internal staff notes, and every oversight action. */
+const fmtWhenMs = (ms) => ms ? new Date(ms).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }) : '—';
+const STATUS_TONE_MC = { delivered:'ok', paid:'ok', cancelled:'red', placed:'amber', queued:'amber', preparing:'amber', ready_pickup:'blue', at_hub:'blue', out:'blue', picked_up:'blue' };
+
+function MConsoleTile({ label, value, sub, tone='pri' }){
+  const tones = { pri:'var(--pri)', green:'var(--green)', blue:'var(--blue)', amber:'var(--amber)', red:'var(--red)' };
+  return (
+    <div className="rounded-xl p-3" style={{ background:'var(--surface2)' }}>
+      <div className="text-lg font-bold t1 num" style={{ color:tones[tone] }}>{value}</div>
+      <div className="text-xs t1 font-semibold">{label}</div>{sub && <div className="text-[11px] t3">{sub}</div>}
+    </div>
+  );
+}
+
+function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
+  const storeId = row.id;
+  const [d, setD] = useSS(null);
+  const [err, setErr] = useSS(null);
+  const [busy, setBusy] = useSS(null);
+  const [note, setNote] = useSS('');
+  const [savingNote, setSavingNote] = useSS(false);
+  const [reloadKey, setReloadKey] = useSS(0);
+  useES(() => {
+    let alive = true; setErr(null);
+    fetchMerchantDetail(storeId).then((r) => { if (alive) setD(r); }).catch((e) => { if (alive) setErr(e.message || 'Could not load this merchant.'); });
+    return () => { alive = false; };
+  }, [storeId, reloadKey]);
+  const reload = () => setReloadKey((k) => k + 1);
+
+  const act = async (action) => {
+    setBusy(action);
+    try { await setMerchantStatus(storeId, action); reload(); onChanged && onChanged(); }
+    catch (e) { window.alert(e.message || 'Action failed.'); }
+    finally { setBusy(null); }
+  };
+  const submitNote = async () => {
+    const t = note.trim(); if (!t) return;
+    setSavingNote(true);
+    try { await addStaffNote('merchant', storeId, t); setNote(''); reload(); }
+    catch (e) { window.alert(e.message || 'Could not add note.'); }
+    finally { setSavingNote(false); }
+  };
+
+  const s = (d && d.store) || {}; const owner = (d && d.owner) || {}; const st = (d && d.stats) || {};
+  const sub = d && d.subscription; const bal = (d && d.balance) || {};
+  const verified = s.verified; const suspended = s.suspended;
+
+  const actionBar = (
+    <div className="flex items-center gap-2 flex-wrap w-full">
+      {d && <>
+        {!verified && !suspended && <Btn kind="success" size="sm" icon="circle-check" onClick={()=>act('verify')} disabled={busy==='verify'}>Verify</Btn>}
+        {verified && !suspended && <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>act('unverify')} disabled={busy==='unverify'}>Unverify</Btn>}
+        {!suspended && <Btn kind={s.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>act(s.featured?'unfeature':'feature')} disabled={busy}>{s.featured?'Featured':'Feature'}</Btn>}
+        {!suspended && <Btn kind={s.topBrand?'primary':'soft'} size="sm" icon="award" onClick={()=>act(s.topBrand?'untopbrand':'topbrand')} disabled={busy || (s.enterprise && s.topBrand)}>Top brand</Btn>}
+        {!suspended && onEnterprise && <Btn kind={s.enterprise?'primary':'soft'} size="sm" icon="crown" onClick={()=>{ onClose(); onEnterprise(row); }} disabled={busy}>{s.enterprise?'Enterprise':'Enterprise…'}</Btn>}
+        {suspended
+          ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>act('reinstate')} disabled={busy==='reinstate'}>Reinstate</Btn>
+          : <Btn kind="danger" size="sm" icon="ban" onClick={()=>act('suspend')} disabled={busy==='suspend'}>Suspend</Btn>}
+        {owner.email && <a href={`mailto:${owner.email}`} className="ml-auto"><Btn kind="ghost" size="sm" icon="envelope">Email</Btn></a>}
+        {onRaw && <Btn kind="ghost" size="sm" icon="fingerprint" onClick={()=>{ onClose(); onRaw(row); }}>Raw</Btn>}
+      </>}
+    </div>
+  );
+
+  return (
+    <Modal title={s.name || row.shop || 'Merchant'} subtitle={[owner.name, owner.email].filter(Boolean).join(' · ') || row.owner || ''} icon="store" onClose={onClose} maxWidth={880} footer={actionBar}>
+      {!d && !err && <div className="py-10 text-center t3"><Icon name="spinner" className="mr-2"/>Loading merchant…</div>}
+      {err && <EmptyState icon="triangle-exclamation" tone="red" title="Couldn't load this merchant" sub={err} />}
+      {d && (
+        <div className="space-y-5">
+          {/* status + owner */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {verified && <Pill tone="ok">Verified</Pill>}
+            {suspended && <Pill tone="red">Suspended</Pill>}
+            {s.closed && <Pill tone="red">Closed</Pill>}
+            {s.featured && <Pill tone="blue">Featured</Pill>}
+            {s.enterprise && <Pill tone="amber">Enterprise</Pill>}
+            {s.topBrand && !s.enterprise && <Pill tone="amber">Top brand</Pill>}
+            {!verified && !suspended && <Pill tone="amber">Pending verification</Pill>}
+            {s.area && <span className="text-xs t3 ml-1"><Icon name="location-dot" className="mr-1"/>{s.area}</span>}
+            {s.createdAt && <span className="text-xs t3">· joined {fmtWhenMs(s.createdAt)}</span>}
+            {s.scoutId && <span className="text-xs t3">· scouted</span>}
+          </div>
+          {d.closure && d.closure.status === 'pending' && (
+            <div className="text-sm flex items-start gap-2 rounded-lg p-3" style={{ background:'var(--red-bg)', color:'var(--red)' }}>
+              <Icon name="store-slash" className="mt-0.5"/><div><b>Store-closure requested.</b> {d.closure.reason || 'No reason given.'} <span className="t3">— resolve in the closure queue.</span></div>
+            </div>
+          )}
+
+          {/* live stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <MConsoleTile label="Products" value={st.products || 0} sub={`${st.inStock || 0} in stock`} tone="pri" />
+            <MConsoleTile label="Orders" value={st.orders || 0} sub={`${st.paidOrders || 0} paid`} tone="blue" />
+            <MConsoleTile label="GMV" value={kes(st.gmv || 0)} sub="paid + delivered" tone="green" />
+            <MConsoleTile label="Followers" value={st.followers || 0} tone="amber" />
+          </div>
+
+          {/* subscription + balance */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Card className="p-4">
+              <div className="text-xs t3 font-semibold uppercase mb-2" style={{ letterSpacing:'.06em' }}>Subscription</div>
+              {sub && sub.status ? (
+                <div>
+                  <div className="font-bold t1 flex items-center gap-2">{sub.plan || '—'} {sub.status==='active' ? <Pill tone="ok">active</Pill> : <Pill tone="amber">{sub.status}</Pill>}</div>
+                  <div className="text-xs t3 mt-1">{kes(sub.price||0)}/mo{sub.range?` · ${sub.range}`:''}{sub.renewsAt?` · renews ${fmtWhenMs(sub.renewsAt)}`:''}</div>
+                  {sub.kind !== 'software' && sub.deliveriesCap > 0 && <div className="text-xs t3 mt-1">{sub.deliveriesUsed||0}/{sub.deliveriesCap} bundled deliveries used</div>}
+                </div>
+              ) : <div className="text-sm t3">No active plan.</div>}
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs t3 font-semibold uppercase mb-2" style={{ letterSpacing:'.06em' }}>Balance & payout</div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><div className="num font-bold t1">{kes(bal.available||0)}</div><div className="text-[11px] t3">available</div></div>
+                <div><div className="num font-bold t1">{kes(bal.processing||0)}</div><div className="text-[11px] t3">processing</div></div>
+                <div><div className="num t2">{kes(bal.pending||0)}</div><div className="text-[11px] t3">escrow</div></div>
+                <div><div className="num t2">{kes(bal.withdrawn||0)}</div><div className="text-[11px] t3">withdrawn</div></div>
+              </div>
+              <div className="text-xs t3 mt-2">{bal.payout ? `Payout: ${payoutLabelStaff(bal.payout)}` : 'No payout method set'}</div>
+            </Card>
+          </div>
+
+          {/* recent orders */}
+          <div>
+            <div className="font-bold t1 text-sm mb-2">Recent orders</div>
+            {d.recentOrders && d.recentOrders.length ? (
+              <div className="rounded-lg overflow-hidden" style={{ border:'1px solid var(--line)' }}>
+                {d.recentOrders.map((o, i) => (
+                  <div key={o.id} className="flex items-center gap-3 px-3 py-2.5 text-sm" style={{ borderTop: i?'1px solid var(--line)':'none' }}>
+                    <span className="num t3 text-xs" style={{ width:76 }}>{o.orderNo || ('#'+String(o.id).slice(-6))}</span>
+                    <span className="flex-1 min-w-0 truncate t2">{o.buyer}</span>
+                    <Pill tone={STATUS_TONE_MC[o.status]||'amber'}>{o.status}</Pill>
+                    <span className="num font-semibold t1" style={{ width:88, textAlign:'right' }}>{kes(o.total)}</span>
+                    <span className="t3 text-xs hidden sm:block" style={{ width:66, textAlign:'right' }}>{o.at?fmtWhenMs(o.at):''}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <div className="text-sm t3">No orders yet.</div>}
+          </div>
+
+          {/* top products + withdrawals side by side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div className="font-bold t1 text-sm mb-2">Products</div>
+              {d.topProducts && d.topProducts.length ? (
+                <div className="space-y-1.5">
+                  {d.topProducts.map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 min-w-0 truncate t2">{p.name}{!p.inStock && <span className="t3"> · out</span>}</span>
+                      <span className="num t3 text-xs">{p.sku||''}</span>
+                      <span className="num font-semibold t1">{kes(p.price||0)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="text-sm t3">No products listed.</div>}
+            </div>
+            <div>
+              <div className="font-bold t1 text-sm mb-2">Withdrawals</div>
+              {d.settlements && d.settlements.length ? (
+                <div className="space-y-1.5">
+                  {d.settlements.slice(0,6).map((w) => (
+                    <div key={w.id} className="flex items-center gap-2 text-sm">
+                      <span className="num t2 flex-1">{kes(w.amount)}</span>
+                      <Pill tone={w.status==='paid'?'ok':(w.status==='failed'?'red':'amber')}>{w.status||'—'}</Pill>
+                      <span className="t3 text-xs">{w.at?fmtWhenMs(w.at):''}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="text-sm t3">No withdrawals.</div>}
+            </div>
+          </div>
+
+          {/* internal notes */}
+          <div>
+            <div className="font-bold t1 text-sm mb-2">Internal notes <span className="t3 font-normal">· staff only</span></div>
+            <div className="flex items-center gap-2 mb-2">
+              <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Add a note about this merchant…" className="ym-input flex-1"
+                onKeyDown={(e)=>{ if(e.key==='Enter') submitNote(); }} />
+              <Btn kind="primary" size="sm" icon={savingNote?'spinner':'plus'} onClick={submitNote} disabled={savingNote || !note.trim()}>Add</Btn>
+            </div>
+            {d.notes && d.notes.length ? (
+              <div className="space-y-2">
+                {d.notes.map((n) => (
+                  <div key={n.id} className="text-sm rounded-lg p-2.5" style={{ background:'var(--surface2)' }}>
+                    <div className="t1">{n.text}</div>
+                    <div className="text-[11px] t3 mt-1">{n.author} · {n.at?new Date(n.at).toLocaleString('en-KE'):''}</div>
+                  </div>
+                ))}
+              </div>
+            ) : <div className="text-xs t3">No notes yet.</div>}
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /* ============ ANALYTICS OVERVIEW ============ */
 const OVERVIEW_FALLBACK = { kpis:KPIS, gmvTrend:GMV_TREND, subMix:SUB_MIX, funnel:FUNNEL };
 export function Analytics(){
@@ -172,10 +371,11 @@ function Mini({ label, v, tone, icon }){
 
 /* ============ MERCHANT VERIFICATION & OVERSIGHT ============ */
 export function Approvals({ isAdmin }){
-  const { data, live } = useStaffResource(()=>fetchMerchants('all'), MERCHANTS);
+  const { data, live, reload: reloadMerchants } = useStaffResource(()=>fetchMerchants('all'), MERCHANTS);
   const [rows,setRows] = useSS(null);
   useES(()=>{ setRows(data); }, [data]);
   const [filter,setFilter] = useSS('pending');
+  const [consoleM,setConsoleM] = useSS(null); // merchant open in the console drawer
   const list = rows || [];
 
   const apply = async (id, action, nextStatus) => {
@@ -245,7 +445,7 @@ export function Approvals({ isAdmin }){
         return (<Card key={m.id} className="p-4" style={suspended?{opacity:.7}:null}>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name="store"/></div>
-            <div className="min-w-0 flex-1" onClick={()=>setAuditM(m)} style={{ cursor:'pointer' }} title="View full record (audit)">
+            <div className="min-w-0 flex-1" onClick={()=>setConsoleM(m)} style={{ cursor:'pointer' }} title="Open merchant console">
               <div className="font-bold t1 flex items-center gap-2" style={{ textDecoration:'underline', textDecorationColor:'var(--line)', textUnderlineOffset:3 }}>{m.shop}
                 {verified && <Pill tone="ok">Verified</Pill>}
                 {suspended && <Pill tone="red">Suspended</Pill>}
@@ -297,6 +497,7 @@ export function Approvals({ isAdmin }){
     )}
 
     {entFor && <EnterpriseModal m={entFor} onClose={()=>setEntFor(null)} onDone={onEnterpriseDone} />}
+    {consoleM && <MerchantConsole row={consoleM} onClose={()=>setConsoleM(null)} onChanged={reloadMerchants} onRaw={(m)=>setAuditM(m)} onEnterprise={(m)=>setEntFor(m)} />}
     {auditM && <RecordAudit title={auditM.shop} subtitle={`${auditM.owner || ''}${auditM.county ? ` · ${auditM.county}` : ''}`} record={auditM} onClose={()=>setAuditM(null)} />}
   </div>);
 }

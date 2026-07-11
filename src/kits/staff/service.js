@@ -125,6 +125,17 @@ export async function setMerchantStatus(storeId, action) {
   return call('staffSetMerchantStatus')({ storeId, action });
 }
 
+/** Full merchant/store dossier for the console detail view (profile, owner, stats,
+ *  subscription, balance, recent products/orders/withdrawals, closure, notes). */
+export async function fetchMerchantDetail(storeId) {
+  return call('staffMerchantDetail')({ storeId });
+}
+
+/** Add an internal staff note to a merchant/user. entity: 'merchant' | 'user'. */
+export async function addStaffNote(entity, entityId, text) {
+  return call('staffAddNote')({ entity, entityId, text });
+}
+
 /** Enterprise unit-economics rate card (price per package + per km, per delivery
  *  sub-tier) and — when subTier+packages are supplied — a live monthly quote. */
 export async function enterpriseQuote(args = {}) {
