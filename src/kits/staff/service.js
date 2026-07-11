@@ -136,6 +136,17 @@ export async function addStaffNote(entity, entityId, text) {
   return call('staffAddNote')({ entity, entityId, text });
 }
 
+/** Full account dossier for the user-admin console (profile, roles, auth, store,
+ *  subscription, wallet, order stats, tickets, notes). */
+export async function fetchUserDetail(uid) {
+  return call('staffUserDetail')({ uid });
+}
+
+/** Admin: disable / re-enable a user's sign-in (needs Auth-admin on the SA). */
+export async function setUserDisabled(uid, disabled) {
+  return call('staffSetUserDisabled')({ uid, disabled });
+}
+
 /** Enterprise unit-economics rate card (price per package + per km, per delivery
  *  sub-tier) and — when subTier+packages are supplied — a live monthly quote. */
 export async function enterpriseQuote(args = {}) {
