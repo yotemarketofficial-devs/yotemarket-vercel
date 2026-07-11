@@ -10,8 +10,9 @@
 export const CATEGORY_TREE = [
   {
     id: 'electronics', label: 'Electronics', short: 'Electronics', icon: 'fa-tv', tint: '#3b82f6', match: ['electronics'],
-    subs: ['TVs', 'Audio & Music Equipment', 'Laptops & Computers', 'Computer Accessories', 'Computer Monitors',
-      'Networking Products', 'Printers & Scanners', 'Video Games & Consoles', 'Cameras & Photography', 'Computer Hardware', 'Software'],
+    subs: ['TVs', 'Audio & Music Equipment', 'Headphones', 'Laptops & Computers', 'Computer Accessories', 'Computer Monitors',
+      'Networking Products', 'Printers & Scanners', 'Video Games & Consoles', 'Cameras & Photography', 'Computer Hardware',
+      'Security & Surveillance', 'Converters & Stabilizers', 'Software'],
   },
   {
     id: 'phones', label: 'Phones & Tablets', short: 'Phones', icon: 'fa-mobile-screen-button', tint: '#06b6d4', match: ['electronics'],
@@ -20,7 +21,8 @@ export const CATEGORY_TREE = [
   {
     id: 'home', label: 'Home, Furniture & Appliances', short: 'Home', icon: 'fa-couch', tint: '#f59e0b', match: ['home'],
     subs: ['Furniture', 'Home Appliances', 'Kitchen Appliances', 'Kitchenware & Cookware', 'Home Decor & Accessories',
-      'Bedding & Linen', 'Garden & Outdoor', 'Cleaning & Laundry', 'Lighting'],
+      'Bedding & Linen', 'Curtains & Blinds', 'Carpets & Rugs', 'Garden & Outdoor', 'Cleaning & Laundry',
+      'Household Chemicals', 'Lighting'],
   },
   {
     id: 'fashion', label: 'Fashion', short: 'Fashion', icon: 'fa-shirt', tint: '#a020f0', match: ['fashion'],
@@ -28,31 +30,45 @@ export const CATEGORY_TREE = [
   },
   {
     id: 'beauty', label: 'Health & Beauty', short: 'Beauty', icon: 'fa-spa', tint: '#ec4899', match: ['beauty'],
-    subs: ['Skin Care', 'Hair Beauty', 'Make-Up', 'Fragrances', 'Bath & Body', 'Vitamins & Supplements', 'Tools & Accessories'],
+    subs: ['Skin Care', 'Hair Beauty', 'Make-Up', 'Fragrances', 'Bath & Body', 'Vitamins & Supplements', 'Medical Supplies & Equipment', 'Tools & Accessories'],
   },
   {
     id: 'groceries', label: 'Groceries & Food', short: 'Groceries', icon: 'fa-basket-shopping', tint: '#10b981', match: ['groceries'],
     subs: ['Fresh Produce', 'Foodstuff & Pantry', 'Beverages', 'Meat & Seafood', 'Bakery & Confectionery', 'Spices & Condiments'],
   },
   {
+    id: 'agriculture', label: 'Food, Agriculture & Farming', short: 'Agriculture', icon: 'fa-tractor', tint: '#65a30d', match: ['agriculture'],
+    subs: ['Seeds & Seedlings', 'Fertilizers & Agrochemicals', 'Pesticides & Herbicides', 'Farm Tools & Equipment',
+      'Farm Machinery & Tractors', 'Irrigation & Greenhouses', 'Animal Feed & Supplements', 'Livestock & Poultry',
+      'Veterinary & Animal Health', 'Fresh Farm Produce'],
+  },
+  {
     id: 'kids', label: 'Babies & Kids', short: 'Kids', icon: 'fa-shapes', tint: '#22d3ee', match: ['kids'],
-    subs: ['Baby & Child Care', "Children's Clothing", "Children's Shoes", 'Toys', 'Prams & Strollers', 'School Supplies'],
-  },
-  {
-    id: 'leisure', label: 'Leisure & Sports', short: 'Leisure', icon: 'fa-futbol', tint: '#16a34a', match: [],
-    subs: ['Sports Equipment', 'Fitness & Gym', 'Musical Instruments', 'Books', 'Games & Hobbies', 'Camping & Outdoors'],
-  },
-  {
-    id: 'commercial', label: 'Commercial Equipment & Tools', short: 'Tools', icon: 'fa-screwdriver-wrench', tint: '#64748b', match: [],
-    subs: ['Power Tools', 'Hand Tools', 'Restaurant & Catering', 'Salon & Spa Equipment', 'Industrial Machinery', 'Printing Equipment'],
+    subs: ['Baby & Child Care', "Children's Clothing", "Children's Shoes", "Children's Furniture", "Children's Gear & Safety",
+      'Toys', 'Prams & Strollers', 'Maternity & Pregnancy', 'School Supplies'],
   },
   {
     id: 'pets', label: 'Animals & Pets', short: 'Pets', icon: 'fa-paw', tint: '#d97706', match: [],
-    subs: ['Pet Food', 'Pet Accessories', 'Dogs & Puppies', 'Cats & Kittens', 'Birds', 'Fish'],
+    subs: ['Pet Food', 'Pet Accessories', 'Dogs & Puppies', 'Cats & Kittens', 'Birds', 'Fish', 'Pet Health & Grooming'],
+  },
+  {
+    id: 'leisure', label: 'Sports, Arts & Leisure', short: 'Leisure', icon: 'fa-futbol', tint: '#16a34a', match: [],
+    subs: ['Sports Equipment', 'Fitness & Gym', 'Bicycles', 'Camping & Outdoors', 'Musical Instruments', 'Books', 'Arts & Crafts', 'Games & Hobbies'],
+  },
+  {
+    id: 'commercial', label: 'Commercial & Industrial Equipment', short: 'Business', icon: 'fa-screwdriver-wrench', tint: '#64748b', match: [],
+    subs: ['Office Equipment & Supplies', 'Restaurant & Catering', 'Salon & Spa Equipment', 'Medical & Lab Equipment',
+      'Industrial Machinery', 'Generators & Power Equipment', 'Printing Equipment', 'Safety & Security Equipment'],
+  },
+  {
+    id: 'construction', label: 'Repair & Construction', short: 'Construction', icon: 'fa-helmet-safety', tint: '#b45309', match: ['construction'],
+    subs: ['Building Materials', 'Hand Tools', 'Power Tools', 'Plumbing & Water Supply', 'Electrical Equipment',
+      'Doors & Gates', 'Windows & Glass', 'Solar & Renewable Energy', 'Paint & Finishes', 'Hardware & Fasteners', 'Measuring & Levelling Tools'],
   },
   {
     id: 'vehicles', label: 'Vehicles', short: 'Vehicles', icon: 'fa-car', tint: '#0ea5e9', match: [],
-    subs: ['Cars', 'Motorcycles & Scooters', 'Vehicle Parts & Accessories', 'Buses & Microbuses', 'Trucks & Trailers'],
+    subs: ['Cars', 'Motorcycles & Scooters', 'Vehicle Parts & Accessories', 'Buses & Microbuses', 'Trucks & Trailers',
+      'Heavy Equipment', 'Watercraft & Boats'],
   },
   {
     id: 'general', label: 'General Stores', short: 'General', icon: 'fa-shop', tint: '#0d9488', match: ['general'],

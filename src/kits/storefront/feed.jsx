@@ -5,7 +5,7 @@
    Firebase-Storage MP4 (read via feedVideoUrl) — swap that one helper for HLS later. */
 import React from 'react';
 import { useYM, FA } from './ui.jsx';
-import { ymPrice } from './data.js';
+import { ymPrice, ymProduct } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFeed, subscribeStoreFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl } from '../../lib/feed.js';
 import { likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
@@ -29,7 +29,7 @@ const FEED_DEMO = [
 ];
 
 /* One full-height video card. Plays when >60% visible, pauses otherwise. */
-function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish, onShare }){
+function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onBuy, onStore, onMessage, canMessage, canDelete, onDelete, onView, onFinish, onShare }){
   const secRef = useRef(null);
   const vRef = useRef(null);
   const viewedRef = useRef(false);
@@ -69,6 +69,7 @@ function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, on
       {/* right action rail */}
       <div style={{ position:'absolute', right:12, bottom:120, display:'flex', flexDirection:'column', gap:18, alignItems:'center' }}>
         <RailBtn icon="fa-heart" filled={liked} label={fmtCount(post.likes)} onClick={onLike} activeColor="#ff375f" />
+        {(p || post.productId) && <RailBtn icon="fa-bag-shopping" label="Buy" onClick={onBuy} />}
         {canMessage && <RailBtn icon="fa-comment-dots" label="Message" onClick={onMessage} />}
         <RailBtn icon="fa-arrow-up-from-bracket" label="Share" onClick={onShare} />
         <RailStat icon="fa-eye" label={fmtCount(post.views)} />
@@ -96,7 +97,7 @@ function FeedItem({ post, muted, liked, onLike, onReport, onProduct, onStore, on
                 <span style={{ display:'block', fontSize:13, fontWeight:800 }}>{ymPrice(p.price)}</span>
               </span>
             </button>
-            <button onClick={onProduct} style={{ flexShrink:0, background:'#fff', color:'#111', border:'none', borderRadius:10, padding:'9px 14px', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>Shop</button>
+            <button onClick={onBuy} style={{ flexShrink:0, background:'#fff', color:'#111', border:'none', borderRadius:10, padding:'9px 14px', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}><FA i="fa-bag-shopping" /> Buy</button>
           </div>
         )}
       </div>
@@ -124,7 +125,7 @@ function RailStat({ icon, label }){
 }
 
 export function FeedScreen({ params = {} }){
-  const { nav, back, toast, requireAuth } = useYM();
+  const { nav, back, toast, requireAuth, addToCart } = useYM();
   const { user } = useAuth();
   const uid = user?.uid;
   const scopedStoreId = params.storeId || null;   // when set, show only this store's clips
@@ -187,6 +188,16 @@ export function FeedScreen({ params = {} }){
   const onView = (post) => { if (post.demo || countedViewRef.current.has(post.id)) return; countedViewRef.current.add(post.id); bump(post.id, 'views'); };
   const onFinish = (post) => { if (post.demo || countedFinishRef.current.has(post.id)) return; countedFinishRef.current.add(post.id); bump(post.id, 'finishes'); };
   const onShop = (post) => { if (!post.demo) bump(post.id, 'shopTaps'); if (post.productId) nav('product', { pid: post.productId }); };
+  // Buy CTA: a tagged, in-stock product goes straight to the cart; a tagged-but-
+  // -unresolvable/out-of-stock product opens its product page; an untagged clip
+  // opens the store.
+  const onBuy = (post) => {
+    if (!post.demo) bump(post.id, 'shopTaps');
+    const prod = post.productId ? ymProduct(post.productId) : null;
+    if (prod && prod.stock !== false) { addToCart(prod.id, 1); toast('Added to cart', 'fa-cart-plus'); }
+    else if (post.productId) nav('product', { pid: post.productId });
+    else if (post.storeId) nav('store', { sid: post.storeId });
+  };
   const flush = useCallback(() => {
     const events = Object.entries(pendingRef.current)
       .map(([postId, v]) => ({ postId, ...v }))
@@ -298,7 +309,7 @@ export function FeedScreen({ params = {} }){
             {list.map((post) => (
               <FeedItem key={post.id} post={post} muted={muted} liked={likes.has(post.id)}
                 onLike={() => like(post)} onReport={() => report(post)}
-                onProduct={() => onShop(post)} onShare={() => share(post)}
+                onProduct={() => onShop(post)} onBuy={() => onBuy(post)} onShare={() => share(post)}
                 onStore={() => post.storeId && nav('store', { sid: post.storeId })}
                 onMessage={() => message(post)} canMessage={!!post.ownerId && post.ownerId !== uid}
                 onView={() => onView(post)} onFinish={() => onFinish(post)}
