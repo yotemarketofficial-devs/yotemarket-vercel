@@ -178,6 +178,16 @@ export const respondDispute = callable('respondDispute');
 export const staffListDisputes = callable('staffListDisputes');
 /** Staff: resolve a dispute → { ok, refundAmt }. { id, resolution:'refund'|'partial'|'replace'|'decline', refundAmount?, note? }. */
 export const staffResolveDispute = callable('staffResolveDispute');
+
+// ── Store broadcasts (Following channel) ─────────────────────────────────────
+/** Merchant: post a broadcast to followers → { id, notified }. { kind, text, image?, productId?, offerText?, offerCode? }. */
+export const createStorePost = callable('createStorePost');
+/** Merchant: my store's posts + follower count → { posts, followers }. */
+export const listMyStorePosts = callable('listMyStorePosts');
+/** Merchant/staff: delete a post → { ok }. { id }. */
+export const deleteStorePost = callable('deleteStorePost');
+/** Shopper: the Following feed — recent posts from stores you follow → { posts }. */
+export const getFollowingFeed = callable('getFollowingFeed');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query
@@ -261,6 +271,8 @@ export const reportReview = callable('reportReview');
 // ── YoteFeed (shortform video selling) ───────────────────────────────────────
 /** Merchant: publish a shortform video post → { ok, id }. { videoUrl, caption?, productId?, posterUrl?, durationMs?, aspect? }. */
 export const createFeedPost = callable('createFeedPost');
+/** Merchant: edit one of your clips (caption/product, optional new video) → { ok }. { postId, caption?, productId?, videoUrl?, ... }. */
+export const editFeedPost = callable('editFeedPost');
 /** Shopper: like/unlike a feed post → { ok, likes, liked }. { postId, like }. */
 export const likeFeedPost = callable('likeFeedPost');
 /** Shopper: flag a feed post for staff → { ok }. { postId, reason? }. */

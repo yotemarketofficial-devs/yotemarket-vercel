@@ -25,6 +25,7 @@ export function Header(){
         </button>
         <div className="ym-hdr-spacer" style={{ flex:1 }} />
         <button onClick={()=>nav('feed')} className="icon-btn" aria-label="YoteFeed"><YoteFeedMark size={22} /></button>
+        {account.hasAccount && <button onClick={()=>nav('following')} className="icon-btn" aria-label="Following"><FA i="fa-heart" /></button>}
         <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><YoteAiMark size={25} color="#fff" /></button>
         <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />
@@ -49,7 +50,7 @@ export function Header(){
                 <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--m-border)', marginBottom:6 }}>
                   <div className="ym-h3">{account.name}</div><div className="ym-cap">{account.email || account.phone || 'Signed in'}</div>
                 </div>
-                {[['fa-user','My profile','profile'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
+                {[['fa-user','My profile','profile'],['fa-heart','Following','following'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
                   <button key={l} onClick={()=>{ setAcct(false); if(scr) nav(scr); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
                     {scr==='ai'
                       ? <span style={{ width:18, display:'inline-flex', justifyContent:'center', color:'var(--m-fg3)' }}><YoteAiMark size={16} color="currentColor" /></span>

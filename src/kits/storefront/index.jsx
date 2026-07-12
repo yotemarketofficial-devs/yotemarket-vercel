@@ -10,6 +10,7 @@ import { HomeScreen, SearchScreen, ProductScreen, StoreScreen } from './screens.
 import { CheckoutScreen, OrdersScreen } from './commerce.jsx';
 import { MessagesScreen, AIScreen } from './engage.jsx';
 import { ProfileScreen } from './profile.jsx';
+import { FollowingScreen } from './following.jsx';
 import { FeedScreen } from './feed.jsx';
 import { applyCatalog } from './data.js';
 import { useCatalogSync, subscribeUserOrders } from '../../lib/catalog.js';
@@ -17,7 +18,7 @@ import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
 const { useState, useEffect, useRef } = React;
 
-const SCREENS = { home:HomeScreen, search:SearchScreen, product:ProductScreen, store:StoreScreen, feed:FeedScreen, checkout:CheckoutScreen, orders:OrdersScreen, messages:MessagesScreen, ai:AIScreen, profile:ProfileScreen };
+const SCREENS = { home:HomeScreen, search:SearchScreen, product:ProductScreen, store:StoreScreen, feed:FeedScreen, following:FollowingScreen, checkout:CheckoutScreen, orders:OrdersScreen, messages:MessagesScreen, ai:AIScreen, profile:ProfileScreen };
 
 const initialsFrom = (s) => (s || 'A').split(/[ @._-]/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
