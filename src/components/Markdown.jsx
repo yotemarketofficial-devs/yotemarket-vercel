@@ -99,7 +99,14 @@ function MarkdownInner({ text, style }) {
             </div>
           );
         }
-        const parts = b.text.split('\n');
+        if (b.type === 'list') {
+          const items = Array.isArray(b.items) ? b.items : [];
+          const liStyle = { marginBottom: 2 };
+          return b.ordered
+            ? <ol key={bi} style={{ margin:'4px 0', paddingLeft:22 }}>{items.map((it, li) => <li key={li} style={liStyle}>{renderInline(it, `li${bi}-${li}`)}</li>)}</ol>
+            : <ul key={bi} style={{ margin:'4px 0', paddingLeft:22 }}>{items.map((it, li) => <li key={li} style={liStyle}>{renderInline(it, `li${bi}-${li}`)}</li>)}</ul>;
+        }
+        const parts = String(b.text || '').split('\n');
         return <div key={bi} style={{ margin:'2px 0' }}>{parts.map((pt, pi) => <React.Fragment key={pi}>{renderInline(pt, `p${bi}-${pi}`)}{pi < parts.length - 1 && <br />}</React.Fragment>)}</div>;
       })}
     </div>
