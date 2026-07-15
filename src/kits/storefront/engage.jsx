@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  hideConversation, reportConversation, fmtTime, fmtWhen,
+  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -207,6 +207,11 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
       .catch(() => { setReported(false); toast('Couldn’t submit report', 'fa-triangle-exclamation'); });
   };
 
+  // Read receipt: has the other participant read past my latest message?
+  const otherReadMs = tsMillis((conv.lastReadAt && conv.lastReadAt[otherId]) || 0);
+  let myLastIdx = -1;
+  for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].senderId === myUid) { myLastIdx = i; break; } }
+
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
@@ -232,14 +237,15 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
       )}
       <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {msgs.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
-        {msgs.map((m) => {
+        {msgs.map((m, idx) => {
           const mine = m.senderId === myUid;
+          const seen = mine && idx === myLastIdx && tsMillis(m.at) > 0 && otherReadMs >= tsMillis(m.at);
           return (
             <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
               alignSelf: mine?'flex-end':'flex-start',
               background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
               borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
-              {m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}</div>
+              {m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
             </div>
           );
         })}

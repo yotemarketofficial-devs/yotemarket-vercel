@@ -180,10 +180,14 @@ export async function reportConversation({ convId, reporterUid, reporterName, re
   });
 }
 
-/** Clear my unread badge for a thread (called when I open/read it). */
+/** Clear my unread badge for a thread + stamp when I last read it (drives the
+ *  other participant's "Seen" receipt). Called when I open/view the thread. */
 export function markConversationRead(convId, uid) {
   if (!firebaseEnabled || !db || !convId || !uid) return;
-  updateDoc(doc(db, 'conversations', convId), { [`unread.${uid}`]: 0 }).catch(() => {});
+  updateDoc(doc(db, 'conversations', convId), {
+    [`unread.${uid}`]: 0,
+    [`lastReadAt.${uid}`]: serverTimestamp(),
+  }).catch(() => {});
 }
 
 /**
