@@ -5,6 +5,7 @@ import React from 'react';
 import { useYM, FA, Thumb, GuestGate, Modal } from './ui.jsx';
 import { ymPrice } from './data.js';
 import { getFollowingFeed, reactToPost, commentOnPost, listPostComments, deletePostComment, auth } from '../../lib/firebase.js';
+import { subscribeFollows, unfollowStore } from '../../lib/account.js';
 const { useState, useEffect } = React;
 
 const KIND = { update:['Update', 'var(--m-primary)'], new_product:['New arrival', '#7c3aed'], restock:['Back in stock', '#0ea5e9'], offer:['Offer', '#d97706'], sale:['Sale', '#ef4444'] };
@@ -12,35 +13,88 @@ const ago = (ms) => { if (!ms) return ''; const s = Math.max(0, (Date.now() - ms
 
 export function FollowingScreen(){
   const { nav, account, toast } = useYM();
+  const uid = auth.currentUser?.uid || null;
+  const [tab, setTab] = useState('updates'); // 'updates' | 'stores'
   const [posts, setPosts] = useState(null);
+  const [follows, setFollows] = useState(null);
   useEffect(() => {
     if (!account.hasAccount) { setPosts([]); return undefined; }
     let alive = true;
     getFollowingFeed().then((r) => { if (alive) setPosts(r.posts || []); }).catch(() => { if (alive) setPosts([]); });
     return () => { alive = false; };
   }, [account.hasAccount]);
+  useEffect(() => {
+    if (!account.hasAccount || !uid) { setFollows([]); return undefined; }
+    return subscribeFollows(uid, setFollows);
+  }, [account.hasAccount, uid]);
 
   if (!account.hasAccount) return <GuestGate icon="fa-heart" title="Following" sub="Sign in to see updates, new arrivals and offers from the stores you follow." />;
+
+  const followCount = follows ? follows.length : null;
+  const unfollow = (storeId) => {
+    unfollowStore(uid, storeId).then(() => toast('Unfollowed', 'fa-bell')).catch(() => toast('Could not unfollow', 'fa-triangle-exclamation'));
+  };
+  const TABS = [['updates', 'Updates', 'fa-bolt'], ['stores', 'Stores' + (followCount != null ? ` · ${followCount}` : ''), 'fa-store']];
 
   return (
     <div className="wrap" style={{ paddingTop:18, paddingBottom:40, maxWidth:640 }}>
       <h1 className="ym-h1" style={{ marginBottom:4 }}>Following</h1>
-      <p className="ym-sub" style={{ marginBottom:18 }}>New arrivals, restocks and offers from the stores you follow.</p>
+      <p className="ym-sub" style={{ marginBottom:16 }}>The stores you follow — their new arrivals, restocks and followers-only offers.</p>
 
-      {posts === null ? (
-        <div className="ym-card" style={{ padding:40, textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:22 }} /></div>
-      ) : posts.length === 0 ? (
-        <div className="ym-card" style={{ padding:'44px 24px', textAlign:'center' }}>
-          <div style={{ width:56, height:56, borderRadius:15, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', fontSize:22 }}><FA i="fa-heart" /></div>
-          <div className="ym-h3">Nothing here yet</div>
-          <div className="ym-sub" style={{ marginTop:4, marginBottom:16 }}>Follow your favourite stores and their updates will show up here.</div>
-          <button className="ym-btn ym-btn-primary" onClick={() => nav('home')}><FA i="fa-store" /> Explore stores</button>
-        </div>
+      <div className="scroll-x" style={{ display:'flex', gap:8, marginBottom:18 }}>
+        {TABS.map(([k, l, ic]) => (
+          <button key={k} onClick={() => setTab(k)} style={{ display:'inline-flex', alignItems:'center', gap:7, height:38, padding:'0 16px', borderRadius:9999, cursor:'pointer', fontFamily:'inherit', fontSize:13.5, fontWeight:700, flexShrink:0, whiteSpace:'nowrap',
+            border:'1px solid '+(tab===k?'var(--m-primary)':'var(--m-border)'), background: tab===k?'var(--m-primary)':'var(--m-surface)', color: tab===k?'#fff':'var(--m-fg2)' }}>
+            <FA i={ic} style={{ fontSize:12.5 }} /> {l}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'updates' ? (
+        posts === null ? (
+          <div className="ym-card" style={{ padding:40, textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:22 }} /></div>
+        ) : posts.length === 0 ? (
+          <div className="ym-card" style={{ padding:'44px 24px', textAlign:'center' }}>
+            <div style={{ width:56, height:56, borderRadius:15, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', fontSize:22 }}><FA i="fa-heart" /></div>
+            <div className="ym-h3">Nothing here yet</div>
+            <div className="ym-sub" style={{ marginTop:4, marginBottom:16 }}>Follow your favourite stores and their updates will show up here.</div>
+            <button className="ym-btn ym-btn-primary" onClick={() => nav('home')}><FA i="fa-store" /> Explore stores</button>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {posts.map((p) => <FeedPost key={p.id} p={p} nav={nav} toast={toast} />)}
+          </div>
+        )
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          {posts.map((p) => <FeedPost key={p.id} p={p} nav={nav} toast={toast} />)}
-        </div>
+        <StoresList follows={follows} nav={nav} onUnfollow={unfollow} />
       )}
+    </div>
+  );
+}
+
+/* The stores this shopper follows — moved here from Profile so following lives in
+   one place. Live via subscribeFollows; tap to visit or unfollow. */
+function StoresList({ follows, nav, onUnfollow }){
+  if (follows === null) return <div className="ym-card" style={{ padding:40, textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:22 }} /></div>;
+  if (follows.length === 0) return (
+    <div className="ym-card" style={{ padding:'44px 24px', textAlign:'center' }}>
+      <div style={{ width:56, height:56, borderRadius:15, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px', fontSize:22 }}><FA i="fa-store" /></div>
+      <div className="ym-h3">No stores yet</div>
+      <div className="ym-sub" style={{ marginTop:4, marginBottom:16 }}>Tap Follow on any store to keep it here and get its updates.</div>
+      <button className="ym-btn ym-btn-primary" onClick={() => nav('home')}><FA i="fa-store" /> Explore stores</button>
+    </div>
+  );
+  return (
+    <div className="ym-card" style={{ padding:8 }}>
+      {follows.map((f) => (
+        <div key={f.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px' }}>
+          <button onClick={() => nav('store', { sid:f.storeId })} style={{ flex:1, display:'flex', alignItems:'center', gap:12, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:0, minWidth:0 }}>
+            <Thumb icon={f.icon || 'fa-store'} tint={f.tint || '#7c3aed'} size={44} radius={12} img={f.logo || f.img} />
+            <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name || 'Store'}</div><div className="ym-cap">Tap to visit</div></div>
+          </button>
+          <button onClick={() => onUnfollow(f.storeId)} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ flexShrink:0 }}>Unfollow</button>
+        </div>
+      ))}
     </div>
   );
 }

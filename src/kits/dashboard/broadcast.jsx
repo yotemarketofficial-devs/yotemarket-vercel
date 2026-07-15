@@ -5,7 +5,7 @@
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { useMerchant } from './merchant.jsx';
-import { createStorePost, listMyStorePosts, deleteStorePost, listPostComments, deletePostComment } from '../../lib/firebase.js';
+import { createStorePost, listMyStorePosts, deleteStorePost, listPostComments, deletePostComment, listStoreFollowers } from '../../lib/firebase.js';
 import { ksh } from './data.js';
 const { useState, useEffect, useCallback } = React;
 
@@ -23,6 +23,7 @@ export function Broadcast({ toast }){
   const { store, products } = useMerchant();
   const followers = Number(store?.followers) || 0;
   const prodList = Array.isArray(products) ? products : [];
+  const [tab, setTab] = useState('broadcast'); // 'broadcast' | 'audience'
   const [posts, setPosts] = useState(null);
 
   const load = useCallback(async () => {
@@ -30,6 +31,8 @@ export function Broadcast({ toast }){
     catch { setPosts([]); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const TABS = [['broadcast', 'Broadcast', 'fa-bullhorn'], ['audience', 'Audience' + (followers ? ` · ${followers.toLocaleString()}` : ''), 'fa-users']];
 
   return (
     <div className="anim-up">
@@ -40,24 +43,70 @@ export function Broadcast({ toast }){
           <div><div className="ym-h3" style={{ fontSize:16, lineHeight:1 }}>{followers.toLocaleString()}</div><div className="ym-cap">followers</div></div>
         </div>
       </div>
-      <p className="ym-sub" style={{ marginBottom:20 }}>Post to everyone who follows you — a new arrival, a restock, or a followers-only deal. They get a notification and see it in their feed. Tag a product to make it tap-to-buy.</p>
+      <p className="ym-sub" style={{ marginBottom:16 }}>Post to everyone who follows you — a new arrival, a restock, or a followers-only deal. They get a notification and see it in their feed. Tag a product to make it tap-to-buy.</p>
 
-      <Composer followers={followers} products={prodList} toast={toast} onPosted={load} />
+      <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
+        {TABS.map(([k, l, ic]) => (
+          <button key={k} onClick={() => setTab(k)} style={{ display:'inline-flex', alignItems:'center', gap:7, height:36, padding:'0 15px', borderRadius:9999, cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:700,
+            border:'1px solid '+(tab===k?'var(--m-primary)':'var(--m-border)'), background: tab===k?'var(--m-primary)':'var(--m-surface)', color: tab===k?'#fff':'var(--m-fg2)' }}>
+            <FA i={ic} style={{ fontSize:12 }} /> {l}
+          </button>
+        ))}
+      </div>
 
-      <div className="ym-h3" style={{ fontSize:15, margin:'26px 0 12px' }}>Your posts</div>
-      {posts === null ? (
-        <Card style={{ padding:'34px', textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:20 }} /></Card>
-      ) : posts.length === 0 ? (
-        <Card style={{ padding:'34px 24px', textAlign:'center' }}>
-          <div className="ym-h3">No posts yet</div>
-          <div className="ym-sub" style={{ marginTop:4 }}>Your first broadcast will reach all {followers} followers.</div>
-        </Card>
+      {tab === 'broadcast' ? (
+        <>
+          <Composer followers={followers} products={prodList} toast={toast} onPosted={load} />
+
+          <div className="ym-h3" style={{ fontSize:15, margin:'26px 0 12px' }}>Your posts</div>
+          {posts === null ? (
+            <Card style={{ padding:'34px', textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:20 }} /></Card>
+          ) : posts.length === 0 ? (
+            <Card style={{ padding:'34px 24px', textAlign:'center' }}>
+              <div className="ym-h3">No posts yet</div>
+              <div className="ym-sub" style={{ marginTop:4 }}>Your first broadcast will reach all {followers} followers.</div>
+            </Card>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {posts.map((p) => <PostCard key={p.id} p={p} toast={toast} onDeleted={load} />)}
+            </div>
+          )}
+        </>
       ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {posts.map((p) => <PostCard key={p.id} p={p} toast={toast} onDeleted={load} />)}
-        </div>
+        <Audience />
       )}
     </div>
+  );
+}
+
+/* Who follows this store — the audience behind the broadcast channel. Its own tab
+   so the follower list is separate from composing posts. Owner/manager only. */
+function Audience(){
+  const [list, setList] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    listStoreFollowers().then((r) => { if (alive) setList(r.followers || []); }).catch(() => { if (alive) setList([]); });
+    return () => { alive = false; };
+  }, []);
+  const when = (ms) => { if (!ms) return ''; try { return new Date(ms).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
+
+  if (list === null) return <Card style={{ padding:'34px', textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:20 }} /></Card>;
+  if (list.length === 0) return (
+    <Card style={{ padding:'34px 24px', textAlign:'center' }}>
+      <FA i="fa-users" style={{ color:'var(--m-primary)', fontSize:22, marginBottom:10 }} />
+      <div className="ym-h3">No followers yet</div>
+      <div className="ym-sub" style={{ marginTop:4 }}>Share your store and post great updates — the shoppers who follow you will appear here.</div>
+    </Card>
+  );
+  return (
+    <Card style={{ padding:8 }}>
+      {list.map((f) => (
+        <div key={f.uid} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px' }}>
+          <div style={{ width:42, height:42, borderRadius:999, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>{f.photoUrl ? <img src={f.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i="fa-user" />}</div>
+          <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name || 'Shopper'}</div><div className="ym-cap">Following since {when(f.followedAt) || '—'}</div></div>
+        </div>
+      ))}
+    </Card>
   );
 }
 
