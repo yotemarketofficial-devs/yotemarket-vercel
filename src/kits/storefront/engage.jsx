@@ -80,6 +80,7 @@ function LiveMessages({ params, user, account }){
   // and select it (we can derive its id synchronously so selection is instant).
   const paramStore = params?.store;
   const paramProduct = params?.product || null;
+  const paramOrder = params?.order || null;
   useEffE(() => {
     if (!paramStore?.id) return;
     setSel(conversationId(paramStore.id, myUid));
@@ -145,7 +146,7 @@ function LiveMessages({ params, user, account }){
         </div>
         <div className="msg-thread" style={{ minWidth:0, display:'flex', flexDirection:'column' }}>
           {selConv
-            ? <LiveChatThread key={selConv.id} conv={selConv} user={user} onBack={()=>setSel(null)} openProduct={paramStore && selConv.storeId === paramStore.id ? paramProduct : null} />
+            ? <LiveChatThread key={selConv.id} conv={selConv} user={user} onBack={()=>setSel(null)} openProduct={paramStore && selConv.storeId === paramStore.id ? paramProduct : null} openOrder={paramStore && selConv.storeId === paramStore.id ? paramOrder : null} />
             : <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--m-fg3)', fontSize:14, padding:24, textAlign:'center' }}>Select a conversation to start chatting.</div>}
         </div>
       </div>
@@ -163,7 +164,24 @@ function LiveMessages({ params, user, account }){
   );
 }
 
-function LiveChatThread({ conv, user, onBack, openProduct }){
+/* Compact order-reference card rendered inside a chat bubble when a message
+   carries an `order` tag (post-purchase support). `dark` = on my own bubble. */
+function OrderRefCard({ order, dark }){
+  const fg = dark ? 'rgba(255,255,255,.95)' : 'var(--m-fg1)';
+  const sub = dark ? 'rgba(255,255,255,.72)' : 'var(--m-fg3)';
+  const bits = [order.items ? `${order.items} item${order.items !== 1 ? 's' : ''}` : '', order.total != null ? ymPrice(order.total) : ''].filter(Boolean).join(' · ');
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:7, padding:'8px 10px', borderRadius:10, background: dark ? 'rgba(255,255,255,.15)' : 'var(--m-surface-2)' }}>
+      <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, background: dark ? 'rgba(255,255,255,.2)' : 'var(--m-bg)', color: dark ? '#fff' : 'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-receipt" style={{ fontSize:13 }} /></span>
+      <span style={{ minWidth:0 }}>
+        <span style={{ display:'block', fontWeight:700, fontSize:12.5, fontFamily:'monospace', color:fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{order.no || 'Order'}</span>
+        {bits && <span style={{ fontSize:11, color:sub }}>{bits}</span>}
+      </span>
+    </div>
+  );
+}
+
+function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   const { toast, nav } = useYM();
   const myUid = user.uid;
   const otherId = otherParticipant(conv, myUid);
@@ -182,11 +200,11 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
   useEffE(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
 
   const [reported, setReported] = useSE(false);
-  const send = (text) => {
+  const send = (text, extra) => {
     const t=(text||draft).trim(); if(!t) return;
     if (blocked) { toast('This conversation is closed.', 'fa-ban'); return; }
     setDraft('');
-    sendChatMessage({ convId: conv.id, conv, user, text: t, recipientUid: otherId })
+    sendChatMessage({ convId: conv.id, conv, user, text: t, recipientUid: otherId, ...(extra || {}) })
       .catch((e) => toast(e?.message || 'Message failed to send', 'fa-triangle-exclamation'));
   };
   // Opened from a product / YoteFeed → greet with the product named, once, on a fresh
@@ -196,6 +214,15 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
     autoSentRef.current = true;
     send(`Hi! I'm interested in ${openProduct.name || 'this product'}. Is it still available?`);
   }, [openProduct, loaded, blocked, msgs.length]);
+  // Opened from an order ("Message store about this order") → post the order as a
+  // tagged message once per open. Unlike the product greeting we DON'T gate on an
+  // empty thread: post-purchase support usually happens on a store the shopper
+  // already has a thread with, and the order card is the whole point.
+  useEffE(() => {
+    if (!openOrder || !loaded || blocked || autoSentRef.current) return;
+    autoSentRef.current = true;
+    send(`Hi! I have a question about my order ${openOrder.no || ''}.`.trim(), { order: openOrder });
+  }, [openOrder, loaded, blocked]);
   const report = () => {
     if (reported) return;
     setReported(true);
@@ -247,7 +274,7 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
               alignSelf: mine?'flex-end':'flex-start',
               background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
               borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
-              {m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
+              {m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
             </div>
           );
         })}

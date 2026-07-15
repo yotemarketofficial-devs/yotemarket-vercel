@@ -777,6 +777,23 @@ export function Chat(){
   );
 }
 
+/* Compact order-reference card inside a chat bubble when a message carries an
+   `order` tag (a shopper messaging about a specific order). `dark` = my bubble. */
+function OrderRefCard({ order, dark }){
+  const fg = dark ? 'rgba(255,255,255,.95)' : 'var(--m-fg1)';
+  const sub = dark ? 'rgba(255,255,255,.72)' : 'var(--m-fg3)';
+  const bits = [order.items ? `${order.items} item${order.items !== 1 ? 's' : ''}` : '', order.total != null ? ksh(order.total) : ''].filter(Boolean).join(' · ');
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:7, padding:'8px 10px', borderRadius:10, background: dark ? 'rgba(255,255,255,.15)' : 'var(--m-surface-2)' }}>
+      <span style={{ width:30, height:30, borderRadius:8, flexShrink:0, background: dark ? 'rgba(255,255,255,.2)' : 'var(--m-bg)', color: dark ? '#fff' : 'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-receipt" style={{ fontSize:13 }} /></span>
+      <span style={{ minWidth:0 }}>
+        <span style={{ display:'block', fontWeight:700, fontSize:12.5, fontFamily:'monospace', color:fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{order.no || 'Order'}</span>
+        {bits && <span style={{ fontSize:11, color:sub }}>{bits}</span>}
+      </span>
+    </div>
+  );
+}
+
 // Canned one-tap replies for merchants answering customers fast.
 const QUICK_REPLIES = [
   'Yes, it’s available! 😊',
@@ -825,7 +842,7 @@ function MerchantChatThread({ conv, user, onBack }){
         {shown.map((m, idx) => {
           const mine = m.senderId === uid;
           const seen = mine && idx === myLastIdx && tsMillis(m.at) > 0 && otherReadMs >= tsMillis(m.at);
-          return <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>;
+          return <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>;
         })}
       </div>
       {!blocked && (

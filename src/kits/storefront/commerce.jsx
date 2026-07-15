@@ -405,7 +405,7 @@ function ItemReview({ productId }){
    breakdown, fulfilment + directions map, pickup code, points earned and the
    tax invoice. Opened by tapping an order. */
 function OrderDetail({ view, onClose }){
-  const { toast } = useYM();
+  const { toast, nav } = useYM();
   const o = view.raw;
   const store = view.store ? ymStore(view.store) : null;
   const hub = o.hubId ? findHub(o.hubId) : null;
@@ -495,6 +495,12 @@ function OrderDetail({ view, onClose }){
       )}
 
       {view.status!=='placed' && view.status!=='cancelled' && <OrderInvoice orderId={o.id} />}
+
+      {store && store.ownerId && view.status!=='cancelled' && (
+        <button onClick={()=>{ onClose(); nav('messages', { store, order: { id:o.id, no:orderNo, total:view.total, items:view.items.length, status:view.status } }); }} className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:12 }}>
+          <FA i="fa-comments" /> Message store about this order
+        </button>
+      )}
 
       {canCancel && (
         <button onClick={cancel} disabled={cancelling} className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:14, color:'var(--m-danger)' }}>
