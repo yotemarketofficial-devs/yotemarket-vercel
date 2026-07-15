@@ -3,8 +3,10 @@
 import React from 'react';
 import './dashboard.css';
 import { ThemeCtx, FA } from './primitives.jsx';
-import { MerchantProvider, useMerchant } from './merchant.jsx';
+import { MerchantProvider, useMerchant, useEntitlements } from './merchant.jsx';
 import { Sidebar, MobileNav, TopBar, Footer, navForRole } from './layout.jsx';
+import { UpgradeScreen } from './Upgrade.jsx';
+import { SCREEN_FEATURE } from '../../lib/entitlements.js';
 import { Overview } from './overview.jsx';
 import { Products, AddProductModal } from './products.jsx';
 import { Sales, Wallet, Subscription, Settings, Chat, Assistant, Insight } from './extras.jsx';
@@ -26,9 +28,15 @@ const LABELS = { overview:'Overview', pos:'Point of sale', assistant:'YoteAI', i
    who lands on a screen they can't see is snapped back to the overview). */
 function GuardedScreen({ active, setActive, screenProps }){
   const { role } = useMerchant();
+  const ent = useEntitlements();
   const allowed = navForRole(role).map((n) => n.key);
   useEffect(() => { if (!allowed.includes(active)) setActive('overview'); }, [active, role]); // eslint-disable-line
-  const Screen = SCREENS[allowed.includes(active) ? active : 'overview'] || Overview;
+  const key = allowed.includes(active) ? active : 'overview';
+  // Plan gate: a premium screen the merchant's plan doesn't unlock shows the
+  // upgrade screen instead (owner-scoped — employees pass through, see useEntitlements).
+  const feat = SCREEN_FEATURE[key];
+  if (feat && !ent.can(feat)) return <UpgradeScreen feature={feat} currentTier={ent.tier} onNav={setActive} />;
+  const Screen = SCREENS[key] || Overview;
   return <Screen {...screenProps} />;
 }
 

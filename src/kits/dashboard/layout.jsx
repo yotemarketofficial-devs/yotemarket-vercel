@@ -2,7 +2,8 @@
 import React from 'react';
 import { FA, Avatar, Logo, ThemeToggle } from './primitives.jsx';
 import { ksh } from './data.js';
-import { useShop, useSubCard, useMerchant } from './merchant.jsx';
+import { useShop, useSubCard, useMerchant, useEntitlements } from './merchant.jsx';
+import { SCREEN_FEATURE } from '../../lib/entitlements.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 import SubscriptionMark from '../../components/SubscriptionMark.jsx';
@@ -66,6 +67,7 @@ export function Sidebar({ active, onChange, onClose }){
   const shop = useShop();
   const subc = useSubCard();
   const { role } = useMerchant();
+  const ent = useEntitlements();
   const items = navForRole(role);
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
@@ -80,13 +82,15 @@ export function Sidebar({ active, onChange, onClose }){
         <nav style={{ display:'flex', flexDirection:'column', gap:4, marginTop:14 }}>
           {items.map(n=>{
             const on = active===n.key;
+            const locked = SCREEN_FEATURE[n.key] && !ent.can(SCREEN_FEATURE[n.key]);
             return (
-              <button key={n.key} data-tour={n.key} onClick={()=>{ onChange(n.key); onClose&&onClose(); }}
+              <button key={n.key} data-tour={n.key} onClick={()=>{ onChange(n.key); onClose&&onClose(); }} title={locked ? 'Upgrade to unlock' : undefined}
                 style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 12px', borderRadius:12, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, fontWeight:600, textAlign:'left',
                   background: on?'var(--m-surface-3)':'transparent', color: on?'var(--m-primary)':'var(--m-fg2)' }}>
                 <NavIcon n={n} color={on ? 'var(--m-primary)' : 'var(--m-fg3)'} />
-                <span style={{ flex:1 }}>{n.label}</span>
+                <span style={{ flex:1, opacity: locked ? 0.72 : 1 }}>{n.label}</span>
                 {n.badge && <span style={{ minWidth:20, height:20, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px' }}>{n.badge}</span>}
+                {locked && <FA i="fa-lock" style={{ fontSize:11, color:'var(--m-fg3)', opacity:.75 }} />}
               </button>
             );
           })}

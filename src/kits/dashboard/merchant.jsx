@@ -6,6 +6,7 @@ import React from 'react';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled } from '../../lib/firebase.js';
+import { tierRank, tierName, can as canFeature } from '../../lib/entitlements.js';
 import { SHOP, SUBSCRIPTION, KPIS, WEEK, PROD_ROWS, ORDER_ROWS, ksh } from './data.js';
 const { createContext, useContext, useEffect, useState, useMemo } = React;
 
@@ -65,6 +66,28 @@ export function MerchantProvider({ children }) {
 
 export function useMerchant() {
   return useContext(MerchantCtx) || { live: false };
+}
+
+/**
+ * Feature entitlements for the signed-in merchant → { rank, tier, plan, can }.
+ * Entitlements are a property of the STORE's plan, but the subscription doc is
+ * keyed by the OWNER's uid — an employee's own uid has no sub, so we don't gate
+ * employees here (their role-nav already limits them; treat them as entitled).
+ * Demo/no-backend mode is fully unlocked (it's a showcase). Server-side
+ * enforcement + store-tier denormalization for true multi-seat is the follow-up.
+ */
+export function useEntitlements() {
+  const { live, sub, role } = useMerchant();
+  if (!live) return { live: false, plan: null, rank: 3, tier: 'Pro', can: () => true };
+  const owner = role === 'owner';
+  const rank = owner ? tierRank(sub) : 3; // employees: limited by role, not plan
+  return {
+    live: true,
+    plan: (sub && sub.plan) || null,
+    rank,
+    tier: tierName(rank),
+    can: (f) => (owner ? canFeature(sub, f) : true),
+  };
 }
 
 /** SHOP-shaped store/owner identity (live or demo fallback). */

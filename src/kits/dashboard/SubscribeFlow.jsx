@@ -7,6 +7,7 @@ import { FA, Card, Btn } from './primitives.jsx';
 import { ksh } from './data.js';
 import { subscribeMerchant, confirmPayment, redeemCoupon } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, SOFTWARE_TIERS, PLAN_ORDER, DELIVERY_FEATURES, findDeliveryTier } from './pricing.js';
+import { planUnlocks, TIER_RANK } from '../../lib/entitlements.js';
 const { useState, useEffect } = React;
 
 const ipt = { width: '100%', padding: '12px 14px', borderRadius: 11, border: '1px solid var(--m-border)', background: 'var(--m-surface)', color: 'var(--m-fg1)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
@@ -121,7 +122,10 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
               <Card key={t.name} style={{ padding: 22 }}>
                 <div className="ym-h2" style={{ fontSize: 17 }}>{t.name}</div>
                 <div style={{ margin: '8px 0 4px' }}><span style={{ fontSize: 26, fontWeight: 800, color: 'var(--m-fg1)' }}>{ksh(t.price)}</span><span className="ym-cap">/mo</span></div>
-                <div className="ym-cap" style={{ marginBottom: 16 }}>{t.desc}</div>
+                <div className="ym-cap" style={{ marginBottom: 14 }}>{t.desc}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {planUnlocks(TIER_RANK[t.name] || 1).map((f) => <div key={f} style={{ display: 'flex', gap: 8, fontSize: 13, color: 'var(--m-fg2)' }}><FA i="fa-check" style={{ color: 'var(--m-success)', marginTop: 3 }} /><span>{f}</span></div>)}
+                </div>
                 <Btn kind={isCurrent ? 'ghost' : 'primary'} disabled={isCurrent} style={{ width: '100%' }} onClick={() => pick({ kind: 'software', plan: t.name, price: t.price })}>{isCurrent ? 'Current plan' : `Subscribe · ${ksh(t.price)}/mo`}</Btn>
               </Card>
             );
