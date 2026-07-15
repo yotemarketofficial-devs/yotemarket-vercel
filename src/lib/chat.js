@@ -67,6 +67,31 @@ export function otherParticipant(conv, myUid) {
   return (conv.participants || []).find((p) => p && p !== myUid) || '';
 }
 
+/** Which side of a conversation `uid` is on ('shopper' | 'merchant'). Reads the
+ *  per-participant info map, inferring from the other party for any legacy doc
+ *  that doesn't carry my own role. A store owner is 'merchant' in their store's
+ *  customer chats and 'shopper' when they message another store. */
+export function conversationRole(conv, uid) {
+  const info = (conv && conv.info) || {};
+  const mine = info[uid] && info[uid].role;
+  if (mine) return mine;
+  const otherId = ((conv && conv.participants) || []).find((p) => p && p !== uid);
+  const otherRole = otherId && info[otherId] && info[otherId].role;
+  if (otherRole === 'shopper') return 'merchant';
+  if (otherRole === 'merchant') return 'shopper';
+  return 'shopper';
+}
+
+/** Messages `uid` can see in a thread: everything sent at/before the point they
+ *  last "deleted for me" (hiddenAt) is hidden, so re-opening a cleared chat
+ *  starts fresh for them while the other party keeps full history. A pending
+ *  send (no server timestamp yet) always shows. */
+export function visibleMessages(msgs, conv, uid) {
+  const cleared = tsMillis((conv && conv.hiddenAt && conv.hiddenAt[uid]) || 0);
+  if (!cleared) return msgs;
+  return (msgs || []).filter((m) => { const t = tsMillis(m.at); return !t || t > cleared; });
+}
+
 /**
  * Ensure a shopper↔store conversation exists and return its id. Idempotent — a
  * shopper always reuses the same thread for a given store. The shopper writes the
@@ -202,14 +227,19 @@ export function hideConversation(convId, uid) {
   return updateDoc(doc(db, 'conversations', convId), { [`hiddenAt.${uid}`]: serverTimestamp() });
 }
 
-/** Live list of my conversations, newest-first. Returns an unsubscribe fn. */
-export function subscribeConversations(uid, cb) {
+/** Live list of my conversations, newest-first. Returns an unsubscribe fn.
+ *  `role` scopes the list to the side I'm on, so a store owner's customer chats
+ *  ('merchant') never leak into their personal shopper inbox ('shopper') and
+ *  vice-versa. Omit for every conversation I'm a participant in. */
+export function subscribeConversations(uid, cb, role) {
   if (!firebaseEnabled || !db || !uid) return () => {};
   const q = query(collection(db, 'conversations'), where('participants', 'array-contains', uid));
   return onSnapshot(
     q,
     (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        // Keep only the side asked for (personal inbox vs. store dashboard).
+        .filter((c) => !role || conversationRole(c, uid) === role)
         // Drop threads I've "deleted for me" — unless a newer message arrived since.
         .filter((c) => {
           const h = c.hiddenAt && c.hiddenAt[uid];
@@ -222,16 +252,17 @@ export function subscribeConversations(uid, cb) {
   );
 }
 
-/** React hook: total unread messages across all my conversations (0 when not live). */
-export function useUnreadCount(user) {
+/** React hook: total unread messages across my conversations (0 when not live).
+ *  Pass a `role` to count only one side (e.g. 'shopper' for the storefront). */
+export function useUnreadCount(user, role) {
   const [count, setCount] = useState(0);
   const uid = chatEnabled(user) ? user.uid : null;
   useEffect(() => {
     if (!uid) { setCount(0); return undefined; }
     return subscribeConversations(uid, (list) => {
       setCount(list.reduce((sum, c) => sum + ((c.unread && c.unread[uid]) || 0), 0));
-    });
-  }, [uid]);
+    }, role);
+  }, [uid, role]);
   return count;
 }
 

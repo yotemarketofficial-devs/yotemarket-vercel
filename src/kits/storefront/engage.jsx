@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis,
+  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -74,7 +74,7 @@ function LiveMessages({ params, user, account }){
   const myUid = user.uid;
 
   // Live inbox.
-  useEffE(() => subscribeConversations(myUid, setConvos), [myUid]);
+  useEffE(() => subscribeConversations(myUid, setConvos, 'shopper'), [myUid]);
 
   // Opened from a store/product "Chat with seller" CTA → ensure the thread exists
   // and select it (we can derive its id synchronously so selection is instant).
@@ -207,10 +207,12 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
       .catch(() => { setReported(false); toast('Couldn’t submit report', 'fa-triangle-exclamation'); });
   };
 
+  // Messages I can see — a chat I "deleted" starts fresh for me on re-open.
+  const shown = visibleMessages(msgs, conv, myUid);
   // Read receipt: has the other participant read past my latest message?
   const otherReadMs = tsMillis((conv.lastReadAt && conv.lastReadAt[otherId]) || 0);
   let myLastIdx = -1;
-  for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].senderId === myUid) { myLastIdx = i; break; } }
+  for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].senderId === myUid) { myLastIdx = i; break; } }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
@@ -236,8 +238,8 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
         </button>
       )}
       <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
-        {msgs.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
-        {msgs.map((m, idx) => {
+        {shown.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
+        {shown.map((m, idx) => {
           const mine = m.senderId === myUid;
           const seen = mine && idx === myLastIdx && tsMillis(m.at) > 0 && otherReadMs >= tsMillis(m.at);
           return (
@@ -250,7 +252,7 @@ function LiveChatThread({ conv, user, onBack, openProduct }){
           );
         })}
       </div>
-      {msgs.length===0 && !blocked && (
+      {shown.length===0 && !blocked && (
         <div className="scroll-x" style={{ gap:8, padding:'10px 18px 0' }}>
           {QUICK_CHIPS.map(c=><button key={c} className="ym-chip ym-btn-sm" style={{ height:34, flexShrink:0, fontSize:13 }} onClick={()=>send(c)}>{c}</button>)}
         </div>

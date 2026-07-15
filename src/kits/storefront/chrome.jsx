@@ -11,7 +11,7 @@ const { useState: useSC } = React;
 export function Header(){
   const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut } = useYM();
   const { user } = useAuth();
-  const unread = useUnreadCount(user);
+  const unread = useUnreadCount(user, 'shopper');
   const [acct, setAcct] = useSC(false);
   return (
     <header style={{ position:'sticky', top:0, zIndex:60, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>

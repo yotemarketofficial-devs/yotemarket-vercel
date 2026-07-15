@@ -12,7 +12,7 @@ import SubscribeFlow from './SubscribeFlow.jsx';
 import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
-  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis,
+  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
@@ -717,7 +717,7 @@ export function Chat(){
   const [convos, setConvos] = useStateX(null); // null = loading
   const [sel, setSel] = useStateX(null);
 
-  useEffX(() => { if (live) return subscribeConversations(uid, setConvos); setConvos([]); return undefined; }, [uid, live]);
+  useEffX(() => { if (live) return subscribeConversations(uid, setConvos, 'merchant'); setConvos([]); return undefined; }, [uid, live]);
 
   const list = convos || [];
   const selConv = list.find((c) => c.id === sel) || list[0] || null;
@@ -806,10 +806,12 @@ function MerchantChatThread({ conv, user, onBack }){
     sendChatMessage({ convId: conv.id, user, text: v, recipientUid: otherId }).catch(()=>{});
   };
 
+  // Messages I can see — a chat I "deleted" starts fresh for me on re-open.
+  const shown = visibleMessages(msgs, conv, uid);
   // Read receipt: has the customer read past my latest reply?
   const otherReadMs = tsMillis((conv.lastReadAt && conv.lastReadAt[otherId]) || 0);
   let myLastIdx = -1;
-  for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].senderId === uid) { myLastIdx = i; break; } }
+  for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].senderId === uid) { myLastIdx = i; break; } }
 
   return (
     <div className="chat-thread" style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0 }}>
@@ -819,8 +821,8 @@ function MerchantChatThread({ conv, user, onBack }){
         <div style={{ flex:1 }}><div className="ym-h3">{info.name || 'Customer'}</div><div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:blocked?'var(--m-danger)':'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Customer'}</div></div>
       </div>
       <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
-        {msgs.length===0 && <div style={{ margin:'auto', color:'var(--m-fg3)', fontSize:13.5 }}>No messages yet.</div>}
-        {msgs.map((m, idx) => {
+        {shown.length===0 && <div style={{ margin:'auto', color:'var(--m-fg3)', fontSize:13.5 }}>No messages yet.</div>}
+        {shown.map((m, idx) => {
           const mine = m.senderId === uid;
           const seen = mine && idx === myLastIdx && tsMillis(m.at) > 0 && otherReadMs >= tsMillis(m.at);
           return <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>;
