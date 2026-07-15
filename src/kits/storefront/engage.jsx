@@ -182,6 +182,38 @@ function OrderRefCard({ order, dark }){
   );
 }
 
+/* A negotiated deal the merchant sent in chat. The shopper (the recipient) gets
+   an "Accept & pay" button that routes to checkout at the AGREED price. */
+function OfferCard({ offer, mine, nav }){
+  const dark = mine;
+  const fg = dark ? 'rgba(255,255,255,.96)' : 'var(--m-fg1)';
+  const sub = dark ? 'rgba(255,255,255,.75)' : 'var(--m-fg3)';
+  const accent = dark ? '#fff' : 'var(--m-primary)';
+  const qty = Number(offer.qty) || 1;
+  const line = (Number(offer.price) || 0) * qty;
+  return (
+    <div style={{ marginBottom:7, borderRadius:12, overflow:'hidden', border:'1px solid ' + (dark ? 'rgba(255,255,255,.25)' : 'var(--m-primary)') }}>
+      <div style={{ padding:'8px 12px', display:'flex', alignItems:'center', gap:7, background: dark ? 'rgba(255,255,255,.14)' : 'color-mix(in srgb, var(--m-primary) 12%, transparent)' }}>
+        <FA i="fa-handshake" style={{ color:accent, fontSize:13 }} />
+        <span style={{ fontSize:11, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:accent }}>Special offer</span>
+      </div>
+      <div style={{ padding:'10px 12px', background: dark ? 'rgba(255,255,255,.06)' : 'var(--m-surface-2)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Thumb icon={offer.productIcon || 'fa-box'} tint="#7c3aed" size={40} radius={9} img={offer.productImage} />
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontWeight:700, fontSize:13.5, color:fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{offer.productName || 'Product'}</div>
+            <div style={{ fontSize:12, color:sub }}>{qty > 1 ? `${qty} × ` : ''}<b style={{ color:fg }}>{ymPrice(offer.price)}</b>{qty > 1 ? ` · ${ymPrice(line)} total` : ''}</div>
+          </div>
+        </div>
+        {offer.note && <div style={{ fontSize:12, color:sub, marginTop:7 }}>{offer.note}</div>}
+        {!mine
+          ? <button onClick={()=>nav('checkout', { offer })} className="ym-btn ym-btn-primary ym-btn-sm" style={{ width:'100%', marginTop:9 }}><FA i="fa-bolt" /> Accept &amp; pay {ymPrice(line)}</button>
+          : <div style={{ fontSize:11, color:sub, marginTop:8, display:'flex', alignItems:'center', gap:6 }}><FA i="fa-paper-plane" style={{ fontSize:10 }} /> Offer sent — the customer can accept &amp; pay</div>}
+      </div>
+    </div>
+  );
+}
+
 function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   const { toast, nav } = useYM();
   const myUid = user.uid;
@@ -279,7 +311,7 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
                 alignSelf: mine?'flex-end':'flex-start',
                 background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
                 borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
-                {m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
+                {m.offer && <OfferCard offer={m.offer} mine={mine} nav={nav} />}{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
               </div>
             </React.Fragment>
           );

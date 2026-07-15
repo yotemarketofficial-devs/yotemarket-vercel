@@ -14,10 +14,16 @@ const ORDER_STEPS = ['Order placed','Paid · finding a rider','Rider assigned','
 // Store-pickup lifecycle: placed→preparing(paid)→ready_pickup→delivered.
 const STORE_PICKUP_STEPS = ['Order placed','Paid · preparing','Ready for pickup','Collected'];
 
-export function CheckoutScreen(){
+export function CheckoutScreen({ params }){
   const { cart, clearCart, reset, nav, back, toast, requireAuth, account } = useYM();
   const { hasAccount } = useAuth();
-  const items = cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
+  // A negotiated in-chat offer → single-item checkout at the AGREED price (the
+  // merchant set it, so it's authorised). Otherwise a normal cart checkout.
+  const offer = params?.offer || null;
+  const offerBase = offer ? (ymProduct(offer.productId) || {}) : {};
+  const items = offer
+    ? [{ pid: offer.productId, qty: Number(offer.qty) || 1, p: { ...offerBase, price: Number(offer.price) || 0, name: offer.productName || offerBase.name || 'Item', store: offer.storeId || offerBase.store || null, img: offer.productImage || offerBase.img, icon: offerBase.icon || 'fa-box' } }]
+    : cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
   const subtotal = items.reduce((s,x)=>s+x.p.price*x.qty,0);
   const [fulfillment, setFulfillment] = useSCm('hub'); // hub | store_pickup
   const sellStore = ymStore(items[0]?.p?.store);
@@ -60,7 +66,7 @@ export function CheckoutScreen(){
 
   useEffCm(() => () => { if (unsubRef.current) unsubRef.current(); clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); }, []);
   const stopWatching = () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } clearTimeout(timerRef.current); clearTimeout(confirmTimerRef.current); };
-  const settle = (rcpt, method) => { stopWatching(); setReceipt(rcpt); if (method) setPaidMethod(method); setPhase('paid'); clearCart(); };
+  const settle = (rcpt, method) => { stopWatching(); setReceipt(rcpt); if (method) setPaidMethod(method); setPhase('paid'); if (!offer) clearCart(); };
 
   // Actively confirm the order payment via Daraja (independent of the callback).
   // On success settlePaid flips the payment doc to 'paid', which the listener below

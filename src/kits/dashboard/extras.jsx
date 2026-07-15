@@ -805,23 +805,100 @@ const QUICK_REPLIES = [
   'We deliver to your nearest pickup hub.',
 ];
 
+/* The deal the merchant sent, on their own (dark) bubble — informational. */
+function OfferCard({ offer }){
+  const qty = Number(offer.qty) || 1;
+  return (
+    <div style={{ marginBottom:7, borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,.25)' }}>
+      <div style={{ padding:'8px 11px', display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.15)' }}>
+        <FA i="fa-handshake" style={{ color:'#fff', fontSize:12 }} />
+        <span style={{ fontSize:10.5, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:'#fff' }}>Offer sent</span>
+      </div>
+      <div style={{ padding:'9px 11px', background:'rgba(255,255,255,.06)' }}>
+        <div style={{ fontWeight:700, fontSize:13, color:'rgba(255,255,255,.96)' }}>{offer.productName || 'Product'}</div>
+        <div style={{ fontSize:12, color:'rgba(255,255,255,.82)' }}>{qty > 1 ? `${qty} × ` : ''}{ksh(offer.price)}{qty > 1 ? ` · ${ksh((Number(offer.price) || 0) * qty)} total` : ''}</div>
+        {offer.note && <div style={{ fontSize:11.5, color:'rgba(255,255,255,.72)', marginTop:4 }}>{offer.note}</div>}
+        <div style={{ fontSize:10.5, color:'rgba(255,255,255,.6)', marginTop:6 }}>The customer can tap Accept &amp; pay.</div>
+      </div>
+    </div>
+  );
+}
+
+/* Merchant composes a custom deal — a catalog product at a negotiated price —
+   sent as an `offer`-tagged chat message the shopper can accept & pay. */
+function OfferComposer({ products, storeId, onClose, onSend }){
+  const list = Array.isArray(products) ? products : [];
+  const [pid, setPid] = useStateX(list[0]?.id || '');
+  const [price, setPrice] = useStateX('');
+  const [qty, setQty] = useStateX('1');
+  const [note, setNote] = useStateX('');
+  const prod = list.find((p) => p.id === pid) || null;
+  useEffX(() => { if (prod && prod.price != null) setPrice(String(prod.price)); }, [pid]); // prefill list price to edit down
+  const pr = Number(price); const q = Math.max(1, Number(qty) || 1);
+  const valid = !!prod && pr > 0;
+  const submit = () => {
+    if (!valid) return;
+    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), productId: prod.id, productName: prod.name, productImage: prod.img || null, productIcon: prod.icon || 'fa-box', price: pr, qty: q, note: note.trim(), storeId: storeId || null });
+  };
+  const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:420, padding:20 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-handshake" style={{ color:'var(--m-primary)' }} /> Send an offer</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
+        </div>
+        {list.length === 0 ? (
+          <div className="ym-sub" style={{ textAlign:'center', padding:'20px 0' }}>Add a product to your store first, then you can offer it here.</div>
+        ) : (
+          <>
+            <label className="ym-cap" style={{ fontWeight:600 }}>Product
+              <select value={pid} onChange={(e)=>setPid(e.target.value)} style={inp}>
+                {list.map((p) => <option key={p.id} value={p.id}>{p.name}{p.price != null ? ` · ${ksh(p.price)}` : ''}</option>)}
+              </select>
+            </label>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 88px', gap:10, marginTop:10 }}>
+              <label className="ym-cap" style={{ fontWeight:600 }}>Agreed price (KSh)
+                <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} />
+              </label>
+              <label className="ym-cap" style={{ fontWeight:600 }}>Qty
+                <input value={qty} onChange={(e)=>setQty(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" style={inp} />
+              </label>
+            </div>
+            {prod && pr > 0 && prod.price != null && pr < prod.price && <div className="ym-cap" style={{ marginTop:8, color:'var(--m-primary)' }}><FA i="fa-tag" /> {Math.round((1 - pr / prod.price) * 100)}% off the {ksh(prod.price)} list price</div>}
+            <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
+              <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. valid today only" style={inp} />
+            </label>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:16 }}>
+              <div><div className="ym-cap">Customer pays</div><div className="ym-h3" style={{ fontSize:18 }}>{ksh(pr > 0 ? pr * q : 0)}</div></div>
+              <Btn kind="primary" disabled={!valid} onClick={submit}><FA i="fa-paper-plane" /> Send offer</Btn>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MerchantChatThread({ conv, user, onBack }){
   const uid = user.uid;
   const otherId = otherParticipant(conv, uid);
   const info = (conv.info && conv.info[otherId]) || {};
   const blocked = conv.status === 'blocked';
+  const { store, products } = useMerchant();
   const [msgs, setMsgs] = useStateX([]);
   const [draft, setDraft] = useStateX('');
+  const [offerOpen, setOfferOpen] = useStateX(false);
   const scrollRef = useRefX(null);
 
   useEffX(() => subscribeMessages(conv.id, setMsgs), [conv.id]);
   useEffX(() => { markConversationRead(conv.id, uid); }, [conv.id, msgs.length]);
   useEffX(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
 
-  const send = (t) => {
+  const send = (t, extra) => {
     const v=(t||draft).trim(); if(!v || blocked) return;
     setDraft('');
-    sendChatMessage({ convId: conv.id, user, text: v, recipientUid: otherId }).catch(()=>{});
+    sendChatMessage({ convId: conv.id, user, text: v, recipientUid: otherId, ...(extra || {}) }).catch(()=>{});
   };
 
   // Messages I can see — a chat I "deleted" starts fresh for me on re-open.
@@ -848,7 +925,7 @@ function MerchantChatThread({ conv, user, onBack }){
           return (
             <React.Fragment key={m.id}>
               {showDay && <div style={{ alignSelf:'center', margin:'4px 0', padding:'3px 12px', borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-fg3)', fontSize:11, fontWeight:600 }}>{dayLabel(ms)}</div>}
-              <div style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>
+              <div style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.offer && <OfferCard offer={m.offer} />}{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>
             </React.Fragment>
           );
         })}
@@ -861,9 +938,11 @@ function MerchantChatThread({ conv, user, onBack }){
         </div>
       )}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderTop:'1px solid var(--m-border)', background:'var(--m-surface)' }}>
+        <button onClick={()=>setOfferOpen(true)} disabled={blocked} title="Send an offer" aria-label="Send an offer" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', color:'var(--m-primary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-handshake" /></button>
         <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Reply…'} aria-label="Reply" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ flex:1, minWidth:0, height:46, padding:'0 18px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
         <button onClick={()=>send()} disabled={blocked} aria-label="Send" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'none', background:'var(--m-primary-deep)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
       </div>
+      {offerOpen && <OfferComposer products={products} storeId={store?.id} onClose={()=>setOfferOpen(false)} onSend={(offer)=>{ setOfferOpen(false); send(`Offer: ${offer.productName} — ${ksh(offer.price)}${offer.qty > 1 ? ` × ${offer.qty}` : ''}`, { offer }); }} />}
     </div>
   );
 }
