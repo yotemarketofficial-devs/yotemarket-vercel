@@ -319,6 +319,8 @@ export const listStoreFollowers = callable('listStoreFollowers');
 export const backfillFollowerCounts = callable('backfillFollowerCounts');
 /** Staff: denormalize planTier onto every store from its owner's subscription (run once after entitlements deploy) → { ok, stores }. */
 export const backfillStoreTiers = callable('backfillStoreTiers');
+/** Merchant: does the caller bypass entitlements (platform staff/admin/owner)? → { staff }. */
+export const entitlementContext = callable('entitlementContext');
 
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */

@@ -5,7 +5,7 @@
 import React from 'react';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db, firebaseEnabled } from '../../lib/firebase.js';
+import { auth, db, firebaseEnabled, entitlementContext } from '../../lib/firebase.js';
 import { tierRank, tierName, canRank } from '../../lib/entitlements.js';
 import { SHOP, SUBSCRIPTION, KPIS, WEEK, PROD_ROWS, ORDER_ROWS, ksh } from './data.js';
 const { createContext, useContext, useEffect, useState, useMemo } = React;
@@ -32,6 +32,23 @@ export function MerchantProvider({ children }) {
   const [store, setStore] = useState(null);
   const [products, setProducts] = useState(null);
   const [orders, setOrders] = useState(null);
+  const [platformStaff, setPlatformStaff] = useState(false); // admin/moderator/owner → bypass entitlements
+
+  // Internal accounts (platform staff/admin/owner) are never gated by customer plans,
+  // so staff can test any store feature. The server decides (secure owner-email check
+  // stays server-side — no emails in the client bundle); falls back to the local
+  // admin/moderator claim if the call fails.
+  useEffect(() => {
+    if (!firebaseEnabled || !uid) { setPlatformStaff(false); return undefined; }
+    let on = true;
+    entitlementContext()
+      .then((r) => { if (on) setPlatformStaff(!!(r && r.staff)); })
+      .catch(() => {
+        const u = auth && auth.currentUser;
+        if (u) u.getIdTokenResult().then((t) => { if (on) setPlatformStaff(!!(t.claims && (t.claims.admin === true || t.claims.moderator === true))); }).catch(() => {});
+      });
+    return () => { on = false; };
+  }, [uid]);
 
   // merchant account + subscription + store-team membership (all live)
   useEffect(() => {
@@ -60,7 +77,7 @@ export function MerchantProvider({ children }) {
   // figures, empty states while loading — never fake products/orders).
   const live = Boolean(firebaseEnabled);
 
-  const value = useMemo(() => ({ live, uid, displayName, merchant, staff, role, storeId, sub, store, products, orders }), [live, uid, displayName, merchant, staff, role, storeId, sub, store, products, orders]);
+  const value = useMemo(() => ({ live, uid, displayName, merchant, staff, platformStaff, role, storeId, sub, store, products, orders }), [live, uid, displayName, merchant, staff, platformStaff, role, storeId, sub, store, products, orders]);
   return <MerchantCtx.Provider value={value}>{children}</MerchantCtx.Provider>;
 }
 
@@ -77,20 +94,22 @@ export function useMerchant() {
  * enforcement + store-tier denormalization for true multi-seat is the follow-up.
  */
 export function useEntitlements() {
-  const { live, sub, store, role } = useMerchant();
-  if (!live) return { live: false, plan: null, rank: 3, tier: 'Pro', can: () => true };
-  // Authoritative: the server (onSubscriptionTierChange) denormalizes the store's
-  // tier onto stores/{id}.planTier — works for owner AND employees. Fall back to
-  // the owner's own subscription only before denormalization has run (fresh
-  // deploy / pre-backfill); employees pass through in that window.
-  let rank;
-  if (store && typeof store.planTier === 'number') rank = store.planTier;
-  else rank = role === 'owner' ? tierRank(sub) : 3;
+  const { live, sub, store, role, platformStaff } = useMerchant();
+  if (!live) return { live: false, plan: null, rank: 3, tier: 'Pro', staff: false, can: () => true };
+  // Platform staff/admin/owner accounts bypass merchant entitlements entirely.
+  if (platformStaff) return { live: true, plan: (store && store.planName) || null, rank: 3, tier: 'Pro', staff: true, can: () => true };
+  // Authoritative store tier (server-denormalized; works for employees too). Never
+  // rank an OWNER below what their own live subscription grants — guards a stale or
+  // not-yet-written planTier. Employees pass through until the store tier lands.
+  let rank = (store && typeof store.planTier === 'number') ? store.planTier : 0;
+  if (role === 'owner') rank = Math.max(rank, tierRank(sub));
+  else if (!store || typeof store.planTier !== 'number') rank = 3;
   return {
     live: true,
     plan: (store && store.planName) || (sub && sub.plan) || null,
     rank,
     tier: tierName(rank),
+    staff: false,
     can: (f) => canRank(rank, f),
   };
 }
