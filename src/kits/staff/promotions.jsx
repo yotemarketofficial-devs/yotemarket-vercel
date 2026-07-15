@@ -23,9 +23,10 @@ export function Promotions(){
   const [credit, setCredit] = useState({ email:'', amount:'500' });
   const [crediting, setCrediting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
-  const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
+  const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'', packageKind:'delivery', subTier: DELIVERY_TIERS[0].id, plan:'Starter', newOnly:false });
   const [creating, setCreating] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const setPkgKind = (k) => setForm(f => ({ ...f, packageKind:k, plan: k === 'software' ? 'Entry' : 'Starter' }));
   // Targeted (single-merchant) free-month offer on a chosen package.
   const [tgt, setTgt] = useState({ email:'', kind:'delivery', tierId: DELIVERY_TIERS[0].id, plan:'Starter', months:1 });
   const [tgtBusy, setTgtBusy] = useState(false);
@@ -103,14 +104,19 @@ export function Promotions(){
         name: form.name || undefined,
         maxRedemptions: form.maxRedemptions ? Number(form.maxRedemptions) : undefined,
         expiresAt: form.expiresAt ? new Date(form.expiresAt).getTime() : undefined,
+        ...(form.type === 'free_months' ? {
+          packageKind: form.packageKind, plan: form.plan,
+          ...(form.packageKind === 'delivery' ? { subTier: form.subTier } : {}),
+          ...(form.newOnly ? { newOnly: true } : {}),
+        } : {}),
       });
-      setForm({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'' });
+      setForm({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'', packageKind:'delivery', subTier: DELIVERY_TIERS[0].id, plan:'Starter', newOnly:false });
       setMsg({ ok:true, text:'Coupon created.' }); load();
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not create coupon.' }); } finally { setCreating(false); }
   };
   const toggle = async (p) => { try { await setPromoActive({ id:p.id, active:!p.active }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
   const remove = async (p) => { if (!window.confirm(`Delete ${p.code || p.name}?`)) return; try { await setPromoActive({ id:p.id, remove:true }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
-  const offer = (p) => p.type === 'percent' ? `${p.value}% off` : p.type === 'fixed' ? `${kes(p.value)} off` : `${p.value} free month${p.value > 1 ? 's' : ''}`;
+  const offer = (p) => p.type === 'percent' ? `${p.value}% off` : p.type === 'fixed' ? `${kes(p.value)} off` : `${p.value} free month${p.value > 1 ? 's' : ''}${p.plan ? ` · ${p.plan}${p.packageKind === 'software' ? ' (software)' : ''}` : ''}${p.newOnly ? ' · new only' : ''}`;
   // Usage / capacity readout: campaigns show granted/capacity, coupons show used/max.
   const usage = (p) => p.kind === 'campaign'
     ? (p.grantedCount || p.capacity ? ` · ${p.grantedCount || 0}${p.capacity ? '/' + p.capacity : ''} granted` : '')
@@ -219,6 +225,32 @@ export function Promotions(){
           <input value={form.maxRedemptions} onChange={e => set('maxRedemptions', e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" placeholder="Max redemptions (optional)" className="ym-input" />
           <input type="date" value={form.expiresAt} onChange={e => set('expiresAt', e.target.value)} className="ym-input" />
         </div>
+
+        {form.type === 'free_months' && (
+          <div className="rounded-lg p-3 space-y-3" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}>
+            <div className="text-xs font-semibold t2 flex items-center gap-2"><Icon name="gift" /> These free months apply to</div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select value={form.packageKind} onChange={e => setPkgKind(e.target.value)} className="ym-input" style={{ width:140 }} title="Package type">
+                <option value="delivery">Delivery plan</option>
+                <option value="software">Software plan</option>
+              </select>
+              {form.packageKind === 'delivery' && (
+                <select value={form.subTier} onChange={e => set('subTier', e.target.value)} className="ym-input" style={{ flex:1, minWidth:180 }} title="Distance band / tier">
+                  {DELIVERY_TIERS.map(t => <option key={t.id} value={t.id}>Band {t.band} · {t.range}</option>)}
+                </select>
+              )}
+              <select value={form.plan} onChange={e => set('plan', e.target.value)} className="ym-input" style={{ width:130 }} title="Plan">
+                {(form.packageKind === 'software' ? SOFTWARE_PLANS : PLAN_ORDER).map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-sm t2 cursor-pointer select-none">
+              <input type="checkbox" checked={form.newOnly} onChange={e => set('newOnly', e.target.checked)} />
+              New merchants only (no active subscription)
+            </label>
+            <p className="text-xs t3">On redemption the merchant's subscription is activated or extended on the <b>{form.plan}</b> {form.packageKind} plan{form.newOnly ? ', and only merchants without an active plan can redeem' : ''}.</p>
+          </div>
+        )}
+
         <Btn kind="primary" size="md" icon={creating ? 'spinner' : 'plus'} onClick={create} disabled={creating || !form.code || !form.value}>{creating ? 'Creating…' : 'Create coupon'}</Btn>
       </Card>
 
