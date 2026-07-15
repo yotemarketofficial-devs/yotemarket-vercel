@@ -317,6 +317,8 @@ export const setStoreSocials = callable('setStoreSocials');
 export const listStoreFollowers = callable('listStoreFollowers');
 /** Staff: reconcile every store's follower count from the follow records → { ok, stores, followers }. */
 export const backfillFollowerCounts = callable('backfillFollowerCounts');
+/** Staff: denormalize planTier onto every store from its owner's subscription (run once after entitlements deploy) → { ok, stores }. */
+export const backfillStoreTiers = callable('backfillStoreTiers');
 
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */

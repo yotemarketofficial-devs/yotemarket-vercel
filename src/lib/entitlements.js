@@ -60,6 +60,13 @@ export function can(sub, feature) {
   return tierRank(sub) >= f.minTier;
 }
 
+/** Same check from an already-resolved rank (e.g. the store's denormalized planTier). */
+export function canRank(rank, feature) {
+  const f = FEATURES[feature];
+  if (!f) return true;
+  return Number(rank || 0) >= f.minTier;
+}
+
 /** Cheapest plan name that unlocks `feature` — for upgrade copy. */
 export const requiredTierName = (feature) => TIER_NAMES[FEATURES[feature] ? FEATURES[feature].minTier : 1] || 'Entry';
 

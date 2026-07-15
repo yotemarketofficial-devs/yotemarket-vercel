@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, backfillFollowerCounts, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
+import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, backfillFollowerCounts, backfillStoreTiers, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, PLAN_ORDER } from '../dashboard/pricing.js';
 const SOFTWARE_PLANS = ['Entry', 'Growth', 'Pro'];
 const { useState, useEffect, useCallback } = React;
@@ -20,6 +20,7 @@ export function Promotions(){
   const [pointsFilling, setPointsFilling] = useState(false);
   const [ordersFilling, setOrdersFilling] = useState(false);
   const [followersFilling, setFollowersFilling] = useState(false);
+  const [tiersFilling, setTiersFilling] = useState(false);
   const [credit, setCredit] = useState({ email:'', amount:'500' });
   const [crediting, setCrediting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
@@ -85,6 +86,11 @@ export function Promotions(){
     setFollowersFilling(true); setMsg(null);
     try { const r = await backfillFollowerCounts(); setMsg({ ok:true, text:`Follower counts reconciled — ${r.stores} store(s), ${r.followers} follower record(s).` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Follower backfill failed.' }); } finally { setFollowersFilling(false); }
+  };
+  const fillTiers = async () => {
+    setTiersFilling(true); setMsg(null);
+    try { const r = await backfillStoreTiers(); setMsg({ ok:true, text:`Store plan tiers denormalized — ${r.stores} store(s) reconciled.` }); }
+    catch (e) { setMsg({ ok:false, text:e.message || 'Tier backfill failed.' }); } finally { setTiersFilling(false); }
   };
   const creditBalance = async () => {
     setCrediting(true); setMsg(null);
@@ -192,6 +198,12 @@ export function Promotions(){
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="heart" /></div><h3 className="font-bold t1">Follower counts</h3></div>
           <p className="text-sm t3">Reconcile every store's follower count from the actual follow records and rebuild the merchant-visible follower list. Run once after shipping followers; safe to re-run (authoritative recount).</p>
           <Btn kind="primary" size="md" icon={followersFilling ? 'spinner' : 'heart'} onClick={fillFollowers} disabled={followersFilling}>{followersFilling ? 'Reconciling…' : 'Backfill follower counts'}</Btn>
+        </Card>
+
+        <Card className="p-6 space-y-3">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="layer-group" /></div><h3 className="font-bold t1">Plan tiers</h3></div>
+          <p className="text-sm t3">Denormalize each store's plan tier (from its owner's subscription) onto the store so feature entitlements enforce correctly for owners and staff alike. <b>Run once after the entitlements deploy</b>; idempotent (reconciles suspended seats/clips too).</p>
+          <Btn kind="primary" size="md" icon={tiersFilling ? 'spinner' : 'layer-group'} onClick={fillTiers} disabled={tiersFilling}>{tiersFilling ? 'Reconciling…' : 'Backfill store tiers'}</Btn>
         </Card>
 
         <Card className="p-6 space-y-3">

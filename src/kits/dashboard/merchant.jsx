@@ -6,7 +6,7 @@ import React from 'react';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled } from '../../lib/firebase.js';
-import { tierRank, tierName, can as canFeature } from '../../lib/entitlements.js';
+import { tierRank, tierName, canRank } from '../../lib/entitlements.js';
 import { SHOP, SUBSCRIPTION, KPIS, WEEK, PROD_ROWS, ORDER_ROWS, ksh } from './data.js';
 const { createContext, useContext, useEffect, useState, useMemo } = React;
 
@@ -77,16 +77,21 @@ export function useMerchant() {
  * enforcement + store-tier denormalization for true multi-seat is the follow-up.
  */
 export function useEntitlements() {
-  const { live, sub, role } = useMerchant();
+  const { live, sub, store, role } = useMerchant();
   if (!live) return { live: false, plan: null, rank: 3, tier: 'Pro', can: () => true };
-  const owner = role === 'owner';
-  const rank = owner ? tierRank(sub) : 3; // employees: limited by role, not plan
+  // Authoritative: the server (onSubscriptionTierChange) denormalizes the store's
+  // tier onto stores/{id}.planTier — works for owner AND employees. Fall back to
+  // the owner's own subscription only before denormalization has run (fresh
+  // deploy / pre-backfill); employees pass through in that window.
+  let rank;
+  if (store && typeof store.planTier === 'number') rank = store.planTier;
+  else rank = role === 'owner' ? tierRank(sub) : 3;
   return {
     live: true,
-    plan: (sub && sub.plan) || null,
+    plan: (store && store.planName) || (sub && sub.plan) || null,
     rank,
     tier: tierName(rank),
-    can: (f) => (owner ? canFeature(sub, f) : true),
+    can: (f) => canRank(rank, f),
   };
 }
 
