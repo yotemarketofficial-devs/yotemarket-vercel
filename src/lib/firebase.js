@@ -188,6 +188,14 @@ export const listMyStorePosts = callable('listMyStorePosts');
 export const deleteStorePost = callable('deleteStorePost');
 /** Shopper: the Following feed — recent posts from stores you follow → { posts }. */
 export const getFollowingFeed = callable('getFollowingFeed');
+/** Shopper: toggle a like on a post → { liked, count }. { postId }. */
+export const reactToPost = callable('reactToPost');
+/** Shopper: comment on a post → { id }. { postId, text }. */
+export const commentOnPost = callable('commentOnPost');
+/** List a post's comments + my like state → { comments, liked }. { postId }. */
+export const listPostComments = callable('listPostComments');
+/** Store owner / comment author / staff: delete a comment → { ok }. { postId, commentId }. */
+export const deletePostComment = callable('deletePostComment');
 /** Wallet top-up STK push → { checkoutRequestId, merchantRequestId }. { amount, phone, name? }. */
 export const topUpWallet = callable('topUpWallet');
 /** Confirm/recover any M-Pesa STK payment (order/subscription/wallet) via Daraja status query

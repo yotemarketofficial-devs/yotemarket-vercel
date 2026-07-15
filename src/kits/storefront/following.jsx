@@ -2,9 +2,9 @@
    follow: new arrivals, restocks and followers-only offers. Shoppable — tap a
    tagged product to buy, or copy an offer code. Reads getFollowingFeed. */
 import React from 'react';
-import { useYM, FA, Thumb, GuestGate } from './ui.jsx';
+import { useYM, FA, Thumb, GuestGate, Modal } from './ui.jsx';
 import { ymPrice } from './data.js';
-import { getFollowingFeed } from '../../lib/firebase.js';
+import { getFollowingFeed, reactToPost, commentOnPost, listPostComments, deletePostComment, auth } from '../../lib/firebase.js';
 const { useState, useEffect } = React;
 
 const KIND = { update:['Update', 'var(--m-primary)'], new_product:['New arrival', '#7c3aed'], restock:['Back in stock', '#0ea5e9'], offer:['Offer', '#d97706'], sale:['Sale', '#ef4444'] };
@@ -47,7 +47,19 @@ export function FollowingScreen(){
 
 function FeedPost({ p, nav, toast }){
   const [kindLabel, kindColor] = KIND[p.kind] || KIND.update;
+  const [liked, setLiked] = useState(!!p.liked);
+  const [count, setCount] = useState(p.reactionCount || 0);
+  const [comments, setComments] = useState(p.commentCount || 0);
+  const [sheet, setSheet] = useState(false);
+  const [busy, setBusy] = useState(false);
   const copyCode = () => { try { navigator.clipboard.writeText(p.offerCode); toast('Code copied · ' + p.offerCode, 'fa-copy'); } catch { /* clipboard blocked */ } };
+  const toggleLike = async () => {
+    if (busy) return; setBusy(true);
+    const nl = !liked; setLiked(nl); setCount((c) => Math.max(0, c + (nl ? 1 : -1)));
+    try { const r = await reactToPost({ postId: p.id }); setLiked(r.liked); setCount(r.count); }
+    catch { setLiked(!nl); setCount((c) => Math.max(0, c + (nl ? -1 : 1))); }
+    finally { setBusy(false); }
+  };
   return (
     <div className="ym-card" style={{ padding:0, overflow:'hidden' }}>
       <button onClick={() => nav('store', { sid:p.storeId })} style={{ width:'100%', display:'flex', alignItems:'center', gap:11, padding:14, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
@@ -80,6 +92,66 @@ function FeedPost({ p, nav, toast }){
           <span className="ym-btn ym-btn-primary" style={{ padding:'8px 14px', pointerEvents:'none' }}><FA i="fa-cart-shopping" /> Shop</span>
         </button>
       )}
+
+      {/* reactions + comments */}
+      <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 8px 8px', borderTop:'1px solid var(--m-border)', marginTop:2 }}>
+        <button onClick={toggleLike} className="ym-btn ym-btn-ghost" style={{ gap:7, color: liked ? '#ef4444' : 'var(--m-fg2)', fontWeight:600 }}>
+          <FA i="fa-heart" /> {count > 0 ? count : ''} Like
+        </button>
+        <button onClick={() => setSheet(true)} className="ym-btn ym-btn-ghost" style={{ gap:7, color:'var(--m-fg2)', fontWeight:600 }}>
+          <FA i="fa-comment" /> {comments > 0 ? comments : ''} Comment
+        </button>
+      </div>
+
+      {sheet && <CommentsSheet post={p} onClose={() => setSheet(false)} onCount={setComments} toast={toast} />}
     </div>
+  );
+}
+
+function CommentsSheet({ post, onClose, onCount, toast }){
+  const [items, setItems] = useState(null);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const myUid = auth?.currentUser?.uid || null;
+  useEffect(() => {
+    let alive = true;
+    listPostComments({ postId: post.id }).then((r) => { if (alive) setItems(r.comments || []); }).catch(() => { if (alive) setItems([]); });
+    return () => { alive = false; };
+  }, [post.id]);
+  const send = async () => {
+    const t = text.trim(); if (!t || busy) return; setBusy(true);
+    try {
+      const r = await commentOnPost({ postId: post.id, text: t });
+      setText(''); setItems((a) => [...(a || []), { id: r.id, uid: myUid, name: 'You', text: t, createdAt: Date.now() }]);
+      onCount && onCount((n) => (n || 0) + 1);
+    } catch (e) { toast(e.message || 'Could not comment', 'fa-triangle-exclamation'); }
+    finally { setBusy(false); }
+  };
+  const del = async (id) => {
+    try { await deletePostComment({ postId: post.id, commentId: id }); setItems((a) => (a || []).filter((c) => c.id !== id)); onCount && onCount((n) => Math.max(0, (n || 0) - 1)); }
+    catch (e) { toast(e.message || 'Could not delete', 'fa-triangle-exclamation'); }
+  };
+  return (
+    <Modal title="Comments" onClose={onClose} maxWidth={460}>
+      <div style={{ maxHeight:'50vh', overflowY:'auto', display:'flex', flexDirection:'column', gap:12, marginBottom:14 }}>
+        {items === null ? <div style={{ textAlign:'center', padding:20 }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /></div>
+          : items.length === 0 ? <div className="ym-sub" style={{ textAlign:'center', padding:'20px 0' }}>No comments yet — be the first.</div>
+          : items.map((c) => (
+            <div key={c.id} style={{ display:'flex', gap:10 }}>
+              <Thumb icon="fa-user" img={c.photo} size={32} radius={999} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <div className="ym-sub" style={{ color:'var(--m-fg1)' }}><b>{c.name}</b> {c.text}</div>
+                <div className="ym-cap">{ago(c.createdAt)}</div>
+              </div>
+              {c.uid && c.uid === myUid && <button onClick={() => del(c.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:12 }} aria-label="Delete"><FA i="fa-trash-can" /></button>}
+            </div>
+          ))}
+      </div>
+      <div style={{ display:'flex', gap:8 }}>
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Add a comment…"
+          style={{ flex:1, padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
+        <button onClick={send} disabled={busy || !text.trim()} className="ym-btn ym-btn-primary" style={{ flexShrink:0 }}><FA i="fa-paper-plane" /></button>
+      </div>
+    </Modal>
   );
 }

@@ -5,7 +5,7 @@
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { useMerchant } from './merchant.jsx';
-import { createStorePost, listMyStorePosts, deleteStorePost } from '../../lib/firebase.js';
+import { createStorePost, listMyStorePosts, deleteStorePost, listPostComments, deletePostComment } from '../../lib/firebase.js';
 import { ksh } from './data.js';
 const { useState, useEffect, useCallback } = React;
 
@@ -124,6 +124,7 @@ function Composer({ followers, products, toast, onPosted }){
 
 function PostCard({ p, toast, onDeleted }){
   const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState(false);
   const del = async () => {
     if (!window.confirm('Delete this post?')) return;
     setBusy(true);
@@ -151,10 +152,49 @@ function PostCard({ p, toast, onDeleted }){
           <FA i="fa-tag" /> {p.offerText || 'Offer'}{p.offerCode ? ` · ${p.offerCode}` : ''}
         </div>
       )}
-      <div className="ym-cap" style={{ display:'flex', gap:14, marginTop:2 }}>
+      <div className="ym-cap" style={{ display:'flex', gap:14, marginTop:2, alignItems:'center' }}>
         <span><FA i="fa-heart" /> {p.reactionCount || 0}</span>
-        <span><FA i="fa-comment" /> {p.commentCount || 0}</span>
+        <button onClick={() => setSheet(true)} style={{ background:'none', border:'none', cursor:'pointer', color: (p.commentCount || 0) ? 'var(--m-primary)' : 'var(--m-fg3)', fontFamily:'inherit', fontSize:'inherit', fontWeight:600, padding:0 }}>
+          <FA i="fa-comment" /> {p.commentCount || 0} {p.commentCount ? 'comments' : 'comment'}
+        </button>
       </div>
+      {sheet && <CommentsModal post={p} toast={toast} onClose={() => setSheet(false)} />}
     </Card>
+  );
+}
+
+function CommentsModal({ post, toast, onClose }){
+  const [items, setItems] = useState(null);
+  const load = () => { listPostComments({ postId: post.id }).then((r) => setItems(r.comments || [])).catch(() => setItems([])); };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  const del = async (id) => {
+    if (!window.confirm('Remove this comment?')) return;
+    try { await deletePostComment({ postId: post.id, commentId: id }); setItems((a) => (a || []).filter((c) => c.id !== id)); toast && toast('Comment removed', 'fa-check'); }
+    catch (e) { toast && toast(e.message || 'Could not remove', 'fa-triangle-exclamation'); }
+  };
+  const ago = (ms) => { if (!ms) return ''; const s = Math.max(0, (Date.now() - ms) / 1000); if (s < 3600) return Math.round(s / 60) + 'm'; if (s < 86400) return Math.round(s / 3600) + 'h'; return Math.round(s / 86400) + 'd'; };
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={(e) => e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:460, maxHeight:'80vh', overflowY:'auto', padding:20 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <div className="ym-h2" style={{ fontSize:17 }}>Comments</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
+        </div>
+        {items === null ? <div style={{ textAlign:'center', padding:20 }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)' }} /></div>
+          : items.length === 0 ? <div className="ym-sub" style={{ textAlign:'center', padding:'20px 0' }}>No comments yet.</div>
+          : <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {items.map((c) => (
+                <div key={c.id} style={{ display:'flex', gap:10 }}>
+                  <div style={{ width:32, height:32, borderRadius:999, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>{c.photo ? <img src={c.photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i="fa-user" />}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div className="ym-sub" style={{ color:'var(--m-fg1)' }}><b>{c.name}</b> {c.text}</div>
+                    <div className="ym-cap">{ago(c.createdAt)}</div>
+                  </div>
+                  <button onClick={() => del(c.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:12 }} title="Remove comment"><FA i="fa-trash-can" /></button>
+                </div>
+              ))}
+            </div>}
+      </div>
+    </div>
   );
 }
