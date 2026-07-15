@@ -10,7 +10,7 @@ import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { marketerEnabled, fetchMyMarketer, fetchMyReferrals, fetchMyPayouts, fetchLeaderboard } from './service.js';
-const { useState: useSApp, useEffect: useEApp, useCallback: useCbApp } = React;
+const { useState: useSApp, useEffect: useEApp, useCallback: useCbApp, useRef: useRefApp } = React;
 
 const meFromProfile = (m) => ({
   name: m.name || 'Scout',
@@ -85,12 +85,18 @@ function App(){
   const [profile, setProfile] = useSApp(undefined); // undefined=unknown · null=none · obj=registered
   const [ver, setVer] = useSApp(0);
 
+  const loadSig = useRefApp('');
   const loadAll = useCbApp(async (uid) => {
     const [refs, pos, lb] = await Promise.all([
       fetchMyReferrals(uid).catch(() => null),
       fetchMyPayouts(uid).catch(() => null),
       fetchLeaderboard().catch(() => null),
     ]);
+    // Change-guard: a background refresh that finds nothing new must not remount
+    // (key={ver}) and reset the scout's scroll/screen. Only re-render on real change.
+    let sig; try { sig = JSON.stringify({ refs, pos, lb }); } catch { sig = String(Date.now()); }
+    if (sig === loadSig.current) return;
+    loadSig.current = sig;
     const leaderboard = Array.isArray(lb)
       ? lb.map((r, i) => ({ rank: r.rank || i + 1, name: r.name, county: r.county, verified: r.verified, you: r.you, photo: null }))
       : null;
@@ -109,6 +115,22 @@ function App(){
     }).catch(() => { if (on) setProfile(null); });
     return () => { on = false; };
   }, [user?.uid, loadAll]);
+
+  // Real-time: silently refresh the scout's referrals/payouts/leaderboard on an
+  // interval while the tab is visible + the moment it regains focus. The loadAll
+  // change-guard means quiet polls cause no remount.
+  useEApp(() => {
+    if (!marketerEnabled(user) || !profile || profile.status !== 'active') return undefined;
+    const uid = user.uid;
+    let on = true;
+    const hidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const refresh = () => { if (on && !hidden()) loadAll(uid); };
+    const id = setInterval(refresh, 25000);
+    const onVis = () => { if (!hidden()) refresh(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVis);
+    return () => { on = false; clearInterval(id); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', onVis); };
+  }, [user?.uid, profile, loadAll]);
 
   if (loading || (hasAccount && profile === undefined)) return <Splash />;
   if (!hasAccount) return <AuthScreen />;

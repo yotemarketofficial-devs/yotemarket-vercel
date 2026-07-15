@@ -4,7 +4,7 @@
    `admin`/`moderator` custom claim. Each call degrades to the bundled demo data
    when the backend is unavailable or the function isn't deployed yet, so the
    console always renders. */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions, firebaseEnabled } from '../../lib/firebase.js';
 import { SCOUTS, PAYOUT_REQUESTS, APPLICANTS } from './data.js';
@@ -54,23 +54,63 @@ export function useStaffClaims() {
 }
 
 // ── Generic loader hook: fetch via `loader`, fall back to `fallback` ──────────
-export function useStaffResource(loader, fallback, deps = []) {
+// Staff reads are callable-based (no onSnapshot possible), so "real-time" here is
+// a silent background auto-refresh: it re-fetches on an interval while the tab is
+// visible and the moment the window/tab regains focus. A JSON change-guard means
+// a poll that finds no change causes no re-render — the table never flickers or
+// loses sort/scroll while a staffer reads it. `loading` only flips on the initial
+// load, a deps change, or a manual reload — never on a background poll.
+export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 } = {}) {
   const [data, setData] = useState(fallback);
   const [loading, setLoading] = useState(true);
   const [live, setLive] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const loaderRef = useRef(loader);
+  loaderRef.current = loader;
+  const lastJson = useRef(null);
 
+  // Apply a fresh result, but only re-render when the payload actually changed.
+  const apply = useCallback((d) => {
+    if (d == null) return;
+    let j; try { j = JSON.stringify(d); } catch { j = null; }
+    if (j == null || j !== lastJson.current) { lastJson.current = j; setData(d); }
+    setLive(true);
+  }, []);
+
+  // Initial load / manual reload / deps change — shows the loading state.
   useEffect(() => {
     let active = true;
     setLoading(true);
     Promise.resolve()
-      .then(loader)
-      .then((d) => { if (active && d != null) { setData(d); setLive(true); } })
+      .then(() => loaderRef.current())
+      .then((d) => { if (active) apply(d); })
       .catch(() => { if (active) setLive(false); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, reloadKey]);
+
+  // Silent background refresh — poll while visible + refetch on focus/visibility
+  // regain. Never toggles `loading`; the change-guard suppresses no-op renders.
+  useEffect(() => {
+    if (!pollMs) return undefined;
+    let active = true;
+    const hidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const refresh = () => {
+      if (hidden()) return;
+      Promise.resolve().then(() => loaderRef.current()).then((d) => { if (active) apply(d); }).catch(() => {});
+    };
+    const id = setInterval(refresh, pollMs);
+    const onVis = () => { if (!hidden()) refresh(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      active = false; clearInterval(id);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, pollMs, apply]);
 
   return { data, loading, live, reload: () => setReloadKey((k) => k + 1) };
 }
