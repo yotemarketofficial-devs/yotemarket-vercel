@@ -49,6 +49,22 @@ export function fmtTime(ts) {
   return new Date(ms).toLocaleTimeString('en-KE', { hour: 'numeric', minute: '2-digit' });
 }
 
+/** True if two epoch-ms values fall on the same calendar day. */
+export function sameDayMs(a, b) {
+  if (!a || !b) return false;
+  const da = new Date(a); const db = new Date(b);
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+}
+
+/** Divider label for a message stream: "Today" / "Yesterday" / "Wed, 9 Jul". */
+export function dayLabel(ms) {
+  if (!ms) return '';
+  const now = Date.now();
+  if (sameDayMs(ms, now)) return 'Today';
+  if (sameDayMs(ms, now - 86400000)) return 'Yesterday';
+  return new Date(ms).toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 /** Relative-ish label for an inbox row: time today, weekday this week, else date. */
 export function fmtWhen(ts) {
   const ms = tsMillis(ts);
@@ -241,10 +257,13 @@ export function subscribeConversations(uid, cb, role) {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         // Keep only the side asked for (personal inbox vs. store dashboard).
         .filter((c) => !role || conversationRole(c, uid) === role)
-        // Drop threads I've "deleted for me" — unless a newer message arrived since.
-        .filter((c) => {
+        // MARK (don't drop) threads I've "deleted for me" — hidden from my inbox
+        // until a newer message arrives. Kept in the list so re-opening the store
+        // resolves the REAL doc (with hiddenAt); otherwise the thread falls back to
+        // a synthesized conv without hiddenAt and replays already-cleared history.
+        .map((c) => {
           const h = c.hiddenAt && c.hiddenAt[uid];
-          return !(h && tsMillis(h) >= tsMillis(c.updatedAt));
+          return { ...c, hidden: !!(h && tsMillis(h) >= tsMillis(c.updatedAt)) };
         });
       list.sort((a, b) => tsMillis(b.updatedAt) - tsMillis(a.updatedAt));
       cb(list);
@@ -261,7 +280,7 @@ export function useUnreadCount(user, role) {
   useEffect(() => {
     if (!uid) { setCount(0); return undefined; }
     return subscribeConversations(uid, (list) => {
-      setCount(list.reduce((sum, c) => sum + ((c.unread && c.unread[uid]) || 0), 0));
+      setCount(list.reduce((sum, c) => sum + (c.hidden ? 0 : (c.unread && c.unread[uid]) || 0), 0));
     }, role);
   }, [uid, role]);
   return count;

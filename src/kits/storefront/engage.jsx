@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages,
+  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -89,6 +89,7 @@ function LiveMessages({ params, user, account }){
   }, [paramStore?.id, myUid]);
 
   const list = convos || [];
+  const visible = list.filter((c) => !c.hidden); // rows exclude "deleted for me"
   const removeConv = (c) => {
     if (!window.confirm('Remove this conversation from your inbox? It’ll come back if they message you again.')) return;
     if (sel === c.id) setSel(null);
@@ -100,7 +101,7 @@ function LiveMessages({ params, user, account }){
       ? { id: sel, storeId: paramStore.id, participants: [myUid, paramStore.ownerId], info: {
           [paramStore.ownerId]: { name: paramStore.name, role: 'merchant', icon: paramStore.icon, tint: paramStore.tint, img: paramStore.img, logo: paramStore.logo },
         }, unread: {}, ...(paramProduct ? { product: paramProduct } : {}) }
-      : list[0] || null);
+      : visible[0] || null);
 
   return (
     <div className="wrap anim-up" style={{ paddingTop:24, paddingBottom:40 }}>
@@ -117,13 +118,13 @@ function LiveMessages({ params, user, account }){
             <span style={{ background:'rgba(255,255,255,.18)', color:'#fff', fontSize:10.5, fontWeight:700, padding:'4px 9px', borderRadius:9999 }}>AI</span>
           </button>
           {convos === null && <div style={{ padding:'22px 16px', color:'var(--m-fg3)', fontSize:13.5 }}>Loading your chats…</div>}
-          {convos !== null && list.length === 0 && (
+          {convos !== null && visible.length === 0 && (
             <div style={{ padding:'28px 18px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>
               <FA i="fa-comments" style={{ fontSize:30, color:'var(--m-fg4)', marginBottom:12, display:'block' }} />
               No messages yet. Tap “Chat with seller” on any store to start a conversation.
             </div>
           )}
-          {list.map((c) => {
+          {visible.map((c) => {
             const otherId = otherParticipant(c, myUid);
             const info = (c.info && c.info[otherId]) || {};
             const unread = (c.unread && c.unread[myUid]) || 0;
@@ -269,13 +270,18 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
         {shown.map((m, idx) => {
           const mine = m.senderId === myUid;
           const seen = mine && idx === myLastIdx && tsMillis(m.at) > 0 && otherReadMs >= tsMillis(m.at);
+          const ms = tsMillis(m.at);
+          const showDay = !!ms && (idx === 0 || !sameDayMs(ms, tsMillis(shown[idx-1].at)));
           return (
-            <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
-              alignSelf: mine?'flex-end':'flex-start',
-              background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
-              borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
-              {m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
-            </div>
+            <React.Fragment key={m.id}>
+              {showDay && <div style={{ alignSelf:'center', margin:'4px 0', padding:'3px 12px', borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-fg3)', fontSize:11, fontWeight:600 }}>{dayLabel(ms)}</div>}
+              <div style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45,
+                alignSelf: mine?'flex-end':'flex-start',
+                background: mine?'var(--m-primary-deep)':'var(--m-surface)', color: mine?'#fff':'var(--m-fg1)',
+                borderRadius: mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>
+                {m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div>
+              </div>
+            </React.Fragment>
           );
         })}
       </div>

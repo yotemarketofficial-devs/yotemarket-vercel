@@ -12,7 +12,7 @@ import SubscribeFlow from './SubscribeFlow.jsx';
 import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
-  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages,
+  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
@@ -720,7 +720,8 @@ export function Chat(){
   useEffX(() => { if (live) return subscribeConversations(uid, setConvos, 'merchant'); setConvos([]); return undefined; }, [uid, live]);
 
   const list = convos || [];
-  const selConv = list.find((c) => c.id === sel) || list[0] || null;
+  const visible = list.filter((c) => !c.hidden); // rows exclude "deleted for me"
+  const selConv = list.find((c) => c.id === sel) || visible[0] || null;
   const removeConv = (c) => {
     if (!window.confirm('Remove this conversation from your inbox? It’ll come back if the customer messages you again.')) return;
     if (sel === c.id) setSel(null);
@@ -741,13 +742,13 @@ export function Chat(){
       <Card data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'300px 1fr', overflow:'hidden', height:'min(660px, calc(100vh - 220px))', minHeight:480 }} className="chat-grid">
         <div className="chat-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           {convos === null && <div style={{ padding:'22px 16px', color:'var(--m-fg3)', fontSize:13.5 }}>Loading chats…</div>}
-          {convos !== null && list.length === 0 && (
+          {convos !== null && visible.length === 0 && (
             <div style={{ padding:'26px 16px', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5 }}>
               <FA i="fa-comments" style={{ fontSize:28, color:'var(--m-fg4)', marginBottom:10, display:'block' }} />
               No customer messages yet.
             </div>
           )}
-          {list.map((x) => {
+          {visible.map((x) => {
             const otherId = otherParticipant(x, uid);
             const info = (x.info && x.info[otherId]) || {};
             const unread = (x.unread && x.unread[uid]) || 0;
@@ -842,7 +843,14 @@ function MerchantChatThread({ conv, user, onBack }){
         {shown.map((m, idx) => {
           const mine = m.senderId === uid;
           const seen = mine && idx === myLastIdx && tsMillis(m.at) > 0 && otherReadMs >= tsMillis(m.at);
-          return <div key={m.id} style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>;
+          const ms = tsMillis(m.at);
+          const showDay = !!ms && (idx === 0 || !sameDayMs(ms, tsMillis(shown[idx-1].at)));
+          return (
+            <React.Fragment key={m.id}>
+              {showDay && <div style={{ alignSelf:'center', margin:'4px 0', padding:'3px 12px', borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-fg3)', fontSize:11, fontWeight:600 }}>{dayLabel(ms)}</div>}
+              <div style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>
+            </React.Fragment>
+          );
         })}
       </div>
       {!blocked && (
