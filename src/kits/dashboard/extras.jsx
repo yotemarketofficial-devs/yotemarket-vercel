@@ -359,7 +359,7 @@ export function Subscription(){
         {current ? (<>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}><span className="ym-h2">{current.plan}{isSoftware ? ' · Software' : ' plan'}</span><Pill tone="active">Active</Pill></div>
-            <div className="ym-sub" style={{ marginTop:4 }}>{ksh(current.price)}/mo{isSoftware ? ' · software only' : ` · ${current.deliveriesCap} bundled deliveries`}{current.range ? ` · ${current.range}` : ''}{current.renewsAt ? ` · renews ${fmtTs(current.renewsAt)}` : ''}</div>
+            <div className="ym-sub" style={{ marginTop:4 }}>{ksh(current.price)}/mo{isSoftware ? ' · software only' : ` · ${current.deliveriesCap} hub deliveries`}{current.range ? ` · ${current.range}` : ''}{current.renewsAt ? ` · renews ${fmtTs(current.renewsAt)}` : ''}</div>
           </div>
           {!isSoftware && (
           <div style={{ minWidth:200 }}>
