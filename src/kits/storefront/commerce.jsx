@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from 
 import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { placeOrder, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
@@ -108,42 +108,36 @@ export function CheckoutScreen({ params }){
     if (pay === 'mpesa' && !phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
     setBusy(true);
     try {
-      const isPickup = fulfillment === 'store_pickup';
       const storeName = ymStore(items[0]?.p?.store)?.name || '';
-      const ref = await addDoc(collection(db, 'orders'), {
-        buyerId: uid,
+      // The SERVER creates and prices the order — we only say what we want to buy.
+      // A negotiated price is sent as a reference to the merchant's chat offer, which
+      // the server verifies; we never send prices or a total.
+      const { orderId } = await placeOrder({
+        ...(offer
+          ? { offer: { convId: offer.convId, offerId: offer.id } }
+          : { items: items.map(x => ({ pid: x.pid, qty: x.qty })) }),
+        fulfillment,
+        ...(fulfillment === 'store_pickup' ? {} : { hubId: hub.id, hubName: hub.name }),
+        payMethod: pay,
         buyerName: account?.name || auth?.currentUser?.displayName || (auth?.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Customer'),
         buyerPhone: phone.trim() || account?.phone || null,
-        storeId: items[0]?.p?.store || null,
-        items: items.map(x => ({ pid: x.pid, qty: x.qty, price: x.p.price, name: x.p.name })),
-        subtotal,
-        deliveryFee: fee,
-        total,
-        status: 'placed',
-        step: 0,
-        steps: isPickup ? STORE_PICKUP_STEPS : ORDER_STEPS,
-        fulfillment,
-        payMethod: pay,
-        ...(isPickup ? {} : { hub: hub.name, hubId: hub.id }),
-        paid: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
-      const fallbackRcpt = ref.id.slice(0, 6).toUpperCase();
+      const fallbackRcpt = orderId.slice(0, 6).toUpperCase();
 
       // Wallet: charge the YoteMarket wallet (server deducts + marks paid + dispatches).
       if (pay === 'wallet') {
-        await payOrderWithWallet({ orderId: ref.id });
+        await payOrderWithWallet({ orderId });
         setBusy(false); settle('Wallet · ' + fallbackRcpt, 'wallet'); return;
       }
       // Cash on collection: track the order, pay at handover.
       if (pay === 'cash') {
-        await placeCashOrder({ orderId: ref.id });
+        await placeCashOrder({ orderId });
         setBusy(false); settle(fallbackRcpt, 'cash'); return;
       }
 
       // M-Pesa STK.
-      const res = await mpesaStkPush({ orderId: ref.id, phone, amount: total, storeName });
+      // No amount: the server charges the total it priced for this order.
+      const res = await mpesaStkPush({ orderId, phone, storeName });
       const checkoutRequestId = res && res.checkoutRequestId;
       setBusy(false);
       // No STK id back means the request never started — surface an error instead of

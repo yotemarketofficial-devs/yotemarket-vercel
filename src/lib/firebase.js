@@ -122,6 +122,12 @@ export const aiChat = callable('aiChat', { timeout: 300000 });
 /** Grounded YoteAI assistant → { reply, products }. { role?, messages:[{role,content}] }.
  *  Roles: shopper | search | merchant | support. Reads the caller's real data server-side. */
 export const aiAssistant = callable('aiAssistant', { timeout: 300000 });
+/** Create an order — SERVER-PRICED. { items:[{pid,qty}] | offer:{convId,offerId},
+ *  fulfillment, hubId?, hubName?, payMethod, buyerName?, buyerPhone? }
+ *  → { orderId, subtotal, deliveryFee, total, storeId, storeName }.
+ *  Clients can't write `orders` directly — the server prices every line. */
+export const placeOrder = callable('placeOrder');
+
 /** Lipa na M-Pesa STK push → { checkoutRequestId, merchantRequestId }. */
 export const mpesaStkPush = callable('mpesaStkPush');
 /** Merchant subscription STK push → { checkoutRequestId, merchantRequestId }. */

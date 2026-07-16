@@ -356,7 +356,9 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   let lastOfferIdx = -1;
   for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].offer) { lastOfferIdx = i; break; } }
   const negotiationClosed = lastOfferIdx >= 0 && shown.some((m, i) => i > lastOfferIdx && m.offerClosed);
-  const acceptOffer = (o) => nav('checkout', { offer: o });
+  // Carry the conversation id: checkout sends {convId, offerId} and the SERVER
+  // re-reads the merchant's offer to price it — the buyer never sends a price.
+  const acceptOffer = (o) => nav('checkout', { offer: { ...o, convId: conv.id } });
   const declineOffer = () => send('I’ll pass on this offer — thanks anyway.', { offerClosed: true });
   const sendCounter = (base, price, note) => { setCounterFor(null); const its = offerItems(base); send(`My offer: ${ymPrice(price)}${its.length > 1 ? ` for the bundle (${its.length} items)` : ''}`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'shopper', items: its, price: Number(price), note: note || '', storeId: base.storeId || conv.storeId || null } }); };
 
