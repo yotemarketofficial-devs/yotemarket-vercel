@@ -4,6 +4,7 @@
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
 import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening } from './service.js';
+import { useEscape } from '../../lib/useEscape.js';
 const { useState } = React;
 
 const JOB_TYPES = ['full-time', 'part-time', 'contract', 'internship', 'volunteer'];
@@ -29,6 +30,7 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
+  useEscape(onClose, !busy); // Esc closes, unless a stage move is in flight
   const move = async (stage) => {
     setBusy(true); setErr('');
     try { await setJobApplicationStage(app.id, stage, note.trim()); setNote(''); onMoved && onMoved(); onClose(); }

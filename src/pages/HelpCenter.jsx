@@ -187,10 +187,10 @@ function TicketForm({ user }) {
       <form onSubmit={submit} className="help-form">
         <div className="help-form-row">
           <label>Your name
-            <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Jane Wanjiru" />
+            <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Jane Wanjiru" autoComplete="name" />
           </label>
           <label>Email <span className="req">*</span>
-            <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" required />
+            <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" required />
           </label>
         </div>
         <label>What’s it about?

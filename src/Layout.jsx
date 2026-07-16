@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { useEscape } from './lib/useEscape.js';
 
 const navItems = [
   { label: 'Shop', path: '/storefront' },
@@ -27,12 +28,15 @@ function Layout() {
 
   // Close the mobile menu whenever the route changes.
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  useEscape(() => setMenuOpen(false), menuOpen);
 
   const logoSrc = dark ? '/assets/logo-white.png' : '/assets/logo.png';
   const activeClass = ({ isActive }) => (isActive ? 'active-link' : '');
 
   return (
     <div className="app-shell">
+      {/* Keyboard/screen-reader users can jump the nav straight to the page (WCAG 2.4.1). */}
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <header className="nav">
         <div className="wrap nav-in">
           <NavLink to="/" className="logo-link">
@@ -83,7 +87,16 @@ function Layout() {
           </nav>
         </div>
       </header>
-      <Outlet />
+      {/* Skip-link target. A plain wrapper — each page renders its own <main>. */}
+      <div id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
+        <Outlet />
+      </div>
+
+      <style>{`
+      .skip-link{ position:absolute; left:-9999px; top:0; z-index:200; padding:12px 18px; border-radius:0 0 12px 0;
+        background:var(--purple,#7C2BD4); color:#fff; font-weight:700; font-size:14px; text-decoration:none; }
+      .skip-link:focus{ left:0; outline:3px solid #fff; outline-offset:-6px; }
+      `}</style>
     </div>
   );
 }

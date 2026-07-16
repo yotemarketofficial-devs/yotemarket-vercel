@@ -167,15 +167,15 @@ function Careers() {
                 <form onSubmit={submit} className="career-form">
                   <div className="career-row">
                     <label>Your name <span className="req">*</span>
-                      <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Jane Wanjiru" required />
+                      <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Jane Wanjiru" autoComplete="name" required />
                     </label>
                     <label>Email <span className="req">*</span>
-                      <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" required />
+                      <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" required />
                     </label>
                   </div>
                   <div className="career-row">
                     <label>Phone
-                      <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" />
+                      <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" autoComplete="tel" />
                     </label>
                     <label>Team
                       <select value={form.dept} onChange={(e) => set('dept', e.target.value)}>

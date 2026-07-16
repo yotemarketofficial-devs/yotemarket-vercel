@@ -6,6 +6,7 @@ import { useMerchant, useStoreOverview } from './merchant.jsx';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { productImagePath } from '../../lib/storage.js';
 import { saveProduct, deleteProduct } from '../../lib/firebase.js';
+import { useEscape } from '../../lib/useEscape.js';
 import { CATEGORY_TREE } from '../storefront/categories.js';
 import { ScreenCoach } from './ScreenCoach.jsx';
 const { useState: useStateP } = React;
@@ -103,6 +104,7 @@ export function AddProductModal({ onClose, onSave, editing }){
   const { store } = useMerchant();
   const storeId = store?.id;
   const isEdit = !!editing;
+  useEscape(onClose); // Esc closes, same as the overlay click / X button
   const [step, setStep] = useStateP(1);
   const [form, setForm] = useStateP(() => isEdit ? {
     name: editing.name || '', catId: editing.catId || 'electronics', sub: editing.sub || '',

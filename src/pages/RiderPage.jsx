@@ -86,15 +86,15 @@ function RiderJoin({ formRef }) {
               <form onSubmit={submit} className="rider-form">
                 <div className="rider-row">
                   <label>Full name <span className="req">*</span>
-                    <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Otieno Kamau" required />
+                    <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Otieno Kamau" autoComplete="name" required />
                   </label>
                   <label>M-Pesa phone <span className="req">*</span>
-                    <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" required />
+                    <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" autoComplete="tel" required />
                   </label>
                 </div>
                 <div className="rider-row">
                   <label>Email
-                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" />
+                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" />
                   </label>
                   <label>Where will you ride? <span className="req">*</span>
                     <input value={form.county} onChange={(e) => set('county', e.target.value)} placeholder="e.g. Nairobi — Westlands, Kilimani" required />

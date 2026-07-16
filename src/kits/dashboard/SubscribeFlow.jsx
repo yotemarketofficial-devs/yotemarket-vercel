@@ -6,6 +6,7 @@ import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { ksh } from './data.js';
 import { subscribeMerchant, confirmPayment, redeemCoupon } from '../../lib/firebase.js';
+import { useEscape } from '../../lib/useEscape.js';
 import { DELIVERY_TIERS, SOFTWARE_TIERS, PLAN_ORDER, DELIVERY_FEATURES, findDeliveryTier } from './pricing.js';
 import { planUnlocks, TIER_RANK } from '../../lib/entitlements.js';
 const { useState, useEffect } = React;
@@ -25,6 +26,8 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
 
   const tier = findDeliveryTier(tierId);
   const pick = (obj) => { setPicking(obj); setPhone(''); setErr(''); setStage('idle'); setCid(null); };
+  // Esc closes the plan dialog — but never mid-payment (matches the overlay-click guard).
+  useEscape(() => setPicking(null), Boolean(picking) && stage !== 'waiting');
 
   const pay = async () => {
     setErr('');
@@ -165,7 +168,7 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
                 </div>
                 <p className="ym-sub" style={{ marginBottom: 16 }}>{ksh(picking.price)}/mo{picking.deliveries ? ` · ${picking.deliveries} hub deliveries` : ' · software only'}{picking.range ? ` · ${picking.range}` : ''}. Billed monthly via M-Pesa.</p>
                 <label className="ym-label" style={{ display: 'block', marginBottom: 6 }}>M-Pesa phone number</label>
-                <input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" />
+                <input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" autoComplete="tel" />
                 {err && <div role="alert" style={errBox}><FA i="fa-circle-exclamation" /> {err}</div>}
                 <Btn kind="mpesa" style={{ width: '100%', marginTop: 14 }} disabled={stage === 'sending'} onClick={pay}>{stage === 'sending' ? <><FA i="fa-circle-notch" style={{ animation: 'ym-spin 1s linear infinite' }} /> Sending…</> : <><FA i="fa-bolt" /> Pay {ksh(picking.price)} with M-Pesa</>}</Btn>
                 <div className="ym-cap" style={{ textAlign: 'center', marginTop: 10 }}>Secure · server-verified · cancel anytime</div>

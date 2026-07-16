@@ -343,9 +343,9 @@ function ProfileEditor({ uid, initial, onClose, toast }){
     <>
       <Modal title="Edit profile" onClose={onClose}>
         <label className="ym-label">Full name</label>
-        <input className="ym-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" />
+        <input className="ym-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" autoComplete="name" />
         <label className="ym-label" style={{ marginTop:14 }}>Phone (M-Pesa)</label>
-        <input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" placeholder="07XX XXX XXX" />
+        <input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="07XX XXX XXX" />
         <label className="ym-label" style={{ marginTop:14 }}>Default pickup hub</label>
         <button onClick={()=>setHubPick(true)} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:13, borderRadius:13, cursor:'pointer', fontFamily:'inherit', textAlign:'left', background:'var(--m-surface)', border:'1px solid var(--m-border)' }}>
           <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}><FA i="fa-warehouse" /></div>

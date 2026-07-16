@@ -278,7 +278,7 @@ export function CheckoutScreen({ params }){
                 {pay===id && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />}
               </button>
             ))}
-            {pay==='mpesa' && <div style={{ marginTop:6 }}><label className="ym-label">M-Pesa phone number</label><input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" /></div>}
+            {pay==='mpesa' && <div style={{ marginTop:6 }}><label className="ym-label">M-Pesa phone number</label><input className="ym-input" value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="tel" placeholder="07XX XXX XXX" /></div>}
           </div>
         </div>
 
