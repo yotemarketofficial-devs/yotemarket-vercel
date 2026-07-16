@@ -1,0 +1,38 @@
+# Verify a commit before it becomes the live site.
+#
+# Pushing this repo auto-deploys to Vercel, so until now nothing checked a commit
+# before real users got it. This is the cheapest possible gate: if it doesn't
+# build, it doesn't ship.
+#
+# No lint step: this repo has no ESLint config yet. Adding one is its own task
+# (it would flag a lot of pre-existing code) — don't fake it here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push makes an in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Same command Vercel runs. VITE_* vars are absent here on purpose: the app
+      # must build without a backend (demo mode), and monitoring stays inert
+      # without VITE_SENTRY_DSN.
+      - run: npm run build
