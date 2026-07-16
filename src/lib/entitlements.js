@@ -1,26 +1,26 @@
 /* entitlements.js — SINGLE SOURCE OF TRUTH for what each merchant plan unlocks.
    ────────────────────────────────────────────────────────────────────────────
-   The platform sells two plan ladders (see kits/dashboard/pricing.js):
-     • delivery plans  — Starter / Growth / Pro, priced by distance band
-     • software plans   — Entry / Growth / Pro (SaaS-only, no delivery)
-   Both collapse onto ONE capability rank so a feature gate works for either:
+   ONE feature ladder = software tiers. A "delivery plan" is just a software tier
+   with delivery attached (priced by distance band), so it inherits that tier's
+   features. Enterprise is the staff-activated top tier (quote-based). Capability rank:
 
-     No plan = 0 · Entry|Starter = 1 · Growth = 2 · Pro = 3
+     No plan = 0 · Entry|Starter = 1 · Growth = 2 · Pro = 3 · Enterprise = 4
 
    There is NO "Free" tier: Entry (rank 1) is the floor. Any free offer or scout
    activation code provisions the Entry software package, so every provisioned
    merchant is at least Entry; rank 0 means no active plan (lapsed / not yet set up).
-   Delivery plans are premium commitments (KSh 1,500–82,000/mo), so ANY active
-   delivery plan is floored at Growth (rank 2) — it unlocks the software suite.
+   Plan name maps straight to rank — delivery Starter = Entry+delivery (rank 1),
+   delivery Growth = Growth+delivery (rank 2), delivery Pro = Pro+delivery (rank 3).
 
    ⇩ EDIT THE MATRIX BELOW to change packaging — it's the ONLY place feature→tier
    lives on the client. A server mirror (firebase/functions ENTITLEMENTS) enforces
    the same map for defense-in-depth; keep the two in sync (like subscription
    pricing already is — see [[subscriptions]]). */
 
-// Plan name → base capability rank.
-export const TIER_RANK = { Entry: 1, Starter: 1, Promo: 1, Growth: 2, Pro: 3 };
-export const TIER_NAMES = { 0: 'No plan', 1: 'Entry', 2: 'Growth', 3: 'Pro' };
+// Plan name → capability rank. Delivery plans share the software names (Starter =
+// Entry-equivalent), so one map covers software, delivery AND enterprise.
+export const TIER_RANK = { Entry: 1, Starter: 1, Promo: 1, Growth: 2, Pro: 3, Enterprise: 4 };
+export const TIER_NAMES = { 0: 'No plan', 1: 'Entry', 2: 'Growth', 3: 'Pro', 4: 'Enterprise' };
 
 // feature key → gate. minTier is the lowest rank that unlocks it.
 export const FEATURES = {
@@ -29,8 +29,9 @@ export const FEATURES = {
   broadcasts: { label: 'Follower broadcasts',    minTier: 2, icon: 'fa-tower-broadcast', blurb: 'Send shoppable posts and offers to your followers.' },
   team:       { label: 'Team & staff seats',     minTier: 2, icon: 'fa-user-group', blurb: 'Add cashiers and managers with their own secure logins.' },
   insights:   { label: 'YoteMarket Insight',     minTier: 2, icon: 'fa-lightbulb', blurb: 'AI analytics on your sales, pricing and demand.' },
-  featured:   { label: 'Featured placement',     minTier: 3, icon: 'fa-star', blurb: 'Priority storefront placement + Top-brand eligibility.' },
+  featured:   { label: 'Featured placement',     minTier: 3, icon: 'fa-star', blurb: 'Priority storefront placement across the marketplace.' },
   pickupHub:  { label: 'Pickup-hub eligibility', minTier: 3, icon: 'fa-warehouse', blurb: 'Become a neighbourhood pickup hub and earn on collections.' },
+  topBrand:   { label: 'Top-brand placement',    minTier: 4, icon: 'fa-crown', blurb: 'Reserved Top-brand storefront placement — an Enterprise perk.' },
 };
 
 // Dashboard screen key → feature it requires (used by the router gate + sidebar lock).
@@ -44,14 +45,13 @@ function renewMs(sub) {
   return 0;
 }
 
-/** The merchant's capability rank (0–3) from their subscription doc. */
+/** The merchant's capability rank (0–4) from their subscription doc. Plan name maps
+ *  straight to rank — a delivery plan is its software tier + delivery, so no floor. */
 export function tierRank(sub) {
   if (!sub || sub.status !== 'active') return 0;
   const ms = renewMs(sub);
   if (ms && ms < Date.now()) return 0; // active-but-expired → no plan
-  const base = TIER_RANK[sub.plan] || 0;
-  if (base > 0 && sub.kind === 'delivery') return Math.max(base, 2); // delivery floor = Growth
-  return base;
+  return TIER_RANK[sub.plan] || 0;
 }
 
 export const tierName = (rank) => TIER_NAMES[rank] || 'No plan';
