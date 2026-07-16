@@ -21,7 +21,7 @@ function FeatureIcon({ f }) {
 
 const MERCHANT_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Branded storefront', desc: 'Your own shopfront in the mall — products, photos and reviews, live in minutes.' },
-  { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 500 — software only, or add bundled hub deliveries. Keep 100% of every sale — we never take a cut.' },
+  { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 500 — software only, or add hub deliveries. Keep 100% of every sale — we never take a cut.' },
   { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'YoteAI merchant tools', desc: 'AI writes your product listings, surfaces demand insights, and answers shopper questions for you.' },
   { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'In-app messenger', desc: 'Chat and negotiate with buyers inside the app — agree a price, then get paid through escrow.' },
   { icon: 'fa-wallet', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Wallet & M-Pesa payouts', desc: 'Track earnings and withdraw to M-Pesa or your Paybill on demand. Funds are escrow-protected.' },
@@ -62,7 +62,7 @@ function HomePage() {
               <span className="g">Delivered</span> fast.
             </h1>
             <p className="lead">
-              YoteMarket bundles a virtual mall, merchant tools, and last-mile delivery into one ecosystem.
+              YoteMarket combines a virtual mall, merchant tools, and last-mile delivery into one ecosystem.
               Buy, sell, chat &amp; negotiate in the app messenger, and pay with M-Pesa.
             </p>
             <div className="hero-cta">
@@ -285,7 +285,7 @@ function HomePage() {
           </div>
           <div className="sec-cta">
             <Link className="btn btn-primary btn-lg" to="/dashboard">Start selling <i className="fas fa-arrow-right"></i></Link>
-            <span className="sec-cta-note">From Ksh 500/mo · optional bundled deliveries · no commission</span>
+            <span className="sec-cta-note">From Ksh 500/mo · optional hub deliveries · no commission</span>
           </div>
         </div>
       </section>
@@ -488,7 +488,7 @@ function HomePage() {
             <div className="brand">
               <Link to="/" aria-label="YoteMarket home"><img id="footlogo" src="/assets/logo.png" alt="YoteMarket" /></Link>
               <p>
-                Kenya's virtual mall — bundling commerce, merchant tools, and last-mile delivery into one ecosystem.
+                Kenya's virtual mall — combining commerce, merchant tools, and last-mile delivery into one ecosystem.
               </p>
               <div className="contact">
                 <a href="mailto:general@yotemarket.com"><i className="fas fa-envelope"></i> general@yotemarket.com</a>

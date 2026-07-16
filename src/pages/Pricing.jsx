@@ -26,8 +26,8 @@ const TIERS = [
   { name: 'Enterprise', price: null, tagline: 'For multi-store businesses', prev: 'Pro', items: [...addsAt(4), 'High-volume delivery', 'Custom pricing & rates', 'Dedicated account manager'] },
 ];
 
-// With bundled delivery — every delivery plan is the matching software tier PLUS
-// hub deliveries, priced by distance (Entry = 10, Growth = 20, Pro = 30 runs/mo).
+// With delivery — every delivery plan is the matching software tier PLUS hub
+// deliveries, priced by distance (Entry = 10, Growth = 20, Pro = 30 runs/mo).
 // Column plan keys stay Starter/Growth/Pro (server tier ids); Entry is shown for
 // the entry delivery tier so the name lines up with the software ladder.
 const DELIVERY_BANDS = [
@@ -67,7 +67,7 @@ function Pricing() {
             <h1>One ladder. No commission.</h1>
             <p>
               Pick a software tier — that's your feature set. Need us to deliver? The same tier is
-              available with bundled hub deliveries, priced by distance. Either way you keep 100% of
+              available with hub deliveries, priced by distance. Either way you keep 100% of
               every sale; we never take a cut.
             </p>
           </div>
@@ -141,7 +141,7 @@ function Pricing() {
                 </table>
               </div>
               <p className="price-note">
-                Each delivery plan bundles the matching software tier (Entry / Growth / Pro) plus hub
+                Each delivery plan pairs the matching software tier (Entry / Growth / Pro) with hub
                 deliveries — tap any price to sign up with it pre-selected. Higher volume or nationwide?{' '}
                 <Link to="/contact" style={{ color: 'var(--purple)', fontWeight: 600 }}>Enterprise delivery is quote-based</Link>.
               </p>

@@ -161,7 +161,7 @@ function Terms() {
 
             <h3>5. Payments, subscriptions &amp; fees</h3>
             <ul>
-              <li>The <strong>merchant subscription is the consideration for the license to use digital storefront space</strong> in the virtual mall, together with any bundled or optional services (such as delivery slots, business insights, or POS).</li>
+              <li>The <strong>merchant subscription is the consideration for the license to use digital storefront space</strong> in the virtual mall, together with any included or optional services (such as delivery slots, business insights, or POS).</li>
               <li>Payments must be completed in-app (M-Pesa, card, or wallet) before order dispatch, except where a limited cash-on-delivery option is expressly offered.</li>
               <li>Merchant subscription and rider badge fees are payable in advance and are <strong>non-refundable</strong> once activated, except where refunds are required by law.</li>
               <li>Additional logistics or special-handling charges, if any, are disclosed before confirmation.</li>

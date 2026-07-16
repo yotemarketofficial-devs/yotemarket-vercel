@@ -27,7 +27,7 @@ export const PLAN_ORDER = ['Starter', 'Growth', 'Pro'];
 
 // Generic per-plan feature bullets for delivery plans (deliveries shown separately).
 export const DELIVERY_FEATURES = {
-  Starter: ['Branded storefront', 'M-Pesa checkout', 'Bundled hub deliveries'],
+  Starter: ['Branded storefront', 'M-Pesa checkout', 'Hub deliveries'],
   Growth: ['Everything in Starter', 'Demand insights', 'Priority support'],
   Pro: ['Everything in Growth', 'Featured placement', 'Pickup hub eligibility'],
 };

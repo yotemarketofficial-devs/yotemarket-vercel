@@ -28,7 +28,7 @@ const COPY = {
   delivery:     { title: 'Delivery',              body: 'Set your delivery fee, free-delivery threshold and dispatch rules. These drive checkout.' },
   chat:         { title: 'Chats',                 body: 'Message buyers directly to answer questions and close sales in real time.' },
   wallet:       { title: 'Wallet',                body: 'Track your earnings and withdraw to M-Pesa. Set your payout method here.' },
-  subscription: { title: 'Subscription',          body: 'Your plan powers selling — bundled deliveries and features. Manage or upgrade it here.' },
+  subscription: { title: 'Subscription',          body: 'Your plan powers selling — hub deliveries and features. Manage or upgrade it here.' },
   team:         { title: 'Team',                  body: 'Invite cashiers and managers with their own logins and the right permissions.' },
   settings:     { title: 'Settings',              body: 'Shop profile, social links, tax details, followers — and closing your store.' },
 };

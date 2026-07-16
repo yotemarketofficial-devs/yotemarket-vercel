@@ -108,7 +108,7 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
                 {featured && <span className="ym-pill ym-pill-active" style={{ position: 'absolute', top: 14, right: 14 }}>Popular</span>}
                 <div className="ym-h2" style={{ fontSize: 17 }}>{planName}</div>
                 <div style={{ margin: '8px 0 4px' }}><span style={{ fontSize: 26, fontWeight: 800, color: 'var(--m-fg1)' }}>{ksh(pl.price)}</span><span className="ym-cap">/mo</span></div>
-                <div className="ym-cap" style={{ marginBottom: 14 }}>{pl.deliveries} bundled deliveries · {tier.range}</div>
+                <div className="ym-cap" style={{ marginBottom: 14 }}>{pl.deliveries} hub deliveries · {tier.range}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                   {DELIVERY_FEATURES[planName].map((f) => <div key={f} style={{ display: 'flex', gap: 8, fontSize: 13, color: 'var(--m-fg2)' }}><FA i="fa-check" style={{ color: 'var(--m-success)', marginTop: 3 }} /><span>{f}</span></div>)}
                 </div>
@@ -163,7 +163,7 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
                   <h2 className="ym-h2">Subscribe to {picking.plan}</h2>
                   <button onClick={() => setPicking(null)} className="icon-btn" aria-label="Close"><FA i="fa-xmark" /></button>
                 </div>
-                <p className="ym-sub" style={{ marginBottom: 16 }}>{ksh(picking.price)}/mo{picking.deliveries ? ` · ${picking.deliveries} bundled deliveries` : ' · software only'}{picking.range ? ` · ${picking.range}` : ''}. Billed monthly via M-Pesa.</p>
+                <p className="ym-sub" style={{ marginBottom: 16 }}>{ksh(picking.price)}/mo{picking.deliveries ? ` · ${picking.deliveries} hub deliveries` : ' · software only'}{picking.range ? ` · ${picking.range}` : ''}. Billed monthly via M-Pesa.</p>
                 <label className="ym-label" style={{ display: 'block', marginBottom: 6 }}>M-Pesa phone number</label>
                 <input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" />
                 {err && <div role="alert" style={errBox}><FA i="fa-circle-exclamation" /> {err}</div>}

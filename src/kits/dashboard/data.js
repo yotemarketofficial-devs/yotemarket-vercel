@@ -46,9 +46,9 @@ export const WALLET = {
 
 export const SUBSCRIPTION = { plan:'Growth', price:3000, band:'A · Urban', deliveriesUsed:18, deliveriesCap:20, next:'14 Jul 2026',
   tiers:[
-    { name:'Starter', price:1500, deliveries:10, features:['Branded storefront','10 bundled deliveries/mo','M-Pesa checkout'] },
-    { name:'Growth', price:3000, deliveries:20, features:['Everything in Starter','20 bundled deliveries/mo','Demand insights','Priority support'], current:true },
-    { name:'Pro', price:4200, deliveries:30, features:['Everything in Growth','30 bundled deliveries/mo','Featured placement','Pickup hub eligibility'] },
+    { name:'Starter', price:1500, deliveries:10, features:['Branded storefront','10 hub deliveries/mo','M-Pesa checkout'] },
+    { name:'Growth', price:3000, deliveries:20, features:['Everything in Starter','20 hub deliveries/mo','Demand insights','Priority support'], current:true },
+    { name:'Pro', price:4200, deliveries:30, features:['Everything in Growth','30 hub deliveries/mo','Featured placement','Pickup hub eligibility'] },
   ],
 };
 

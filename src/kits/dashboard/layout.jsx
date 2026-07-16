@@ -104,7 +104,7 @@ export function Sidebar({ active, onChange, onClose }){
         <div style={{ color:'rgba(255,255,255,.8)', fontSize:12.5, margin:'6px 0 12px' }}>{subc.active ? `${ksh(subc.price)}/mo · renews ${subc.next}` : 'Choose a plan to start selling'}</div>
         {subc.active && subc.kind!=='software' ? (<>
           <div style={{ height:7, borderRadius:9999, background:'rgba(255,255,255,.18)', overflow:'hidden' }}><div style={{ width:(subc.deliveriesCap ? subc.deliveriesUsed/subc.deliveriesCap*100 : 0)+'%', height:'100%', background:'linear-gradient(90deg,var(--m-amber),#fff)' }} /></div>
-          <div style={{ color:'rgba(255,255,255,.8)', fontSize:11.5, marginTop:7 }}>{subc.deliveriesUsed}/{subc.deliveriesCap} bundled deliveries used{subc.range ? ' · ' + subc.range : ''}</div>
+          <div style={{ color:'rgba(255,255,255,.8)', fontSize:11.5, marginTop:7 }}>{subc.deliveriesUsed}/{subc.deliveriesCap} hub deliveries used{subc.range ? ' · ' + subc.range : ''}</div>
         </>) : (
           <div style={{ color:'rgba(255,255,255,.8)', fontSize:11.5 }}>{subc.active ? 'Software-only plan' : 'Tap to subscribe'}</div>
         )}

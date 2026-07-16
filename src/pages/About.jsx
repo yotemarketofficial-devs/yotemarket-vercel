@@ -9,7 +9,7 @@ function About() {
             <span className="eyebrow"><i className="fas fa-building"></i> About YoteMarket</span>
             <h1>Kenya's virtual mall, built for everyone</h1>
             <p>
-              We bundle a virtual mall, merchant tools, and last-mile delivery into one ecosystem — so local
+              We combine a virtual mall, merchant tools, and last-mile delivery into one ecosystem — so local
               stores can reach the whole country and shoppers can buy with confidence.
             </p>
           </div>
