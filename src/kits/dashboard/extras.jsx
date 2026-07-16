@@ -1028,11 +1028,33 @@ function MerchantChatThread({ conv, user, onBack }){
   const [draft, setDraft] = useStateX('');
   const [offerOpen, setOfferOpen] = useStateX(false);
   const [counterFor, setCounterFor] = useStateX(null);
+  const [showJump, setShowJump] = useStateX(false);
+  const [newBelow, setNewBelow] = useStateX(false);
   const scrollRef = useRefX(null);
+  const atBottomRef = useRefX(true);
+
+  const onScroll = () => {
+    const el = scrollRef.current; if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    atBottomRef.current = near;
+    setShowJump(!near);
+    if (near) setNewBelow(false);
+  };
+  const jumpToLatest = () => {
+    const el = scrollRef.current; if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    atBottomRef.current = true; setShowJump(false); setNewBelow(false);
+  };
 
   useEffX(() => subscribeMessages(conv.id, setMsgs), [conv.id]);
   useEffX(() => { markConversationRead(conv.id, uid); }, [conv.id, msgs.length]);
-  useEffX(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
+  // Stick to the newest message only when already at the bottom — never yank the
+  // reader back down while they're scrolled up; flag "new messages" instead.
+  useEffX(() => {
+    const el = scrollRef.current; if (!el) return;
+    if (atBottomRef.current) el.scrollTop = el.scrollHeight;
+    else if (msgs.length) setNewBelow(true);
+  }, [msgs]);
 
   const send = (t, extra) => {
     const v=(t||draft).trim(); if(!v || blocked) return;
@@ -1066,7 +1088,8 @@ function MerchantChatThread({ conv, user, onBack }){
       {ent.can('dealAssist') && Array.isArray(conv.cartHint) && conv.cartHint.length > 0 && (
         <div style={{ padding:'10px 0 0' }}><DealAssist conv={conv} products={products} onOffer={(d)=>setOfferOpen(d)} /></div>
       )}
-      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+      <div style={{ flex:1, minHeight:0, position:'relative' }}>
+      <div ref={scrollRef} onScroll={onScroll} style={{ position:'absolute', inset:0, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {shown.length===0 && <div style={{ margin:'auto', color:'var(--m-fg3)', fontSize:13.5 }}>No messages yet.</div>}
         {shown.map((m, idx) => {
           const mine = m.senderId === uid;
@@ -1080,6 +1103,12 @@ function MerchantChatThread({ conv, user, onBack }){
             </React.Fragment>
           );
         })}
+      </div>
+      {showJump && (
+        <button onClick={jumpToLatest} aria-label="Jump to latest messages" title="Jump to latest" style={{ position:'absolute', right:14, bottom:12, height:34, padding: newBelow ? '0 13px' : 0, width: newBelow ? 'auto' : 34, borderRadius:9999, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, background: newBelow ? 'var(--m-primary)' : 'var(--m-surface)', color: newBelow ? '#fff' : 'var(--m-fg2)', boxShadow:'var(--m-shadow-float)' }}>
+          <FA i="fa-arrow-down" style={{ fontSize:12 }} />{newBelow ? 'New messages' : ''}
+        </button>
+      )}
       </div>
       {!blocked && (
         <div className="scroll-x" style={{ display:'flex', gap:8, padding:'10px 16px 0', overflowX:'auto' }}>

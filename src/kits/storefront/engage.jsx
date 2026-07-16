@@ -274,13 +274,35 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   const [loaded, setLoaded] = useSE(false);
   const [draft, setDraft] = useSE('');
   const [counterFor, setCounterFor] = useSE(null); // offer/product being (counter-)offered
+  const [showJump, setShowJump] = useSE(false);
+  const [newBelow, setNewBelow] = useSE(false);
   const scrollRef = useRefE(null);
+  const atBottomRef = useRefE(true);
   const autoSentRef = useRefE(false);
+
+  const onScroll = () => {
+    const el = scrollRef.current; if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    atBottomRef.current = near;
+    setShowJump(!near);
+    if (near) setNewBelow(false);
+  };
+  const jumpToLatest = () => {
+    const el = scrollRef.current; if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    atBottomRef.current = true; setShowJump(false); setNewBelow(false);
+  };
 
   useEffE(() => subscribeMessages(conv.id, (list)=>{ setMsgs(list); setLoaded(true); }), [conv.id]);
   // Clear my unread badge whenever I'm viewing the thread and new messages land.
   useEffE(() => { markConversationRead(conv.id, myUid); }, [conv.id, msgs.length]);
-  useEffE(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
+  // Stick to the newest message only when already at the bottom — never yank the
+  // reader back down while they're scrolled up; flag "new messages" instead.
+  useEffE(() => {
+    const el = scrollRef.current; if (!el) return;
+    if (atBottomRef.current) el.scrollTop = el.scrollHeight;
+    else if (msgs.length) setNewBelow(true);
+  }, [msgs]);
   // Share my cart items from THIS store so a Pro merchant's Deal Assist can help.
   useEffE(() => {
     if (!conv.storeId) return;
@@ -364,7 +386,8 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
           <button onClick={untag} title="Remove product" aria-label="Remove product tag" style={{ flexShrink:0, width:28, height:28, borderRadius:9999, border:'none', background:'var(--m-surface-3)', color:'var(--m-fg3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12 }}><FA i="fa-xmark" /></button>
         </div>
       )}
-      <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
+      <div style={{ flex:1, minHeight:0, position:'relative' }}>
+      <div ref={scrollRef} onScroll={onScroll} style={{ position:'absolute', inset:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {shown.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
         {shown.map((m, idx) => {
           const mine = m.senderId === myUid;
@@ -383,6 +406,12 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
             </React.Fragment>
           );
         })}
+      </div>
+      {showJump && (
+        <button onClick={jumpToLatest} aria-label="Jump to latest messages" title="Jump to latest" style={{ position:'absolute', right:14, bottom:12, height:34, padding: newBelow ? '0 13px' : 0, width: newBelow ? 'auto' : 34, borderRadius:9999, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:700, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, background: newBelow ? 'var(--m-primary)' : 'var(--m-surface)', color: newBelow ? '#fff' : 'var(--m-fg2)', boxShadow:'var(--m-shadow-float)' }}>
+          <FA i="fa-arrow-down" style={{ fontSize:12 }} />{newBelow ? 'New messages' : ''}
+        </button>
+      )}
       </div>
       {shown.length===0 && !blocked && (
         <div className="scroll-x" style={{ gap:8, padding:'10px 18px 0' }}>
