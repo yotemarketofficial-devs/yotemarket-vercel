@@ -17,6 +17,7 @@ import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
 import { Careers } from './careers.jsx';
+import { RiderApplications } from './riders.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
@@ -40,6 +41,7 @@ const WORKSPACES = [
   ]},
   { key:'logistics', label:'Logistics', icon:'truck-fast', blurb:'Delivery ops', sections:[
     { key:'logistics', label:'Runs & routes', icon:'route', desc:'Batched-run operations across all bands' },
+    { key:'riders', label:'Rider applications', icon:'motorcycle', desc:'People joining the delivery network — vet & approve' },
   ]},
   { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', sections:[
     { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
@@ -76,7 +78,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

@@ -342,6 +342,14 @@ export const staffListJobOpenings = callable('staffListJobOpenings');
 /** Staff: permanently remove an opening → { ok }. { id }. */
 export const staffDeleteJobOpening = callable('staffDeleteJobOpening');
 
+// ── Rider network ────────────────────────────────────────────────────────────
+/** Public: apply to ride → { id, ref }. { name, email?, phone, county, vehicle, plate?, licence?, availability?, note? }. */
+export const submitRiderApplication = callable('submitRiderApplication');
+/** Staff: every rider application, newest first → { applications, counts }. */
+export const staffListRiderApplications = callable('staffListRiderApplications');
+/** Staff: move a rider application through vetting → { ok, stage }. { id, stage, note? }. */
+export const staffSetRiderApplicationStage = callable('staffSetRiderApplicationStage');
+
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */
 export const onboardEmployee = callable('onboardEmployee');

@@ -343,6 +343,18 @@ export async function deleteJobOpening(id) {
   return call('staffDeleteJobOpening')({ id });
 }
 
+// ── Rider network ─────────────────────────────────────────────────────────────
+/** Every rider application, newest first → { applications, counts }. */
+export async function fetchRiderApplications() {
+  const d = await call('staffListRiderApplications')();
+  if (!d || !Array.isArray(d.applications)) throw new Error('staffListRiderApplications: unexpected shape');
+  return d;
+}
+/** Move a rider application through vetting. stage: new|review|vetting|approved|rejected. */
+export async function setRiderApplicationStage(id, stage, note = '') {
+  return call('staffSetRiderApplicationStage')({ id, stage, ...(note ? { note } : {}) });
+}
+
 // ── Returns, refunds & disputes ───────────────────────────────────────────────
 /** All return/refund disputes (optionally filtered) → { disputes, counts }. */
 export async function fetchDisputes(status) {
