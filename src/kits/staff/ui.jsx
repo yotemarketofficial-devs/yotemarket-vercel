@@ -174,13 +174,25 @@ export function DataTable({ columns, rows, keyField='id', onRowClick, empty, min
       <div className="overflow-x-auto no-bar">
         <table className="w-full text-sm" style={{ minWidth }}>
           <thead><tr className="t3" style={{ textAlign:'left', background:'var(--surface2)' }}>
-            {columns.map((c) => (
-              <th key={c.key} onClick={() => toggleSort(c)} className="px-4 py-2.5 font-semibold select-none"
-                style={{ textAlign:c.align||'left', whiteSpace:'nowrap', width:c.width, cursor: sortable(c) ? 'pointer' : 'default' }}>
-                {c.header}
-                {sortable(c) && <Icon name={sort && sort.key === c.key ? (sort.dir === 'asc' ? 'caret-up' : 'caret-down') : 'sort'} className="ml-1.5" style={{ opacity: sort && sort.key === c.key ? 0.8 : 0.35 }} />}
-              </th>
-            ))}
+            {columns.map((c) => {
+              const on = sort && sort.key === c.key;
+              // A sortable header is a real <button> so it's keyboard-operable, and the
+              // <th> carries aria-sort so screen readers announce the current order.
+              return (
+                <th key={c.key} className="px-4 py-2.5 font-semibold select-none"
+                  aria-sort={sortable(c) ? (on ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
+                  style={{ textAlign:c.align||'left', whiteSpace:'nowrap', width:c.width }}>
+                  {sortable(c) ? (
+                    <button type="button" onClick={() => toggleSort(c)}
+                      title={`Sort by ${typeof c.header === 'string' ? c.header : c.key}`}
+                      style={{ background:'none', border:'none', padding:0, margin:0, font:'inherit', color:'inherit', cursor:'pointer', display:'inline-flex', alignItems:'center' }}>
+                      {c.header}
+                      <Icon name={on ? (sort.dir === 'asc' ? 'caret-up' : 'caret-down') : 'sort'} className="ml-1.5" style={{ opacity: on ? 0.8 : 0.35 }} />
+                    </button>
+                  ) : c.header}
+                </th>
+              );
+            })}
           </tr></thead>
           <tbody>{pageRows.map((r, i) => (
             <tr key={r[keyField] ?? i} onClick={onRowClick ? () => onRowClick(r) : undefined}

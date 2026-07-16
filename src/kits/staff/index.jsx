@@ -23,6 +23,7 @@ import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
+import { useEscape } from '../../lib/useEscape.js';
 import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes } from './service.js';
 const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 
@@ -202,6 +203,7 @@ function App() {
   const isAdmin = role === 'admin';
   const [active, setActive] = useSApp('command');
   const [menu, setMenu] = useSApp(false);
+  useEscape(() => setMenu(false), menu);
   const [palette, setPalette] = useSApp(false);
 
   const wsList = useMApp(() => visibleWorkspaces(isAdmin), [isAdmin]);

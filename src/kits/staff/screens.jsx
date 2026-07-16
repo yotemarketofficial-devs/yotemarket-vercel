@@ -4,6 +4,7 @@
 import React from 'react';
 import { KPIS, GMV_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, RUNS, FLEET, WALLET, SUBSCRIPTIONS } from './data.js';
 import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState } from './ui.jsx';
+import { useEscape } from '../../lib/useEscape.js';
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   enterpriseQuote, setEnterprise,
@@ -515,6 +516,7 @@ function EnterpriseModal({ m, onClose, onDone }){
   const [packages, setPackages] = useSS(150);
   const [disc, setDisc] = useSS(0);
   const [busy, setBusy] = useSS(false);
+  useEscape(onClose, !busy); // Esc closes, unless activation is in flight
 
   useES(() => { let live=true; enterpriseQuote().then(d=>{ if(live) setCard(d.rateCard); }).catch(e=>{ if(live) setErr(e.message||'Could not load rate card'); }); return ()=>{ live=false; }; }, []);
 
