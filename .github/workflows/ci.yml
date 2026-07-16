@@ -32,6 +32,11 @@ jobs:
 
       - run: npm ci
 
+      # Unit tests on the pure logic that has actually regressed on users:
+      # chat.js (role scoping, the delete clear-point, the offer/bundle model)
+      # and entitlements.js (what a merchant has paid for).
+      - run: npm test
+
       # Same command Vercel runs. VITE_* vars are absent here on purpose: the app
       # must build without a backend (demo mode), and monitoring stays inert
       # without VITE_SENTRY_DSN.
