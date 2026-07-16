@@ -805,20 +805,69 @@ const QUICK_REPLIES = [
   'We deliver to your nearest pickup hub.',
 ];
 
-/* The deal the merchant sent, on their own (dark) bubble — informational. */
-function OfferCard({ offer }){
+/* Negotiation card in the merchant thread — an offer/counter from either side. On
+   the latest, still-open offer FROM THE CUSTOMER the merchant can Accept (which
+   re-posts it as a payable deal), Counter or Decline. The merchant's own offers
+   show a "waiting" note. Older/closed offers render static. */
+function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
+  const mine = offer.by === myRole; // the merchant's own offer
+  const dark = mine;
+  const fg = dark ? 'rgba(255,255,255,.96)' : 'var(--m-fg1)';
+  const sub = dark ? 'rgba(255,255,255,.78)' : 'var(--m-fg3)';
+  const accent = dark ? '#fff' : 'var(--m-primary)';
   const qty = Number(offer.qty) || 1;
+  const line = (Number(offer.price) || 0) * qty;
+  const ico = { flexShrink:0, width:38, height:34, borderRadius:9, border:'none', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:13, background: dark ? 'rgba(255,255,255,.16)' : 'var(--m-surface-3)' };
   return (
-    <div style={{ marginBottom:7, borderRadius:12, overflow:'hidden', border:'1px solid rgba(255,255,255,.25)' }}>
-      <div style={{ padding:'8px 11px', display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.15)' }}>
-        <FA i="fa-handshake" style={{ color:'#fff', fontSize:12 }} />
-        <span style={{ fontSize:10.5, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:'#fff' }}>Offer sent</span>
+    <div style={{ marginBottom:7, borderRadius:12, overflow:'hidden', border:'1px solid ' + (dark ? 'rgba(255,255,255,.25)' : 'var(--m-primary)'), opacity: active ? 1 : .66 }}>
+      <div style={{ padding:'8px 11px', display:'flex', alignItems:'center', gap:7, background: dark ? 'rgba(255,255,255,.15)' : 'color-mix(in srgb, var(--m-primary) 12%, transparent)' }}>
+        <FA i="fa-handshake" style={{ color:accent, fontSize:12 }} />
+        <span style={{ fontSize:10.5, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:accent }}>{mine ? 'Your offer' : 'Customer’s offer'}</span>
       </div>
-      <div style={{ padding:'9px 11px', background:'rgba(255,255,255,.06)' }}>
-        <div style={{ fontWeight:700, fontSize:13, color:'rgba(255,255,255,.96)' }}>{offer.productName || 'Product'}</div>
-        <div style={{ fontSize:12, color:'rgba(255,255,255,.82)' }}>{qty > 1 ? `${qty} × ` : ''}{ksh(offer.price)}{qty > 1 ? ` · ${ksh((Number(offer.price) || 0) * qty)} total` : ''}</div>
-        {offer.note && <div style={{ fontSize:11.5, color:'rgba(255,255,255,.72)', marginTop:4 }}>{offer.note}</div>}
-        <div style={{ fontSize:10.5, color:'rgba(255,255,255,.6)', marginTop:6 }}>The customer can tap Accept &amp; pay.</div>
+      <div style={{ padding:'9px 11px', background: dark ? 'rgba(255,255,255,.06)' : 'var(--m-surface-2)' }}>
+        <div style={{ fontWeight:700, fontSize:13, color:fg }}>{offer.productName || 'Product'}</div>
+        <div style={{ fontSize:12, color:sub }}>{qty > 1 ? `${qty} × ` : ''}<b style={{ color:fg }}>{ksh(offer.price)}</b>{qty > 1 ? ` · ${ksh(line)} total` : ''}</div>
+        {offer.note && <div style={{ fontSize:11.5, color:sub, marginTop:4 }}>{offer.note}</div>}
+        {active && !mine && (
+          <div style={{ display:'flex', gap:7, marginTop:9 }}>
+            <button onClick={()=>onAccept(offer)} style={{ flex:1, height:34, borderRadius:9, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:700, background:'var(--m-primary)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}><FA i="fa-check" /> Accept {ksh(line)}</button>
+            <button onClick={()=>onCounter(offer)} title="Counter" aria-label="Counter" style={{ ...ico, color:'var(--m-fg2)' }}><FA i="fa-arrow-right-arrow-left" /></button>
+            <button onClick={()=>onDecline(offer)} title="Decline" aria-label="Decline" style={{ ...ico, color:'var(--m-danger)' }}><FA i="fa-xmark" /></button>
+          </div>
+        )}
+        {active && mine && <div style={{ fontSize:10.5, color:sub, marginTop:6 }}>Sent — the customer can Accept &amp; pay, counter or decline.</div>}
+      </div>
+    </div>
+  );
+}
+
+/* Price prompt to counter/make an offer on a fixed product (merchant side). */
+function OfferCounterModal({ base, onClose, onSend }){
+  const [price, setPrice] = useStateX(String(base.price || ''));
+  const [qty, setQty] = useStateX(String(base.qty || 1));
+  const [note, setNote] = useStateX('');
+  const pr = Number(price); const q = Math.max(1, Number(qty) || 1);
+  const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
+  return (
+    <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:400, padding:20 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-handshake" style={{ color:'var(--m-primary)' }} /> Counter-offer</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
+        </div>
+        <div className="ym-sub" style={{ marginBottom:14, fontSize:13 }}>{base.productName || 'Product'}</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 84px', gap:10 }}>
+          <label className="ym-cap" style={{ fontWeight:600 }}>Your price (KSh)
+            <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} autoFocus />
+          </label>
+          <label className="ym-cap" style={{ fontWeight:600 }}>Qty
+            <input value={qty} onChange={(e)=>setQty(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" style={inp} />
+          </label>
+        </div>
+        <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
+          <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. best I can do" style={inp} />
+        </label>
+        <Btn kind="primary" disabled={!(pr > 0)} style={{ width:'100%', marginTop:16, justifyContent:'center' }} onClick={()=>onSend(base, pr, q, note.trim())}><FA i="fa-paper-plane" /> Send · {ksh(pr > 0 ? pr * q : 0)}</Btn>
       </div>
     </div>
   );
@@ -838,7 +887,7 @@ function OfferComposer({ products, storeId, onClose, onSend }){
   const valid = !!prod && pr > 0;
   const submit = () => {
     if (!valid) return;
-    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), productId: prod.id, productName: prod.name, productImage: prod.img || null, productIcon: prod.icon || 'fa-box', price: pr, qty: q, note: note.trim(), storeId: storeId || null });
+    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', productId: prod.id || null, productName: prod.name || 'Product', productImage: prod.img || null, productIcon: prod.icon || 'fa-box', price: pr, qty: q, note: note.trim(), storeId: storeId || null });
   };
   const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
   return (
@@ -889,6 +938,7 @@ function MerchantChatThread({ conv, user, onBack }){
   const [msgs, setMsgs] = useStateX([]);
   const [draft, setDraft] = useStateX('');
   const [offerOpen, setOfferOpen] = useStateX(false);
+  const [counterFor, setCounterFor] = useStateX(null);
   const scrollRef = useRefX(null);
 
   useEffX(() => subscribeMessages(conv.id, setMsgs), [conv.id]);
@@ -908,6 +958,15 @@ function MerchantChatThread({ conv, user, onBack }){
   let myLastIdx = -1;
   for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].senderId === uid) { myLastIdx = i; break; } }
 
+  // Negotiation: only the latest offer is actionable, until a decline closes it.
+  let lastOfferIdx = -1;
+  for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].offer) { lastOfferIdx = i; break; } }
+  const negotiationClosed = lastOfferIdx >= 0 && shown.some((m, i) => i > lastOfferIdx && m.offerClosed);
+  // Merchant accepting the customer's offer re-posts it as a payable merchant offer.
+  const acceptOffer = (o) => send(`Deal agreed ✓ — ${ksh(o.price)}${(Number(o.qty) || 1) > 1 ? ` × ${o.qty}` : ''}. You can pay now.`, { offer: { ...o, id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', note: 'Agreed ✓' } });
+  const declineOffer = () => send('Sorry, I can’t do that price on this one.', { offerClosed: true });
+  const sendCounter = (base, price, qty, note) => { setCounterFor(null); send(`Counter-offer: ${ksh(price)}${qty > 1 ? ` × ${qty}` : ''}`, { offer: { ...base, id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', price: Number(price), qty: Number(qty) || 1, note: note || '' } }); };
+
   return (
     <div className="chat-thread" style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 18px', borderBottom:'1px solid var(--m-border)' }}>
@@ -925,7 +984,7 @@ function MerchantChatThread({ conv, user, onBack }){
           return (
             <React.Fragment key={m.id}>
               {showDay && <div style={{ alignSelf:'center', margin:'4px 0', padding:'3px 12px', borderRadius:9999, background:'var(--m-surface-2)', color:'var(--m-fg3)', fontSize:11, fontWeight:600 }}>{dayLabel(ms)}</div>}
-              <div style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.offer && <OfferCard offer={m.offer} />}{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>
+              <div style={{ maxWidth:'80%', padding:'10px 14px', fontSize:14, lineHeight:1.45, alignSelf:mine?'flex-end':'flex-start', background:mine?'var(--m-primary-deep)':'var(--m-surface)', color:mine?'#fff':'var(--m-fg1)', borderRadius:mine?'16px 16px 4px 16px':'16px 16px 16px 4px', boxShadow:'var(--m-shadow-card)' }}>{m.offer && <OfferCard offer={m.offer} myRole="merchant" active={idx === lastOfferIdx && !negotiationClosed} onAccept={acceptOffer} onCounter={setCounterFor} onDecline={declineOffer} />}{m.order && <OrderRefCard order={m.order} dark={mine} />}{m.text}<div style={{ fontSize:10, opacity:.65, marginTop:4, textAlign:'right' }}>{fmtTime(m.at)}{seen ? <> · <FA i="fa-check-double" /> Seen</> : ''}</div></div>
             </React.Fragment>
           );
         })}
@@ -943,6 +1002,7 @@ function MerchantChatThread({ conv, user, onBack }){
         <button onClick={()=>send()} disabled={blocked} aria-label="Send" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'none', background:'var(--m-primary-deep)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
       </div>
       {offerOpen && <OfferComposer products={products} storeId={store?.id} onClose={()=>setOfferOpen(false)} onSend={(offer)=>{ setOfferOpen(false); send(`Offer: ${offer.productName} — ${ksh(offer.price)}${offer.qty > 1 ? ` × ${offer.qty}` : ''}`, { offer }); }} />}
+      {counterFor && <OfferCounterModal base={counterFor} onClose={()=>setCounterFor(null)} onSend={sendCounter} />}
     </div>
   );
 }

@@ -187,7 +187,7 @@ async function ensureConversation({ convId, conv, user }) {
  * Post a message and update the parent thread's inbox preview + unread counter.
  * `recipientUid` is the participant who should see a new unread badge.
  */
-export async function sendChatMessage({ convId, conv, user, text, recipientUid, product, order }) {
+export async function sendChatMessage({ convId, conv, user, text, recipientUid, product, order, offer, offerClosed }) {
   const body = String(text || '').trim();
   if (!convId || !body || !chatEnabled(user)) return;
   // Make sure the thread exists first, so the message-create rule (which reads the
@@ -197,6 +197,8 @@ export async function sendChatMessage({ convId, conv, user, text, recipientUid, 
   const msg = { senderId: user.uid, text: body, at: serverTimestamp() };
   if (product) msg.product = product; // product tag rides along on the message
   if (order) msg.order = order;       // order-reference tag (post-purchase support)
+  if (offer) msg.offer = offer;       // negotiation offer/counter → Accept/Counter/Decline
+  if (offerClosed) msg.offerClosed = true; // a decline that ends the current negotiation
   await addDoc(msgsCol, msg);
   const patch = {
     lastMessage: body,
