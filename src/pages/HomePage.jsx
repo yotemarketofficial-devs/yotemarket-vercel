@@ -21,13 +21,15 @@ function FeatureIcon({ f }) {
 
 const MERCHANT_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Branded storefront', desc: 'Your own shopfront in the mall — products, photos and reviews, live in minutes.' },
-  { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 1,500 with bundled hub deliveries. Keep 100% of every sale — we never take a cut.' },
+  { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 500 — software only, or add bundled hub deliveries. Keep 100% of every sale — we never take a cut.' },
   { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'YoteAI merchant tools', desc: 'AI writes your product listings, surfaces demand insights, and answers shopper questions for you.' },
   { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'In-app messenger', desc: 'Chat and negotiate with buyers inside the app — agree a price, then get paid through escrow.' },
   { icon: 'fa-wallet', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Wallet & M-Pesa payouts', desc: 'Track earnings and withdraw to M-Pesa or your Paybill on demand. Funds are escrow-protected.' },
   { icon: 'fa-chart-line', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Demand insights', desc: 'See what shoppers search for and which products trend in your area — and stock the winners.' },
   { icon: 'fa-cash-register', tint: 'linear-gradient(135deg,#0d9488,#14b8a6)', title: 'Point of sale (POS)', desc: 'Sell in-store and online from one till — stock, receipts and KRA invoices stay in sync.' },
   { mark: 'feed', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'YoteFeed shoppable video', desc: 'Post short clips to your store and the feed — shoppers watch and tap to buy on the spot.' },
+  { icon: 'fa-handshake', tint: 'linear-gradient(135deg,#0ea5e9,#6366f1)', title: 'AI Deal Assist', desc: 'In chat, YoteAI sees what a shopper has in their cart from your store and suggests the right price to close the sale.' },
+  { icon: 'fa-layer-group', tint: 'linear-gradient(135deg,#5B16A8,#A020F0)', title: 'Manage multiple stores', desc: 'Enterprise businesses run several storefronts from one account — manage your whole portfolio in one place.' },
   { icon: 'fa-crown', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Grow to a Top Brand', desc: 'Enterprise storefronts earn premium “Top brands” placement across the mall and search.' },
 ];
 
@@ -283,7 +285,7 @@ function HomePage() {
           </div>
           <div className="sec-cta">
             <Link className="btn btn-primary btn-lg" to="/dashboard">Start selling <i className="fas fa-arrow-right"></i></Link>
-            <span className="sec-cta-note">From Ksh 1,500/mo · bundled deliveries · no commission</span>
+            <span className="sec-cta-note">From Ksh 500/mo · optional bundled deliveries · no commission</span>
           </div>
         </div>
       </section>
