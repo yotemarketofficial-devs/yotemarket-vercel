@@ -12,7 +12,7 @@ import SubscribeFlow from './SubscribeFlow.jsx';
 import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
-  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs,
+  markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
@@ -815,22 +815,33 @@ function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
   const fg = dark ? 'rgba(255,255,255,.96)' : 'var(--m-fg1)';
   const sub = dark ? 'rgba(255,255,255,.78)' : 'var(--m-fg3)';
   const accent = dark ? '#fff' : 'var(--m-primary)';
-  const qty = Number(offer.qty) || 1;
-  const line = (Number(offer.price) || 0) * qty;
+  const its = offerItems(offer);
+  const total = offerTotal(offer);
+  const bundle = its.length > 1;
   const ico = { flexShrink:0, width:38, height:34, borderRadius:9, border:'none', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:13, background: dark ? 'rgba(255,255,255,.16)' : 'var(--m-surface-3)' };
   return (
     <div style={{ marginBottom:7, borderRadius:12, overflow:'hidden', border:'1px solid ' + (dark ? 'rgba(255,255,255,.25)' : 'var(--m-primary)'), opacity: active ? 1 : .66 }}>
       <div style={{ padding:'8px 11px', display:'flex', alignItems:'center', gap:7, background: dark ? 'rgba(255,255,255,.15)' : 'color-mix(in srgb, var(--m-primary) 12%, transparent)' }}>
-        <FA i="fa-handshake" style={{ color:accent, fontSize:12 }} />
-        <span style={{ fontSize:10.5, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:accent }}>{mine ? 'Your offer' : 'Customer’s offer'}</span>
+        <FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:accent, fontSize:12 }} />
+        <span style={{ fontSize:10.5, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:accent }}>{bundle ? 'Bundle offer' : (mine ? 'Your offer' : 'Customer’s offer')}</span>
       </div>
       <div style={{ padding:'9px 11px', background: dark ? 'rgba(255,255,255,.06)' : 'var(--m-surface-2)' }}>
-        <div style={{ fontWeight:700, fontSize:13, color:fg }}>{offer.productName || 'Product'}</div>
-        <div style={{ fontSize:12, color:sub }}>{qty > 1 ? `${qty} × ` : ''}<b style={{ color:fg }}>{ksh(offer.price)}</b>{qty > 1 ? ` · ${ksh(line)} total` : ''}</div>
-        {offer.note && <div style={{ fontSize:11.5, color:sub, marginTop:4 }}>{offer.note}</div>}
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          {its.map((it, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ flex:1, minWidth:0, fontWeight:600, fontSize:12.5, color:fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.productName || 'Product'}</div>
+              {(Number(it.qty) || 1) > 1 && <span style={{ fontSize:11, color:sub, flexShrink:0 }}>× {it.qty}</span>}
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginTop:7, paddingTop:7, borderTop:'1px solid '+(dark?'rgba(255,255,255,.16)':'var(--m-border)') }}>
+          <span style={{ fontSize:11, color:sub }}>{bundle ? `${its.length} items` : 'Total'}</span>
+          <b style={{ fontSize:14.5, color:fg }}>{ksh(total)}</b>
+        </div>
+        {offer.note && <div style={{ fontSize:11.5, color:sub, marginTop:6 }}>{offer.note}</div>}
         {active && !mine && (
           <div style={{ display:'flex', gap:7, marginTop:9 }}>
-            <button onClick={()=>onAccept(offer)} style={{ flex:1, height:34, borderRadius:9, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:700, background:'var(--m-primary)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}><FA i="fa-check" /> Accept {ksh(line)}</button>
+            <button onClick={()=>onAccept(offer)} style={{ flex:1, height:34, borderRadius:9, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:700, background:'var(--m-primary)', color:'#fff', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}><FA i="fa-check" /> Accept {ksh(total)}</button>
             <button onClick={()=>onCounter(offer)} title="Counter" aria-label="Counter" style={{ ...ico, color:'var(--m-fg2)' }}><FA i="fa-arrow-right-arrow-left" /></button>
             <button onClick={()=>onDecline(offer)} title="Decline" aria-label="Decline" style={{ ...ico, color:'var(--m-danger)' }}><FA i="fa-xmark" /></button>
           </div>
@@ -841,85 +852,106 @@ function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
   );
 }
 
-/* Price prompt to counter/make an offer on a fixed product (merchant side). */
+/* Price prompt to counter/make an offer. Items are fixed (from the offer being
+   countered); only the TOTAL is negotiated. */
 function OfferCounterModal({ base, onClose, onSend }){
-  const [price, setPrice] = useStateX(String(base.price || ''));
-  const [qty, setQty] = useStateX(String(base.qty || 1));
+  const its = offerItems(base);
+  const bundle = its.length > 1;
+  const [price, setPrice] = useStateX(String(offerTotal(base) || ''));
   const [note, setNote] = useStateX('');
-  const pr = Number(price); const q = Math.max(1, Number(qty) || 1);
+  const pr = Number(price);
   const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:400, padding:20 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-handshake" style={{ color:'var(--m-primary)' }} /> Counter-offer</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:'var(--m-primary)' }} /> {bundle ? 'Counter the bundle' : 'Counter-offer'}</div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
         </div>
-        <div className="ym-sub" style={{ marginBottom:14, fontSize:13 }}>{base.productName || 'Product'}</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 84px', gap:10 }}>
-          <label className="ym-cap" style={{ fontWeight:600 }}>Your price (KSh)
-            <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} autoFocus />
-          </label>
-          <label className="ym-cap" style={{ fontWeight:600 }}>Qty
-            <input value={qty} onChange={(e)=>setQty(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" style={inp} />
-          </label>
+        <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
+          {its.map((it, i) => <div key={i} className="ym-sub" style={{ fontSize:13, display:'flex', justifyContent:'space-between', gap:8 }}><span style={{ minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.productName || 'Product'}</span>{(Number(it.qty) || 1) > 1 && <span style={{ color:'var(--m-fg3)', flexShrink:0 }}>× {it.qty}</span>}</div>)}
         </div>
+        <label className="ym-cap" style={{ fontWeight:600, display:'block' }}>Your price{bundle ? ' for the bundle' : ''} (KSh)
+          <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} autoFocus />
+        </label>
         <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
           <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. best I can do" style={inp} />
         </label>
-        <Btn kind="primary" disabled={!(pr > 0)} style={{ width:'100%', marginTop:16, justifyContent:'center' }} onClick={()=>onSend(base, pr, q, note.trim())}><FA i="fa-paper-plane" /> Send · {ksh(pr > 0 ? pr * q : 0)}</Btn>
+        <Btn kind="primary" disabled={!(pr > 0)} style={{ width:'100%', marginTop:16, justifyContent:'center' }} onClick={()=>onSend(base, pr, note.trim())}><FA i="fa-paper-plane" /> Send · {ksh(pr > 0 ? pr : 0)}</Btn>
       </div>
     </div>
   );
 }
 
-/* Merchant composes a custom deal — a catalog product at a negotiated price —
-   sent as an `offer`-tagged chat message the shopper can accept & pay. */
+/* Merchant composes a deal — ONE or MANY catalog products bundled at a single
+   negotiated total — sent as an `offer`-tagged message the shopper can accept & pay. */
 function OfferComposer({ products, storeId, onClose, onSend }){
   const list = Array.isArray(products) ? products : [];
-  const [pid, setPid] = useStateX(list[0]?.id || '');
+  const [sel, setSel] = useStateX([]); // [{ productId, qty }]
+  const [addPid, setAddPid] = useStateX('');
   const [price, setPrice] = useStateX('');
-  const [qty, setQty] = useStateX('1');
+  const [touched, setTouched] = useStateX(false);
   const [note, setNote] = useStateX('');
-  const prod = list.find((p) => p.id === pid) || null;
-  useEffX(() => { if (prod && prod.price != null) setPrice(String(prod.price)); }, [pid]); // prefill list price to edit down
-  const pr = Number(price); const q = Math.max(1, Number(qty) || 1);
-  const valid = !!prod && pr > 0;
+  const rows = sel.map((s) => { const p = list.find((x) => x.id === s.productId) || {}; return { ...s, p, line: (Number(p.price) || 0) * (Number(s.qty) || 1) }; });
+  const catalogTotal = rows.reduce((a, r) => a + r.line, 0);
+  useEffX(() => { if (!touched) setPrice(catalogTotal ? String(catalogTotal) : ''); }, [catalogTotal, touched]);
+  const add = () => { if (!addPid || sel.some((s) => s.productId === addPid)) return; setSel((a) => [...a, { productId: addPid, qty: 1 }]); setAddPid(''); };
+  const setQty = (pid, q) => setSel((a) => a.map((s) => s.productId === pid ? { ...s, qty: Math.max(1, Number(q) || 1) } : s));
+  const remove = (pid) => setSel((a) => a.filter((s) => s.productId !== pid));
+  const pr = Number(price);
+  const valid = sel.length > 0 && pr > 0;
+  const bundle = sel.length > 1;
+  const available = list.filter((p) => !sel.some((s) => s.productId === p.id));
   const submit = () => {
     if (!valid) return;
-    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', productId: prod.id || null, productName: prod.name || 'Product', productImage: prod.img || null, productIcon: prod.icon || 'fa-box', price: pr, qty: q, note: note.trim(), storeId: storeId || null });
+    const items = rows.map((r) => ({ productId: r.productId, productName: r.p.name || 'Product', productImage: r.p.img || null, productIcon: r.p.icon || 'fa-box', qty: Number(r.qty) || 1 }));
+    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items, price: pr, note: note.trim(), storeId: storeId || null });
   };
   const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:420, padding:20 }}>
+      <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:440, maxHeight:'86vh', overflowY:'auto', padding:20 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-handshake" style={{ color:'var(--m-primary)' }} /> Send an offer</div>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:'var(--m-primary)' }} /> {bundle ? 'Bundle offer' : 'Send an offer'}</div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
         </div>
         {list.length === 0 ? (
           <div className="ym-sub" style={{ textAlign:'center', padding:'20px 0' }}>Add a product to your store first, then you can offer it here.</div>
         ) : (
           <>
-            <label className="ym-cap" style={{ fontWeight:600 }}>Product
-              <select value={pid} onChange={(e)=>setPid(e.target.value)} style={inp}>
-                {list.map((p) => <option key={p.id} value={p.id}>{p.name}{p.price != null ? ` · ${ksh(p.price)}` : ''}</option>)}
-              </select>
+            <label className="ym-cap" style={{ fontWeight:600 }}>Add a product
+              <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                <select value={addPid} onChange={(e)=>setAddPid(e.target.value)} style={{ ...inp, flex:1 }}>
+                  <option value="">Choose a product…</option>
+                  {available.map((p) => <option key={p.id} value={p.id}>{p.name}{p.price != null ? ` · ${ksh(p.price)}` : ''}</option>)}
+                </select>
+                <Btn kind="ghost" disabled={!addPid} onClick={add}><FA i="fa-plus" /> Add</Btn>
+              </div>
             </label>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 88px', gap:10, marginTop:10 }}>
-              <label className="ym-cap" style={{ fontWeight:600 }}>Agreed price (KSh)
-                <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} />
-              </label>
-              <label className="ym-cap" style={{ fontWeight:600 }}>Qty
-                <input value={qty} onChange={(e)=>setQty(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" style={inp} />
-              </label>
-            </div>
-            {prod && pr > 0 && prod.price != null && pr < prod.price && <div className="ym-cap" style={{ marginTop:8, color:'var(--m-primary)' }}><FA i="fa-tag" /> {Math.round((1 - pr / prod.price) * 100)}% off the {ksh(prod.price)} list price</div>}
-            <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
-              <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. valid today only" style={inp} />
-            </label>
+            {rows.length > 0 && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:12 }}>
+                {rows.map((r) => (
+                  <div key={r.productId} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.p.name || 'Product'}</div><div className="ym-cap">{ksh(r.p.price || 0)} each</div></div>
+                    <input value={r.qty} onChange={(e)=>setQty(r.productId, e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" aria-label="Quantity" style={{ ...inp, width:54, textAlign:'center', padding:'8px 6px' }} />
+                    <button onClick={()=>remove(r.productId)} title="Remove" aria-label="Remove" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:14 }}><FA i="fa-trash-can" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {sel.length > 0 && (
+              <>
+                <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:14 }}>{bundle ? 'Bundle price' : 'Agreed price'} (KSh, total)
+                  <input value={price} onChange={(e)=>{ setTouched(true); setPrice(e.target.value.replace(/[^\d.]/g,'')); }} inputMode="decimal" placeholder="0" style={inp} />
+                </label>
+                {catalogTotal > 0 && pr > 0 && pr < catalogTotal && <div className="ym-cap" style={{ marginTop:8, color:'var(--m-primary)' }}><FA i="fa-tag" /> {Math.round((1 - pr / catalogTotal) * 100)}% off · saves {ksh(catalogTotal - pr)} vs {ksh(catalogTotal)}</div>}
+                <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
+                  <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. valid today only" style={inp} />
+                </label>
+              </>
+            )}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:16 }}>
-              <div><div className="ym-cap">Customer pays</div><div className="ym-h3" style={{ fontSize:18 }}>{ksh(pr > 0 ? pr * q : 0)}</div></div>
+              <div><div className="ym-cap">Customer pays</div><div className="ym-h3" style={{ fontSize:18 }}>{ksh(pr > 0 ? pr : 0)}</div></div>
               <Btn kind="primary" disabled={!valid} onClick={submit}><FA i="fa-paper-plane" /> Send offer</Btn>
             </div>
           </>
@@ -963,9 +995,9 @@ function MerchantChatThread({ conv, user, onBack }){
   for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].offer) { lastOfferIdx = i; break; } }
   const negotiationClosed = lastOfferIdx >= 0 && shown.some((m, i) => i > lastOfferIdx && m.offerClosed);
   // Merchant accepting the customer's offer re-posts it as a payable merchant offer.
-  const acceptOffer = (o) => send(`Deal agreed ✓ — ${ksh(o.price)}${(Number(o.qty) || 1) > 1 ? ` × ${o.qty}` : ''}. You can pay now.`, { offer: { ...o, id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', note: 'Agreed ✓' } });
+  const acceptOffer = (o) => send(`Deal agreed ✓ — ${ksh(offerTotal(o))}. You can pay now.`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items: offerItems(o), price: offerTotal(o), note: 'Agreed ✓', storeId: o.storeId || null } });
   const declineOffer = () => send('Sorry, I can’t do that price on this one.', { offerClosed: true });
-  const sendCounter = (base, price, qty, note) => { setCounterFor(null); send(`Counter-offer: ${ksh(price)}${qty > 1 ? ` × ${qty}` : ''}`, { offer: { ...base, id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', price: Number(price), qty: Number(qty) || 1, note: note || '' } }); };
+  const sendCounter = (base, price, note) => { setCounterFor(null); const its = offerItems(base); send(`Counter-offer: ${ksh(price)}${its.length > 1 ? ` for the bundle (${its.length} items)` : ''}`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items: its, price: Number(price), note: note || '', storeId: base.storeId || null } }); };
 
   return (
     <div className="chat-thread" style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0 }}>
@@ -1001,7 +1033,7 @@ function MerchantChatThread({ conv, user, onBack }){
         <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Reply…'} aria-label="Reply" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ flex:1, minWidth:0, height:46, padding:'0 18px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
         <button onClick={()=>send()} disabled={blocked} aria-label="Send" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'none', background:'var(--m-primary-deep)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
       </div>
-      {offerOpen && <OfferComposer products={products} storeId={store?.id} onClose={()=>setOfferOpen(false)} onSend={(offer)=>{ setOfferOpen(false); send(`Offer: ${offer.productName} — ${ksh(offer.price)}${offer.qty > 1 ? ` × ${offer.qty}` : ''}`, { offer }); }} />}
+      {offerOpen && <OfferComposer products={products} storeId={store?.id} onClose={()=>setOfferOpen(false)} onSend={(offer)=>{ setOfferOpen(false); const its = offer.items || []; send(its.length > 1 ? `Bundle offer: ${its.length} items — ${ksh(offer.price)}` : `Offer: ${its[0]?.productName || 'product'} — ${ksh(offer.price)}`, { offer }); }} />}
       {counterFor && <OfferCounterModal base={counterFor} onClose={()=>setCounterFor(null)} onSend={sendCounter} />}
     </div>
   );

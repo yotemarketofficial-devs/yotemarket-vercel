@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs,
+  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -191,28 +191,35 @@ function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
   const fg = dark ? 'rgba(255,255,255,.96)' : 'var(--m-fg1)';
   const sub = dark ? 'rgba(255,255,255,.75)' : 'var(--m-fg3)';
   const accent = dark ? '#fff' : 'var(--m-primary)';
-  const qty = Number(offer.qty) || 1;
-  const line = (Number(offer.price) || 0) * qty;
-  const label = mine ? 'Your offer' : (offer.by === 'merchant' ? 'Store’s offer' : 'Offer');
+  const its = offerItems(offer);
+  const total = offerTotal(offer);
+  const bundle = its.length > 1;
+  const label = bundle ? 'Bundle offer' : (mine ? 'Your offer' : (offer.by === 'merchant' ? 'Store’s offer' : 'Offer'));
   const ico = { flexShrink:0, width:38, height:34, borderRadius:9, border:'none', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:13, background: dark?'rgba(255,255,255,.16)':'var(--m-surface-3)' };
   return (
     <div style={{ marginBottom:7, borderRadius:12, overflow:'hidden', border:'1px solid ' + (dark ? 'rgba(255,255,255,.25)' : 'var(--m-primary)'), opacity: active ? 1 : .66 }}>
       <div style={{ padding:'8px 12px', display:'flex', alignItems:'center', gap:7, background: dark ? 'rgba(255,255,255,.14)' : 'color-mix(in srgb, var(--m-primary) 12%, transparent)' }}>
-        <FA i="fa-handshake" style={{ color:accent, fontSize:13 }} />
+        <FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:accent, fontSize:13 }} />
         <span style={{ fontSize:11, fontWeight:800, letterSpacing:.4, textTransform:'uppercase', color:accent }}>{label}</span>
       </div>
       <div style={{ padding:'10px 12px', background: dark ? 'rgba(255,255,255,.06)' : 'var(--m-surface-2)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <Thumb icon={offer.productIcon || 'fa-box'} tint="#7c3aed" size={40} radius={9} img={offer.productImage} />
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontWeight:700, fontSize:13.5, color:fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{offer.productName || 'Product'}</div>
-            <div style={{ fontSize:12, color:sub }}>{qty > 1 ? `${qty} × ` : ''}<b style={{ color:fg }}>{ymPrice(offer.price)}</b>{qty > 1 ? ` · ${ymPrice(line)} total` : ''}</div>
-          </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+          {its.map((it, i) => (
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <Thumb icon={it.productIcon || 'fa-box'} tint="#7c3aed" size={bundle ? 32 : 38} radius={8} img={it.productImage} />
+              <div style={{ flex:1, minWidth:0, fontWeight:600, fontSize:13, color:fg, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.productName || 'Product'}</div>
+              {(Number(it.qty) || 1) > 1 && <span style={{ fontSize:11.5, color:sub, flexShrink:0 }}>× {it.qty}</span>}
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginTop:9, paddingTop:8, borderTop:'1px solid '+(dark?'rgba(255,255,255,.16)':'var(--m-border)') }}>
+          <span style={{ fontSize:11.5, color:sub }}>{bundle ? `${its.length} items` : 'Total'}</span>
+          <b style={{ fontSize:15, color:fg }}>{ymPrice(total)}</b>
         </div>
         {offer.note && <div style={{ fontSize:12, color:sub, marginTop:7 }}>{offer.note}</div>}
         {active && !mine && (
           <div style={{ display:'flex', gap:7, marginTop:9 }}>
-            <button onClick={()=>onAccept(offer)} className="ym-btn ym-btn-primary ym-btn-sm" style={{ flex:1 }}><FA i="fa-bolt" /> Accept &amp; pay {ymPrice(line)}</button>
+            <button onClick={()=>onAccept(offer)} className="ym-btn ym-btn-primary ym-btn-sm" style={{ flex:1 }}><FA i="fa-bolt" /> Accept &amp; pay {ymPrice(total)}</button>
             <button onClick={()=>onCounter(offer)} title="Counter" aria-label="Counter" style={{ ...ico, color: dark?'#fff':'var(--m-fg2)' }}><FA i="fa-arrow-right-arrow-left" /></button>
             <button onClick={()=>onDecline(offer)} title="Decline" aria-label="Decline" style={{ ...ico, color:'var(--m-danger)' }}><FA i="fa-xmark" /></button>
           </div>
@@ -223,34 +230,32 @@ function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
   );
 }
 
-/* Price prompt for making an offer or countering — the product is fixed (from the
-   offer being countered, or the pinned product); only the price/qty change. */
+/* Price prompt to make/counter an offer. The items are fixed (from the offer being
+   countered or the pinned product); only the TOTAL price is negotiated. */
 function OfferCounterModal({ base, onClose, onSend }){
-  const [price, setPrice] = useSE(String(base.price || ''));
-  const [qty, setQty] = useSE(String(base.qty || 1));
+  const its = offerItems(base);
+  const bundle = its.length > 1;
+  const [price, setPrice] = useSE(String(offerTotal(base) || ''));
   const [note, setNote] = useSE('');
-  const pr = Number(price); const q = Math.max(1, Number(qty) || 1);
+  const pr = Number(price);
   const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:400, padding:20 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-handshake" style={{ color:'var(--m-primary)' }} /> Make an offer</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:'var(--m-primary)' }} /> {bundle ? 'Offer for the bundle' : 'Make an offer'}</div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
         </div>
-        <div className="ym-sub" style={{ marginBottom:14, fontSize:13 }}>{base.productName || 'Product'}</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 84px', gap:10 }}>
-          <label className="ym-cap" style={{ fontWeight:600 }}>Your price (KSh)
-            <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} autoFocus />
-          </label>
-          <label className="ym-cap" style={{ fontWeight:600 }}>Qty
-            <input value={qty} onChange={(e)=>setQty(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" style={inp} />
-          </label>
+        <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:14 }}>
+          {its.map((it, i) => <div key={i} className="ym-sub" style={{ fontSize:13, display:'flex', justifyContent:'space-between', gap:8 }}><span style={{ minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.productName || 'Product'}</span>{(Number(it.qty) || 1) > 1 && <span style={{ color:'var(--m-fg3)', flexShrink:0 }}>× {it.qty}</span>}</div>)}
         </div>
+        <label className="ym-cap" style={{ fontWeight:600, display:'block' }}>Your price{bundle ? ' for the bundle' : ''} (KSh)
+          <input value={price} onChange={(e)=>setPrice(e.target.value.replace(/[^\d.]/g,''))} inputMode="decimal" placeholder="0" style={inp} autoFocus />
+        </label>
         <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
           <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. can you do this price?" style={inp} />
         </label>
-        <button disabled={!(pr > 0)} onClick={()=>onSend(base, pr, q, note.trim())} className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:16 }}><FA i="fa-paper-plane" /> Send offer · {ymPrice(pr > 0 ? pr * q : 0)}</button>
+        <button disabled={!(pr > 0)} onClick={()=>onSend(base, pr, note.trim())} className="ym-btn ym-btn-primary" style={{ width:'100%', marginTop:16 }}><FA i="fa-paper-plane" /> Send offer · {ymPrice(pr > 0 ? pr : 0)}</button>
       </div>
     </div>
   );
@@ -323,7 +328,7 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   const negotiationClosed = lastOfferIdx >= 0 && shown.some((m, i) => i > lastOfferIdx && m.offerClosed);
   const acceptOffer = (o) => nav('checkout', { offer: o });
   const declineOffer = () => send('I’ll pass on this offer — thanks anyway.', { offerClosed: true });
-  const sendCounter = (base, price, qty, note) => { setCounterFor(null); send(`My offer: ${ymPrice(price)}${qty > 1 ? ` × ${qty}` : ''}`, { offer: { ...base, id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'shopper', price: Number(price), qty: Number(qty) || 1, note: note || '' } }); };
+  const sendCounter = (base, price, note) => { setCounterFor(null); const its = offerItems(base); send(`My offer: ${ymPrice(price)}${its.length > 1 ? ` for the bundle (${its.length} items)` : ''}`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'shopper', items: its, price: Number(price), note: note || '', storeId: base.storeId || conv.storeId || null } }); };
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
@@ -375,7 +380,7 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
       )}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', borderTop:'1px solid var(--m-border)', background:'var(--m-surface)' }}>
         {pinned && pinned.id && !blocked && (
-          <button onClick={()=>setCounterFor({ productId: pinned.id, productName: pinned.name, productImage: pinned.img || null, productIcon: pinned.icon || 'fa-box', price: pinned.price || 0, qty: 1, storeId: conv.storeId || null })} title="Make an offer" aria-label="Make an offer" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', color:'var(--m-primary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}><FA i="fa-handshake" /></button>
+          <button onClick={()=>setCounterFor({ items: [{ productId: pinned.id, productName: pinned.name, productImage: pinned.img || null, productIcon: pinned.icon || 'fa-box', qty: 1 }], price: pinned.price || 0, storeId: conv.storeId || null })} title="Make an offer" aria-label="Make an offer" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'1px solid var(--m-border)', background:'var(--m-surface-2)', color:'var(--m-primary)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}><FA i="fa-handshake" /></button>
         )}
         <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Message…'} aria-label="Message" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ flex:1, minWidth:0, height:46, padding:'0 18px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
         <button onClick={()=>send()} disabled={blocked} aria-label="Send" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'none', background:'var(--m-primary-deep)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>

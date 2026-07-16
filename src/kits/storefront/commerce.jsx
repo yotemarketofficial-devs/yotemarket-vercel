@@ -6,6 +6,7 @@ import { ymProduct, ymStore, ymPrice } from './data.js';
 import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { offerItems, offerTotal } from '../../lib/chat.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -20,11 +21,26 @@ export function CheckoutScreen({ params }){
   // A negotiated in-chat offer → single-item checkout at the AGREED price (the
   // merchant set it, so it's authorised). Otherwise a normal cart checkout.
   const offer = params?.offer || null;
-  const offerBase = offer ? (ymProduct(offer.productId) || {}) : {};
+  const offerLines = offer ? offerItems(offer) : [];
+  const offerSum = offer ? offerTotal(offer) : 0;
+  // Bundle deal: distribute the negotiated total across the lines (proportional to
+  // catalog value; last line absorbs the rounding) so the order records per-item
+  // prices that sum EXACTLY to the agreed total.
   const items = offer
-    ? [{ pid: offer.productId, qty: Number(offer.qty) || 1, p: { ...offerBase, price: Number(offer.price) || 0, name: offer.productName || offerBase.name || 'Item', store: offer.storeId || offerBase.store || null, img: offer.productImage || offerBase.img, icon: offerBase.icon || 'fa-box' } }]
+    ? (() => {
+        const raw = offerLines.map((it) => { const base = ymProduct(it.productId) || {}; const q = Number(it.qty) || 1; return { it, base, q, cat: (Number(base.price) || 0) * q }; });
+        const catSum = raw.reduce((s, r) => s + r.cat, 0) || raw.length || 1;
+        let alloc = 0;
+        return raw.map((r, i) => {
+          const lineTotal = i === raw.length - 1 ? Math.max(0, offerSum - alloc) : Math.round(offerSum * (r.cat / catSum));
+          if (i < raw.length - 1) alloc += lineTotal;
+          const unit = r.q > 0 ? lineTotal / r.q : lineTotal;
+          return { pid: r.it.productId, qty: r.q, p: { ...r.base, price: unit, name: r.it.productName || r.base.name || 'Item', store: offer.storeId || r.base.store || null, img: r.it.productImage || r.base.img, icon: r.base.icon || r.it.productIcon || 'fa-box' } };
+        });
+      })()
     : cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
-  const subtotal = items.reduce((s,x)=>s+x.p.price*x.qty,0);
+  const subtotal = offer ? offerSum : items.reduce((s,x)=>s+x.p.price*x.qty,0);
+  const offerCatalog = offer ? offerLines.reduce((s, it) => { const p = ymProduct(it.productId); return s + (Number(p?.price) || 0) * (Number(it.qty) || 1); }, 0) : 0;
   const [fulfillment, setFulfillment] = useSCm('hub'); // hub | store_pickup
   const sellStore = ymStore(items[0]?.p?.store);
   // Delivery rules for the selling store (fall back to the flat fee when unset).
@@ -286,6 +302,7 @@ export function CheckoutScreen({ params }){
           </div>
           <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, display:'flex', flexDirection:'column', gap:8 }}>
             <Row l="Subtotal" v={ymPrice(subtotal)} />
+            {offer && offerCatalog > subtotal && <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-handshake" /> {offerLines.length>1?'Bundle deal':'Agreed offer'}</span><span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:700 }}>−{ymPrice(offerCatalog - subtotal)}</span></div>}
             {fulfillment==='hub' ? <Row l="Hub delivery" v={ymPrice(fee)} /> : <Row l="Store pickup" v="Free" />}
             <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3">Total</span><span className="ym-h2" style={{ fontSize:22 }}>{ymPrice(total)}</span></div>
           </div>

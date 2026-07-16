@@ -98,6 +98,22 @@ export function conversationRole(conv, uid) {
   return 'shopper';
 }
 
+/** An offer's line items, normalized. Supports both a multi-product bundle
+ *  (`offer.items`) and a legacy single-product offer (`productId`+`qty`). */
+export function offerItems(offer) {
+  if (offer && Array.isArray(offer.items) && offer.items.length) return offer.items;
+  if (offer && offer.productId) return [{ productId: offer.productId, productName: offer.productName, productImage: offer.productImage, productIcon: offer.productIcon, qty: Number(offer.qty) || 1 }];
+  return [];
+}
+
+/** The total price the shopper pays for an offer. New offers store the negotiated
+ *  bundle total in `price`; legacy single offers stored a unit price × qty. */
+export function offerTotal(offer) {
+  if (!offer) return 0;
+  if (Array.isArray(offer.items) && offer.items.length) return Number(offer.price) || 0;
+  return (Number(offer.price) || 0) * (Number(offer.qty) || 1);
+}
+
 /** Messages `uid` can see in a thread: everything sent at/before the point they
  *  last "deleted for me" (hiddenAt) is hidden, so re-opening a cleared chat
  *  starts fresh for them while the other party keeps full history. A pending
