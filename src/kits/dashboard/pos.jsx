@@ -121,7 +121,11 @@ export function Pos({ toast }){
   const showReceipt = async (saleId, invoiceNo, snapshot) => {
     let inv = invoiceNo ? { invoiceNo } : null;
     if (firebaseEnabled && db && saleId) { try { const s = await getDoc(doc(db, 'invoices', 'inv_pos_' + saleId)); if (s.exists()) inv = { ...s.data(), ...inv }; } catch { /* none */ } }
+    // snapshot carries what only the terminal knows (cash tendered, change, the
+    // custom line names). The INVOICE is the money record, so its total wins —
+    // spreading snapshot last used to let stale cart maths overwrite it.
     const rec = { ...(inv || { invoiceNo: '—' }), ...snapshot };
+    if (inv && Number(inv.total) > 0) rec.total = Number(inv.total);
     setReceipt(rec);
     setSession((v) => ({ count: v.count + 1, total: v.total + snapshot.total }));
     setPhase('done');
@@ -143,8 +147,17 @@ export function Pos({ toast }){
       };
       if (pay === 'mpesa') payload.phone = phone.trim();
       const r = await posSale(payload);
-      if (pay === 'cash') { toast && toast('Cash sale recorded'); await showReceipt(r.saleId, r.invoiceNo, snapshot); }
-      else { ctxRef.current = { saleId: r.saleId, cid: r.checkoutRequestId, snapshot }; setPhase('waiting'); }
+      // The SERVER prices the sale from the catalogue, so its total is what the
+      // customer actually pays. Print and tally THAT — not our cart maths, which
+      // can be stale if a price changed on another device. If they disagree, say
+      // so out loud: the cashier may have taken the wrong cash.
+      const charged = Number(r.total);
+      const settled = Number.isFinite(charged) && charged > 0 ? { ...snapshot, total: charged } : snapshot;
+      if (settled.total !== snapshot.total) {
+        toast && toast(`Price changed — charged ${ksh(settled.total)}, not ${ksh(snapshot.total)}`, 'fa-triangle-exclamation');
+      }
+      if (pay === 'cash') { toast && toast('Cash sale recorded'); await showReceipt(r.saleId, r.invoiceNo, settled); }
+      else { ctxRef.current = { saleId: r.saleId, cid: r.checkoutRequestId, snapshot: settled }; setPhase('waiting'); }
     } catch (e) { setErr(e.message || 'Could not record the sale.'); } finally { setBusy(false); }
   };
 
