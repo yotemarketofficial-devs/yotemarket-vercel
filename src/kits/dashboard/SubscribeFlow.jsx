@@ -137,7 +137,7 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
         <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}><FA i="fa-crown" /></div>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontWeight: 800, fontSize: 15 }}>Enterprise</div>
-          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.85)', marginTop: 2 }}>Everything in Pro, plus high-volume delivery, Top-brand placement, custom pricing &amp; dedicated support. Quote-based.</div>
+          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.85)', marginTop: 2 }}>Everything in Pro, plus multiple stores, high-volume delivery, Top-brand placement, custom pricing &amp; dedicated support. Quote-based.</div>
         </div>
         <a href="/help?topic=selling" className="ym-btn" style={{ background: '#fff', color: 'var(--m-primary-deep)', fontWeight: 700, flexShrink: 0 }}><FA i="fa-headset" /> Talk to sales</a>
       </div>

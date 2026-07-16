@@ -32,6 +32,7 @@ export const FEATURES = {
   featured:   { label: 'Featured placement',     minTier: 3, icon: 'fa-star', blurb: 'Priority storefront placement across the marketplace.' },
   pickupHub:  { label: 'Pickup-hub eligibility', minTier: 3, icon: 'fa-warehouse', blurb: 'Become a neighbourhood pickup hub and earn on collections.' },
   topBrand:   { label: 'Top-brand placement',    minTier: 4, icon: 'fa-crown', blurb: 'Reserved Top-brand storefront placement — an Enterprise perk.' },
+  multiStore: { label: 'Multiple stores',        minTier: 4, icon: 'fa-layer-group', blurb: 'Own and manage several storefronts under one account.' },
 };
 
 // Dashboard screen key → feature it requires (used by the router gate + sidebar lock).
