@@ -20,7 +20,7 @@ export function UpgradeScreen({ feature, currentTier = 'Free', onNav }) {
         <div className="ym-cap" style={{ textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700, color: 'var(--m-primary)' }}>{need} feature</div>
         <h2 className="ym-h2" style={{ margin: '6px 0 8px' }}>{f.label}</h2>
         <p style={{ color: 'var(--m-fg2)', fontSize: 15, lineHeight: 1.55, maxWidth: 460, margin: '0 auto 6px' }}>{f.blurb}</p>
-        <p className="ym-cap" style={{ marginBottom: 18 }}>You're on the <b>{currentTier}</b> plan. Upgrade to <b>{need}</b> or higher to unlock it.</p>
+        <p className="ym-cap" style={{ marginBottom: 18 }}>{currentTier === 'No plan' ? <>You don't have an active plan yet.</> : <>You're on the <b>{currentTier}</b> plan.</>} {need === 'Entry' ? 'Start on' : 'Upgrade to'} <b>{need}</b> or higher to unlock it.</p>
         <button className="ym-btn ym-btn-primary" style={{ minWidth: 200 }} onClick={() => onNav && onNav('subscription')}><FA i="fa-arrow-up-right-dots" /> See plans &amp; upgrade</button>
 
         <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--m-border)', textAlign: 'left' }}>

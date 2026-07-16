@@ -5,8 +5,11 @@
      • software plans   — Entry / Growth / Pro (SaaS-only, no delivery)
    Both collapse onto ONE capability rank so a feature gate works for either:
 
-     Free = 0 · Entry|Starter = 1 · Growth = 2 · Pro = 3
+     No plan = 0 · Entry|Starter = 1 · Growth = 2 · Pro = 3
 
+   There is NO "Free" tier: Entry (rank 1) is the floor. Any free offer or scout
+   activation code provisions the Entry software package, so every provisioned
+   merchant is at least Entry; rank 0 means no active plan (lapsed / not yet set up).
    Delivery plans are premium commitments (KSh 1,500–82,000/mo), so ANY active
    delivery plan is floored at Growth (rank 2) — it unlocks the software suite.
 
@@ -17,7 +20,7 @@
 
 // Plan name → base capability rank.
 export const TIER_RANK = { Entry: 1, Starter: 1, Promo: 1, Growth: 2, Pro: 3 };
-export const TIER_NAMES = { 0: 'Free', 1: 'Entry', 2: 'Growth', 3: 'Pro' };
+export const TIER_NAMES = { 0: 'No plan', 1: 'Entry', 2: 'Growth', 3: 'Pro' };
 
 // feature key → gate. minTier is the lowest rank that unlocks it.
 export const FEATURES = {
@@ -45,13 +48,13 @@ function renewMs(sub) {
 export function tierRank(sub) {
   if (!sub || sub.status !== 'active') return 0;
   const ms = renewMs(sub);
-  if (ms && ms < Date.now()) return 0; // active-but-expired → Free
+  if (ms && ms < Date.now()) return 0; // active-but-expired → no plan
   const base = TIER_RANK[sub.plan] || 0;
   if (base > 0 && sub.kind === 'delivery') return Math.max(base, 2); // delivery floor = Growth
   return base;
 }
 
-export const tierName = (rank) => TIER_NAMES[rank] || 'Free';
+export const tierName = (rank) => TIER_NAMES[rank] || 'No plan';
 
 /** Can a subscription (by its data) use `feature`? Unknown features are ungated. */
 export function can(sub, feature) {
