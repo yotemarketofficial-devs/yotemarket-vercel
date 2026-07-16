@@ -667,7 +667,12 @@ export function StoreScreen({ params }){
     if (!uid || !s) { setFollowing(false); return undefined; }
     return subscribeFollows(uid, (list) => setFollowing(list.some((f) => f.storeId === s.id)));
   }, [uid, s?.id]);
+  // In-store catalogue filters — a big store is unusable without them.
   const [cat, setCat] = useSS('all');
+  const [q, setQ] = useSS('');
+  const [sub, setSub] = useSS(null);
+  const [sort, setSort] = useSS('featured');
+  const [inStockOnly, setInStockOnly] = useSS(false);
   const toggleFollow = () => {
     if (!uid) { requireAuth(() => {}); return; }
     const nf = !following;
@@ -677,7 +682,28 @@ export function StoreScreen({ params }){
   };
   if (!s) return <NotFound back={back} label="Store not found" />;
   const cats = ['all', ...Array.from(new Set(all.map(p=>p.cat)))];
-  const prods = cat==='all'?all:all.filter(p=>p.cat===cat);
+  // Subcategory options come from the store's ACTUAL products (not the full tree),
+  // so a shopper only ever sees types this store really carries.
+  const subOpts = Array.from(new Set(all.filter(p=>cat==='all'||p.cat===cat).map(p=>p.sub).filter(Boolean))).sort();
+  const pickCat = (c) => { setCat(c); setSub(null); }; // a sub belongs to one category
+  const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchQ = (p) => !terms.length ||
+    terms.every(t => `${p.name||''} ${p.desc||''} ${p.sub||''}`.toLowerCase().includes(t));
+  let prods = all.filter(p =>
+    (cat==='all' || p.cat===cat) &&
+    matchesSub(sub, p.sub, p.name, p.desc) &&
+    matchQ(p) &&
+    (!inStockOnly || p.stock !== false));
+  if (sort !== 'featured') {
+    prods = [...prods];
+    if (sort==='price_asc') prods.sort((a,b)=>(a.price||0)-(b.price||0));
+    else if (sort==='price_desc') prods.sort((a,b)=>(b.price||0)-(a.price||0));
+    else if (sort==='rating') prods.sort((a,b)=>(b.rating||0)-(a.rating||0));
+    else if (sort==='new') prods.sort((a,b)=>tsSec(b.createdAt)-tsSec(a.createdAt));
+  }
+  const filtering = Boolean(q.trim() || cat!=='all' || sub || inStockOnly);
+  const clearAll = () => { setQ(''); setCat('all'); setSub(null); setInStockOnly(false); setSort('featured'); };
+  const showTools = all.length > 6; // small catalogues browse fine without a toolbar
   return (
     <div className="anim-up">
       <div style={{ position:'relative', background:`linear-gradient(135deg, ${s.tint} 0%, ${s.tint}aa 55%, var(--m-bg) 100%)`, overflow:'hidden' }}>
@@ -713,15 +739,50 @@ export function StoreScreen({ params }){
         </div>
         <StoreSocials socials={s.socials} />
         <StoreClipsRail storeId={s.id} storeName={s.name} />
-        <SectionTitle>{prods.length} product{prods.length!==1?'s':''}</SectionTitle>
+        <SectionTitle>
+          {prods.length} product{prods.length!==1?'s':''}{filtering && prods.length!==all.length ? ` of ${all.length}` : ''}
+          {filtering && <button onClick={clearAll} style={{ marginLeft:12, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:12.5, fontWeight:600, color:'var(--m-primary)', padding:0 }}>Clear filters</button>}
+        </SectionTitle>
+
+        {/* Search · sort · stock — only once a catalogue is big enough to need it. */}
+        {showTools && (
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:14 }}>
+            <div style={{ position:'relative', flex:'1 1 260px', minWidth:200 }}>
+              <FA i="fa-magnifying-glass" style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', color:'var(--m-fg4)' }} />
+              <input className="ym-input" placeholder={`Search ${s.name}…`} aria-label={`Search products in ${s.name}`} value={q} onChange={e=>setQ(e.target.value)} style={{ paddingLeft:44, paddingRight:q?40:14, height:46 }} />
+              {q && <button onClick={()=>setQ('')} aria-label="Clear search" className="icon-btn" style={{ position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', width:32, height:32 }}><FA i="fa-xmark" /></button>}
+            </div>
+            <select className="ym-input" aria-label="Sort products" value={sort} onChange={e=>setSort(e.target.value)} style={{ height:46, width:'auto', minWidth:160, flex:'0 0 auto' }}>
+              <option value="featured">Sort: Featured</option>
+              <option value="new">Newest first</option>
+              <option value="price_asc">Price: low to high</option>
+              <option value="price_desc">Price: high to low</option>
+              <option value="rating">Top rated</option>
+            </select>
+            <button className={'ym-chip'+(inStockOnly?' is-active':'')} onClick={()=>setInStockOnly(v=>!v)} aria-pressed={inStockOnly} style={{ flexShrink:0, height:46 }}><FA i="fa-circle-check" style={{ fontSize:13 }} /> In stock</button>
+          </div>
+        )}
+
         {cats.length>2 && (
-          <div className="scroll-x" style={{ gap:8, marginBottom:18 }}>
+          <div className="scroll-x" style={{ gap:8, marginBottom: subOpts.length>1 ? 10 : 18 }}>
             {cats.map(c=>{ const meta = c==='all'?{label:'All',icon:'fa-border-all'}:(ymCat(c)||{label:c,icon:'fa-tag'}); return (
-              <button key={c} className={'ym-chip'+(cat===c?' is-active':'')} onClick={()=>setCat(c)} style={{ flexShrink:0 }}><FA i={meta.icon} style={{ fontSize:13 }} /> {meta.label}</button>
+              <button key={c} className={'ym-chip'+(cat===c?' is-active':'')} onClick={()=>pickCat(c)} style={{ flexShrink:0 }}><FA i={meta.icon} style={{ fontSize:13 }} /> {meta.label}</button>
             ); })}
           </div>
         )}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18, paddingBottom:8 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
+        {/* Precise sub-filter — narrows to the exact type a shopper is after. */}
+        {subOpts.length>1 && (
+          <div className="scroll-x" style={{ gap:8, marginBottom:18 }}>
+            <button className={'ym-chip'+(!sub?' is-active':'')} onClick={()=>setSub(null)} style={{ flexShrink:0 }}>All types</button>
+            {subOpts.map(sn=>(
+              <button key={sn} className={'ym-chip'+(sub===sn?' is-active':'')} onClick={()=>setSub(sub===sn?null:sn)} style={{ flexShrink:0 }}>{sn}</button>
+            ))}
+          </div>
+        )}
+
+        {prods.length
+          ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18, paddingBottom:8 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
+          : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q?`No matches for “${q}”`:'Nothing matches those filters'} s="Try a different word, or clear the filters to see everything in this store." />}
         <StoreReviews store={s} />
       </div>
       <style>{`@media (max-width:640px){ .store-actions{ width:100%; } }`}</style>
