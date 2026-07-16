@@ -53,14 +53,22 @@ function App() {
         </Route>
 
         {/* Full-bleed product experiences (imported kits) */}
-        <Route
-          path="/storefront"
-          element={
-            <KitFrame scope="kit-storefront">
-              <StorefrontApp />
-            </KitFrame>
-          }
-        />
+        {/* The mall answers on three paths. /store/:sid and /product/:pid are REAL
+            addresses for the catalogue — without them nothing in the shop could be
+            linked, shared or indexed, because browsing never left /storefront.
+            All three render the same element instance, so moving between them
+            never remounts the shell (the cart and in-app stack survive). */}
+        {['/storefront', '/store/:sid', '/product/:pid'].map((path) => (
+          <Route
+            key={path}
+            path={path}
+            element={
+              <KitFrame scope="kit-storefront">
+                <StorefrontApp />
+              </KitFrame>
+            }
+          />
+        ))}
         <Route
           path="/dashboard"
           element={

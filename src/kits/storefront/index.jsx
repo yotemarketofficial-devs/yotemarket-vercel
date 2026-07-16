@@ -22,19 +22,43 @@ const SCREENS = { home:HomeScreen, search:SearchScreen, product:ProductScreen, s
 
 const initialsFrom = (s) => (s || 'A').split(/[ @._-]/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
+/** The screen a real URL points at: /store/:sid or /product/:pid → null otherwise. */
+export function screenFromPath(pathname) {
+  let m = /^\/store\/([^/?#]+)/.exec(pathname || '');
+  if (m) return { screen: 'store', params: { sid: decodeURIComponent(m[1]) } };
+  m = /^\/product\/([^/?#]+)/.exec(pathname || '');
+  if (m) return { screen: 'product', params: { pid: decodeURIComponent(m[1]) } };
+  return null;
+}
+
+/** The URL a screen lives at, or null for screens that have no public address
+ *  (cart, checkout, orders, messages — nothing a crawler or a shared link wants). */
+function pathForScreen(screen, params) {
+  if (screen === 'store' && params?.sid) return `/store/${encodeURIComponent(params.sid)}`;
+  if (screen === 'product' && params?.pid) return `/product/${encodeURIComponent(params.pid)}`;
+  return null;
+}
+
 export default function StorefrontApp(){
   const { user, hasAccount, signOutUser } = useAuth();
   const [theme, setThemeS] = useState(() => localStorage.getItem('ym_store_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light'));
-  // Deep-link support: /storefront?store=<id> or ?product=<id> (e.g. links from
-  // the merchant dashboard's YoteMarket Insight) open straight onto that screen.
+  // Real routes: /store/:sid and /product/:pid. Until these existed the catalogue
+  // had no URLs at all — browsing never left /storefront — so no store or product
+  // could be linked, shared, put in a sitemap or indexed by Google. The whole
+  // inventory was invisible to search. See [[seo]].
+  // The legacy ?store=/?product= query links (merchant dashboard, YoteMarket
+  // Insight, anything already sent out) still open the same screens.
   const [stack, setStack] = useState(() => {
+    const home = { screen: 'home', params: {} };
     try {
+      const target = screenFromPath(window.location.pathname);
+      if (target) return [home, target];
       const q = new URLSearchParams(window.location.search);
       const sid = q.get('store'); const pid = q.get('product');
-      if (sid) return [{ screen:'home', params:{} }, { screen:'store', params:{ sid } }];
-      if (pid) return [{ screen:'home', params:{} }, { screen:'product', params:{ pid } }];
+      if (sid) return [home, { screen: 'store', params: { sid } }];
+      if (pid) return [home, { screen: 'product', params: { pid } }];
     } catch { /* no-op */ }
-    return [{ screen:'home', params:{} }];
+    return [home];
   });
   const [cart, setCart] = useState(() => {
     try { const s = localStorage.getItem('ym_cart'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -61,6 +85,20 @@ export default function StorefrontApp(){
   const setTheme = (t)=> setThemeS(t);
 
   const top = stack[stack.length-1];
+  // Keep the address bar on the screen you're actually looking at, so a product
+  // can be copied, shared and re-opened. replaceState (not pushState) on purpose:
+  // it doesn't invent history entries, so the browser Back button keeps behaving
+  // exactly as it did before real routes existed. Screens with no public address
+  // (cart, checkout, orders) fall back to /storefront.
+  useEffect(() => {
+    const top = stack[stack.length - 1];
+    if (!top) return;
+    const url = pathForScreen(top.screen, top.params) || '/storefront';
+    if (window.location.pathname !== url) {
+      try { window.history.replaceState(null, '', url + window.location.hash); } catch { /* no-op */ }
+    }
+  }, [stack]);
+
   const nav = (screen, params={}) => { setStack(s=>[...s,{screen,params}]); window.scrollTo(0,0); };
   const back = () => setStack(s=> s.length>1 ? s.slice(0,-1) : s);
 

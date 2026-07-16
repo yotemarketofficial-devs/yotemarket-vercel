@@ -114,7 +114,13 @@ export default function RouteSeo() {
     // Trailing slashes would otherwise canonicalise to a different URL than the
     // sitemap lists, which is the same duplicate problem in a smaller hat.
     const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : '/';
-    const page = PAGES[path] || DEFAULT;
+    // Catalogue pages (/store/:sid, /product/:pid) are real URLs but their titles
+    // live in Firestore, not in this map. Give them a self-canonical and a sane
+    // generic title; the screen itself refines the title once the item loads.
+    // (A per-item <title> in the crawled HTML needs prerender/SSR — see [[seo]].)
+    const page = PAGES[path] || (/^\/(store|product)\//.test(path)
+      ? { title: 'Shop Kenyan stores online — YoteMarket', description: PAGES['/storefront'].description }
+      : DEFAULT);
     const url = SITE + (path === '/' ? '/' : path);
 
     document.title = page.title;
