@@ -335,6 +335,12 @@ export const submitJobApplication = callable('submitJobApplication');
 export const staffListJobApplications = callable('staffListJobApplications');
 /** Staff: move an application through the hiring funnel → { ok, stage }. { id, stage, note? }. */
 export const staffSetJobApplicationStage = callable('staffSetJobApplicationStage');
+/** Staff: create/update a job opening → { ok, id }. { id?, dept, title, type?, location?, summary?, status? }. */
+export const staffSaveJobOpening = callable('staffSaveJobOpening');
+/** Staff: every opening incl. closed → { openings }. */
+export const staffListJobOpenings = callable('staffListJobOpenings');
+/** Staff: permanently remove an opening → { ok }. { id }. */
+export const staffDeleteJobOpening = callable('staffDeleteJobOpening');
 
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */

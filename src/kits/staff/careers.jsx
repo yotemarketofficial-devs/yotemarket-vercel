@@ -3,8 +3,10 @@
    (candidate PII). Auto-refreshes via useStaffResource. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
-import { useStaffResource, fetchJobApplications, setJobApplicationStage } from './service.js';
+import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening } from './service.js';
 const { useState } = React;
+
+const JOB_TYPES = ['full-time', 'part-time', 'contract', 'internship', 'volunteer'];
 
 const STAGES = [
   { id: 'new', label: 'New', tone: 'pending' },
@@ -93,6 +95,79 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
   );
 }
 
+/* Open positions — what the public /careers page advertises. Posting here puts a
+   role live immediately (the page streams job_openings); no deploy needed. */
+function Openings() {
+  const blank = { title: '', dept: 'engineering', type: 'full-time', location: 'Nairobi', summary: '' };
+  const [form, setForm] = useState(blank);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null); // { ok, text }
+  const { data, loading, reload } = useStaffResource(fetchJobOpenings, { openings: [] }, []);
+  const openings = data.openings || [];
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    if (!form.title.trim()) { setMsg({ ok: false, text: 'A role title is required.' }); return; }
+    setBusy(true); setMsg(null);
+    try {
+      await saveJobOpening({ ...form, title: form.title.trim(), status: 'open' });
+      setForm({ ...blank, dept: form.dept });
+      setMsg({ ok: true, text: form.id ? 'Role updated.' : 'Role is live on the careers page.' });
+      reload();
+    } catch (e) { setMsg({ ok: false, text: e.message || 'Could not save the role.' }); }
+    finally { setBusy(false); }
+  };
+  const toggle = async (o) => {
+    try { await saveJobOpening({ id: o.id, dept: o.dept, title: o.title, type: o.type, location: o.location, summary: o.summary, status: o.status === 'open' ? 'closed' : 'open' }); reload(); }
+    catch (e) { setMsg({ ok: false, text: e.message || 'Failed.' }); }
+  };
+  const remove = async (o) => {
+    if (!window.confirm(`Delete “${o.title}”? This can't be undone.`)) return;
+    try { await deleteJobOpening(o.id); reload(); }
+    catch (e) { setMsg({ ok: false, text: e.message || 'Failed.' }); }
+  };
+
+  return (
+    <Card className="p-6 space-y-4">
+      <SectionHead icon="bullhorn" title="Open positions" sub="What /careers advertises — posting here goes live instantly" />
+      {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Role title e.g. Flutter Engineer" className="ym-input lg:col-span-2" />
+        <select value={form.dept} onChange={(e) => set('dept', e.target.value)} className="ym-input">
+          {Object.entries(DEPT_LABEL).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        </select>
+        <select value={form.type} onChange={(e) => set('type', e.target.value)} className="ym-input">
+          {JOB_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Location e.g. Nairobi / Remote" className="ym-input" />
+        <input value={form.summary} onChange={(e) => set('summary', e.target.value)} placeholder="One-line summary (optional)" className="ym-input lg:col-span-3" />
+      </div>
+      <Btn kind="primary" size="md" icon={busy ? 'spinner' : 'plus'} onClick={save} disabled={busy || !form.title.trim()}>{busy ? 'Saving…' : 'Post role'}</Btn>
+
+      {loading && !openings.length ? <div className="text-sm t3 py-4 text-center"><Icon name="spinner" className="fa-spin mr-2" />Loading roles…</div>
+        : openings.length === 0 ? <div className="text-sm t3 py-4 text-center">No roles posted yet — the careers page invites open applications until you post one.</div>
+          : (
+            <div className="space-y-2">
+              {openings.map((o) => (
+                <div key={o.id} className="flex items-center gap-3 p-3 rounded-lg" style={{ border: '1px solid var(--line)' }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold t1 text-sm">{o.title}</span>
+                      <Pill tone={o.status === 'open' ? 'active' : 'inactive'}>{o.status === 'open' ? 'Live' : 'Closed'}</Pill>
+                    </div>
+                    <div className="text-xs t3 mt-0.5">{DEPT_LABEL[o.dept] || o.dept} · {o.type}{o.location ? ` · ${o.location}` : ''}</div>
+                  </div>
+                  <button onClick={() => toggle(o)} className="text-xs font-semibold" style={{ color: 'var(--pri)' }}>{o.status === 'open' ? 'Close' : 'Reopen'}</button>
+                  <button onClick={() => remove(o)} className="text-xs font-semibold" style={{ color: 'var(--red)' }}>Delete</button>
+                </div>
+              ))}
+            </div>
+          )}
+    </Card>
+  );
+}
+
 export function Careers() {
   const [stage, setStage] = useState('new');
   const [open, setOpen] = useState(null);
@@ -144,6 +219,8 @@ export function Careers() {
               initialSort={{ key: 'createdAt', dir: 'desc' }}
               empty={q ? `No applications match “${q}”.` : (stage === 'new' ? 'No new applications right now.' : 'Nothing in this stage.')} />}
       </Card>
+
+      <Openings />
 
       {open && <ApplicantDrawer app={open} onClose={() => setOpen(null)} onMoved={reload} />}
     </div>

@@ -328,6 +328,20 @@ export async function fetchJobApplications() {
 export async function setJobApplicationStage(id, stage, note = '') {
   return call('staffSetJobApplicationStage')({ id, stage, ...(note ? { note } : {}) });
 }
+/** Every job opening incl. closed, newest first → { openings }. */
+export async function fetchJobOpenings() {
+  const d = await call('staffListJobOpenings')();
+  if (!d || !Array.isArray(d.openings)) throw new Error('staffListJobOpenings: unexpected shape');
+  return d;
+}
+/** Create (omit id) or update a job opening → { ok, id }. */
+export async function saveJobOpening(opening) {
+  return call('staffSaveJobOpening')(opening);
+}
+/** Permanently remove an opening → { ok }. */
+export async function deleteJobOpening(id) {
+  return call('staffDeleteJobOpening')({ id });
+}
 
 // ── Returns, refunds & disputes ───────────────────────────────────────────────
 /** All return/refund disputes (optionally filtered) → { disputes, counts }. */
