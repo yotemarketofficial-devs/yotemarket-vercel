@@ -11,7 +11,9 @@ import { navForRole } from './layout.jsx';
 import { FA } from './primitives.jsx';
 const { useState, useEffect, useRef, useCallback } = React;
 
-const TOUR_VERSION = 'v1';
+// Bump when steps change materially — existing merchants have the old version
+// marked done, so a bump is what re-runs the tour once to show what's new.
+const TOUR_VERSION = 'v2';
 const keyFor = (uid) => `ym_dash_tour_done_${TOUR_VERSION}_${uid || 'anon'}`;
 export const isTourDone = (uid) => { try { return localStorage.getItem(keyFor(uid)) === '1'; } catch { return false; } };
 export const markTourDone = (uid) => { try { localStorage.setItem(keyFor(uid), '1'); } catch { /* private mode */ } };
@@ -25,10 +27,12 @@ const COPY = {
   sales:        { title: 'Sales',                 body: 'Every order in one place. Track fulfilment, hand-offs to riders, and customer details.' },
   products:     { title: 'My Products',           body: 'Add items with photos, prices and stock. Each gets an automatic SKU and a storefront listing.' },
   feed:         { title: 'YoteFeed',              body: 'Post short, shoppable clips to reach more buyers — your products, in motion.' },
+  followers:    { title: 'Followers',             body: 'Broadcast shoppable posts and follower-only offers straight to everyone who follows your store.' },
   delivery:     { title: 'Delivery',              body: 'Set your delivery fee, free-delivery threshold and dispatch rules. These drive checkout.' },
-  chat:         { title: 'Chats',                 body: 'Message buyers directly to answer questions and close sales in real time.' },
+  refunds:      { title: 'Refunds',               body: 'Buyers raise refund requests here. Review the order, reply, and our team helps settle it fairly.' },
+  chat:         { title: 'Chats',                 body: 'Message buyers to answer questions and close sales. On Pro, AI Deal Assist shows what they have in their cart from your store and suggests a price to seal the deal.' },
   wallet:       { title: 'Wallet',                body: 'Track your earnings and withdraw to M-Pesa. Set your payout method here.' },
-  subscription: { title: 'Subscription',          body: 'Your plan powers selling — hub deliveries and features. Manage or upgrade it here.' },
+  subscription: { title: 'Subscription',          body: 'Your plan decides what you can use — anything showing a 🔒 in the sidebar comes with a higher tier. Manage it, upgrade, or add hub deliveries here.' },
   team:         { title: 'Team',                  body: 'Invite cashiers and managers with their own logins and the right permissions.' },
   settings:     { title: 'Settings',              body: 'Shop profile, social links, tax details, followers — and closing your store.' },
 };
