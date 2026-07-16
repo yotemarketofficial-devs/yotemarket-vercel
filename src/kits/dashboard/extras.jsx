@@ -7,7 +7,7 @@ import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { OrdersTable } from './overview.jsx';
 import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { useMerchant, useShop } from './merchant.jsx';
+import { useMerchant, useShop, useEntitlements } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
 import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
@@ -885,12 +885,12 @@ function OfferCounterModal({ base, onClose, onSend }){
 
 /* Merchant composes a deal — ONE or MANY catalog products bundled at a single
    negotiated total — sent as an `offer`-tagged message the shopper can accept & pay. */
-function OfferComposer({ products, storeId, onClose, onSend }){
+function OfferComposer({ products, storeId, initialItems, initialPrice, onClose, onSend }){
   const list = Array.isArray(products) ? products : [];
-  const [sel, setSel] = useStateX([]); // [{ productId, qty }]
+  const [sel, setSel] = useStateX(Array.isArray(initialItems) ? initialItems.map((i) => ({ productId: i.productId, qty: Number(i.qty) || 1 })) : []); // [{ productId, qty }]
   const [addPid, setAddPid] = useStateX('');
-  const [price, setPrice] = useStateX('');
-  const [touched, setTouched] = useStateX(false);
+  const [price, setPrice] = useStateX(initialPrice ? String(initialPrice) : '');
+  const [touched, setTouched] = useStateX(!!initialPrice);
   const [note, setNote] = useStateX('');
   const rows = sel.map((s) => { const p = list.find((x) => x.id === s.productId) || {}; return { ...s, p, line: (Number(p.price) || 0) * (Number(s.qty) || 1) }; });
   const catalogTotal = rows.reduce((a, r) => a + r.line, 0);
@@ -961,12 +961,69 @@ function OfferComposer({ products, storeId, onClose, onSend }){
   );
 }
 
+/* Pro-tier AI Deal Assist — shows what THIS shopper has in their cart from the
+   store (shared via conv.cartHint) and asks YoteAI for a price + one-line pitch to
+   close. One tap prefills the bundle-offer composer at the suggested price. */
+function DealAssist({ conv, products, onOffer }){
+  const list = Array.isArray(products) ? products : [];
+  const hint = Array.isArray(conv.cartHint) ? conv.cartHint : [];
+  const rows = hint.map((h) => { const p = list.find((x) => x.id === h.productId); const price = Number((p && p.price != null) ? p.price : h.price) || 0; return { productId: h.productId, name: (p && p.name) || h.name || 'Item', qty: Number(h.qty) || 1, price }; }).filter((r) => r.productId);
+  const catalog = rows.reduce((s, r) => s + r.price * r.qty, 0);
+  const heuristic = () => { const n = rows.reduce((s, r) => s + r.qty, 0); const f = n >= 4 ? 0.85 : n >= 2 ? 0.9 : 0.95; return Math.max(0, Math.round((catalog * f) / 10) * 10); };
+  const [suggested, setSuggested] = useStateX(heuristic());
+  const [pitch, setPitch] = useStateX('');
+  const [busy, setBusy] = useStateX(false);
+  useEffX(() => {
+    if (rows.length === 0) return undefined;
+    let alive = true; setBusy(true); setSuggested(heuristic());
+    const desc = rows.map((r) => `${r.qty}× ${r.name} (listed ${ksh(r.price)} each)`).join(', ');
+    const prompt = `A customer is chatting with me right now. Their cart from my store: ${desc}. Suggest ONE bundle price to offer them to close the sale now — a strategic discount that still protects my margin — plus a short one-sentence pitch I can send. Reply on ONE line EXACTLY as: PRICE=<number> | <pitch>`;
+    aiAssistant({ role: 'merchant', messages: [{ role: 'user', content: prompt }] })
+      .then(({ reply }) => {
+        if (!alive) return;
+        const m = /PRICE\s*=\s*([\d,]+)/i.exec(reply || '');
+        if (m) { const v = Number(m[1].replace(/,/g, '')); if (v > 0) setSuggested(v); }
+        const p = (reply || '').includes('|') ? (reply || '').split('|').slice(1).join('|').trim() : (reply || '').replace(/PRICE\s*=\s*[\d,]+/i, '').trim();
+        if (p) setPitch(p.slice(0, 240));
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setBusy(false); });
+    return () => { alive = false; };
+  }, [conv.id, catalog, rows.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (rows.length === 0) return null;
+  const off = catalog > suggested && suggested > 0;
+  return (
+    <div style={{ margin:'0 16px', borderRadius:12, overflow:'hidden', border:'1px solid var(--m-primary)' }}>
+      <div style={{ padding:'7px 12px', display:'flex', alignItems:'center', gap:8, background:'color-mix(in srgb, var(--m-primary) 14%, transparent)' }}>
+        <YoteAiMark size={15} color="var(--m-primary)" />
+        <span style={{ fontSize:11, fontWeight:800, letterSpacing:.3, textTransform:'uppercase', color:'var(--m-primary)' }}>YoteAI Deal Assist</span>
+        <span style={{ marginLeft:'auto', fontSize:9.5, fontWeight:800, color:'var(--m-primary)', border:'1px solid var(--m-primary)', borderRadius:9999, padding:'1px 7px' }}>PRO</span>
+      </div>
+      <div style={{ padding:'10px 12px', background:'var(--m-surface)' }}>
+        <div className="ym-cap" style={{ marginBottom:6 }}>In this customer’s cart from your store:</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:3, marginBottom:8 }}>
+          {rows.map((r) => <div key={r.productId} style={{ display:'flex', justifyContent:'space-between', gap:8, fontSize:12.5, color:'var(--m-fg1)' }}><span style={{ minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{r.qty > 1 ? `${r.qty}× ` : ''}{r.name}</span><span style={{ color:'var(--m-fg3)', flexShrink:0 }}>{ksh(r.price * r.qty)}</span></div>)}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, paddingTop:8, borderTop:'1px solid var(--m-border)' }}>
+          <div style={{ minWidth:0 }}>
+            <div className="ym-cap">Catalog {ksh(catalog)} · YoteAI suggests</div>
+            <div className="ym-h3" style={{ fontSize:17, color:'var(--m-primary)' }}>{busy ? '…' : ksh(suggested)}{off && !busy ? <span className="ym-cap" style={{ marginLeft:6, color:'var(--m-fg3)', fontWeight:600 }}>{Math.round((1 - suggested / catalog) * 100)}% off</span> : null}</div>
+          </div>
+          <Btn kind="primary" onClick={()=>onOffer({ items: rows.map((r) => ({ productId: r.productId, qty: r.qty })), price: suggested })}><FA i="fa-handshake" /> Offer bundle</Btn>
+        </div>
+        {pitch && <div style={{ marginTop:9, fontSize:12.5, lineHeight:1.5, color:'var(--m-fg2)', display:'flex', gap:7 }}><FA i="fa-wand-magic-sparkles" style={{ color:'var(--m-primary)', fontSize:11, marginTop:3, flexShrink:0 }} /> <span>{pitch}</span></div>}
+      </div>
+    </div>
+  );
+}
+
 function MerchantChatThread({ conv, user, onBack }){
   const uid = user.uid;
   const otherId = otherParticipant(conv, uid);
   const info = (conv.info && conv.info[otherId]) || {};
   const blocked = conv.status === 'blocked';
   const { store, products } = useMerchant();
+  const ent = useEntitlements();
   const [msgs, setMsgs] = useStateX([]);
   const [draft, setDraft] = useStateX('');
   const [offerOpen, setOfferOpen] = useStateX(false);
@@ -1006,6 +1063,9 @@ function MerchantChatThread({ conv, user, onBack }){
         <Avatar name={info.name || 'Customer'} size={40} />
         <div style={{ flex:1 }}><div className="ym-h3">{info.name || 'Customer'}</div><div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:blocked?'var(--m-danger)':'var(--m-success)' }} /> {blocked ? 'Conversation closed' : 'Customer'}</div></div>
       </div>
+      {ent.can('dealAssist') && Array.isArray(conv.cartHint) && conv.cartHint.length > 0 && (
+        <div style={{ padding:'10px 0 0' }}><DealAssist conv={conv} products={products} onOffer={(d)=>setOfferOpen(d)} /></div>
+      )}
       <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:18, display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {shown.length===0 && <div style={{ margin:'auto', color:'var(--m-fg3)', fontSize:13.5 }}>No messages yet.</div>}
         {shown.map((m, idx) => {
@@ -1033,7 +1093,7 @@ function MerchantChatThread({ conv, user, onBack }){
         <input className="ym-input" placeholder={blocked ? 'Conversation closed' : 'Reply…'} aria-label="Reply" disabled={blocked} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} style={{ flex:1, minWidth:0, height:46, padding:'0 18px', fontSize:15, borderRadius:9999, background:'var(--m-surface-2)', border:'none', opacity:blocked?.6:1 }} />
         <button onClick={()=>send()} disabled={blocked} aria-label="Send" style={{ flexShrink:0, width:46, height:46, borderRadius:9999, border:'none', background:'var(--m-primary-deep)', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, opacity:blocked?.6:1 }}><FA i="fa-paper-plane" /></button>
       </div>
-      {offerOpen && <OfferComposer products={products} storeId={store?.id} onClose={()=>setOfferOpen(false)} onSend={(offer)=>{ setOfferOpen(false); const its = offer.items || []; send(its.length > 1 ? `Bundle offer: ${its.length} items — ${ksh(offer.price)}` : `Offer: ${its[0]?.productName || 'product'} — ${ksh(offer.price)}`, { offer }); }} />}
+      {offerOpen && <OfferComposer products={products} storeId={store?.id} initialItems={offerOpen === true ? null : offerOpen.items} initialPrice={offerOpen === true ? null : offerOpen.price} onClose={()=>setOfferOpen(false)} onSend={(offer)=>{ setOfferOpen(false); const its = offer.items || []; send(its.length > 1 ? `Bundle offer: ${its.length} items — ${ksh(offer.price)}` : `Offer: ${its[0]?.productName || 'product'} — ${ksh(offer.price)}`, { offer }); }} />}
       {counterFor && <OfferCounterModal base={counterFor} onClose={()=>setCounterFor(null)} onSend={sendCounter} />}
     </div>
   );

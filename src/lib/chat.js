@@ -240,6 +240,18 @@ export async function reportConversation({ convId, reporterUid, reporterName, re
   });
 }
 
+/** Shopper-side: share a lightweight snapshot of MY cart items that this store
+ *  sells, onto the conversation, so a Pro merchant's "Deal Assist" can suggest a
+ *  price to close. Only ever this store's own products — never the whole cart.
+ *  Allowed by the rules (not a participants/status/moderation change) and does
+ *  NOT touch updatedAt, so it never resurfaces/reorders the thread. */
+export function updateCartHint(convId, items) {
+  if (!firebaseEnabled || !db || !convId) return;
+  updateDoc(doc(db, 'conversations', convId), {
+    cartHint: Array.isArray(items) ? items.slice(0, 20) : [],
+  }).catch(() => {});
+}
+
 /** Clear my unread badge for a thread + stamp when I last read it (drives the
  *  other participant's "Seen" receipt). Called when I open/view the thread. */
 export function markConversationRead(convId, uid) {

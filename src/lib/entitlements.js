@@ -29,6 +29,7 @@ export const FEATURES = {
   broadcasts: { label: 'Follower broadcasts',    minTier: 2, icon: 'fa-tower-broadcast', blurb: 'Send shoppable posts and offers to your followers.' },
   team:       { label: 'Team & staff seats',     minTier: 2, icon: 'fa-user-group', blurb: 'Add cashiers and managers with their own secure logins.' },
   insights:   { label: 'YoteMarket Insight',     minTier: 2, icon: 'fa-lightbulb', blurb: 'AI analytics on your sales, pricing and demand.' },
+  dealAssist: { label: 'AI Deal Assist',         minTier: 3, icon: 'fa-handshake', blurb: 'In chat, YoteAI shows what a shopper has in their cart from your store and suggests a price to close the sale.' },
   featured:   { label: 'Featured placement',     minTier: 3, icon: 'fa-star', blurb: 'Priority storefront placement across the marketplace.' },
   pickupHub:  { label: 'Pickup-hub eligibility', minTier: 3, icon: 'fa-warehouse', blurb: 'Become a neighbourhood pickup hub and earn on collections.' },
   topBrand:   { label: 'Top-brand placement',    minTier: 4, icon: 'fa-crown', blurb: 'Reserved Top-brand storefront placement — an Enterprise perk.' },

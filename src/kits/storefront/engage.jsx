@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal,
+  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal, updateCartHint,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -262,7 +262,7 @@ function OfferCounterModal({ base, onClose, onSend }){
 }
 
 function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
-  const { toast, nav } = useYM();
+  const { toast, nav, cart } = useYM();
   const myUid = user.uid;
   const otherId = otherParticipant(conv, myUid);
   const info = (conv.info && conv.info[otherId]) || {};
@@ -279,6 +279,12 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   // Clear my unread badge whenever I'm viewing the thread and new messages land.
   useEffE(() => { markConversationRead(conv.id, myUid); }, [conv.id, msgs.length]);
   useEffE(() => { const el=scrollRef.current; if(el) el.scrollTop=el.scrollHeight; }, [msgs]);
+  // Share my cart items from THIS store so a Pro merchant's Deal Assist can help.
+  useEffE(() => {
+    if (!conv.storeId) return;
+    const its = (cart || []).map((c) => { const p = ymProduct(c.pid); return (p && p.store === conv.storeId) ? { productId: c.pid, name: p.name || 'Item', qty: c.qty || 1, price: Number(p.price) || 0, img: p.img || null, icon: p.icon || 'fa-box' } : null; }).filter(Boolean);
+    updateCartHint(conv.id, its);
+  }, [conv.id, conv.storeId, cart]);
 
   const [reported, setReported] = useSE(false);
   const send = (text, extra) => {
