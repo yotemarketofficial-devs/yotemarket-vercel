@@ -17,7 +17,7 @@
 import { useEffect, useState } from 'react';
 import {
   doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot,
-  query, where, orderBy, serverTimestamp, increment,
+  query, where, orderBy, serverTimestamp, increment, deleteField,
 } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase.js';
 
@@ -271,7 +271,19 @@ export function markConversationRead(convId, uid) {
  */
 export function hideConversation(convId, uid) {
   if (!firebaseEnabled || !db || !convId || !uid) return Promise.resolve();
-  return updateDoc(doc(db, 'conversations', convId), { [`hiddenAt.${uid}`]: serverTimestamp() });
+  // Deleting the thread also drops the pinned product tag + cart hint, so if it
+  // ever re-opens it starts clean — no stale "About this product" or Deal Assist.
+  return updateDoc(doc(db, 'conversations', convId), {
+    [`hiddenAt.${uid}`]: serverTimestamp(),
+    product: deleteField(),
+    cartHint: deleteField(),
+  });
+}
+
+/** Untag the pinned product from a conversation (the shopper removed it). */
+export function untagProduct(convId) {
+  if (!firebaseEnabled || !db || !convId) return Promise.resolve();
+  return updateDoc(doc(db, 'conversations', convId), { product: deleteField() });
 }
 
 /** Live list of my conversations, newest-first. Returns an unsubscribe fn.

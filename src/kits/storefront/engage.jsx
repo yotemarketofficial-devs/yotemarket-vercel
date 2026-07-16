@@ -12,7 +12,7 @@ import { aiAssistant, firebaseEnabled } from '../../lib/firebase.js';
 import {
   chatEnabled, conversationId, openStoreConversation, subscribeConversations,
   subscribeMessages, sendChatMessage, markConversationRead, otherParticipant,
-  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal, updateCartHint,
+  hideConversation, reportConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal, updateCartHint, untagProduct,
 } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import { usePushPrompt } from '../../lib/push.js';
@@ -267,7 +267,9 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   const otherId = otherParticipant(conv, myUid);
   const info = (conv.info && conv.info[otherId]) || {};
   const blocked = conv.status === 'blocked';
-  const pinned = conv.product || openProduct || null; // the product this chat is about
+  const [untagged, setUntagged] = useSE(false);
+  const pinned = untagged ? null : (conv.product || openProduct || null); // the product this chat is about
+  const untag = () => { setUntagged(true); untagProduct(conv.id); };
   const [msgs, setMsgs] = useSE([]);
   const [loaded, setLoaded] = useSE(false);
   const [draft, setDraft] = useSE('');
@@ -348,16 +350,19 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
         <button className="icon-btn" aria-label="Report conversation" title={reported?'Reported':'Report conversation'} onClick={report} disabled={reported} style={{ color: reported?'var(--m-fg4)':'var(--m-fg3)' }}><FA i="fa-flag" /></button>
       </div>
       {pinned && (
-        <button onClick={()=> pinned.id && nav('product', { pid: pinned.id })}
-          style={{ display:'flex', alignItems:'center', gap:12, textAlign:'left', width:'100%', border:'none', borderBottom:'1px solid var(--m-border)', cursor: pinned.id?'pointer':'default', fontFamily:'inherit', padding:'10px 16px', background:'var(--m-surface-2)' }}>
-          <span className="ym-cap" style={{ flexShrink:0, color:'var(--m-fg3)' }}><FA i="fa-tag" /> About this product</span>
-          <Thumb icon={pinned.icon || 'fa-box'} tint={pinned.tint || '#7c3aed'} size={38} radius={10} img={pinned.img} />
-          <span style={{ flex:1, minWidth:0 }}>
-            <span className="ym-h3" style={{ fontSize:13.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{pinned.name || 'Product'}</span>
-            {pinned.price!=null && <span className="ym-cap">{ymPrice(pinned.price)}</span>}
-          </span>
-          {pinned.id && <span className="ym-cap" style={{ flexShrink:0, color:'var(--m-link)', fontWeight:600 }}>View <FA i="fa-chevron-right" style={{ fontSize:10 }} /></span>}
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:10, borderBottom:'1px solid var(--m-border)', padding:'10px 16px', background:'var(--m-surface-2)' }}>
+          <button onClick={()=> pinned.id && nav('product', { pid: pinned.id })}
+            style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:12, textAlign:'left', border:'none', cursor: pinned.id?'pointer':'default', fontFamily:'inherit', padding:0, background:'none' }}>
+            <span className="ym-cap" style={{ flexShrink:0, color:'var(--m-fg3)' }}><FA i="fa-tag" /> About this product</span>
+            <Thumb icon={pinned.icon || 'fa-box'} tint={pinned.tint || '#7c3aed'} size={38} radius={10} img={pinned.img} />
+            <span style={{ flex:1, minWidth:0 }}>
+              <span className="ym-h3" style={{ fontSize:13.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{pinned.name || 'Product'}</span>
+              {pinned.price!=null && <span className="ym-cap">{ymPrice(pinned.price)}</span>}
+            </span>
+            {pinned.id && <span className="ym-cap" style={{ flexShrink:0, color:'var(--m-link)', fontWeight:600 }}>View <FA i="fa-chevron-right" style={{ fontSize:10 }} /></span>}
+          </button>
+          <button onClick={untag} title="Remove product" aria-label="Remove product tag" style={{ flexShrink:0, width:28, height:28, borderRadius:9999, border:'none', background:'var(--m-surface-3)', color:'var(--m-fg3)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12 }}><FA i="fa-xmark" /></button>
+        </div>
       )}
       <div ref={scrollRef} style={{ flex:1, minHeight:0, overflowY:'auto', padding:'18px', display:'flex', flexDirection:'column', gap:10, background:'var(--m-bg)' }}>
         {shown.length===0 && <div style={{ margin:'auto', textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, maxWidth:260 }}>This is the start of your conversation with {info.name || 'this store'}. Ask about price, stock or delivery.</div>}
