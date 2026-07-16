@@ -317,6 +317,18 @@ export async function replySupportTicket(args) {
   return call('staffReplySupportTicket')(args);
 }
 
+// ── Careers / recruitment ─────────────────────────────────────────────────────
+/** Every job application from /careers, newest first → { applications, counts }. */
+export async function fetchJobApplications() {
+  const d = await call('staffListJobApplications')();
+  if (!d || !Array.isArray(d.applications)) throw new Error('staffListJobApplications: unexpected shape');
+  return d;
+}
+/** Move an application through the funnel. stage: new|review|shortlist|interview|offer|hired|rejected. */
+export async function setJobApplicationStage(id, stage, note = '') {
+  return call('staffSetJobApplicationStage')({ id, stage, ...(note ? { note } : {}) });
+}
+
 // ── Returns, refunds & disputes ───────────────────────────────────────────────
 /** All return/refund disputes (optionally filtered) → { disputes, counts }. */
 export async function fetchDisputes(status) {

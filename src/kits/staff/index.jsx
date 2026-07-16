@@ -16,6 +16,7 @@ import { Disputes } from './disputes.jsx';
 import { Economics } from './economics.jsx';
 import { Promotions } from './promotions.jsx';
 import { People, Finance, Legal } from './departments.jsx';
+import { Careers } from './careers.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
@@ -58,6 +59,7 @@ const WORKSPACES = [
   ]},
   { key:'people', label:'People', icon:'users', blurb:'HR', adminOnly:true, sections:[
     { key:'people', label:'Directory', icon:'address-book', desc:'Employee directory, onboarding & offboarding' },
+    { key:'careers', label:'Job applications', icon:'briefcase', desc:'Candidates from the careers page — triage & hire' },
   ]},
   { key:'intelligence', label:'Intelligence', icon:'chart-pie', blurb:'BI', adminOnly:true, sections:[
     { key:'intelligence', label:'Business intelligence', icon:'chart-pie', desc:'Cross-platform data repository + AI brief' },
@@ -74,7 +76,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

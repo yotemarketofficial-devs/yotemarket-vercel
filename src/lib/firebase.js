@@ -328,6 +328,14 @@ export const backfillStoreTiers = callable('backfillStoreTiers');
 /** Merchant: does the caller bypass entitlements (platform staff/admin/owner)? → { staff }. */
 export const entitlementContext = callable('entitlementContext');
 
+// ── Careers ──────────────────────────────────────────────────────────────────
+/** Public: apply for a job from /careers → { id, ref }. { name, email, phone?, dept, role?, links?, message }. */
+export const submitJobApplication = callable('submitJobApplication');
+/** Staff: every job application, newest first → { applications, counts }. */
+export const staffListJobApplications = callable('staffListJobApplications');
+/** Staff: move an application through the hiring funnel → { ok, stage }. { id, stage, note? }. */
+export const staffSetJobApplicationStage = callable('staffSetJobApplicationStage');
+
 // ── Staff HR + departments (Finance, Legal, People) ─────────────────────────
 /** Admin: onboard an employee (grant portal access + record) → { uid, department, role }. { email, name?, title?, department?, role? }. */
 export const onboardEmployee = callable('onboardEmployee');
