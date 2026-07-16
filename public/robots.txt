@@ -1,4 +1,4 @@
-# robots.txt for YoteMarket — https://yotemarket.com
+# robots.txt for YoteMarket — https://yotemarket.co.ke
 User-agent: *
 Allow: /
 
@@ -9,4 +9,4 @@ Disallow: /hub
 Disallow: /pos
 Disallow: /marketers/app
 
-Sitemap: https://yotemarket.com/sitemap.xml
+Sitemap: https://yotemarket.co.ke/sitemap.xml

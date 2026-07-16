@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './Layout.jsx';
+import RouteSeo from './components/RouteSeo.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
 import RiderPage from './pages/RiderPage.jsx';
@@ -30,6 +31,10 @@ function App() {
   return (
     <>
       <ScrollToTop />
+      {/* Per-route title/description/canonical. Without it every URL served the
+          homepage's tags — including a canonical that folded the whole site into
+          "/". See components/RouteSeo.jsx. */}
+      <RouteSeo />
       <GoogleOneTap />
       <Routes>
         {/* Marketing site (shared nav/footer chrome) */}

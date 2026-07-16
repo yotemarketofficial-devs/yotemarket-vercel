@@ -9,7 +9,12 @@
       name="description"
       content="YoteMarket is Kenya's virtual mall — shop 200+ local stores, chat &amp; negotiate in the app, pay with M-Pesa, and collect at your nearest hub. Sell, deliver, and earn on one platform."
     />
-    <link rel="canonical" href="https://yotemarket.com/" />
+    <!-- Canonical + robots are set PER ROUTE by src/components/RouteSeo.jsx. A
+         hardcoded canonical here ships on every URL and tells Google that /about,
+         /pricing, /careers etc. are all duplicates of the homepage — which quietly
+         undoes sitemap.xml. The values below are only the homepage's defaults and
+         the first paint before RouteSeo runs. -->
+    <link rel="canonical" href="https://yotemarket.co.ke/" />
     <meta name="robots" content="index, follow" />
 
     <!-- Open Graph / social -->
@@ -21,7 +26,7 @@
       content="Kenya's virtual mall — shop local stores, pay with M-Pesa, and collect at your nearest hub."
     />
     <meta property="og:image" content="/assets/hero-bg.png" />
-    <meta property="og:url" content="https://yotemarket.com/" />
+    <meta property="og:url" content="https://yotemarket.co.ke/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="YoteMarket — Shop Local. Delivered Fast." />
     <meta
