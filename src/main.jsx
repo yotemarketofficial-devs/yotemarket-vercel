@@ -7,6 +7,11 @@ import './styles.css';
 import { AuthProvider } from './lib/useAuth.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { firebaseEnabled, initAnalytics } from './lib/firebase.js';
+import { initMonitoring } from './lib/monitoring.js';
+
+// Error reporting first, so a crash during start-up is still reported. No-ops
+// without VITE_SENTRY_DSN, and loads the SDK lazily — never blocks first paint.
+initMonitoring();
 
 if (firebaseEnabled) {
   initAnalytics().catch(() => {});

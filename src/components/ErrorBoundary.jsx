@@ -1,7 +1,9 @@
 import { Component } from 'react';
+import { reportError } from '../lib/monitoring.js';
 
 // App-wide error boundary so a render error in one route never white-screens the
-// whole site. Shows a branded recovery card with a reload affordance.
+// whole site. Shows a branded recovery card with a reload affordance — and now
+// reports the crash, so we hear about it before a user has to tell us.
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -13,7 +15,8 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[YoteMarket] render error', error, info);
+    // reportError console.errors too, so local debugging is unchanged.
+    reportError(error, { source: 'render', componentStack: info?.componentStack });
   }
 
   render() {

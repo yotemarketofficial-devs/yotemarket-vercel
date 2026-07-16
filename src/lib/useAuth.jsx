@@ -2,6 +2,7 @@
 // with session persistence and exposes a small, friendly API. When Firebase isn't
 // configured it runs a local "guest" mode so the prototypes stay fully interactive.
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { setMonitoringUser } from './monitoring.js';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -116,6 +117,9 @@ export function AuthProvider({ children }) {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
+      // Tag crash reports with the uid — "which account hit this" is the first
+      // question. Cleared on sign-out.
+      setMonitoringUser(u);
       // Backfill/complete the profile doc for every signed-in account — covers session
       // restore and legacy Google users created before provisioning existed.
       if (u) ensureUserProfile(u);
