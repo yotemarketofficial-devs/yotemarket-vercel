@@ -5,9 +5,23 @@ const { createContext, useContext, useState } = React;
 export const ThemeCtx = createContext({ theme:'light', setTheme:()=>{} });
 export const useTheme = () => useContext(ThemeCtx);
 
-export const FA = ({ i, brand=false, style, className='' }) => (
-  <i className={`${brand?'fab':'fas'} ${i.startsWith('fa-')?i:'fa-'+i} ${className}`} style={style} aria-hidden="true" />
-);
+/* An icon must NEVER take a screen down. This did `i.startsWith(...)` on the raw
+   prop, so any non-string `i` threw "i.startsWith is not a function" and blanked the
+   whole view — that's what crashed the POS register. `i` reaches here from live data
+   (a product's `icon`) and from pass-through props (Thumb/Stat/Btn), so it can be
+   undefined, a number, or a Firestore value; coerce and fall back instead of trusting it. */
+const FA_FALLBACK = 'fa-circle-question';
+export const FA = ({ i, brand=false, style, className='' }) => {
+  let n = typeof i === 'string' ? i.trim() : '';
+  if (!n) {
+    if (i != null && i !== '' && import.meta.env?.DEV) {
+      // Surface the bad call site in dev — the UI stays up either way.
+      console.warn('[FA] icon prop is not a string:', i);
+    }
+    n = FA_FALLBACK;
+  }
+  return <i className={`${brand?'fab':'fas'} ${n.startsWith('fa-')?n:'fa-'+n} ${className}`} style={style} aria-hidden="true" />;
+};
 
 export const Card = ({ children, className='', style, onClick, ...rest }) => (
   <div onClick={onClick} className={`ym-card ${className}`} style={style} {...rest}>{children}</div>
@@ -15,8 +29,17 @@ export const Card = ({ children, className='', style, onClick, ...rest }) => (
 
 export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, children, onClick, disabled, type='button', className='', style, ...rest }){
   const cls = `ym-btn ym-btn-${kind} ${size==='sm'?'ym-btn-sm':''} ${className}`;
+  // `brandIcon` is used TWO ways across the app:
+  //   <Btn icon="fa-whatsapp" brandIcon>   → a boolean FLAG: render `icon` as a brand glyph
+  //   <Btn brandIcon="fa-whatsapp">        → an icon NAME to render as a brand glyph
+  // It used to pass the prop straight to FA, so the boolean form rendered
+  // <FA i={true}> → "i.startsWith is not a function" → crashed the POS register when
+  // the Devices panel opened. Honour both, and note the flag form is also the only
+  // way these icons render correctly (fa-whatsapp/fa-bluetooth-b are `fab`, not `fas`).
+  const brandFlag = brandIcon === true;
+  const namedBrand = typeof brandIcon === 'string' ? brandIcon : null;
   return <button type={type} onClick={onClick} disabled={disabled} className={cls} style={style} {...rest}>
-    {icon && <FA i={icon} />}{brandIcon && <FA i={brandIcon} brand />}{children}{iconRight && <FA i={iconRight} />}
+    {icon && <FA i={icon} brand={brandFlag} />}{namedBrand && <FA i={namedBrand} brand />}{children}{iconRight && <FA i={iconRight} />}
   </button>;
 }
 
