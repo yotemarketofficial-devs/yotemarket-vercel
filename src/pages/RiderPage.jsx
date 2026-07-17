@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom';
 import { submitRiderApplication } from '../lib/firebase.js';
 import { useAuth } from '../lib/useAuth.jsx';
 
-// Must match RIDER_VEHICLES / RIDER_AVAILABILITY in firebase/functions/index.js.
+// Offered vehicles — a subset of RIDER_VEHICLES in firebase/functions/index.js.
+// Bicycle and on-foot are intentionally NOT offered. The server still accepts them
+// so applications submitted before this change stay valid and render in the console.
 const VEHICLES = [
   { id: 'motorbike', label: 'Motorbike', icon: 'fa-motorcycle' },
-  { id: 'bicycle', label: 'Bicycle', icon: 'fa-bicycle' },
   { id: 'tuktuk', label: 'Tuk-tuk', icon: 'fa-car-side' },
   { id: 'car', label: 'Car', icon: 'fa-car' },
   { id: 'van', label: 'Van / pickup', icon: 'fa-truck' },
-  { id: 'foot', label: 'On foot', icon: 'fa-person-walking' },
 ];
 const AVAILABILITY = [
   { id: 'full-time', label: 'Full-time' },
