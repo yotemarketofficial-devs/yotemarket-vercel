@@ -243,9 +243,14 @@ function Careers() {
       .career-head p{ color:var(--t3); margin-top:8px; font-size:15px; }
       .career-form{ margin-top:22px; display:flex; flex-direction:column; gap:16px; }
       .career-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-      .career-form label{ display:flex; flex-direction:column; gap:7px; font-size:13.5px; font-weight:600; color:var(--t2); }
-      .career-form .req{ color:var(--purple); }
-      .career-form input, .career-form select, .career-form textarea{ padding:12px 14px; border-radius:12px; border:1px solid var(--line2);
+      /* label is BLOCK, not flex-column: as a column flex container the caption text
+         and the "*" become separate flex items, so the asterisk dropped onto its own
+         line under the word. Inline flow keeps "Name *" together; the control below
+         is spaced with margin instead of the old gap. */
+      .career-form label{ display:block; font-size:13.5px; font-weight:600; color:var(--t2); }
+      .career-form .req{ color:var(--purple); margin-left:2px; }
+      .career-form input, .career-form select, .career-form textarea{ display:block; width:100%; box-sizing:border-box; margin-top:7px;
+        padding:12px 14px; border-radius:12px; border:1px solid var(--line2);
         background:var(--bg2); color:var(--t1); font-size:15px; font-family:inherit; outline:none; transition:.15s; resize:vertical; }
       .career-form input:focus, .career-form select:focus, .career-form textarea:focus{ border-color:var(--purple); background:var(--surface); box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 16%, transparent); }
       .career-form .btn-lg{ justify-content:center; margin-top:4px; }

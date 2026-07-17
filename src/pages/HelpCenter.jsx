@@ -294,9 +294,13 @@ function HelpStyles() {
       .help-ticket-head p{ color:var(--t3); margin-top:8px; font-size:15px; }
       .help-form{ margin-top:22px; display:flex; flex-direction:column; gap:16px; }
       .help-form-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-      .help-form label{ display:flex; flex-direction:column; gap:7px; font-size:13.5px; font-weight:600; color:var(--t2); }
-      .help-form .req{ color:var(--purple); }
-      .help-form input, .help-form select, .help-form textarea{ padding:12px 14px; border-radius:12px; border:1px solid var(--line2);
+      /* label is BLOCK, not flex-column: as a column flex container the caption text
+         and the "*" became separate flex items, dropping the asterisk onto its own
+         line under the word. Inline flow keeps "Email *" together. */
+      .help-form label{ display:block; font-size:13.5px; font-weight:600; color:var(--t2); }
+      .help-form .req{ color:var(--purple); margin-left:2px; }
+      .help-form input, .help-form select, .help-form textarea{ display:block; width:100%; box-sizing:border-box; margin-top:7px;
+        padding:12px 14px; border-radius:12px; border:1px solid var(--line2);
         background:var(--bg2); color:var(--t1); font-size:15px; font-family:inherit; outline:none; transition:.15s; resize:vertical; }
       .help-form input:focus, .help-form select:focus, .help-form textarea:focus{ border-color:var(--purple); background:var(--surface); box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 16%, transparent); }
       .help-form .btn-lg{ justify-content:center; margin-top:4px; }

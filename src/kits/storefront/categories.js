@@ -19,10 +19,21 @@ export const CATEGORY_TREE = [
     subs: ['Mobile Phones', 'Tablets', 'Phone & Tablet Accessories', 'Smart Watches', 'Power Banks', 'Phone Cases & Covers'],
   },
   {
-    id: 'home', label: 'Home, Furniture & Appliances', short: 'Home', icon: 'fa-couch', tint: '#f59e0b', match: ['home'],
-    subs: ['Furniture', 'Home Appliances', 'Kitchen Appliances', 'Kitchenware & Cookware', 'Home Decor & Accessories',
+    id: 'home', label: 'Home & Appliances', short: 'Home', icon: 'fa-house', tint: '#f59e0b', match: ['home'],
+    subs: ['Home Appliances', 'Kitchen Appliances', 'Kitchenware & Cookware', 'Home Decor & Accessories',
       'Bedding & Linen', 'Curtains & Blinds', 'Carpets & Rugs', 'Garden & Outdoor', 'Cleaning & Laundry',
       'Household Chemicals', 'Lighting'],
+  },
+  {
+    // Furniture is its own top level — far too diverse to sit as one sub under Home.
+    // `match:['furniture']` only (NOT 'home'): mapping it to 'home' would drag every
+    // appliance in here. Products listed before this split carry catId 'home' and
+    // stay under Home until re-categorised; new listings pick Furniture directly.
+    id: 'furniture', label: 'Furniture', short: 'Furniture', icon: 'fa-couch', tint: '#b45309', match: ['furniture'],
+    subs: ['Sofas & Couches', 'Beds & Mattresses', 'Wardrobes & Closets', 'Dining Tables & Sets',
+      'Chairs & Stools', 'Coffee & Side Tables', 'TV Stands & Units', 'Office Furniture',
+      'Storage & Shelving', 'Outdoor & Garden Furniture', "Children's Furniture", 'Kitchen Cabinets',
+      'Custom & Handmade Furniture'],
   },
   {
     id: 'fashion', label: 'Fashion', short: 'Fashion', icon: 'fa-shirt', tint: '#a020f0', match: ['fashion'],

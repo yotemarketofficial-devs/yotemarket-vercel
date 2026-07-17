@@ -242,9 +242,13 @@ function RiderPage() {
       .rider-head p{ color:var(--t3); margin-top:8px; font-size:15px; }
       .rider-form{ margin-top:22px; display:flex; flex-direction:column; gap:16px; }
       .rider-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
-      .rider-form label, .rider-lbl{ display:flex; flex-direction:column; gap:7px; font-size:13.5px; font-weight:600; color:var(--t2); }
-      .rider-form .req{ color:var(--gold-bright,var(--purple)); }
-      .rider-form input, .rider-form select, .rider-form textarea{ padding:12px 14px; border-radius:12px; border:1px solid var(--line2);
+      /* label is BLOCK, not flex-column: as a column flex container the caption text
+         and the "*" became separate flex items, dropping the asterisk onto its own
+         line under the word. Inline flow keeps "Full name *" together. */
+      .rider-form label, .rider-lbl{ display:block; font-size:13.5px; font-weight:600; color:var(--t2); }
+      .rider-form .req{ color:var(--gold-bright,var(--purple)); margin-left:2px; }
+      .rider-form input, .rider-form select, .rider-form textarea{ display:block; width:100%; box-sizing:border-box; margin-top:7px;
+        padding:12px 14px; border-radius:12px; border:1px solid var(--line2);
         background:var(--bg2); color:var(--t1); font-size:15px; font-family:inherit; outline:none; transition:.15s; resize:vertical; }
       .rider-form input:focus, .rider-form select:focus, .rider-form textarea:focus{ border-color:var(--purple); background:var(--surface); box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 16%, transparent); }
       .rider-vehicles{ display:flex; flex-wrap:wrap; gap:9px; margin-top:9px; }
