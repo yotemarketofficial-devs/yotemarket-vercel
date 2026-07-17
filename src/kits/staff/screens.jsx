@@ -449,32 +449,36 @@ export function Approvals({ isAdmin }){
         const suspended = m.status==='suspended';
         const verified = m.status==='verified';
         return (<Card key={m.id} className="p-4" style={suspended?{opacity:.7}:null}>
-          <div className="flex items-center gap-4 flex-wrap">
+          {/* identity + readiness — its own block so the action bar never squeezes the store name */}
+          <div className="flex items-start gap-3 sm:gap-4">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name="store"/></div>
-            <div className="min-w-0 flex-1" onClick={()=>setConsoleM(m)} style={{ cursor:'pointer' }} title="Open merchant console">
-              <div className="font-bold t1 flex items-center gap-2" style={{ textDecoration:'underline', textDecorationColor:'var(--line)', textUnderlineOffset:3 }}>{m.shop}
-                {verified && <Pill tone="ok">Verified</Pill>}
-                {suspended && <Pill tone="red">Suspended</Pill>}
-                {m.featured && <Pill tone="blue">Featured</Pill>}
-                {m.enterprise && <Pill tone="amber">Enterprise</Pill>}
-                {m.topBrand && !m.enterprise && <Pill tone="amber">Top brand</Pill>}
+            <div className="min-w-0 flex-1">
+              <div onClick={()=>setConsoleM(m)} style={{ cursor:'pointer' }} title="Open merchant console">
+                <div className="font-bold t1 flex items-center gap-2 flex-wrap" style={{ textDecoration:'underline', textDecorationColor:'var(--line)', textUnderlineOffset:3 }}>{m.shop}
+                  {verified && <Pill tone="ok">Verified</Pill>}
+                  {suspended && <Pill tone="red">Suspended</Pill>}
+                  {m.featured && <Pill tone="blue">Featured</Pill>}
+                  {m.enterprise && <Pill tone="amber">Enterprise</Pill>}
+                  {m.topBrand && !m.enterprise && <Pill tone="amber">Top brand</Pill>}
+                </div>
+                <div className="text-xs t3 mt-0.5">{m.owner}{m.county?` · ${m.county}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
               </div>
-              <div className="text-xs t3">{m.owner}{m.county?` · ${m.county}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
+              <div className="flex items-center gap-2 flex-wrap mt-2">
+                <Chk ok={m.docs} label="KYC docs" />
+                <Chk ok={m.items>=2} label={`${m.items||0} items`} />
+                <Chk ok={m.socials>=3} label={`${m.socials||0} socials`} />
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Chk ok={m.docs} label="KYC docs" />
-              <Chk ok={m.items>=2} label={`${m.items||0} items`} />
-              <Chk ok={m.socials>=3} label={`${m.socials||0} socials`} />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {!verified && !suspended && <Btn kind="success" size="sm" icon="circle-check" onClick={()=>apply(m.id,'verify','verified')} disabled={m._busy} title={ready?'':'Readiness checklist incomplete'}>Verify</Btn>}
-              {!suspended && <Btn kind={m.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>toggleFeature(m)} disabled={m._busy} title="Show as a flagship store on the storefront home">{m.featured?'Featured':'Feature'}</Btn>}
-              {!suspended && <Btn kind={m.enterprise?'primary':'soft'} size="sm" icon="crown" onClick={()=>setEntFor(m)} disabled={m._busy} title="Enterprise tier — all Pro features + high delivery allotment + Top-brand placement (quote-based, staff-activated)">{m.enterprise?'Enterprise':'Enterprise…'}</Btn>}
-              {!suspended && <Btn kind={m.topBrand?'primary':'soft'} size="sm" icon="award" onClick={()=>toggleTopBrand(m)} disabled={m._busy} title="Manually place this store in the storefront Top-brands rail (independent of Enterprise)">Top brand</Btn>}
-              {suspended
-                ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>apply(m.id,'reinstate','verified')} disabled={m._busy}>Reinstate</Btn>
-                : <Btn kind="danger" size="sm" icon="ban" onClick={()=>apply(m.id,'suspend','suspended')} disabled={m._busy}>Suspend</Btn>}
-            </div>
+          </div>
+          {/* action bar — full-width row that wraps among itself instead of crushing the identity */}
+          <div className="flex gap-2 flex-wrap mt-3 pt-3" style={{ borderTop:'1px solid var(--line)' }}>
+            {!verified && !suspended && <Btn kind="success" size="sm" icon="circle-check" onClick={()=>apply(m.id,'verify','verified')} disabled={m._busy} title={ready?'':'Readiness checklist incomplete'}>Verify</Btn>}
+            {!suspended && <Btn kind={m.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>toggleFeature(m)} disabled={m._busy} title="Show as a flagship store on the storefront home">{m.featured?'Featured':'Feature'}</Btn>}
+            {!suspended && <Btn kind={m.enterprise?'primary':'soft'} size="sm" icon="crown" onClick={()=>setEntFor(m)} disabled={m._busy} title="Enterprise tier — all Pro features + high delivery allotment + Top-brand placement (quote-based, staff-activated)">{m.enterprise?'Enterprise':'Enterprise…'}</Btn>}
+            {!suspended && <Btn kind={m.topBrand?'primary':'soft'} size="sm" icon="award" onClick={()=>toggleTopBrand(m)} disabled={m._busy} title="Manually place this store in the storefront Top-brands rail (independent of Enterprise)">Top brand</Btn>}
+            {suspended
+              ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>apply(m.id,'reinstate','verified')} disabled={m._busy}>Reinstate</Btn>
+              : <Btn kind="danger" size="sm" icon="ban" onClick={()=>apply(m.id,'suspend','suspended')} disabled={m._busy}>Suspend</Btn>}
           </div>
         </Card>);
       })}
@@ -486,13 +490,13 @@ export function Approvals({ isAdmin }){
         <h3 className="font-bold t1 flex items-center gap-2">Store-closure requests <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--red)'}}>{pendingClosures.length}</span></h3>
         {pendingClosures.map(r=>(
           <Card key={r.id} className="p-4" style={{border:'1px solid var(--red)'}}>
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'rgba(239,68,68,.12)',color:'var(--red)'}}><Icon name="store-slash"/></div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold t1">{r.storeName || r.storeId}</div>
                 <div className="text-xs t3">{r.reason ? `“${r.reason}”` : 'No reason given'}{r.createdAt?` · ${new Date(r.createdAt).toLocaleDateString('en-KE',{ day:'numeric', month:'short' })}`:''}</div>
               </div>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap w-full sm:w-auto">
                 <Btn kind="soft" size="sm" icon="xmark" onClick={()=>resolveClosure(r.id,false)} disabled={delBusy===r.id}>Decline</Btn>
                 <Btn kind="danger" size="sm" icon="trash" onClick={()=>resolveClosure(r.id,true)} disabled={delBusy===r.id}>{delBusy===r.id?'Working…':'Approve closure'}</Btn>
               </div>
