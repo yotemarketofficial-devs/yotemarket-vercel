@@ -5,7 +5,7 @@
    separate Analytics section. `go(sectionKey)` navigates the shell. */
 import React from 'react';
 import { KPIS, FUNNEL } from './data.js';
-import { Card, SectionHead, Stat, Btn, Pill, Icon } from './ui.jsx';
+import { Card, SectionHead, Stat, Btn, Pill, Icon, BackendError } from './ui.jsx';
 import {
   useStaffResource, fetchOverview,
   fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes,
@@ -117,14 +117,15 @@ function Health({ funnel }) {
 }
 
 export function CommandCenter({ go = () => {} }) {
-  const { data, live } = useStaffResource(fetchOverview, { kpis: KPIS });
-  const kpis = data.kpis || KPIS;
+  const { data, live, error, demo, reload } = useStaffResource(fetchOverview, { kpis: KPIS });
+  const kpis = data.kpis || []; // never `|| KPIS` — blank beats invented platform figures
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   return (
     <div className="fadeup space-y-6">
       <SectionHead icon="gauge-high" title={`${greeting} — Command center`}
-        sub={live ? 'Live platform pulse and everything awaiting action' : 'Sample data — connect the backend for live figures'} />
+        sub={demo ? 'Sample data — no backend configured' : (live ? 'Live platform pulse and everything awaiting action' : 'Loading live pulse…')} />
+      <BackendError error={error} onRetry={reload} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2"><ActionCenter go={go} /></div>

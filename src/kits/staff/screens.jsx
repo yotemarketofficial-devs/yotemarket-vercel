@@ -3,7 +3,7 @@
    and falls back to the bundled demo data when the backend isn't reachable. */
 import React from 'react';
 import { KPIS, GMV_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, RUNS, FLEET, WALLET, SUBSCRIPTIONS } from './data.js';
-import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState } from './ui.jsx';
+import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState, BackendError } from './ui.jsx';
 import { useEscape } from '../../lib/useEscape.js';
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
@@ -303,20 +303,24 @@ function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
 /* ============ ANALYTICS OVERVIEW ============ */
 const OVERVIEW_FALLBACK = { kpis:KPIS, gmvTrend:GMV_TREND, subMix:SUB_MIX, funnel:FUNNEL };
 export function Analytics(){
-  const { data, live } = useStaffResource(fetchOverview, OVERVIEW_FALLBACK);
-  const kpis = data.kpis || KPIS;
-  const gmv = data.gmvTrend || GMV_TREND;
-  const subMix = data.subMix || SUB_MIX;
-  const funnel = data.funnel || FUNNEL;
+  const { data, live, error, demo, reload } = useStaffResource(fetchOverview, OVERVIEW_FALLBACK);
+  // NEVER `|| DEMO` here — a live response missing a field would silently render a
+  // fabricated chart. Blank is the honest answer; useStaffResource owns demo mode.
+  const kpis = data.kpis || [];
+  const gmv = data.gmvTrend || [];
+  const subMix = data.subMix || [];
+  const funnel = data.funnel || [];
   const max = Math.max(...gmv.map(d=>d.v), 1);
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="gauge-high" title="Platform overview" sub={live ? 'Live KPIs across the YoteMarket ecosystem' : 'Sample KPIs — connect the backend for live data'} />
+    <SectionHead icon="gauge-high" title="Platform overview" sub={demo ? 'Sample KPIs — no backend configured' : (live ? 'Live KPIs across the YoteMarket ecosystem' : 'Loading live KPIs…')} />
+    <BackendError error={error} onRetry={reload} />
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {kpis.map(k=><Stat key={k.label} {...k} delta={k.delta} deltaUp={k.up} />)}
     </div>
     <div className="grid lg:grid-cols-3 gap-6">
       <Card className="p-6 lg:col-span-2">
         <div className="flex items-center justify-between mb-5"><h3 className="font-bold t1">GMV trend</h3><span className="text-xs t3">KSh millions · last 12 months</span></div>
+        {!gmv.length ? <EmptyState icon="chart-simple" title="No GMV data" sub="Nothing to chart yet." /> : (
         <div className="flex items-end gap-2 h-44">
           {gmv.map((d,i)=>(
             <div key={i} className="flex-1 h-full flex flex-col items-center gap-2">
@@ -326,10 +330,11 @@ export function Analytics(){
               <span className="text-[10px] t3">{d.m}</span>
             </div>
           ))}
-        </div>
+        </div>)}
       </Card>
       <Card className="p-6">
         <h3 className="font-bold t1 mb-4">Subscription mix</h3>
+        {!subMix.length && <EmptyState icon="wallet" title="No subscriptions" sub="No active plans to break down." />}
         <div className="space-y-4">{subMix.map(s=>(
           <div key={s.plan}>
             <div className="flex justify-between text-sm mb-1.5"><span className="font-semibold t1">{s.plan}</span><span className="t3 num">{s.count} · {s.pct}%</span></div>
@@ -774,9 +779,9 @@ export function Scouts({ isAdmin }){
 /* ============ ORDERS & LOGISTICS ============ */
 export function Logistics(){
   const { useState } = React;
-  const { data, live, reload } = useStaffResource(fetchRuns, { runs:RUNS, fleet:FLEET });
-  const runs = data.runs || RUNS;
-  const fleet = data.fleet || FLEET;
+  const { data, live, error, demo, reload } = useStaffResource(fetchRuns, { runs:RUNS, fleet:FLEET });
+  const runs = data.runs || [];   // never `|| RUNS` — blank beats invented runs
+  const fleet = data.fleet || [];
   const tone = { in_transit:'blue', delivered:'ok', delayed:'red' };
   const label = { in_transit:'In transit', delivered:'Delivered', delayed:'Delayed' };
   const [busy, setBusy] = useState(false);
@@ -825,18 +830,22 @@ export function Logistics(){
 
 /* ============ SUBSCRIPTIONS & WALLET ============ */
 export function Wallet(){
-  const { data, live } = useStaffResource(fetchSubscriptions, { subscriptions:SUBSCRIPTIONS, wallet:WALLET });
-  const wallet = data.wallet || WALLET;
-  const subs = data.subscriptions || SUBSCRIPTIONS;
+  const { data, live, error, demo, reload } = useStaffResource(fetchSubscriptions, { subscriptions:SUBSCRIPTIONS, wallet:WALLET });
+  // Money figures MUST never fall back to demo — an invented float is the most
+  // dangerous number in the console. Missing → em-dash, not a plausible amount.
+  const wallet = data.wallet || {};
+  const subs = data.subscriptions || [];
+  const money = (v) => (v == null || v === '' ? '—' : v);
   const tone = { active:'ok', overdue:'red' };
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="wallet" title="Subscriptions & wallet" sub={live ? 'Platform float, M-Pesa settlement, and merchant billing oversight' : 'Sample billing — connect the backend for live subscriptions'} />
+    <SectionHead icon="wallet" title="Subscriptions & wallet" sub={demo ? 'Sample billing — no backend configured' : (live ? 'Platform float, M-Pesa settlement, and merchant billing oversight' : 'Loading live billing…')} />
+    <BackendError error={error} onRetry={reload} />
     <PayoutChangeReview />
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <Stat label="Platform float" value={wallet.float} icon="vault" tone="pri" />
-      <Stat label="M-Pesa settled today" value={wallet.mpesaToday} icon="mobile-alt" tone="green" />
-      <Stat label="Pending payouts" value={wallet.pendingPayouts} icon="hourglass-half" tone="amber" />
-      <Stat label="Badge insurance fund" value={wallet.badgeFund} icon="shield-halved" tone="blue" />
+      <Stat label="Platform float" value={money(wallet.float)} icon="vault" tone="pri" />
+      <Stat label="M-Pesa settled today" value={money(wallet.mpesaToday)} icon="mobile-alt" tone="green" />
+      <Stat label="Pending payouts" value={money(wallet.pendingPayouts)} icon="hourglass-half" tone="amber" />
+      <Stat label="Badge insurance fund" value={money(wallet.badgeFund)} icon="shield-halved" tone="blue" />
     </div>
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between p-5 pb-3"><h3 className="font-bold t1">Merchant subscriptions</h3><Btn kind="soft" size="sm" icon="download">Export</Btn></div>

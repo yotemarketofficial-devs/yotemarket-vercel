@@ -53,6 +53,20 @@ export function useStaffClaims() {
   return { ...state, refresh: () => evaluate(true) };
 }
 
+/** Same shape, no values — [] / {} / 0 / ''. Lets a failed load render each screen's
+ *  real empty state instead of inventing numbers. */
+function emptyLike(v) {
+  if (Array.isArray(v)) return [];
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const [k, x] of Object.entries(v)) out[k] = emptyLike(x);
+    return out;
+  }
+  if (typeof v === 'number') return 0;
+  if (typeof v === 'string') return '';
+  return v;
+}
+
 // ── Generic loader hook: fetch via `loader`, fall back to `fallback` ──────────
 // Staff reads are callable-based (no onSnapshot possible), so "real-time" here is
 // a silent background auto-refresh: it re-fetches on an interval while the tab is
@@ -60,10 +74,20 @@ export function useStaffClaims() {
 // a poll that finds no change causes no re-render — the table never flickers or
 // loses sort/scroll while a staffer reads it. `loading` only flips on the initial
 // load, a deps change, or a manual reload — never on a background poll.
+//
+// ⚠️ NEVER SHOW FAKE DATA IN A LIVE CONSOLE. `fallback` is DEMO data — it renders
+// only when there is no backend at all (local/preview, firebaseEnabled=false).
+// When a backend IS configured and the load fails, we blank to the same shape and
+// expose `error`, so staff see an honest empty state + error rather than plausible
+// invented figures they might act on. Background-poll failures are swallowed on
+// purpose so a blip never wipes data a staffer is reading.
 export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 } = {}) {
-  const [data, setData] = useState(fallback);
+  const demoOk = !firebaseEnabled;
+  const blank = useRef(demoOk ? fallback : emptyLike(fallback)).current;
+  const [data, setData] = useState(blank);
   const [loading, setLoading] = useState(true);
   const [live, setLive] = useState(false);
+  const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const loaderRef = useRef(loader);
   loaderRef.current = loader;
@@ -74,7 +98,7 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
     if (d == null) return;
     let j; try { j = JSON.stringify(d); } catch { j = null; }
     if (j == null || j !== lastJson.current) { lastJson.current = j; setData(d); }
-    setLive(true);
+    setLive(true); setError(null);
   }, []);
 
   // Initial load / manual reload / deps change — shows the loading state.
@@ -84,7 +108,13 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
     Promise.resolve()
       .then(() => loaderRef.current())
       .then((d) => { if (active) apply(d); })
-      .catch(() => { if (active) setLive(false); })
+      .catch((e) => {
+        if (!active) return;
+        setLive(false);
+        // Backend exists but the read failed → blank it. Better an honest empty
+        // console than fabricated figures wearing a "sample" label.
+        if (!demoOk) { lastJson.current = null; setData(blank); setError(e && e.message ? e.message : 'Could not reach the backend.'); }
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +142,7 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, pollMs, apply]);
 
-  return { data, loading, live, reload: () => setReloadKey((k) => k + 1) };
+  return { data, loading, live, error, demo: demoOk, reload: () => setReloadKey((k) => k + 1) };
 }
 
 // ── Reads ─────────────────────────────────────────────────────────────────────

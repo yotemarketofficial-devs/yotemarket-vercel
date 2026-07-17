@@ -123,6 +123,24 @@ export const kes = n => 'KSh ' + Number(Math.round(n)).toLocaleString('en-KE');
 
 /* ── Shared data primitives (consistent tables / modals / empty states) ────── */
 
+/* BackendError — shown when a staff read FAILS against a real backend. The console
+   deliberately shows nothing rather than demo figures in that case (see
+   useStaffResource), so this says plainly that the numbers are missing, not zero. */
+export function BackendError({ error, onRetry }){
+  if (!error) return null;
+  return (
+    <div role="alert" className="flex items-start gap-3 rounded-xl px-4 py-3 mb-4"
+      style={{ background:'var(--red-bg)', border:'1px solid var(--red)', color:'var(--red)' }}>
+      <Icon name="triangle-exclamation" className="mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm">Couldn’t load live data</div>
+        <div className="text-xs mt-0.5" style={{ opacity:.9 }}>{String(error)} — this screen is blank rather than showing stale or sample figures. Don’t treat it as zero.</div>
+      </div>
+      {onRetry && <Btn kind="soft" size="sm" icon="rotate" onClick={onRetry}>Retry</Btn>}
+    </div>
+  );
+}
+
 // EmptyState — one look for every "nothing here" moment.
 export function EmptyState({ icon='inbox', title='Nothing here yet.', sub, tone='t3' }){
   const tones = { t3:['var(--surface2)','var(--t3)'], green:['var(--green-bg)','var(--green)'], amber:['var(--amber-bg)','var(--amber)'], red:['var(--red-bg)','var(--red)'] };
