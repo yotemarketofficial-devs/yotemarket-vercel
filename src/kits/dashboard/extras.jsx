@@ -9,6 +9,7 @@ import { ORDER_ROWS, WALLET, ksh } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop, useEntitlements } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
+import { FEATURES, requiredTierName } from '../../lib/entitlements.js';
 import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
@@ -335,6 +336,49 @@ export function Wallet({ toast }){
 }
 
 /* ---------- SUBSCRIPTION (live status + SubscribeFlow) ---------- */
+/* What the plan actually unlocks — the merchant can see what they have and exactly
+   what the next tier adds, instead of inferring it from padlocks in the sidebar.
+   Driven by the SAME matrix the router gates on (lib/entitlements.js) and asked via
+   `can()`, so it can never drift from what's really enforced (and it honours the
+   staff bypass rather than re-deriving it from `rank`). */
+function PlanFeatures(){
+  const ent = useEntitlements();
+  const rows = Object.entries(FEATURES);
+  const have = rows.filter(([k]) => ent.can(k)).length;
+  return (
+    <SectionCard
+      title="What your plan includes"
+      sub={ent.staff
+        ? 'Staff access — every feature is unlocked for internal testing.'
+        : `${have} of ${rows.length} premium features unlocked on ${ent.tier}.`}
+    >
+      <div style={{ padding:8 }}>
+        {rows.map(([key, f]) => {
+          const on = ent.can(key);
+          return (
+            <div key={key} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 10px', opacity: on ? 1 : 0.72 }}>
+              <div style={{ width:38, height:38, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
+                background: on ? 'var(--m-surface-3)' : 'var(--m-surface-2)', color: on ? 'var(--m-primary)' : 'var(--m-fg4)' }}>
+                <FA i={f.icon} />
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div className="ym-h3" style={{ fontSize:14 }}>{f.label}</div>
+                <div className="ym-cap">{f.blurb}</div>
+              </div>
+              {on
+                ? <span className="ym-cap" style={{ color:'var(--m-success)', fontWeight:700, whiteSpace:'nowrap', flexShrink:0 }}><FA i="fa-circle-check" /> Included</span>
+                : <span className="ym-cap" style={{ whiteSpace:'nowrap', flexShrink:0, display:'inline-flex', alignItems:'center', gap:6 }}><FA i="fa-lock" style={{ fontSize:11 }} /> {requiredTierName(key)}</span>}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ padding:'12px 18px', borderTop:'1px solid var(--m-border)' }}>
+        <div className="ym-cap"><FA i="fa-circle-info" style={{ marginRight:6 }} />Every plan also includes the essentials — your storefront, M-Pesa checkout, orders, chat, wallet payouts and KRA tax invoices.</div>
+      </div>
+    </SectionCard>
+  );
+}
+
 export function Subscription(){
   const { user } = useAuth();
   const uid = user?.uid;
@@ -374,6 +418,8 @@ export function Subscription(){
           </div>
         )}
       </Card>
+
+      <div style={{ marginBottom:22 }}><PlanFeatures /></div>
 
       <div className="ym-h2" style={{ fontSize:17, marginBottom:14 }}>{current ? 'Change plan' : 'Choose a plan'}</div>
       <SubscribeFlow currentPlan={current ? { kind: current.kind || 'delivery', plan: current.plan, subTier: current.subTier } : null} />
