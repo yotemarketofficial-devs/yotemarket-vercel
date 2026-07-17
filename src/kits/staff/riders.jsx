@@ -3,7 +3,7 @@
    licence, plate). Auto-refreshes via useStaffResource. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
-import { useStaffResource, fetchRiderApplications, setRiderApplicationStage } from './service.js';
+import { useStaffResource, fetchRiderApplications, setRiderApplicationStage, deleteRiderApplication } from './service.js';
 import { useEscape } from '../../lib/useEscape.js';
 const { useState } = React;
 
@@ -28,6 +28,13 @@ function RiderDrawer({ app, onClose, onMoved }) {
     try { await setRiderApplicationStage(app.id, stage, note.trim()); setNote(''); onMoved && onMoved(); onClose(); }
     catch (e) { setErr(e.message || 'Could not update.'); }
     finally { setBusy(false); }
+  };
+  // Right to erasure — this record holds their phone, licence and plate.
+  const erase = async () => {
+    if (!window.confirm(`Permanently erase ${app.name}'s application (${app.ref})? This deletes their phone, licence and plate. It can't be undone.`)) return;
+    setBusy(true); setErr('');
+    try { await deleteRiderApplication(app.id); onMoved && onMoved(); onClose(); }
+    catch (e) { setErr(e.message || 'Could not delete.'); setBusy(false); }
   };
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -87,6 +94,12 @@ function RiderDrawer({ app, onClose, onMoved }) {
             ))}
           </div>
           <p className="text-xs t3 mt-3">Approving records the decision here. The rider signs in with the Rider app using this phone number.</p>
+        </div>
+
+        <div className="pt-4" style={{ borderTop:'1px solid var(--line)' }}>
+          <div className="text-xs font-semibold t2 mb-1">Erase</div>
+          <div className="text-xs t3 mb-2">Deletes their personal data for good — use when an applicant asks us to.</div>
+          <Btn kind="danger" size="sm" icon="trash" disabled={busy} onClick={erase}>Delete application</Btn>
         </div>
       </div>
     </div>

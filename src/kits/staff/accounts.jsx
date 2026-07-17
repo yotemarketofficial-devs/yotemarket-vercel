@@ -6,7 +6,7 @@
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv, Modal, kes } from './ui.jsx';
 import { staffListUsers } from '../../lib/firebase.js';
-import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, sendPasswordReset, revokeUserSessions } from './service.js';
+import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
@@ -154,6 +154,16 @@ function UserConsole({ row, onClose, onChanged }){
     catch (e) { window.alert(e.message || 'Could not sign the user out.'); }
     finally { setBusy(null); }
   };
+  // Right to erasure. The server refuses if it would destroy money, an in-flight
+  // order, a live store or the staff trail — each of those has its own flow.
+  const eraseAccount = async () => {
+    const who = p.email || uid;
+    if (!window.confirm(`Permanently DELETE ${who}?\n\nThis removes their sign-in and all personal data (profile, addresses, follows, wallet history). Their past orders stay as financial records. This cannot be undone.`)) return;
+    if (!window.confirm(`Last check — really delete ${who}?`)) return;
+    setBusy('delete');
+    try { await deleteUserAccount(uid); window.alert(`${who} has been deleted.`); onChanged && onChanged(); onClose(); }
+    catch (e) { window.alert(e.message || 'Could not delete the account.'); setBusy(null); }
+  };
 
   const isStaff = roles.includes('admin') || roles.includes('staff');
   return (
@@ -167,6 +177,7 @@ function UserConsole({ row, onClose, onChanged }){
             {!isStaff && <Btn kind="soft" size="sm" icon="user-shield" onClick={()=>changeRole('moderator')} disabled={busy==='role'}>Make staff</Btn>}
             {isStaff && !roles.includes('admin') && <Btn kind="soft" size="sm" icon="crown" onClick={()=>changeRole('admin')} disabled={busy==='role'}>Make admin</Btn>}
             {isStaff && <Btn kind="ghost" size="sm" icon="user-slash" onClick={()=>changeRole('none')} disabled={busy==='role'}>Revoke staff</Btn>}
+            <Btn kind="danger" size="sm" icon={busy==='delete'?'spinner':'trash'} onClick={eraseAccount} disabled={busy==='delete'} className="ml-auto" title="Permanently delete this account and its personal data">Delete account</Btn>
             {p.email && <a href={`mailto:${p.email}`} className="ml-auto"><Btn kind="ghost" size="sm" icon="envelope">Email</Btn></a>}
           </>}
         </div>

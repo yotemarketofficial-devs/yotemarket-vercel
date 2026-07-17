@@ -3,7 +3,7 @@
    (candidate PII). Auto-refreshes via useStaffResource. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
-import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening } from './service.js';
+import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening, deleteJobApplication } from './service.js';
 import { useEscape } from '../../lib/useEscape.js';
 const { useState } = React;
 
@@ -36,6 +36,13 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
     try { await setJobApplicationStage(app.id, stage, note.trim()); setNote(''); onMoved && onMoved(); onClose(); }
     catch (e) { setErr(e.message || 'Could not update.'); }
     finally { setBusy(false); }
+  };
+  // Right to erasure — a candidate can ask us to delete their data.
+  const erase = async () => {
+    if (!window.confirm(`Permanently erase ${app.name}'s application (${app.ref})? This deletes their name, contact details and CV links. It can't be undone.`)) return;
+    setBusy(true); setErr('');
+    try { await deleteJobApplication(app.id); onMoved && onMoved(); onClose(); }
+    catch (e) { setErr(e.message || 'Could not delete.'); setBusy(false); }
   };
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -91,6 +98,12 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
               <Btn key={s.id} kind={s.id === 'rejected' ? 'ghost' : 'primary'} size="sm" disabled={busy} onClick={() => move(s.id)}>{s.label}</Btn>
             ))}
           </div>
+        </div>
+
+        <div className="pt-4" style={{ borderTop:'1px solid var(--line)' }}>
+          <div className="text-xs font-semibold t2 mb-1">Erase</div>
+          <div className="text-xs t3 mb-2">Deletes their personal data for good — use when a candidate asks us to.</div>
+          <Btn kind="danger" size="sm" icon="trash" disabled={busy} onClick={erase}>Delete application</Btn>
         </div>
       </div>
     </div>

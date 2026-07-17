@@ -4,7 +4,7 @@
    staffReplySupportTicket; falls back to demo data so the console always renders. */
 import React from 'react';
 import { Card, SectionHead, Seg, Btn, Pill, Icon, Stat, EmptyState, Modal } from './ui.jsx';
-import { useStaffResource, fetchSupportTickets, replySupportTicket } from './service.js';
+import { useStaffResource, fetchSupportTickets, replySupportTicket, deleteSupportTicket } from './service.js';
 const { useState, useEffect } = React;
 
 const CAT_LABEL = { order:'Order', payment:'Payment', delivery:'Delivery', account:'Account', selling:'Selling', feed:'YoteFeed', refund:'Refund', other:'Other' };
@@ -122,6 +122,14 @@ function TicketThread({ t, onClose, reload, live }){
     } finally { setBusy(false); }
   };
 
+  // Erase — for spam, or when a customer asks us to delete what they sent.
+  const erase = async () => {
+    if (!window.confirm(`Permanently delete ticket ${t.ref}? This erases the customer's message and every reply. It can't be undone.`)) return;
+    setBusy(true); setErr('');
+    try { await deleteSupportTicket(t.id); reload(); onClose(); }
+    catch (e) { setErr(e.message || 'Could not delete the ticket.'); setBusy(false); }
+  };
+
   const thread = [
     { author:'customer', text:t.message, at:t.createdAt },
     ...(t.replies || []),
@@ -136,6 +144,7 @@ function TicketThread({ t, onClose, reload, live }){
           <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'paper-plane'} onClick={() => act({ assignToMe: true })} disabled={busy || !reply.trim()}>Send reply</Btn>
           <Btn kind="success" size="sm" icon="circle-check" onClick={() => act({ status:'resolved' })} disabled={busy}>Resolve</Btn>
           <Btn kind="ghost" size="sm" icon="user-check" onClick={() => act({ assignToMe: true })} disabled={busy} title="Assign this ticket to me">Assign to me</Btn>
+          <Btn kind="danger" size="sm" icon="trash" onClick={erase} disabled={busy} className="ml-auto" title="Erase this ticket and its replies (spam, or a data-deletion request)">Delete</Btn>
         </div>
       }>
       {/* Requester + SLA panel */}

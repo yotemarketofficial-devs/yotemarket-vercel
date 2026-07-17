@@ -254,6 +254,20 @@ export async function staffRemoveTestCredits(args = {}) {
   return call('staffRemoveTestCredits')(args);
 }
 
+// ── Deletions (data protection / right to erasure) ────────────────────────────
+// Only PERSONAL-data records are deletable. Financial + accountability records
+// (orders, ledger, receipts, settlements, disputes, audit log) have no delete by
+// design — erasing them would destroy the money trail. All admin-only + audited.
+/** ADMIN: erase a job application (candidate PII). */
+export async function deleteJobApplication(id) { return call('staffDeleteJobApplication')({ id }); }
+/** ADMIN: erase a rider application (applicant PII). */
+export async function deleteRiderApplication(id) { return call('staffDeleteRiderApplication')({ id }); }
+/** ADMIN: erase a support ticket (may carry personal details). */
+export async function deleteSupportTicket(id) { return call('staffDeleteSupportTicket')({ id }); }
+/** ADMIN: delete a user account + their personal data. Guarded server-side against
+ *  deleting yourself, active staff, store owners, funded wallets or open orders. */
+export async function deleteUserAccount(uid) { return call('staffDeleteUser')({ uid }); }
+
 /** status: 'active' | 'blocked' (existing deployed callable). */
 export async function moderateConversation(convId, status, reason = '') {
   return call('setConversationStatus')({ convId, status, reason });
