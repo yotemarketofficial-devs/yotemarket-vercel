@@ -23,9 +23,14 @@
 }
 .kit-storefront *{box-sizing:border-box;}
 .kit-storefront, .kit-storefront{margin:0; font-family:'Poppins',system-ui,sans-serif; background:var(--m-bg); color:var(--m-fg2);
-  -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; min-height:100vh;}
+  -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; min-height:100vh;
+  /* Nothing may scroll the page sideways. Without this, a single element wider than
+     the viewport (a wide grid track, a rail) makes the whole page pan and clips the
+     right edge — which is what cut the category grid in half on phones. */
+  overflow-x:hidden;}
 .kit-storefront a{text-decoration:none; color:inherit;}
 .kit-storefront .wrap{max-width:1240px; margin:0 auto; padding:0 24px;}
+@media (max-width:560px){ .kit-storefront .wrap{ padding:0 14px; } }
 .kit-storefront .ym-h1{font-size:30px; font-weight:800; color:var(--m-fg1); line-height:1.15; letter-spacing:-.02em;}
 .kit-storefront .ym-h2{font-size:21px; font-weight:700; color:var(--m-fg1); line-height:1.25;}
 .kit-storefront .ym-h3{font-size:15px; font-weight:600; color:var(--m-fg1); line-height:1.35;}
@@ -83,7 +88,11 @@
 .kit-storefront .store-card:hover{transform:translateY(-5px); box-shadow:var(--m-shadow-float);}
 .kit-storefront .cat-grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:14px;}
 @media (max-width:900px){ .kit-storefront .cat-grid{grid-template-columns:repeat(3, 1fr);} }
-@media (max-width:560px){ .kit-storefront .cat-grid{grid-template-columns:repeat(2, 1fr);} }
+@media (max-width:560px){ .kit-storefront .cat-grid{grid-template-columns:repeat(2, 1fr); gap:10px;} }
+/* Very narrow phones: one column so a tile is never squeezed to where its label
+   truncates to nothing. */
+@media (max-width:360px){ .kit-storefront .cat-grid{grid-template-columns:1fr;} }
+.kit-storefront .cat-tile{min-width:0;}   /* let the label ellipsis instead of pushing the grid wide */
 .kit-storefront .cat-tile{transition:transform .2s, box-shadow .2s;}
 .kit-storefront .cat-tile:hover{transform:translateY(-3px); box-shadow:var(--m-shadow-float);}
 .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.35);}

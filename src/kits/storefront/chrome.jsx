@@ -24,8 +24,10 @@ export function Header(){
           <FA i="fa-magnifying-glass" style={{ color:'var(--m-primary)', fontSize:15 }} /> Search the mall…
         </button>
         <div className="ym-hdr-spacer" style={{ flex:1 }} />
-        <button onClick={()=>nav('feed')} className="icon-btn" aria-label="YoteFeed"><YoteFeedMark size={22} /></button>
-        {account.hasAccount && <button onClick={()=>nav('following')} className="icon-btn" aria-label="Following"><FA i="fa-heart" /></button>}
+        {/* Secondary actions collapse into the account menu on phones (see the mobile
+            media query below) — the header keeps only AI, messages, cart + account. */}
+        <button onClick={()=>nav('feed')} className="icon-btn ym-hdr-collapse" aria-label="YoteFeed"><YoteFeedMark size={22} /></button>
+        {account.hasAccount && <button onClick={()=>nav('following')} className="icon-btn ym-hdr-collapse" aria-label="Following"><FA i="fa-heart" /></button>}
         <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><YoteAiMark size={25} color="#fff" /></button>
         <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />
@@ -50,7 +52,7 @@ export function Header(){
                 <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--m-border)', marginBottom:6 }}>
                   <div className="ym-h3">{account.name}</div><div className="ym-cap">{account.email || account.phone || 'Signed in'}</div>
                 </div>
-                {[['fa-user','My profile','profile'],['fa-heart','Following','following'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
+                {[['fa-user','My profile','profile'],['fa-heart','Following','following'],['fa-clapperboard','YoteFeed','feed'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
                   <button key={l} onClick={()=>{ setAcct(false); if(scr) nav(scr); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
                     {scr==='ai'
                       ? <span style={{ width:18, display:'inline-flex', justifyContent:'center', color:'var(--m-fg3)' }}><YoteAiMark size={16} color="currentColor" /></span>
@@ -71,12 +73,15 @@ export function Header(){
         @media (max-width:640px){
           .acct-name{ display:none; }
           /* Header wraps to two rows on phones: logo + actions on top, full-width search below.
-             Fixes the squeeze from cramming logo + search + 6 icons into one narrow row. */
+             Fixes the squeeze from cramming logo + search + a row of icons into one narrow row. */
           .ym-hdr{ flex-wrap:wrap; gap:8px !important; row-gap:10px; height:auto !important; padding-top:12px !important; padding-bottom:12px !important; }
           /* Search drops to its own full-width second row; the flex spacer keeps the
              logo on the left and the action icons on the right of the top row. */
           .ym-hdr-search{ order:10; flex-basis:100% !important; max-width:none !important; }
           .ym-hdr .icon-btn{ width:40px; height:40px; }
+          /* Declutter: YoteFeed + Following move into the account menu (and the home
+             page promotes YoteFeed), so the phone header keeps only the essentials. */
+          .ym-hdr .ym-hdr-collapse{ display:none !important; }
         }`}</style>
     </header>
   );

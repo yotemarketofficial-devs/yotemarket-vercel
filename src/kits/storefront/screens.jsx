@@ -170,7 +170,7 @@ export function HomeScreen(){
       {/* Flagship features — YoteAI + YoteFeed, promoted up front so shoppers meet
           the two headline experiences right after the hero. */}
       <div className="wrap" style={{ marginTop:20 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:14 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap:14 }}>
           {[
             { grad:'linear-gradient(135deg,#5B16A8 0%,#A020F0 55%,#E89B0C 120%)', mark:<YoteAiMark size={26} color="#fff" />, kick:'YoteAI', title:'Ask YoteAI — your shopping assistant', sub:'Find anything, compare options & track orders — just ask.', go:()=>nav('ai') },
             { grad:'linear-gradient(135deg,#7C2BD4 0%,#ec4899 60%,#f43f5e 120%)', mark:<YoteFeedMark size={24} />, kick:'YoteFeed', title:'Shoppable video — watch it, tap it, buy it', sub:'Short clips from local stores. Tap to buy on the spot.', go:()=>nav('feed') },
