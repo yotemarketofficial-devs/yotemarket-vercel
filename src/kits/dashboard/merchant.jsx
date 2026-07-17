@@ -175,7 +175,9 @@ export function useStoreOverview() {
 
     const prodRows = (products || []).map((p) => ({
       id: p.id, name: p.name || 'Unnamed', cat: p.catId || '—', price: Number(p.price) || 0,
-      stock: p.inStock === false ? 0 : (typeof p.stock === 'number' ? p.stock : 1),
+      // null = untracked (this merchant doesn't count this item) — distinct from 0,
+      // which is a real "sold out". The UI must not render untracked as a count.
+      stock: typeof p.stock === 'number' ? p.stock : null,
       sales: p.sales || 0, status: p.inStock === false ? 'inactive' : 'active',
       icon: faIcon(p.icon), tint: '#7c3aed', sku: p.sku || null,
       // raw fields carried through for the edit modal:

@@ -16,6 +16,19 @@ const PRODUCTS_COACH = [
   { selector: '[data-coach="products-list"]', title: 'Manage your catalogue', body: 'Everything you sell lives here. Search by name or SKU, filter by status, and update price or stock anytime.' },
 ];
 
+// At or below this many units a product is "running low". Mirrors the storefront's
+// LOW_STOCK so the merchant sees the warning at the same point the shopper does.
+export const LOW_STOCK = 5;
+
+// Three states, and conflating them is how you sell what you don't have:
+// null = untracked (never counted), 0 = genuinely sold out, N = units on hand.
+function StockCell({ stock }){
+  if (stock == null) return <span className="ym-cap" title="Not tracked — this product always shows as available">—</span>;
+  if (stock === 0) return <span style={{ color:'var(--m-danger)', fontWeight:600 }}>Out</span>;
+  if (stock <= LOW_STOCK) return <span style={{ color:'#d97706', fontWeight:600 }}>{stock} left</span>;
+  return <span>{stock}</span>;
+}
+
 export function Products({ onAdd, toast }){
   const [filter, setFilter] = useStateP('all');
   const [search, setSearch] = useStateP('');
@@ -34,19 +47,21 @@ export function Products({ onAdd, toast }){
   const all = products || [];
   const total = all.length;
   const active = all.filter(p=>p.status==='active').length;
+  // A tracked count of 0 is "out"; null is untracked and counts as neither out nor low.
   const out = all.filter(p=>p.stock===0).length;
-  const rows = all.filter(p=>(filter==='all'||p.status===filter||(filter==='out'&&p.stock===0))&&(search===''||p.name.toLowerCase().includes(search.toLowerCase())||(p.sku||'').toLowerCase().includes(search.toLowerCase())));
+  const low = all.filter(p=>typeof p.stock==='number'&&p.stock>0&&p.stock<=LOW_STOCK).length;
+  const rows = all.filter(p=>(filter==='all'||p.status===filter||(filter==='out'&&p.stock===0)||(filter==='low'&&typeof p.stock==='number'&&p.stock>0&&p.stock<=LOW_STOCK))&&(search===''||p.name.toLowerCase().includes(search.toLowerCase())||(p.sku||'').toLowerCase().includes(search.toLowerCase())));
   return (
     <div className="anim-up">
       <ScreenCoach id="products" steps={PRODUCTS_COACH} />
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:14, marginBottom:20 }}>
-        <div><h1 className="ym-h1">My Products</h1><p className="ym-sub" style={{ marginTop:4 }}>{total} product{total!==1?'s':''}{out?` · ${out} out of stock`:''}</p></div>
+        <div><h1 className="ym-h1">My Products</h1><p className="ym-sub" style={{ marginTop:4 }}>{total} product{total!==1?'s':''}{out?` · ${out} out of stock`:''}{low?` · ${low} running low`:''}</p></div>
         <Btn kind="primary" icon="fa-plus" onClick={onAdd} data-coach="products-add">Add product</Btn>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:16, marginBottom:20 }}>
         <Stat label="Total" value={String(total)} icon="fa-box" tone="#7c3aed" />
         <Stat label="Active" value={String(active)} icon="fa-circle-check" tone="#10b981" />
-        <Stat label="Inactive" value={String(total-active)} icon="fa-eye-slash" tone="#f59e0b" />
+        <Stat label="Running low" value={String(low)} icon="fa-arrow-trend-down" tone="#f59e0b" />
         <Stat label="Out of stock" value={String(out)} icon="fa-triangle-exclamation" tone="#ef4444" />
       </div>
       <Card style={{ padding:0, overflow:'hidden' }} data-coach="products-list">
@@ -56,7 +71,7 @@ export function Products({ onAdd, toast }){
             <input className="ym-input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products by name or SKU…" style={{ paddingLeft:40 }} />
           </div>
           <div className="scroll-x" style={{ gap:4, background:'var(--m-surface-2)', borderRadius:10, padding:4 }}>
-            {[['all','All'],['active','Active'],['inactive','Inactive'],['out','Out of stock']].map(([k,l])=>(
+            {[['all','All'],['active','Active'],['inactive','Inactive'],['low','Running low'],['out','Out of stock']].map(([k,l])=>(
               <button key={k} onClick={()=>setFilter(k)} style={{ padding:'7px 13px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, whiteSpace:'nowrap', background:filter===k?'var(--m-surface)':'transparent', color:filter===k?'var(--m-fg1)':'var(--m-fg3)', boxShadow:filter===k?'var(--m-shadow-card)':'none' }}>{l}</button>
             ))}
           </div>
@@ -78,7 +93,7 @@ export function Products({ onAdd, toast }){
                   <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb icon={r.icon} tint={r.tint} size={44} /><div><div style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</div><div className="ym-cap" style={{ fontFamily:'ui-monospace,Menlo,monospace', marginTop:1 }}>{r.sku || (r.id||'').toUpperCase()}</div></div></div></td>
                   <td>{r.cat}</td>
                   <td style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(r.price)}</td>
-                  <td>{r.stock===0 ? <span style={{ color:'var(--m-danger)', fontWeight:600 }}>Out</span> : r.stock}</td>
+                  <td><StockCell stock={r.stock} /></td>
                   <td>{r.sales}</td>
                   <td><Pill tone={r.status}>{r.status==='active'?'Active':r.status==='pending'?'Pending':'Inactive'}</Pill></td>
                   <td><div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
@@ -106,12 +121,15 @@ export function AddProductModal({ onClose, onSave, editing }){
   const isEdit = !!editing;
   useEscape(onClose); // Esc closes, same as the overlay click / X button
   const [step, setStep] = useStateP(1);
+  // `stock` is a STRING in the form: '' means untracked, which is a real choice and
+  // must survive the round trip distinctly from '0' (sold out).
   const [form, setForm] = useStateP(() => isEdit ? {
     name: editing.name || '', catId: editing.catId || 'electronics', sub: editing.sub || '',
     summary: '', desc: editing.desc || '', price: editing.price != null ? String(editing.price) : '',
     discount: editing.was ? String(editing.was) : '',
+    stock: typeof editing.stock === 'number' ? String(editing.stock) : '',
     images: Array.isArray(editing.images) && editing.images.length ? editing.images.filter(Boolean) : (editing.img ? [editing.img] : []),
-  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', images:[] });
+  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', images:[] });
   const [saving, setSaving] = useStateP(false);
   const [err, setErr] = useStateP('');
   const set = (k,v)=>setForm(f=>({ ...f, [k]:v }));
@@ -124,12 +142,17 @@ export function AddProductModal({ onClose, onSave, editing }){
     if (saving) return;
     if (!form.name.trim()) { setErr('Add a product name.'); setStep(1); return; }
     if (!storeId) { setErr('Set up your store before adding products.'); return; }
+    const stockStr = String(form.stock).trim();
+    if (stockStr !== '' && (!/^\d+$/.test(stockStr) || Number(stockStr) < 0)) {
+      setErr('Quantity in stock must be a whole number of units, or empty if you don\'t track it.'); setStep(2); return;
+    }
     setSaving(true); setErr('');
     try {
       await saveProduct({
         ...(isEdit ? { id: editing.id } : {}),
         name: form.name.trim(), price: Number(form.price) || 0,
         was: form.discount ? Number(form.discount) : null,
+        stock: stockStr === '' ? null : Number(stockStr), // null = untracked, distinct from 0
         catId: form.catId || null, sub: form.sub || null, desc: form.desc || form.summary || '',
         images: form.images, img: form.images[0] || null,
       });
@@ -166,7 +189,10 @@ export function AddProductModal({ onClose, onSave, editing }){
               <Field label="Price (Ksh)"><input className="ipt" type="number" value={form.price} onChange={e=>set('price',e.target.value)} placeholder="14360" /></Field>
               <Field label="Discounted price"><input className="ipt" type="number" value={form.discount} onChange={e=>set('discount',e.target.value)} placeholder="12250" /></Field>
             </div>
-            <Field label="Quantity in stock"><input className="ipt" type="number" defaultValue={10} /></Field>
+            <Field label="Quantity in stock" hint="Leave empty if you don't count this item — it'll always show as available. Set a number and YoteMarket counts it down as it sells, online and at your till.">
+              <input className="ipt" type="number" min={0} step={1} value={form.stock} onChange={e=>set('stock',e.target.value)} placeholder="Not tracked" />
+            </Field>
+            {form.stock !== '' && Number(form.stock) === 0 && <div className="ym-cap" style={{ color:'var(--m-danger)', marginTop:-8 }}>0 units — this product will show as “Out of stock” and can't be bought.</div>}
             <Field label="SKU" hint={isEdit ? 'Your store SKU (assigned on first save)' : 'Assigned automatically per store on save (e.g. WAN-0001)'}><input className="ipt" value={isEdit && editing.sku ? editing.sku : 'Auto-generated'} disabled style={{ opacity:.65 }} /></Field>
             <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via the in-app messenger before confirming.</div></div>
           </div>}

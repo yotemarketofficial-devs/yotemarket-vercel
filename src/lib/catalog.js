@@ -10,7 +10,7 @@ const toArray = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
 // The live Firestore catalog (shared with the Flutter apps) stores Material Symbol icon
 // names + `storeId`/`catId`/`inStock` fields. The storefront UI speaks FontAwesome +
-// `store`/`cat`/`stock`, so normalise here so real data renders identically to the demo.
+// `store`/`cat`, so normalise here so real data renders identically to the demo.
 const MAT_FA = {
   grid_view: 'fa-border-all', smartphone: 'fa-mobile-screen-button', devices: 'fa-mobile-screen',
   laptop: 'fa-laptop', headphones: 'fa-headphones', speaker: 'fa-volume-high', bolt: 'fa-bolt',
@@ -50,7 +50,15 @@ const normProduct = (d) => ({
   rating: d.rating != null ? Number(d.rating) : undefined,
   reviews: d.reviews,
   desc: d.desc,
-  stock: d.inStock !== false && d.stock !== false,
+  // Availability vs. count are two different things, and they used to share one
+  // name here (`stock` was a boolean). Now: `stock` is the COUNT — a number, or
+  // null when the merchant doesn't track this item — and `inStock` is the
+  // boolean the UI gates on. Deriving inStock from the count matters: the old
+  // line read `d.stock !== false`, so a real count of 0 was `0 !== false` →
+  // true → "In stock" on a sold-out product. Anything untracked sells freely,
+  // exactly as it did before counts existed.
+  stock: typeof d.stock === 'number' && Number.isFinite(d.stock) ? d.stock : null,
+  inStock: d.inStock !== false && !(typeof d.stock === 'number' && d.stock <= 0),
   icon: faIcon(d.icon, 'fa-box'),
   img: d.img || d.imageUrl || d.photo || undefined,
   images: Array.isArray(d.images) ? d.images.filter(Boolean) : (d.img ? [d.img] : []),  // gallery (first = cover)

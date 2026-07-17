@@ -194,7 +194,7 @@ export function FeedScreen({ params = {} }){
   const onBuy = (post) => {
     if (!post.demo) bump(post.id, 'shopTaps');
     const prod = post.productId ? ymProduct(post.productId) : null;
-    if (prod && prod.stock !== false) { addToCart(prod.id, 1); toast('Added to cart', 'fa-cart-plus'); }
+    if (prod && prod.inStock) { addToCart(prod.id, 1); toast('Added to cart', 'fa-cart-plus'); }
     else if (post.productId) nav('product', { pid: post.productId });
     else if (post.storeId) nav('store', { sid: post.storeId });
   };

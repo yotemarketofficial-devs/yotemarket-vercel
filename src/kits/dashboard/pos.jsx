@@ -94,9 +94,21 @@ export function Pos({ toast }){
 
   const shown = catalog.filter((p) => { const s = q.trim().toLowerCase(); return !s || (p.name || '').toLowerCase().includes(s) || (p.sku || '').toLowerCase().includes(s); });
 
+  // Units on hand for a catalog line, or null when the product isn't counted.
+  // The server is the real guard (posSale re-reads and refuses); this stops the
+  // cashier building a sale that can't complete, in front of the customer.
+  const capOf = (pid) => { const p = catalog.find((x) => x.id === pid); return typeof p?.stock === 'number' ? p.stock : null; };
+  const bump = (line, by) => {
+    const cap = line.custom ? null : capOf(line.pid);
+    const want = line.qty + by;
+    if (cap != null && want > cap) { setErr(`Only ${cap} × ${line.name} in stock.`); return line; }
+    setErr('');
+    return { ...line, qty: want };
+  };
   const addProduct = (p) => setCart((c) => {
     const i = c.findIndex((x) => x.pid === p.id);
-    if (i >= 0) { const n = [...c]; n[i] = { ...n[i], qty: n[i].qty + 1 }; return n; }
+    if (i >= 0) { const n = [...c]; n[i] = bump(n[i], 1); return n; }
+    if (typeof p.stock === 'number' && p.stock < 1) { setErr(`${p.name} is out of stock.`); return c; }
     return [...c, { key: 'p_' + p.id, pid: p.id, name: p.name, price: Number(p.price) || 0, icon: p.icon, qty: 1 }];
   });
   const addCustom = () => {
@@ -105,7 +117,7 @@ export function Pos({ toast }){
     setCart((c) => [...c, { key: 'c_' + (++customSeq), custom: true, name: cName.trim() || 'Custom item', price, qty: 1 }]);
     setCName(''); setCPrice(''); setShowCustom(false); setErr('');
   };
-  const inc = (key) => setCart((c) => c.map((x) => x.key === key ? { ...x, qty: x.qty + 1 } : x));
+  const inc = (key) => setCart((c) => c.map((x) => x.key === key ? bump(x, 1) : x));
   const dec = (key) => setCart((c) => c.flatMap((x) => x.key === key ? (x.qty <= 1 ? [] : [{ ...x, qty: x.qty - 1 }]) : [x]));
   const reset = () => { setCart([]); setDisc({ type: 'amount', value: '' }); setTendered(''); setPhone(''); setName(''); setReceipt(null); setErr(''); setPhase('cart'); ctxRef.current = null; };
 

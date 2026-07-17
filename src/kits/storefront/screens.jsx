@@ -1,6 +1,6 @@
 /* screens.jsx — Storefront: Home, Search, Product, Store. */
 import React from 'react';
-import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, TopBrandCard, SectionTitle, QtyStepper } from './ui.jsx';
+import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, TopBrandCard, SectionTitle, QtyStepper, LOW_STOCK } from './ui.jsx';
 import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
 import { CATEGORY_TREE, catalogIdsFor, matchesSub } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -586,7 +586,7 @@ export function ProductScreen({ params }){
               <span className="ym-cap">({p.reviews} review{p.reviews!==1?'s':''})</span></>
             ) : <span className="ym-cap"><Stars rating={0} /> No reviews yet</span>}
             <button onClick={()=>document.getElementById('product-reviews')?.scrollIntoView({ behavior:'smooth' })} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, color:'var(--m-link)', padding:0, display:'inline-flex', alignItems:'center', gap:5 }}><FA i="fa-star" /> Write a review</button>
-            <span className={'ym-pill '+(p.stock?'ym-pill-active':'ym-pill-inactive')}>{p.stock?'In stock':'Out of stock'}</span>
+            <span className={'ym-pill '+(p.inStock?'ym-pill-active':'ym-pill-inactive')}>{p.inStock?(p.stock!=null&&p.stock<=LOW_STOCK?`Only ${p.stock} left`:'In stock'):'Out of stock'}</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
             <span style={{ fontSize:30, fontWeight:800, color:'var(--m-fg1)' }}>{ymPrice(p.price)}</span>
@@ -603,8 +603,8 @@ export function ProductScreen({ params }){
           <div className="ym-h3" style={{ marginBottom:6 }}>About this item</div>
           <p className="ym-body" style={{ marginTop:0, textWrap:'pretty' }}>{p.desc}</p>
           <div style={{ display:'flex', alignItems:'center', gap:16, marginTop:24, flexWrap:'wrap' }}>
-            <QtyStepper qty={qty} onChange={setQty} />
-            <button className="ym-btn ym-btn-primary" style={{ flex:1, minWidth:220 }} disabled={!p.stock} onClick={()=>addToCart(p.id,qty)}><FA i="fa-cart-plus" /> Add to cart · {ymPrice(p.price*qty)}</button>
+            <QtyStepper qty={qty} onChange={setQty} max={p.stock ?? undefined} />
+            <button className="ym-btn ym-btn-primary" style={{ flex:1, minWidth:220 }} disabled={!p.inStock} onClick={()=>addToCart(p.id,qty)}><FA i="fa-cart-plus" /> {p.inStock?'Add to cart':'Out of stock'} · {ymPrice(p.price*qty)}</button>
           </div>
           <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>requireAuth(()=>nav('messages',{ store, product: { id: p.id, name: p.name, price: p.price, img: p.img || null, storeId: store.id } }))}><FA i="fa-comments" style={{ fontSize:17 }} /> Chat with seller · Make an offer</button>
         </div>
@@ -693,7 +693,7 @@ export function StoreScreen({ params }){
     (cat==='all' || p.cat===cat) &&
     matchesSub(sub, p.sub, p.name, p.desc) &&
     matchQ(p) &&
-    (!inStockOnly || p.stock !== false));
+    (!inStockOnly || p.inStock));
   if (sort !== 'featured') {
     prods = [...prods];
     if (sort==='price_asc') prods.sort((a,b)=>(a.price||0)-(b.price||0));

@@ -75,6 +75,7 @@ function DisputeCase({ d, onClose, reload, live }){
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState('');
   const [partial, setPartial] = useState('');
+  const [restock, setRestock] = useState(false); // default off — never invent stock
   const [err, setErr] = useState('');
   const closed = d.status === 'resolved' || d.status === 'rejected';
 
@@ -133,9 +134,17 @@ function DisputeCase({ d, onClose, reload, live }){
         <>
           <label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">Note to the customer (optional)</label>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add context the customer will see…" className="ym-input" style={{ resize:'vertical' }} />
+          {/* Refunding money and getting the goods back are separate facts. Only tick
+              this when the units are physically back with the store — a damaged or
+              lost item must NOT reappear as sellable stock. Full refunds only; on a
+              partial the customer keeps the item. */}
+          <label className="flex items-start gap-2 mt-3 text-sm t2 cursor-pointer">
+            <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} className="mt-0.5" />
+            <span>Goods returned to the store — put them back in stock<span className="block text-xs t3">Leave unticked if the item was damaged, lost, or kept by the customer. Only applies to tracked products.</span></span>
+          </label>
           {err && <div className="text-sm mt-2 flex items-center gap-2" style={{ color:'var(--red)' }}><Icon name="circle-exclamation"/> {err}</div>}
           <div className="flex flex-wrap items-center gap-2 mt-3">
-            <Btn kind="success" size="sm" icon={busy === 'refund' ? 'spinner' : 'rotate-left'} onClick={() => act('refund')} disabled={!!busy}>Refund {kes(d.amount)}</Btn>
+            <Btn kind="success" size="sm" icon={busy === 'refund' ? 'spinner' : 'rotate-left'} onClick={() => act('refund', { restock })} disabled={!!busy}>Refund {kes(d.amount)}</Btn>
             <Btn kind="soft" size="sm" icon="box" onClick={() => act('replace')} disabled={!!busy}>Arrange replacement</Btn>
             <Btn kind="danger" size="sm" icon="xmark" onClick={() => act('decline')} disabled={!!busy}>Decline</Btn>
           </div>

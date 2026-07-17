@@ -12,7 +12,7 @@ import { MessagesScreen, AIScreen } from './engage.jsx';
 import { ProfileScreen } from './profile.jsx';
 import { FollowingScreen } from './following.jsx';
 import { FeedScreen } from './feed.jsx';
-import { applyCatalog } from './data.js';
+import { applyCatalog, ymProduct } from './data.js';
 import { useCatalogSync, subscribeUserOrders } from '../../lib/catalog.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
@@ -109,8 +109,24 @@ export default function StorefrontApp(){
     const t = payload?.notification?.title; const b = payload?.notification?.body;
     toast(t ? (b ? `${t}: ${b}` : t) : 'New message', 'fa-comment-dots');
   });
-  const addToCart = (pid, qty=1) => { setCart(c=>{ const ex=c.find(x=>x.pid===pid); return ex? c.map(x=>x.pid===pid?{...x,qty:x.qty+qty}:x):[...c,{pid,qty}]; }); toast('Added to cart','fa-cart-plus'); };
-  const setCartQty = (pid,qty)=> setCart(c=>c.map(x=>x.pid===pid?{...x,qty}:x));
+  // Cart quantities are capped at a tracked product's stock — tapping "+" five times
+  // on a last-unit item shouldn't build a basket that checkout will only reject. The
+  // server re-checks regardless; this is courtesy, not the guard.
+  const stockCap = (pid) => { const p = ymProduct(pid); return typeof p?.stock === 'number' ? p.stock : null; };
+  const addToCart = (pid, qty=1) => {
+    const cap = stockCap(pid);
+    let capped = false;
+    setCart(c=>{
+      const ex=c.find(x=>x.pid===pid);
+      const want = ex ? ex.qty+qty : qty;
+      const next = cap != null ? Math.min(cap, want) : want;
+      capped = next < want;
+      if (next <= 0) return c;
+      return ex? c.map(x=>x.pid===pid?{...x,qty:next}:x):[...c,{pid,qty:next}];
+    });
+    toast(capped ? `Only ${cap} in stock` : 'Added to cart', capped ? 'fa-triangle-exclamation' : 'fa-cart-plus');
+  };
+  const setCartQty = (pid,qty)=> setCart(c=>c.map(x=>{ if(x.pid!==pid) return x; const cap=stockCap(pid); return {...x, qty: cap!=null?Math.min(cap,qty):qty}; }));
   const removeFromCart = (pid)=> setCart(c=>c.filter(x=>x.pid!==pid));
   const clearCart = ()=> setCart([]);
   const cartCount = cart.reduce((n,c)=>n+c.qty,0);

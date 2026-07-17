@@ -3,6 +3,7 @@ import React from 'react';
 import { FA, Card, Btn, Pill, Avatar, Thumb, Stat, SectionCard } from './primitives.jsx';
 import { INSIGHTS, ksh } from './data.js';
 import { useShop, useStoreOverview, useMerchant } from './merchant.jsx';
+import { LOW_STOCK } from './products.jsx';
 import { getHandoverCode, markOrderReady, confirmStorePickup, cancelOrder, setOrderDeliveryDecision } from '../../lib/firebase.js';
 const { useState: useStateO } = React;
 
@@ -201,7 +202,9 @@ export function ProductsTable({ rows, onAdd, onOpenProducts }){
                 <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb icon={r.icon} tint={r.tint} size={40} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</span></div></td>
                 <td>{r.cat}</td>
                 <td style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(r.price)}</td>
-                <td>{r.stock===0 ? <span style={{ color:'var(--m-danger)', fontWeight:600 }}>Out</span> : r.stock}</td>
+                <td>{r.stock == null ? <span className="ym-cap" title="Not tracked">—</span>
+                  : r.stock === 0 ? <span style={{ color:'var(--m-danger)', fontWeight:600 }}>Out</span>
+                    : r.stock <= LOW_STOCK ? <span style={{ color:'#d97706', fontWeight:600 }}>{r.stock} left</span> : r.stock}</td>
                 <td>{r.sales}</td>
                 <td><Pill tone={r.status}>{r.status==='active'?'Active':r.status==='pending'?'Pending':'Inactive'}</Pill></td>
               </tr>

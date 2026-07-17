@@ -8,6 +8,10 @@ const { useState, useEffect, useRef, createContext, useContext } = React;
 export const YMContext = createContext(null);
 export const useYM = () => useContext(YMContext);
 
+// A tracked product at or below this many units shows "Only N left" — scarcity the
+// shopper can act on. Untracked products (stock === null) never show it.
+export const LOW_STOCK = 5;
+
 export const FA = ({ i, brand=false, style, className='' }) => (
   <i className={`${brand?'fab':'fas'} ${i} ${className}`} style={style} aria-hidden="true" />
 );
@@ -49,7 +53,8 @@ export function ProductCard({ p }){
         <FA i={p.icon} style={{ fontSize:48, color:tint, position:'relative' }} />
         <PhotoOverlay src={p.img} radius="18px 18px 0 0" />
         {p.was && <span style={{ position:'absolute', top:10, left:10, zIndex:2, background:'var(--m-danger)', color:'#fff', fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:9999 }}>-{Math.round((1-p.price/p.was)*100)}%</span>}
-        {!p.stock && <span style={{ position:'absolute', top:10, right:10, zIndex:2, background:'rgba(17,24,39,.7)', color:'#fff', fontSize:10.5, fontWeight:600, padding:'3px 9px', borderRadius:9999 }}>Out of stock</span>}
+        {!p.inStock ? <span style={{ position:'absolute', top:10, right:10, zIndex:2, background:'rgba(17,24,39,.7)', color:'#fff', fontSize:10.5, fontWeight:600, padding:'3px 9px', borderRadius:9999 }}>Out of stock</span>
+          : p.stock != null && p.stock <= LOW_STOCK && <span style={{ position:'absolute', top:10, right:10, zIndex:2, background:'rgba(217,119,6,.92)', color:'#fff', fontSize:10.5, fontWeight:600, padding:'3px 9px', borderRadius:9999 }}>Only {p.stock} left</span>}
       </div>
       <div style={{ padding:'12px 14px 14px' }}>
         <div className="ym-h3 line2" style={{ fontSize:14, height:38 }}>{p.name}</div>
@@ -59,9 +64,9 @@ export function ProductCard({ p }){
             <div style={{ fontWeight:700, fontSize:15.5, color:'var(--m-fg1)' }}>{ymPrice(p.price)}</div>
             {p.was && <div className="ym-cap" style={{ textDecoration:'line-through' }}>{ymPrice(p.was)}</div>}
           </div>
-          <button onClick={e=>{ e.stopPropagation(); addToCart(p.id); }} aria-label="Add to cart" disabled={!p.stock} style={{
-            width:38, height:38, borderRadius:11, border:'none', cursor:p.stock?'pointer':'not-allowed', flexShrink:0,
-            background: p.stock?'var(--m-primary-deep)':'var(--m-surface-2)', color:p.stock?'#fff':'var(--m-fg4)', fontSize:14,
+          <button onClick={e=>{ e.stopPropagation(); addToCart(p.id); }} aria-label="Add to cart" disabled={!p.inStock} style={{
+            width:38, height:38, borderRadius:11, border:'none', cursor:p.inStock?'pointer':'not-allowed', flexShrink:0,
+            background: p.inStock?'var(--m-primary-deep)':'var(--m-surface-2)', color:p.inStock?'#fff':'var(--m-fg4)', fontSize:14,
             display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-plus" /></button>
         </div>
       </div>
@@ -135,14 +140,18 @@ export function SectionTitle({ children, action, onAction }){
   );
 }
 
-export function QtyStepper({ qty, onChange, onRemove }){
+// `max` caps the stepper at the units actually in stock. Undefined = untracked, so
+// no cap (the server still has the final say — this only saves a wasted round trip).
+export function QtyStepper({ qty, onChange, onRemove, max }){
   const b = { width:36, height:36, borderRadius:9999, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 };
   const atMin = qty<=1;
+  const atMax = typeof max === 'number' && qty >= max;
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
       <button style={{ ...b, color: atMin&&onRemove?'var(--m-inactive-fg)':'var(--m-fg1)' }} onClick={()=>{ if(atMin&&onRemove) onRemove(); else onChange(Math.max(1,qty-1)); }}><FA i={atMin&&onRemove?'fa-trash-can':'fa-minus'} /></button>
       <span style={{ fontWeight:700, color:'var(--m-fg1)', minWidth:18, textAlign:'center' }}>{qty}</span>
-      <button style={b} onClick={()=>onChange(qty+1)}><FA i="fa-plus" /></button>
+      <button style={{ ...b, cursor:atMax?'not-allowed':'pointer', color:atMax?'var(--m-fg4)':'var(--m-fg1)' }} disabled={atMax}
+        title={atMax?`Only ${max} in stock`:undefined} onClick={()=>onChange(typeof max==='number'?Math.min(max,qty+1):qty+1)}><FA i="fa-plus" /></button>
     </div>
   );
 }
