@@ -358,9 +358,11 @@ export const onboardEmployee = callable('onboardEmployee');
 export const offboardEmployee = callable('offboardEmployee');
 /** Staff: the employee directory → { employees }. */
 export const listStaff = callable('listStaff');
-/** Staff: add a finance entry → { id }. { type:'revenue'|'expense', category?, amount, note?, date? }. */
+/** Staff: add a finance entry → { id }. { type:'revenue'|'expense', category?, amount, note?, date?,
+ *  behaviour? }. `behaviour` ('fixed'|'variable'|'oneoff') classifies an EXPENSE's cost behaviour —
+ *  break-even needs it and a transaction log can't infer it. Omitted = unclassified (reported, not guessed). */
 export const addFinanceEntry = callable('addFinanceEntry');
-/** Staff: finance entries + totals → { entries, revenue, expenses, net }. */
+/** Staff: finance entries + totals → { entries, revenue, expenses, net, live }. Entries carry `behaviour`. */
 export const listFinanceEntries = callable('listFinanceEntries');
 /** Admin: delete a finance entry → { ok }. { id }. */
 export const deleteFinanceEntry = callable('deleteFinanceEntry');

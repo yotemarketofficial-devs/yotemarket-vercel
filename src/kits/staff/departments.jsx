@@ -9,6 +9,8 @@ import {
   listFinanceEntries, addFinanceEntry, deleteFinanceEntry,
   listLegalRecords, saveLegalRecord, deleteLegalRecord,
 } from '../../lib/firebase.js';
+import { BreakEven } from './breakeven.jsx';
+import { BEHAVIOUR_LABEL } from '../../lib/breakeven.js';
 const { useState, useEffect, useCallback } = React;
 
 const DEPARTMENTS = [
@@ -131,7 +133,7 @@ export function Finance({ isAdmin }){
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ type:'expense', category:'', amount:'', note:'', date:'' });
+  const [form, setForm] = useState({ type:'expense', category:'', amount:'', note:'', date:'', behaviour:'' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const load = useCallback(async () => {
@@ -145,8 +147,8 @@ export function Finance({ isAdmin }){
   const add = async () => {
     setBusy(true); setMsg(null);
     try {
-      await addFinanceEntry({ type: form.type, category: form.category || undefined, amount: Number(form.amount), note: form.note || undefined, date: form.date || undefined });
-      setForm({ type:'expense', category:'', amount:'', note:'', date:'' }); setMsg({ ok:true, text:'Entry recorded.' }); load();
+      await addFinanceEntry({ type: form.type, category: form.category || undefined, amount: Number(form.amount), note: form.note || undefined, date: form.date || undefined, behaviour: form.type === 'expense' && form.behaviour ? form.behaviour : undefined });
+      setForm({ type:'expense', category:'', amount:'', note:'', date:'', behaviour:'' }); setMsg({ ok:true, text:'Entry recorded.' }); load();
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not record entry.' }); }
     finally { setBusy(false); }
   };
@@ -169,6 +171,10 @@ export function Finance({ isAdmin }){
       </div>
       <p className="text-xs t3 -mt-2 flex items-center gap-1.5"><Icon name="circle-info" />Platform revenue is subscription-based — merchants keep order value via escrow &amp; release. Figures are live from settled M-Pesa payments.</p>
 
+      {/* Break-even reads the SAME payload the ledger below renders, so the two
+          can never disagree about what was recorded. */}
+      <BreakEven entries={data.entries} live={live} loading={loading} onReload={load} />
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Stat label="Recorded revenue" value={kes(data.revenue)} icon="arrow-trend-up" tone="green" />
         <Stat label="Recorded expenses" value={kes(data.expenses)} icon="arrow-trend-down" tone="red" />
@@ -184,9 +190,23 @@ export function Finance({ isAdmin }){
           </select>
           <input value={form.category} onChange={e => set('category', e.target.value)} placeholder="Category (e.g. Payroll, Marketing)" className="ym-input" />
           <input value={form.amount} onChange={e => set('amount', e.target.value.replace(/[^0-9.]/g, ''))} inputMode="numeric" placeholder="Amount (KSh)" className="ym-input" />
+          {/* Cost behaviour — break-even can't be inferred from a transaction log,
+              so it has to be recorded. Left unset the entry still books fine; it's
+              just reported as unclassified rather than guessed at. */}
+          {form.type === 'expense' && (
+            <select value={form.behaviour} onChange={e => set('behaviour', e.target.value)} className="ym-input" aria-label="Cost behaviour">
+              <option value="">Cost type — unclassified</option>
+              <option value="fixed">Fixed — recurring monthly (rent, payroll)</option>
+              <option value="variable">Variable — scales per merchant</option>
+              <option value="oneoff">One-off — not part of the run rate</option>
+            </select>
+          )}
           <input value={form.note} onChange={e => set('note', e.target.value)} placeholder="Note (optional)" className="ym-input sm:col-span-2" />
           <input type="date" value={form.date} onChange={e => set('date', e.target.value)} className="ym-input" />
         </div>
+        {form.type === 'expense' && !form.behaviour && (
+          <p className="text-xs t3 flex items-center gap-1.5"><Icon name="circle-info" />Without a cost type this entry is excluded from break-even.</p>
+        )}
         <Btn kind="primary" icon={busy ? 'spinner' : 'plus'} onClick={add} disabled={busy || !form.amount}>{busy ? 'Saving…' : 'Record entry'}</Btn>
       </Card>
 
@@ -203,7 +223,17 @@ export function Finance({ isAdmin }){
                       <Icon name={e.type === 'revenue' ? 'arrow-down' : 'arrow-up'} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold t1 text-sm">{e.category || 'General'}</div>
+                      <div className="font-semibold t1 text-sm flex items-center gap-2 flex-wrap">
+                        {e.category || 'General'}
+                        {e.type === 'expense' && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                            style={e.behaviour
+                              ? { background:'var(--surface2)', color:'var(--t3)' }
+                              : { background:'var(--amber-bg)', color:'var(--amber)' }}>
+                            {e.behaviour ? BEHAVIOUR_LABEL[e.behaviour] : 'Unclassified'}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs t3 truncate">{e.note || '—'}{e.date ? ` · ${e.date}` : ''}</div>
                     </div>
                     <div className="num font-bold text-sm" style={{ color: e.type === 'revenue' ? 'var(--green)' : 'var(--red)' }}>
