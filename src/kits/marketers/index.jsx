@@ -4,7 +4,7 @@ import React from 'react';
 import './marketers.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
-import { AuthScreen, OnboardScreen, StatusScreen } from './auth.jsx';
+import { AuthScreen, NotAScoutScreen, StatusScreen } from './auth.jsx';
 import { Dashboard, Referrals, Leaderboard, Payouts, Simulator, Profile } from './screens.jsx';
 import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
@@ -134,9 +134,9 @@ function App(){
 
   if (loading || (hasAccount && profile === undefined)) return <Splash />;
   if (!hasAccount) return <AuthScreen />;
-  if (profile === null) {
-    return <OnboardScreen defaultName={user.displayName || ''} onDone={(m) => { setProfile(m); applyMarketer({ me: meFromProfile(m) }); loadAll(user.uid); }} />;
-  }
+  // Signed in but not a scout → send them to the ONE application on the landing.
+  // Never an onboarding form here: signing in must never become signing up.
+  if (profile === null) return <NotAScoutScreen email={user.email} onSignOut={signOutUser} />;
   // The scout dashboard is for APPROVED marketers only. Applicants (and rejected
   // applicants) are held at the status screen until staff approve them.
   if (profile.status !== 'active') {
