@@ -12,8 +12,8 @@
   "categories": ["business"],
   "lang": "en-KE",
   "icons": [
-    { "src": "/icons/ym-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/marketer-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/marketer-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/marketer-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

@@ -12,8 +12,8 @@
   "categories": ["business", "productivity"],
   "lang": "en-KE",
   "icons": [
-    { "src": "/icons/ym-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/merchant-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/merchant-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/merchant-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
