@@ -22,23 +22,29 @@ function GoogleMark(){
   );
 }
 
+/* Brand panel — same banner treatment as the shopper/merchant AuthPanel (a purple
+   scrim over /assets/marketing/banner.png), so all three sign-ins read as one product.
+   Only the copy is scout-specific. */
 function BrandPanel(){
   return (
-    <div className="hidden lg:flex flex-col justify-between grad text-white p-10 relative overflow-hidden" style={{minHeight:'100%'}}>
-      <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full" style={{background:'radial-gradient(circle, rgba(244,181,48,.4), transparent 70%)'}} />
-      <div className="absolute -left-10 bottom-10 w-56 h-56 rounded-full" style={{background:'radial-gradient(circle, rgba(160,32,240,.5), transparent 70%)'}} />
+    <div className="hidden lg:flex flex-col justify-between text-white p-10 relative overflow-hidden" style={{
+      minHeight:'100%',
+      backgroundImage:"linear-gradient(180deg,rgba(26,6,64,.82) 0%,rgba(42,14,100,.6) 55%,rgba(26,6,64,.4) 100%), url('/assets/marketing/banner.png')",
+      backgroundSize:'cover',
+      backgroundPosition:'center 40%',
+    }}>
       <div className="relative"><Logo size={32} white /></div>
       <div className="relative">
         <div className="text-xs font-semibold uppercase tracking-[.3em]" style={{color:'var(--gold-bright)'}}>Marketer Program</div>
-        <h1 className="font-extrabold mt-3" style={{fontSize:40,lineHeight:1.05}}>Stack checkpoints.<br/>Get hired.</h1>
-        <p className="mt-4 text-white/80 max-w-sm">Refer merchants to YoteMarket's virtual mall, earn cash at every checkpoint, and climb the leaderboard. Top scouts get the call.</p>
+        <h1 className="font-extrabold mt-3" style={{fontSize:40,lineHeight:1.05,textShadow:'0 2px 14px rgba(16,6,50,.6)'}}>Stack checkpoints.<br/>Get hired.</h1>
+        <p className="mt-4 text-white/85 max-w-sm">Refer merchants to YoteMarket's virtual mall, earn cash at every checkpoint, and climb the leaderboard. Top scouts get the call.</p>
         <div className="flex gap-2.5 mt-6 flex-wrap">
           {['KSH 300 to qualify','Cash out at KSH 500','M-Pesa payouts'].map(t=>(
-            <span key={t} className="px-3 py-1.5 rounded-full text-sm font-semibold" style={{background:'rgba(255,255,255,.14)'}}>{t}</span>
+            <span key={t} className="px-3 py-1.5 rounded-full text-sm font-semibold" style={{background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.25)'}}>{t}</span>
           ))}
         </div>
       </div>
-      <div className="relative text-sm text-white/70">Easy Ordering • Secure Payments • Fast Deliveries</div>
+      <div className="relative text-sm text-white/75">Easy Ordering • Secure Payments • Fast Deliveries</div>
     </div>
   );
 }
