@@ -1,10 +1,11 @@
 /* accounts.jsx — Staff portal: the full account directory. Every user across the
    platform (shoppers, merchants, riders, staff/admins) with role, verification and
-   provider. Search + role filter; merchants get a sandbox "credit test balance"
-   action so withdrawals can be exercised. Admin-only. */
+   provider. Search + role filter; row click opens the per-user console drawer.
+   Admin-only. (The old sandbox "credit test balance" action was removed — it minted
+   fake withdrawable money; reverse any it issued in Admin › Maintenance.) */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv, Modal, kes } from './ui.jsx';
-import { staffListUsers, staffCreditTestBalance } from '../../lib/firebase.js';
+import { staffListUsers } from '../../lib/firebase.js';
 import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, sendPasswordReset, revokeUserSessions } from './service.js';
 const { useState, useEffect, useCallback } = React;
 
@@ -19,7 +20,6 @@ export function Accounts(){
   const [msg, setMsg] = useState(null);
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
-  const [creditFor, setCreditFor] = useState(null); // uid being credited
   const [consoleU, setConsoleU] = useState(null);   // user open in the console drawer
 
   const load = useCallback(async () => {
@@ -29,15 +29,6 @@ export function Accounts(){
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
-
-  const credit = async (u) => {
-    const amount = window.prompt(`Credit test balance (sandbox) to ${u.email || u.uid}. Amount KSh:`, '500');
-    if (amount === null) return;
-    setCreditFor(u.uid); setMsg(null);
-    try { const r = await staffCreditTestBalance({ uid: u.uid, amount: Number(amount) }); setMsg({ ok:true, text:`Credited KSh ${r.amount} to ${u.email || u.uid}.` }); }
-    catch (e) { setMsg({ ok:false, text:e.message || 'Credit failed.' }); }
-    finally { setCreditFor(null); }
-  };
 
   const ql = q.trim().toLowerCase();
   const rows = users.filter(u =>
@@ -58,9 +49,6 @@ export function Accounts(){
     { key:'roles', header:'Roles', csvValue:(u)=>(u.roles||[]).join(' '), render:(u)=>(<div className="flex gap-1 flex-wrap">{u.roles.map(r => <Pill key={r} tone={ROLE_TONE[r]||'ok'}>{r}</Pill>)}</div>) },
     { key:'provider', header:'Provider', sort:true, render:(u)=><span className="t2">{u.provider}</span> },
     { key:'created', header:'Joined', sortValue:(u)=>u.created||0, csvValue:(u)=>fmtDate(u.created), render:(u)=><span className="t3">{fmtDate(u.created)}</span> },
-    { key:'actions', header:'', align:'right', csv:false, render:(u)=> u.roles.includes('merchant')
-      ? <Btn kind="soft" size="sm" icon={creditFor===u.uid ? 'spinner' : 'flask'} onClick={(e)=>{ e.stopPropagation(); credit(u); }} disabled={creditFor===u.uid}>Credit test</Btn>
-      : null },
   ];
 
   return (

@@ -13,7 +13,7 @@ import {
   fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
-  cleanupSeededTestAccounts,
+  cleanupSeededTestAccounts, staffRemoveTestCredits,
   fetchDeletionRequests, resolveDeletionRequest,
   fetchMerchantDetail, addStaffNote,
 } from './service.js';
@@ -1070,5 +1070,47 @@ export function Maintenance(){
         <Btn kind="danger" size="sm" icon={cleanBusy?'spinner':'trash'} onClick={runCleanup} disabled={cleanBusy || (cleanDone && !cleanDone.error)}>{cleanBusy?'Deleting…':((cleanDone && !cleanDone.error)?'Done':'Delete test accounts')}</Btn>
       </div>
     </Card>
+    <TestCreditCleanup />
   </div>);
+}
+
+/* Reverse sandbox test credits. The tool that MINTED them is gone — any balance it
+   already created is fake withdrawable money, so it must be cleared before payouts
+   go live. Idempotent: reversed entries are skipped on a re-run. */
+function TestCreditCleanup(){
+  const [email, setEmail] = useSS('');
+  const [busy, setBusy] = useSS(false);
+  const [res, setRes] = useSS(null); // { ok, merchants, removed, amount, shortfall } | { error }
+  const run = async (all) => {
+    const who = all ? 'EVERY merchant on the platform' : (email.trim() || '—');
+    if (!window.confirm(`Reverse sandbox test credits for ${who}? This deducts the fake amounts from their available balance. Real earnings are untouched.`)) return;
+    setBusy(true); setRes(null);
+    try { setRes(await staffRemoveTestCredits(all ? {} : { email: email.trim() })); }
+    catch (e) { setRes({ error: e.message || 'Could not reverse test credits.' }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Card className="p-4" style={{maxWidth:640, border:'1px solid var(--amber)'}}>
+      <div className="flex items-start gap-4 flex-wrap">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--amber-bg)',color:'var(--amber)'}}><Icon name="money-bill-transfer"/></div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="font-bold t1">Reverse test credits</div>
+          <div className="text-xs t3">Sandbox test credits added fake money to merchant balances. The tool that created them has been removed — clear any it already issued <b>before payouts go live</b>, or that invented balance becomes real M-Pesa cash. Safe to re-run.</div>
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Merchant email (leave blank to purge all)" className="ym-input" type="email" />
+          {res && !res.error && (
+            <div className="text-xs" style={{color:'var(--green)'}}>
+              Reversed {res.removed} credit(s) worth {kes(res.amount||0)} across {res.merchants} merchant(s).
+              {res.shortfall > 0 && <span style={{color:'var(--amber)'}}> {kes(res.shortfall)} could not be clawed back — already withdrawn.</span>}
+              {res.removed === 0 && ' Nothing to reverse.'}
+            </div>
+          )}
+          {res && res.error && <div className="text-xs" style={{color:'var(--red)'}}>{res.error}</div>}
+          <div className="flex gap-2 flex-wrap">
+            <Btn kind="soft" size="sm" icon={busy?'spinner':'user-minus'} onClick={()=>run(false)} disabled={busy || !email.trim()}>Reverse for this merchant</Btn>
+            <Btn kind="danger" size="sm" icon={busy?'spinner':'broom'} onClick={()=>run(true)} disabled={busy}>Purge all test credits</Btn>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 }

@@ -156,8 +156,9 @@ export const staffResolvePayoutChange = callable('staffResolvePayoutChange');
 export const staffResolveSettlement = callable('staffResolveSettlement');
 /** Staff: reconcile stuck withdrawals via Daraja Transaction Status → { ok, scanned, queried, skipped }. */
 export const staffReconcilePayouts = callable('staffReconcilePayouts');
-/** Admin: credit a merchant's available balance for sandbox withdrawal testing → { ok, uid, amount }. { uid?|email?, amount }. */
-export const staffCreditTestBalance = callable('staffCreditTestBalance');
+// staffCreditTestBalance REMOVED 2026-07-15 — it minted fake withdrawable balance
+// into real merchant accounts. Its reversal tool lives in kits/staff/service.js
+// (staffRemoveTestCredits). Nothing on the platform may create money.
 /** Staff: full account directory → { users, total }. */
 export const staffListUsers = callable('staffListUsers');
 

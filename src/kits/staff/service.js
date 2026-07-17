@@ -247,6 +247,13 @@ export async function cleanupSeededTestAccounts() {
   return call('cleanupSeededTestAccounts')();
 }
 
+/** ADMIN: reverse sandbox test credits — `{}` purges platform-wide, `{email}` or
+ *  `{uid}` targets one merchant. Idempotent. → { merchants, removed, amount, shortfall }.
+ *  (The tool that MINTED test credits was removed — nothing may create money.) */
+export async function staffRemoveTestCredits(args = {}) {
+  return call('staffRemoveTestCredits')(args);
+}
+
 /** status: 'active' | 'blocked' (existing deployed callable). */
 export async function moderateConversation(convId, status, reason = '') {
   return call('setConversationStatus')({ convId, status, reason });

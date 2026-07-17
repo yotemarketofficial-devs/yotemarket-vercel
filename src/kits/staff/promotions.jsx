@@ -3,7 +3,7 @@
    so it matches the rest of the console. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
-import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, backfillFollowerCounts, backfillStoreTiers, staffCreditTestBalance, staffReconcilePayouts } from '../../lib/firebase.js';
+import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, backfillFollowerCounts, backfillStoreTiers, staffReconcilePayouts } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, PLAN_ORDER } from '../dashboard/pricing.js';
 const SOFTWARE_PLANS = ['Entry', 'Growth', 'Pro'];
 const { useState, useEffect, useCallback } = React;
@@ -21,8 +21,6 @@ export function Promotions(){
   const [ordersFilling, setOrdersFilling] = useState(false);
   const [followersFilling, setFollowersFilling] = useState(false);
   const [tiersFilling, setTiersFilling] = useState(false);
-  const [credit, setCredit] = useState({ email:'', amount:'500' });
-  const [crediting, setCrediting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [form, setForm] = useState({ code:'', type:'percent', value:'', name:'', maxRedemptions:'', expiresAt:'', packageKind:'delivery', subTier: DELIVERY_TIERS[0].id, plan:'Starter', newOnly:false });
   const [creating, setCreating] = useState(false);
@@ -91,11 +89,6 @@ export function Promotions(){
     setTiersFilling(true); setMsg(null);
     try { const r = await backfillStoreTiers(); setMsg({ ok:true, text:`Store plan tiers denormalized — ${r.stores} store(s) reconciled.` }); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Tier backfill failed.' }); } finally { setTiersFilling(false); }
-  };
-  const creditBalance = async () => {
-    setCrediting(true); setMsg(null);
-    try { const r = await staffCreditTestBalance({ email: credit.email.trim(), amount: Number(credit.amount) }); setMsg({ ok:true, text:`Credited ${kes(r.amount)} test balance to ${credit.email}.` }); }
-    catch (e) { setMsg({ ok:false, text:e.message || 'Credit failed.' }); } finally { setCrediting(false); }
   };
   const reconcile = async () => {
     setReconciling(true); setMsg(null);
@@ -204,16 +197,6 @@ export function Promotions(){
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="layer-group" /></div><h3 className="font-bold t1">Plan tiers</h3></div>
           <p className="text-sm t3">Denormalize each store's plan tier (from its owner's subscription) onto the store so feature entitlements enforce correctly for owners and staff alike. <b>Run once after the entitlements deploy</b>; idempotent (reconciles suspended seats/clips too).</p>
           <Btn kind="primary" size="md" icon={tiersFilling ? 'spinner' : 'layer-group'} onClick={fillTiers} disabled={tiersFilling}>{tiersFilling ? 'Reconciling…' : 'Backfill store tiers'}</Btn>
-        </Card>
-
-        <Card className="p-6 space-y-3">
-          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background:'var(--amber-bg)', color:'var(--amber)' }}><Icon name="flask" /></div><h3 className="font-bold t1">Credit test balance</h3></div>
-          <p className="text-sm t3">Sandbox only — credit a merchant's available balance to test M-Pesa withdrawals. Disabled automatically when payouts run on production.</p>
-          <input value={credit.email} onChange={e => setCredit(c => ({ ...c, email:e.target.value }))} placeholder="Merchant email" className="ym-input" type="email" />
-          <div className="flex items-center gap-3">
-            <input value={credit.amount} onChange={e => setCredit(c => ({ ...c, amount:e.target.value.replace(/[^0-9]/g,'') }))} inputMode="numeric" className="ym-input" style={{ width:120 }} />
-            <Btn kind="primary" size="md" icon={crediting ? 'spinner' : 'flask'} onClick={creditBalance} disabled={crediting || !credit.email || !credit.amount}>{crediting ? 'Crediting…' : 'Credit balance'}</Btn>
-          </div>
         </Card>
 
         <Card className="p-6 space-y-3">
