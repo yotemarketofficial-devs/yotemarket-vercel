@@ -1,0 +1,19 @@
+{
+  "id": "/storefront",
+  "name": "YoteMarket — Shop Local",
+  "short_name": "YoteMarket",
+  "description": "Shop hundreds of local stores, chat and negotiate with sellers, pay with M-Pesa and collect at your nearest hub.",
+  "start_url": "/storefront",
+  "scope": "/storefront",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0620",
+  "theme_color": "#7C2BD4",
+  "categories": ["shopping"],
+  "lang": "en-KE",
+  "icons": [
+    { "src": "/icons/ym-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

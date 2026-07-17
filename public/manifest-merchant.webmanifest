@@ -1,0 +1,19 @@
+{
+  "id": "/dashboard",
+  "name": "YoteMarket Merchant",
+  "short_name": "YM Merchant",
+  "description": "Run your store — products, orders, deliveries, wallet and YoteAI insights.",
+  "start_url": "/dashboard",
+  "scope": "/dashboard",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0620",
+  "theme_color": "#5B16A8",
+  "categories": ["business", "productivity"],
+  "lang": "en-KE",
+  "icons": [
+    { "src": "/icons/ym-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

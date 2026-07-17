@@ -1,0 +1,19 @@
+{
+  "id": "/marketers/app",
+  "name": "YoteMarket Scout",
+  "short_name": "YM Scout",
+  "description": "Track your referrals, checkpoints, leaderboard and M-Pesa payouts.",
+  "start_url": "/marketers/app",
+  "scope": "/marketers/app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0620",
+  "theme_color": "#E89B0C",
+  "categories": ["business"],
+  "lang": "en-KE",
+  "icons": [
+    { "src": "/icons/ym-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/ym-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

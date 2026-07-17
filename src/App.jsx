@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './Layout.jsx';
 import RouteSeo from './components/RouteSeo.jsx';
+import AppManifest from './components/AppManifest.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
 import RiderPage from './pages/RiderPage.jsx';
@@ -35,6 +36,9 @@ function App() {
           homepage's tags — including a canonical that folded the whole site into
           "/". See components/RouteSeo.jsx. */}
       <RouteSeo />
+      {/* Per-route PWA manifest — makes /storefront, /dashboard, /pos and
+          /marketers/app installable as four separate apps. See lib/pwa.js. */}
+      <AppManifest />
       <GoogleOneTap />
       <Routes>
         {/* Marketing site (shared nav/footer chrome) */}
