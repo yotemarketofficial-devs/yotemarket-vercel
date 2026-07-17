@@ -438,6 +438,10 @@ h1{font-size:clamp(40px,6vw,68px); letter-spacing:-.02em;}
 .ai-brandrow{display:inline-flex; align-items:center; gap:12px;}
 .ai-badge{width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#A020F0,#E89B0C);
   display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px -8px rgba(160,32,240,.8); flex-shrink:0;}
+/* YoteFeed logo badge — the mark carries its own brand gradient, so this is just
+   a light tile to lift it off the band (unlike .ai-badge which supplies the fill). */
+.feed-badge{width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.94);
+  display:flex; align-items:center; justify-content:center; box-shadow:0 8px 22px -8px rgba(0,0,0,.55); flex-shrink:0;}
 .ai-demo{position:relative; display:flex; flex-direction:column; gap:12px; max-width:400px; margin:0 auto; width:100%;
   background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:22px; backdrop-filter:blur(6px);}
 .ai-msg{font-size:14.5px; line-height:1.5; padding:12px 15px; border-radius:16px; max-width:85%;}

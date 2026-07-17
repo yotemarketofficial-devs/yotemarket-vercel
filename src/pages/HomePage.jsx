@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
+import { subscribeFeed, feedVideoUrl } from '../lib/feed.js';
 
 const SHOPPER_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'The whole mall, by category', desc: 'Browse hundreds of local stores by category and subcategory — just like walking a real mall.' },
@@ -33,7 +34,64 @@ const MERCHANT_FEATURES = [
   { icon: 'fa-crown', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Grow to a Top Brand', desc: 'Enterprise storefronts earn premium “Top brands” placement across the mall and search.' },
 ];
 
+/* The YoteFeed band's clips — REAL posts from the live feed, not mockups.
+   Deliberately data-light: only the lead clip streams (muted/looped autoplay);
+   the other two render just their first frame (`preload=metadata` + `#t=0.1`),
+   the same trick the storefront's clip rail uses. Egress is the real cost driver
+   on Kenyan mobile data, so three autoplaying videos on the homepage would be
+   expensive for us and slow for the visitor. Falls back to the original
+   placeholders until merchants have posted, so the band is never broken. */
+const FALLBACK_CLIPS = [
+  { tint: 'linear-gradient(160deg,#7C2BD4,#3b1466)' },
+  { tint: 'linear-gradient(160deg,#ec4899,#8b1e5b)' },
+  { tint: 'linear-gradient(160deg,#0d9488,#064e46)' },
+];
+
+function FeedDemo({ clips }) {
+  const ksh = (n) => 'Ksh ' + Number(n || 0).toLocaleString('en-KE');
+  if (!clips.length) {
+    return (
+      <div className="feed-clips float-a">
+        {FALLBACK_CLIPS.map((c, i) => (
+          <div key={i} className={`feed-clip c${i + 1}`} style={{ background: c.tint }}>
+            <span className="fc-play"><i className="fas fa-play"></i></span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="feed-clips float-a">
+      {clips.map((p, i) => {
+        const lead = i === 0;
+        const price = p.product && p.product.price;
+        return (
+          <Link key={p.id} to="/storefront" className={`feed-clip c${i + 1}`}
+            aria-label={`Watch ${(p.product && p.product.name) || p.storeName || 'this clip'} on YoteFeed`}>
+            <video
+              src={feedVideoUrl(p) + (lead ? '' : '#t=0.1')}
+              poster={p.posterUrl || undefined}
+              muted playsInline
+              autoPlay={lead} loop={lead}
+              preload={lead ? 'auto' : 'metadata'}
+              tabIndex={-1} aria-hidden="true"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+            {!lead && <span className="fc-play"><i className="fas fa-play"></i></span>}
+            {price ? <span className="fc-price" style={{ position: 'relative', zIndex: 1 }}>{ksh(price)}</span> : null}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function HomePage() {
+  // Real YoteFeed clips for the landing demo (was three blank gradient mockups).
+  // Only the newest few; egress is the real cost on KE mobile data — see FeedDemo.
+  const [clips, setClips] = useState([]);
+  useEffect(() => subscribeFeed((rows) => setClips(rows.slice(0, 3)), 12), []);
+
   // Reveal-on-scroll: elements tagged `.reveal` fade/slide in as they enter view
   // (and immediately for anything already on-screen, e.g. the hero). CSS handles
   // prefers-reduced-motion; this just toggles the `.in` class.
@@ -230,8 +288,11 @@ function HomePage() {
             <div className="feed-glow"></div>
             <div className="feed-grid">
               <div>
-                <div className="kicker">New · YoteFeed</div>
-                <h2>Watch it. Tap it. <span className="g">Buy it.</span></h2>
+                <div className="ai-brandrow">
+                  <span className="feed-badge"><YoteFeedMark size={26} /></span>
+                  <div className="kicker" style={{ margin: 0 }}>New · YoteFeed</div>
+                </div>
+                <h2 style={{ marginTop: '16px' }}>Watch it. Tap it. <span className="g">Buy it.</span></h2>
                 <p className="fb-lead">
                   Shoppable shortform video from real local stores. Scroll the feed, see products in action,
                   and buy the exact item on screen — checkout with M-Pesa without leaving the clip.
@@ -245,20 +306,7 @@ function HomePage() {
                   <Link className="btn btn-gold btn-lg" to="/storefront">Open YoteFeed <i className="fas fa-arrow-right"></i></Link>
                 </div>
               </div>
-              <div className="feed-clips float-a">
-                <div className="feed-clip c1" style={{ background: 'linear-gradient(160deg,#7C2BD4,#3b1466)' }}>
-                  <span className="fc-play"><i className="fas fa-play"></i></span>
-                  <span className="fc-price">Ksh 2,499</span>
-                </div>
-                <div className="feed-clip c2" style={{ background: 'linear-gradient(160deg,#ec4899,#8b1e5b)' }}>
-                  <span className="fc-play"><i className="fas fa-play"></i></span>
-                  <span className="fc-price">Ksh 890</span>
-                </div>
-                <div className="feed-clip c3" style={{ background: 'linear-gradient(160deg,#0d9488,#064e46)' }}>
-                  <span className="fc-play"><i className="fas fa-play"></i></span>
-                  <span className="fc-price">Ksh 350</span>
-                </div>
-              </div>
+              <FeedDemo clips={clips} />
             </div>
           </div>
         </div>

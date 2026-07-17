@@ -140,7 +140,7 @@ function SectionNav({ workspace, active, go, onClose }) {
       </nav>
       <div className="p-3" style={{ borderTop:'1px solid var(--line)' }}>
         <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2" style={{ background:'var(--surface2)' }}>
-          <Icon name="grid-2" className="w-5 text-center t3" /> All subdomains
+          <Icon name="house" className="w-5 text-center t3" /> Home
         </a>
       </div>
     </div>

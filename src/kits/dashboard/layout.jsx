@@ -95,7 +95,7 @@ export function Sidebar({ active, onChange, onClose }){
             );
           })}
         </nav>
-        <a href="/" className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:12 }}><FA i="fa-grip" /> All subdomains</a>
+        <a href="/" className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:12 }}><FA i="fa-house" /> Home</a>
       </div>
 
       {/* subscription card — brand gradient */}

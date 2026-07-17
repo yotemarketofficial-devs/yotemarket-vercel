@@ -68,7 +68,7 @@ function Sidebar({ active, go, onClose, onSignOut }){
       </nav>
       <div className="p-3">
         <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors t2" style={{background:'var(--surface2)'}}>
-          <Icon name="grid-2" className="w-5 text-center t3"/> All subdomains
+          <Icon name="house" className="w-5 text-center t3"/> Home
         </a>
         <button onClick={onSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors t2 w-full mt-1">
           <Icon name="right-from-bracket" className="w-5 text-center t3"/> Sign out
