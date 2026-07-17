@@ -134,14 +134,52 @@ function PosShell(){
   );
 }
 
+/* The register is a till: a white screen mid-sale, with a customer waiting, is the
+   worst thing this app can do. A render error must never blank the device — show a
+   recoverable card, keep the error on screen (tills have no devtools open), and let
+   the cashier reload without losing the shift. Also logs the real cause. */
+class PosBoundary extends React.Component {
+  constructor(props){ super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err){ return { err }; }
+  componentDidCatch(err, info){
+    try { console.error('[YotePOS] crashed:', err, info && info.componentStack); } catch { /* ignore */ }
+  }
+  render(){
+    if (!this.state.err) return this.props.children;
+    const msg = String((this.state.err && this.state.err.message) || this.state.err || 'Unknown error');
+    return (
+      <div style={{ minHeight:'100dvh', background:'var(--m-bg)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+        <div className="ym-card" style={{ maxWidth:460, width:'100%', padding:26, textAlign:'center' }}>
+          <div style={{ width:56, height:56, borderRadius:16, margin:'0 auto 14px', background:'var(--m-inactive-bg)', color:'var(--m-inactive-fg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24 }}>
+            <FA i="fa-triangle-exclamation" />
+          </div>
+          <h1 className="ym-h2">The register hit a problem</h1>
+          <p className="ym-sub" style={{ marginTop:8 }}>
+            No sale was lost — anything already paid is recorded on the server. Reload to carry on serving.
+          </p>
+          <div style={{ margin:'16px 0', padding:'10px 12px', borderRadius:10, background:'var(--m-surface-2)', color:'var(--m-fg2)', fontSize:12, fontFamily:'ui-monospace, Menlo, Consolas, monospace', textAlign:'left', wordBreak:'break-word' }}>
+            {msg}
+          </div>
+          <button className="ym-btn ym-btn-primary" style={{ width:'100%' }} onClick={() => { try { window.location.reload(); } catch { /* */ } }}>
+            <FA i="fa-rotate" /> Reload register
+          </button>
+          <p className="ym-cap" style={{ marginTop:10 }}>If this keeps happening, send that message to support — it names the exact fault.</p>
+        </div>
+      </div>
+    );
+  }
+}
+
 export default function PosApp(){
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem('ym_dash_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); } catch { return 'light'; } });
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); try { localStorage.setItem('ym_dash_theme', theme); } catch { /* */ } }, [theme]);
   return (
     <ThemeCtx.Provider value={{ theme, setTheme }}>
-      <MerchantGate>
-        <MerchantProvider><PosShell /></MerchantProvider>
-      </MerchantGate>
+      <PosBoundary>
+        <MerchantGate>
+          <MerchantProvider><PosShell /></MerchantProvider>
+        </MerchantGate>
+      </PosBoundary>
     </ThemeCtx.Provider>
   );
 }

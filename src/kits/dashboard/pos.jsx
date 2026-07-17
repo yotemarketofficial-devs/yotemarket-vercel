@@ -14,12 +14,25 @@ const { useState, useRef, useEffect } = React;
 let customSeq = 0;
 
 // Stable per-device id (this browser) used for the POS device lock.
+const randomId = () => ((window.crypto && crypto.randomUUID)
+  ? crypto.randomUUID()
+  : Math.random().toString(36).slice(2) + Date.now().toString(36));
+
+let sessionDeviceId = null;
 function posDeviceId(){
   try {
     let id = localStorage.getItem('ym_pos_device');
-    if (!id) { id = 'dev_' + ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)); localStorage.setItem('ym_pos_device', id); }
+    if (!id) { id = 'dev_' + randomId(); localStorage.setItem('ym_pos_device', id); }
     return id;
-  } catch { return 'dev_nostorage'; }
+  } catch {
+    // Storage blocked (private mode / locked-down webview — common on cheap Android
+    // tills). This used to return a SHARED constant, which quietly broke the
+    // anti-fraud lock: every storage-less device had the same id, so authorising one
+    // authorised them all. A per-session id is the safe answer — the till just has to
+    // be re-authorised each session, which is the point of the lock.
+    if (!sessionDeviceId) sessionDeviceId = 'devtmp_' + randomId();
+    return sessionDeviceId;
+  }
 }
 const DEVICE_ID = posDeviceId();
 
