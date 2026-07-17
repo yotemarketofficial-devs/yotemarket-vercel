@@ -53,7 +53,7 @@ const WORKSPACES = [
     { key:'disputes', label:'Returns & refunds', icon:'rotate-left', desc:'Buyer refund requests — review & resolve' },
   ]},
   { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', sections:[
-    { key:'applications', label:'Applications', icon:'briefcase', desc:'Marketer hiring funnel' },
+    { key:'applications', label:'Marketer applications', icon:'bullhorn', desc:'Scout hiring funnel — advance to active' },
     { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
     { key:'promotions', label:'Promotions & offers', icon:'tags', desc:'Campaigns & coupons', adminOnly:true },
   ]},

@@ -7,8 +7,9 @@ import React from 'react';
 import { KPIS, FUNNEL } from './data.js';
 import { Card, SectionHead, Stat, Btn, Pill, Icon, BackendError } from './ui.jsx';
 import {
-  useStaffResource, fetchOverview,
+  useStaffResource, useStaffClaims, fetchOverview,
   fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes,
+  fetchJobApplications, fetchRiderApplications,
 } from './service.js';
 import { staffListPayoutChanges } from '../../lib/firebase.js';
 const { useState, useEffect } = React;
@@ -24,26 +25,32 @@ const QUEUES = [
   { key:'scouts',     icon:'wallet',        label:'Scout payouts',          desc:'Payout requests to approve & send',         tone:'amber', load:fetchPayouts },
   { key:'scouts',     icon:'user-check',    label:'Merchant-follow proofs', desc:'Scout task proofs to verify',              tone:'amber', load:fetchMerchantFollows },
   { key:'wallet',     icon:'right-left',    label:'Payout-change requests', desc:'Merchant M-Pesa detail changes to approve', tone:'blue',  load: async () => { const r = await staffListPayoutChanges(); return (r && r.requests) || []; } },
+  { key:'riders',     icon:'motorcycle',    label:'Rider applications',     desc:'People joining the delivery network to vet', tone:'blue',  load: async () => (await fetchRiderApplications()).applications.filter((a) => a.stage === 'new') },
+  // People is an admin-only workspace — don't offer a jump a moderator can't take.
+  { key:'careers',    icon:'briefcase',     label:'Job applications',       desc:'New candidates from the careers page',      tone:'blue',  adminOnly:true, load: async () => (await fetchJobApplications()).applications.filter((a) => a.stage === 'new') },
 ];
 
-function useActionCenter() {
+function useActionCenter(queues) {
   const [rows, setRows] = useState(null); // null = loading
   useEffect(() => {
     let alive = true;
-    Promise.allSettled(QUEUES.map((q) => q.load())).then((res) => {
+    Promise.allSettled(queues.map((q) => q.load())).then((res) => {
       if (!alive) return;
-      setRows(QUEUES.map((q, i) => ({
+      setRows(queues.map((q, i) => ({
         ...q,
         count: res[i].status === 'fulfilled' && Array.isArray(res[i].value) ? res[i].value.length : 0,
       })));
     });
     return () => { alive = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queues.length]);
   return rows;
 }
 
 function ActionCenter({ go }) {
-  const rows = useActionCenter();
+  const { role } = useStaffClaims();
+  const queues = QUEUES.filter((q) => !q.adminOnly || role === 'admin');
+  const rows = useActionCenter(queues);
   const loading = rows === null;
   const pending = (rows || []).filter((r) => r.count > 0);
   const total = pending.reduce((a, r) => a + r.count, 0);
