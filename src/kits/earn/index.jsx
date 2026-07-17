@@ -68,7 +68,6 @@ export default function EarnLanding() {
         <div className="banner-scrim"></div>
         <div className="hero-inner">
           <div className="hero-left">
-            <div className="hero-eyebrow"><span className="dot"></span>Founding cohort · Now hiring scouts across Kenya</div>
             <h1 className="hero-headline">
               Stack checkpoints.<br />
               Get <em>hired.</em>
