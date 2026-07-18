@@ -139,8 +139,19 @@ export async function openStoreConversation({ store, user, shopperName, product 
 
   const convId = conversationId(store.id, shopperUid);
   const ref = doc(db, 'conversations', convId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
+  // A thread that doesn't exist yet reads as DENIED, not "not found": the rule is
+  // `uid in resource.data.participants`, and there's no `resource` to match against on
+  // a first-ever open. So treat permission-denied as "doesn't exist" and create it —
+  // the create rule (uid in request.resource.data.participants) then allows it.
+  // Anything else (offline, etc.) is a real failure and must surface rather than fall
+  // through to a write that would clobber a live thread.
+  let snap = null;
+  try {
+    snap = await getDoc(ref);
+  } catch (e) {
+    if (e && e.code !== 'permission-denied') throw e;
+  }
+  if (!snap || !snap.exists()) {
     await setDoc(ref, {
       participants: [shopperUid, merchantUid],
       storeId: store.id,
