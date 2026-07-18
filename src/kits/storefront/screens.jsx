@@ -711,15 +711,15 @@ export function StoreScreen({ params }){
           ? (<><img src={s.img} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover' }} /><div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, rgba(10,6,40,.55), rgba(10,6,40,.22))' }} /></>)
           : <FA i={s.icon} style={{ position:'absolute', right:-20, top:-10, fontSize:200, color:'rgba(255,255,255,.12)' }} />}
         <div className="wrap" style={{ padding:'28px 24px', position:'relative' }}>
-          <div style={{ display:'flex', alignItems:'flex-end', gap:18 }}>
+          <div style={{ display:'flex', alignItems:'flex-end', gap:18, flexWrap:'wrap' }}>
             <div style={{ width:88, height:88, borderRadius:22, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'var(--m-shadow-float)', flexShrink:0, position:'relative' }}>
               {s.logo
                 ? <img src={s.logo} alt={s.name} style={{ width:'100%', height:'100%', borderRadius:22, objectFit:'cover' }} />
                 : <FA i={s.icon} style={{ fontSize:38, color:s.tint }} />}
               {s.verified && <span style={{ position:'absolute', bottom:-6, right:-6, width:28, height:28, borderRadius:9999, background:'var(--m-primary)', border:'3px solid var(--m-bg)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-check" style={{ color:'#fff', fontSize:12 }} /></span>}
             </div>
-            <div style={{ flex:1, paddingBottom:4 }}>
-              <div style={{ color:'#fff', fontSize:26, fontWeight:800, textShadow:'0 1px 8px rgba(0,0,0,.25)' }}>{s.name}</div>
+            <div style={{ flex:'1 1 160px', minWidth:0, paddingBottom:4 }}>
+              <div style={{ color:'#fff', fontSize:26, fontWeight:800, textShadow:'0 1px 8px rgba(0,0,0,.25)', overflowWrap:'anywhere' }}>{s.name}</div>
               <div style={{ color:'rgba(255,255,255,.92)', fontSize:14, marginTop:2, textShadow:'0 1px 6px rgba(0,0,0,.25)' }}>{s.tagline}</div>
             </div>
             <div style={{ display:'flex', gap:10 }} className="store-actions">
@@ -785,7 +785,9 @@ export function StoreScreen({ params }){
           : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q?`No matches for “${q}”`:'Nothing matches those filters'} s="Try a different word, or clear the filters to see everything in this store." />}
         <StoreReviews store={s} />
       </div>
-      <style>{`@media (max-width:640px){ .store-actions{ width:100%; } }`}</style>
+      {/* Phones: the header row wraps, so Follow/Chat drop to their own full-width line
+          and split it evenly instead of crushing the shop name. */}
+      <style>{`@media (max-width:640px){ .store-actions{ width:100%; margin-top:6px; } .store-actions .ym-btn{ flex:1; min-width:0; } }`}</style>
     </div>
   );
 }
