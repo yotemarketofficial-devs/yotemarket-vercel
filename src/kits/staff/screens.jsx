@@ -632,6 +632,8 @@ const NEXT_STAGE = { New:'Review', Review:'Shortlist', Shortlist:'Interview', In
 export function Applications(){
   const { data, live } = useStaffResource(fetchMarketers, { applicants: APPLICANTS, scouts: [] });
   const [rows, setRows] = useSS(null);
+  const [auditA, setAuditA] = useSS(null); // click a card to inspect the full application
+  const [hired, setHired] = useSS(null);   // just-activated scout + their referral code
   useES(()=>{ setRows(data.applicants || []); }, [data]);
   const list = rows || [];
   const byStage = s => list.filter(a=>a.stage===s);
@@ -641,12 +643,28 @@ export function Applications(){
       const rest = (rs||[]).filter(r=>r.id!==a.id);
       return (stage==='active' || stage==='rejected') ? rest : [...rest, { ...a, stage }];
     });
-    try { await setMarketerStage(a.id, stage); }
+    try {
+      const r = await setMarketerStage(a.id, stage);
+      // Activation mints the scout's unique referral code — show it so staff can
+      // pass it on straight away.
+      if (stage==='active') setHired({ name:a.name, code:(r && r.code) || a.code || '' });
+    }
     catch { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); }
   };
 
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="briefcase" title="Marketer applications" sub={live ? 'The hiring funnel — advance scouts through to active' : 'Sample funnel — connect the backend for live applicants'} />
+    <SectionHead icon="briefcase" title="Marketer applications" sub={live ? 'The hiring funnel — advance scouts through to active. Click a card for full details.' : 'Sample funnel — connect the backend for live applicants'} />
+    {hired && <Card className="p-4 flex flex-wrap items-center gap-3">
+      <Icon name="circle-check" style={{color:'var(--green)'}}/>
+      <div className="flex-1" style={{minWidth:200}}>
+        <div className="font-bold t1 text-sm">{hired.name} is now an active scout</div>
+        <div className="text-xs t3">Their referral code — merchants enter it at signup so the referral is credited.</div>
+      </div>
+      {hired.code
+        ? <span className="num font-bold t1 rounded-lg px-3 py-1.5" style={{background:'var(--surface2)'}}>{hired.code}</span>
+        : <span className="text-xs t3">Code issued — visible in their scout record.</span>}
+      <Btn kind="ghost" size="sm" onClick={()=>setHired(null)} title="Dismiss"><Icon name="xmark"/></Btn>
+    </Card>}
     <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
       {STAGES.map(stage=>(
         <div key={stage} className="space-y-3">
@@ -655,18 +673,19 @@ export function Applications(){
             <span className="num text-xs t3 rounded-full px-2 py-0.5" style={{background:'var(--surface2)'}}>{byStage(stage).length}</span>
           </div>
           {byStage(stage).map(a=>(
-            <Card key={a.id} className="p-4">
+            <Card key={a.id} className="p-4" style={{cursor:'pointer'}} onClick={()=>setAuditA(a)} title="Open applicant details">
               <div className="flex items-center gap-3">
                 <Avatar src={a.photo} name={a.name} size={40} />
                 <div className="min-w-0 flex-1"><div className="font-semibold t1 text-sm truncate">{a.name}</div><div className="text-xs t3">{a.county}</div></div>
+                <Icon name="chevron-right" className="text-xs t3"/>
               </div>
               <div className="flex items-center justify-between mt-3 pt-3" style={{borderTop:'1px solid var(--line)'}}>
                 <div><div className="num font-bold t1">{a.verified||0}</div><div className="text-[10px] t3 uppercase">verified</div></div>
                 <span className="text-xs t3 num">{a.applied}</span>
               </div>
               <div className="flex gap-2 mt-3">
-                <Btn kind="primary" size="sm" className="flex-1" disabled={a._busy} onClick={()=>move(a, NEXT_STAGE[stage])}>{stage==='Interview'?'Activate':'Advance'}</Btn>
-                <Btn kind="ghost" size="sm" disabled={a._busy} onClick={()=>move(a,'rejected')} title="Reject"><Icon name="xmark"/></Btn>
+                <Btn kind="primary" size="sm" className="flex-1" disabled={a._busy} onClick={e=>{ e.stopPropagation(); move(a, NEXT_STAGE[stage]); }}>{stage==='Interview'?'Activate':'Advance'}</Btn>
+                <Btn kind="ghost" size="sm" disabled={a._busy} onClick={e=>{ e.stopPropagation(); move(a,'rejected'); }} title="Reject"><Icon name="xmark"/></Btn>
               </div>
             </Card>
           ))}
@@ -674,6 +693,7 @@ export function Applications(){
         </div>
       ))}
     </div>
+    {auditA && <RecordAudit title={auditA.name} subtitle={[auditA.county, auditA.stage].filter(Boolean).join(' · ')} record={auditA} onClose={()=>setAuditA(null)} />}
   </div>);
 }
 
