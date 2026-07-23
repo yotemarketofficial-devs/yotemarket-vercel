@@ -660,5 +660,7 @@ function SettingRow({ title, sub, children }){
 }
 function Toggle({ on, onClick }){
   return (<button onClick={onClick} aria-pressed={on} className="w-12 h-7 rounded-full transition-colors relative flex-shrink-0" style={{background:on?'var(--purple)':'var(--line2)'}}>
-    <span className="absolute top-1 w-5 h-5 rounded-full bg-white transition-all" style={{left:on?'26px':'4px'}}/></button>);
+    {/* 48px track, 4px inset, 20px knob → the ON position is 48-4-20=24px, so the knob
+        keeps the same 4px gap on both sides. It was 26px, which sat 2px off-centre. */}
+    <span className="absolute top-1 w-5 h-5 rounded-full bg-white transition-all" style={{left:on?'24px':'4px'}}/></button>);
 }

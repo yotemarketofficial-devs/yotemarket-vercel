@@ -177,7 +177,7 @@ function NotificationsBell({ go }) {
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }} aria-label={`Notifications${total ? ` (${total} pending)` : ''}`}>
         <Icon name="bell" />
-        {total > 0 && <span className="absolute -top-1 -right-1 num text-[10px] font-bold text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center" style={{ background:'var(--red)' }}>{total > 9 ? '9+' : total}</span>}
+        {total > 0 && <span className="absolute -top-1 -right-1 num text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center" style={{ background:'var(--red)', color:'var(--on-accent)' }}>{total > 9 ? '9+' : total}</span>}
       </button>
       {open && (<>
         <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
@@ -187,7 +187,7 @@ function NotificationsBell({ go }) {
             <button key={i} onClick={() => { go(n.key); setOpen(false); }} className="staff-pop-item flex items-center gap-3 w-full px-4 py-3 text-left" style={{ background:'none', border:'none', cursor:'pointer' }}>
               <Icon name={n.icon} className="w-4 text-center" style={{ color:'var(--pri)' }} />
               <span className="flex-1 t1 text-sm font-semibold">{n.label}</span>
-              <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{ background:'var(--amber)' }}>{n.count}</span>
+              <span className="num text-xs font-bold rounded-full px-1.5 min-w-[20px] text-center" style={{ background:'var(--amber)', color:'var(--on-accent)' }}>{n.count}</span>
             </button>
           )) : <div className="px-4 py-6 text-sm t3 text-center"><Icon name="circle-check" style={{ color:'var(--green)' }} /><div className="mt-1">All clear — nothing pending.</div></div>}
         </div>

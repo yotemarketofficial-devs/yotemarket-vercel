@@ -29,12 +29,14 @@ export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, chi
   const sizes = { sm:'text-sm px-3 py-1.5', md:'text-sm px-4 py-2', lg:'text-base px-5 py-2.5' };
   const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-lg cursor-pointer transition-all border-0 disabled:opacity-50 disabled:cursor-not-allowed';
   const st = { ...style };
-  if (kind==='primary'){ st.background='var(--pri)'; st.color='#fff'; }
+  // Solid kinds use --on-accent, NOT a hardcoded #fff: dark-theme accents are light
+  // pastels, so white text on them was ~1.5:1 contrast — the "white on white" buttons.
+  if (kind==='primary'){ st.background='var(--pri)'; st.color='var(--on-accent)'; }
   if (kind==='soft'){ st.background='var(--surface2)'; st.color='var(--t1)'; st.border='1px solid var(--line2)'; }
   if (kind==='outline'){ st.border='1px solid var(--pri)'; st.color='var(--pri)'; }
   if (kind==='ghost'){ st.color='var(--t2)'; }
-  if (kind==='success'){ st.background='var(--green)'; st.color='#fff'; }
-  if (kind==='danger'){ st.background='var(--red)'; st.color='#fff'; }
+  if (kind==='success'){ st.background='var(--green)'; st.color='var(--on-accent)'; }
+  if (kind==='danger'){ st.background='var(--red)'; st.color='var(--on-accent)'; }
   const hov = kind==='soft'||kind==='ghost' ? 'hover:brightness-95' : 'hover:brightness-110';
   return (
     <button type={type} onClick={onClick} disabled={disabled} style={st} className={`${base} ${sizes[size]} ${hov} ${className}`}>

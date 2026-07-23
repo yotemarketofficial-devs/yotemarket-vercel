@@ -10,6 +10,9 @@
   --shadow:0 4px 6px -1px rgb(20 24 50 / .08), 0 2px 4px -2px rgb(20 24 50 / .06);
   --shadow-lg:0 18px 40px -12px rgb(20 24 50 / .18);
   --ring:rgba(67,56,202,.16);
+  /* Text that sits ON a solid accent (--pri/--green/--amber/--red). Light theme accents
+     are dark, so white reads. See the dark block for why this must be a token. */
+  --on-accent:#FFFFFF;
 }
 html.dark .kit-staff{
   --bg:#0D1220; --bg2:#121829; --surface:#161D2E; --surface2:#1D2538;
@@ -23,6 +26,11 @@ html.dark .kit-staff{
   --shadow:0 4px 10px -2px rgb(0 0 0 / .5);
   --shadow-lg:0 22px 50px -16px rgb(0 0 0 / .7);
   --ring:rgba(129,140,248,.3);
+  /* Dark-theme accents are deliberately LIGHT pastels (#818CF8, #34D399, #FBBF24,
+     #F87171) so they read against a dark surface. White text on them is 1.5–2.6:1 —
+     effectively invisible, which is why solid buttons and count badges looked blank.
+     On a light accent the readable choice is near-black, not white. */
+  --on-accent:#0B0F1A;
 }
 .kit-staff, .kit-staff{ font-family:'Poppins','Inter',system-ui,sans-serif; background:var(--bg); color:var(--t2);
   -webkit-font-smoothing:antialiased; transition:background .25s, color .25s; min-height:100vh; }
@@ -40,6 +48,17 @@ html.dark .kit-staff{
 .kit-staff .pill-blue{background:var(--blue-bg);color:var(--blue);}
 .kit-staff .ym-input{ width:100%; background:var(--surface2); border:1px solid var(--line2); border-radius:9px;
   padding:10px 13px; font-size:14px; color:var(--t1); font-family:inherit; outline:none; transition:.15s; }
+/* Let a Tailwind padding utility win over the base padding above. `.kit-staff .ym-input`
+   is (0,2,0) and `.pl-9` is (0,1,0), so every `<input class="ym-input pl-9">` sitting
+   behind an absolutely-positioned search icon was silently keeping its 13px padding —
+   which put the icon on top of the text. Scoped to the padding utilities actually used
+   so nothing else about the input changes. */
+.kit-staff .ym-input.pl-8{ padding-left:2rem; }
+.kit-staff .ym-input.pl-9{ padding-left:2.25rem; }
+.kit-staff .ym-input.pl-10{ padding-left:2.5rem; }
+.kit-staff .ym-input.pr-8{ padding-right:2rem; }
+.kit-staff .ym-input.pr-9{ padding-right:2.25rem; }
+.kit-staff .ym-input.pr-10{ padding-right:2.5rem; }
 .kit-staff .ym-input::placeholder{color:var(--t3);}
 .kit-staff .ym-input:focus{ border-color:var(--pri); box-shadow:0 0 0 3px var(--ring); }
 .kit-staff input[type=range]{ -webkit-appearance:none; appearance:none; height:6px; border-radius:6px; background:var(--bg2); outline:none; }

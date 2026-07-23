@@ -53,7 +53,7 @@ function Card({ title, icon, action, onAction, children, pad=22 }){
 }
 
 function Toggle({ on, onClick }){
-  return <button onClick={onClick} aria-pressed={on} style={{ width:46, height:27, borderRadius:9999, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background: on?'var(--m-primary)':'var(--m-border)', transition:'background .2s' }}><span style={{ position:'absolute', top:3, left: on?23:3, width:21, height:21, borderRadius:9999, background:'#fff', transition:'left .2s' }} /></button>;
+  return <button onClick={onClick} aria-pressed={on} style={{ width:46, height:27, borderRadius:9999, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background: on?'var(--m-primary)':'var(--m-border)', transition:'background .2s' }}><span style={{ position:'absolute', top:3, left: on?22:3, width:21, height:21, borderRadius:9999, background:'#fff', transition:'left .2s' }} /></button>;
 }
 
 function EmptyRow({ icon, text }){

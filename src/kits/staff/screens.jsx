@@ -487,7 +487,7 @@ export function Approvals({ isAdmin }){
 
     {pendingClosures.length > 0 && (
       <div className="space-y-3">
-        <h3 className="font-bold t1 flex items-center gap-2">Store-closure requests <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--red)'}}>{pendingClosures.length}</span></h3>
+        <h3 className="font-bold t1 flex items-center gap-2">Store-closure requests <span className="num text-xs rounded-full px-2 py-0.5" style={{background:'var(--red)', color:'var(--on-accent)'}}>{pendingClosures.length}</span></h3>
         {pendingClosures.map(r=>(
           <Card key={r.id} className="p-4" style={{border:'1px solid var(--red)'}}>
             <div className="flex items-start gap-3 sm:gap-4 flex-wrap">
@@ -836,7 +836,7 @@ export function Scouts({ isAdmin }){
     <div className="grid lg:grid-cols-5 gap-6">
       {/* payout approvals */}
       <div className="lg:col-span-2 space-y-3">
-        <h3 className="font-bold t1 flex items-center gap-2">Payout requests {list.length>0 && <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--amber)'}}>{list.length}</span>}</h3>
+        <h3 className="font-bold t1 flex items-center gap-2">Payout requests {list.length>0 && <span className="num text-xs rounded-full px-2 py-0.5" style={{background:'var(--amber)', color:'var(--on-accent)'}}>{list.length}</span>}</h3>
         {list.map(r=>(
           <Card key={r.id} className="p-4">
             <div className="flex items-center gap-3 mb-3">
@@ -868,7 +868,7 @@ export function Scouts({ isAdmin }){
     {/* merchant-follow verification queue */}
     <Card className="p-0 overflow-hidden">
       <div className="flex items-center justify-between p-5 pb-3 flex-wrap gap-2">
-        <h3 className="font-bold t1 flex items-center gap-2">Merchant-follow proofs {followList.length>0 && <span className="num text-xs text-white rounded-full px-2 py-0.5" style={{background:'var(--amber)'}}>{followList.length}</span>}</h3>
+        <h3 className="font-bold t1 flex items-center gap-2">Merchant-follow proofs {followList.length>0 && <span className="num text-xs rounded-full px-2 py-0.5" style={{background:'var(--amber)', color:'var(--on-accent)'}}>{followList.length}</span>}</h3>
         <span className="text-xs t3">Open the handle, confirm they follow us, then approve to credit the scout.</span>
       </div>
       <DataTable minWidth={600} rows={followList} empty={<EmptyState icon="circle-check" tone="green" title="No follow proofs waiting." />} columns={[

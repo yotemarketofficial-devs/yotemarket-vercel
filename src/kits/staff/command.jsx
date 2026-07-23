@@ -81,7 +81,7 @@ function ActionCenter({ go }) {
             <div key={i} className="flex items-center gap-3 px-5 py-3.5" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
               <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: toneBg[r.tone], color: toneFg[r.tone] }}><Icon name={r.icon} /></div>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold t1 text-sm flex items-center gap-2">{r.label}<span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{ background: toneFg[r.tone] }}>{r.count}</span></div>
+                <div className="font-semibold t1 text-sm flex items-center gap-2">{r.label}<span className="num text-xs font-bold rounded-full px-1.5 min-w-[20px] text-center" style={{ background: toneFg[r.tone], color:'var(--on-accent)' }}>{r.count}</span></div>
                 <div className="text-xs t3 truncate">{r.desc}</div>
               </div>
               <Btn kind="soft" size="sm" iconRight="arrow-right" onClick={() => go(r.key)}>Review</Btn>

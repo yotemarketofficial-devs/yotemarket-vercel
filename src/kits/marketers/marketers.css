@@ -66,6 +66,15 @@ html.dark .kit-marketers input[type=range]{ background:#2B1A55; }
 
 .kit-marketers .ym-input{ width:100%; background:var(--surface2); border:1px solid var(--line2); border-radius:10px;
   padding:11px 14px; font-size:14px; color:var(--t1); font-family:inherit; transition:.15s; outline:none; }
+/* Same specificity fix as the staff kit: `.kit-marketers .ym-input` (0,2,0) was beating
+   the Tailwind `.pl-10` utility (0,1,0), so a search input kept its 14px padding and the
+   icon overlapped the text. */
+.kit-marketers .ym-input.pl-8{ padding-left:2rem; }
+.kit-marketers .ym-input.pl-9{ padding-left:2.25rem; }
+.kit-marketers .ym-input.pl-10{ padding-left:2.5rem; }
+.kit-marketers .ym-input.pr-8{ padding-right:2rem; }
+.kit-marketers .ym-input.pr-9{ padding-right:2.25rem; }
+.kit-marketers .ym-input.pr-10{ padding-right:2.5rem; }
 .kit-marketers .ym-input::placeholder{ color:var(--t3); }
 .kit-marketers .ym-input:focus{ border-color:var(--purple); box-shadow:0 0 0 3px var(--ring); }
 

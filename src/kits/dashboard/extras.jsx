@@ -10,7 +10,7 @@ import { useAuth } from '../../lib/useAuth.jsx';
 import { useMerchant, useShop, useEntitlements } from './merchant.jsx';
 import SubscribeFlow from './SubscribeFlow.jsx';
 import { FEATURES, requiredTierName } from '../../lib/entitlements.js';
-import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, listStoreFollowers, requestAccountDeletion } from '../../lib/firebase.js';
+import { db, firebaseEnabled, aiAssistant, updateStoreMedia, updateStoreLocation, setMerchantTaxInfo, setMerchantPayout, requestPayoutChange, requestMerchantWithdrawal, dismissSettlement, updateStoreProfile, setStoreSocials, requestAccountDeletion } from '../../lib/firebase.js';
 import {
   chatEnabled, subscribeConversations, subscribeMessages, sendChatMessage,
   markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal,
@@ -428,7 +428,7 @@ export function Subscription(){
 }
 
 /* ---------- SETTINGS ---------- */
-function Toggle({ on, onClick }){ return <button onClick={onClick} aria-pressed={on} style={{ width:46, height:27, borderRadius:9999, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background:on?'var(--m-primary)':'var(--m-border)' }}><span style={{ position:'absolute', top:3, left:on?23:3, width:21, height:21, borderRadius:9999, background:'#fff', transition:'left .2s' }} /></button>; }
+function Toggle({ on, onClick }){ return <button onClick={onClick} aria-pressed={on} style={{ width:46, height:27, borderRadius:9999, border:'none', cursor:'pointer', position:'relative', flexShrink:0, background:on?'var(--m-primary)':'var(--m-border)' }}><span style={{ position:'absolute', top:3, left:on?22:3, width:21, height:21, borderRadius:9999, background:'#fff', transition:'left .2s' }} /></button>; }
 /* ---------- STORE BRANDING (cover + logo, with the photo editor) ---------- */
 function StoreBranding({ toast }){
   const { store, live } = useMerchant();
@@ -558,7 +558,6 @@ export function Settings({ toast }){
             <ShopProfileForm shop={shop} toast={toast} />
           </SectionCard>
           <StoreSocialsForm shop={shop} toast={toast} />
-          <FollowersCard toast={toast} />
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           <TaxSettings toast={toast} />
@@ -706,41 +705,6 @@ function StoreSocialsForm({ shop, toast }){
           </div>
         ))}
         <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save links'}</Btn>
-      </div>
-    </SectionCard>
-  );
-}
-
-/* Who follows this store → listStoreFollowers callable (loaded on demand). */
-function FollowersCard({ toast }){
-  const [open, setOpen] = useStateX(false);
-  const [state, setState] = useStateX({ loading:false, loaded:false, list:[], count:0 });
-  const load = () => {
-    setState(s=>({ ...s, loading:true }));
-    listStoreFollowers({})
-      .then((r)=>{ const d = r?.data || r || {}; setState({ loading:false, loaded:true, list:d.followers||[], count:d.count||0 }); })
-      .catch((e)=>{ setState({ loading:false, loaded:true, list:[], count:0 }); toast&&toast(e?.message||'Could not load followers'); });
-  };
-  const toggle = () => { const nx = !open; setOpen(nx); if (nx && !state.loaded && !state.loading) load(); };
-  return (
-    <SectionCard title="Followers" sub="Shoppers who follow your store">
-      <div style={{ padding:'8px 20px 18px' }}>
-        <button onClick={toggle} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', gap:12, background:'none', border:'none', cursor:'pointer', padding:'8px 0', fontFamily:'inherit' }}>
-          <span style={{ display:'flex', alignItems:'center', gap:10 }}><FA i="fa-heart" style={{ color:'var(--m-primary)' }} /><span className="ym-h3" style={{ fontSize:14 }}>{state.loaded ? `${state.count} follower${state.count===1?'':'s'}` : 'View followers'}</span></span>
-          <FA i={open?'fa-chevron-up':'fa-chevron-down'} style={{ color:'var(--m-fg3)', fontSize:12 }} />
-        </button>
-        {open && (
-          <div style={{ marginTop:10 }}>
-            {state.loading && <div className="ym-cap" style={{ padding:'12px 0' }}>Loading…</div>}
-            {!state.loading && state.loaded && state.list.length===0 && <div className="ym-cap" style={{ padding:'12px 0' }}>No followers yet. Share your store link to grow your following.</div>}
-            {!state.loading && state.list.map((f)=>(
-              <div key={f.uid} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderTop:'1px solid var(--m-border)' }}>
-                <Avatar name={f.name} src={f.photoUrl} size={34} />
-                <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:13.5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name||'Shopper'}</div>{f.followedAt && <div className="ym-cap">{new Date(f.followedAt).toLocaleDateString('en-KE',{ day:'numeric', month:'short', year:'numeric' })}</div>}</div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </SectionCard>
   );
