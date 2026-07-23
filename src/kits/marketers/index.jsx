@@ -6,6 +6,7 @@ import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { AuthScreen, NotAScoutScreen, StatusScreen } from './auth.jsx';
 import { Dashboard, Referrals, Leaderboard, Payouts, Simulator, Profile } from './screens.jsx';
+import { MarketingKit } from './kit.jsx';
 import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -28,13 +29,14 @@ function Splash(){
 
 const NAV = [
   { key:'dashboard',  icon:'gauge-high',  label:'Dashboard' },
+  { key:'kit',        icon:'bullhorn',    label:'Marketing kit' },
   { key:'referrals',  icon:'users',       label:'My referrals', badge: PENDING_COUNT },
   { key:'leaderboard',icon:'trophy',      label:'Leaderboard' },
   { key:'payouts',    icon:'wallet',      label:'Payouts' },
   { key:'simulator',  icon:'calculator',  label:'Simulator' },
   { key:'profile',    icon:'user-gear',   label:'Profile' },
 ];
-const SCREENS = { dashboard:Dashboard, referrals:Referrals, leaderboard:Leaderboard, payouts:Payouts, simulator:Simulator, profile:Profile };
+const SCREENS = { dashboard:Dashboard, kit:MarketingKit, referrals:Referrals, leaderboard:Leaderboard, payouts:Payouts, simulator:Simulator, profile:Profile };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
 function Sidebar({ active, go, onClose, onSignOut }){

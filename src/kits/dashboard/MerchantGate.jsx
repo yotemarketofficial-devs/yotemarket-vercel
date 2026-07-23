@@ -49,6 +49,23 @@ function Redirect({ to }) {
   return <Loading />;
 }
 
+/* A scout's invite link is /dashboard?ref=CODE. The merchant almost always has to
+   sign in first, and that round-trip drops the query string — so the code is stashed
+   the moment it's seen and read back once the signup form finally renders. Without
+   this the link attributes nobody and the scout is never credited.
+   sessionStorage (not local) so it dies with the tab and can't misattribute a later,
+   unrelated signup on a shared phone. */
+const REF_KEY = 'ym_scout_ref';
+function readInviteCode() {
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get('ref');
+    const code = (fromUrl || sessionStorage.getItem(REF_KEY) || '').trim().toUpperCase();
+    if (!code) return '';
+    if (fromUrl) sessionStorage.setItem(REF_KEY, code);
+    return code;
+  } catch { return ''; }   // private mode / storage blocked — the field still works by hand
+}
+
 /* ---------- store signup ---------- */
 function StoreSignupPanel() {
   const [name, setName] = useState('');
@@ -56,7 +73,8 @@ function StoreSignupPanel() {
   const [area, setArea] = useState('');
   const [tagline, setTagline] = useState('');
   const [phone, setPhone] = useState('');
-  const [referral, setReferral] = useState('');
+  const [referral, setReferral] = useState(readInviteCode);
+  const [invited] = useState(() => Boolean(readInviteCode()));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -67,6 +85,7 @@ function StoreSignupPanel() {
     try {
       const payout = phone.trim() ? { method: 'b2c', phone: phone.trim() } : undefined;
       await registerStore({ name: name.trim(), category, area: area.trim(), tagline: tagline.trim(), ...(payout ? { payout } : {}), ...(referral.trim() ? { referral: referral.trim() } : {}) });
+      try { sessionStorage.removeItem(REF_KEY); } catch { /* */ }  // spent — don't reuse it
       // The merchants/{uid} listener in the gate advances to the paywall; keep busy.
     } catch (e) { setErr(e.message || 'Could not create your store.'); setBusy(false); }
   };
@@ -88,8 +107,13 @@ function StoreSignupPanel() {
         <Field label="Tagline (optional)"><input style={ipt} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="What you sell, in a line" /></Field>
         <Field label="M-Pesa payout number (optional)"><input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></Field>
         <Field label="Referral code (optional)">
-          <input style={ipt} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())} placeholder="e.g. YOTE-JOHN-1A2B" />
-          <p className="ym-cap" style={{ marginTop: 5, color: 'var(--m-success)' }}><FA i="fa-gift" /> Got a scout's code? Enter it to unlock your <b>first month free</b>.</p>
+          <input style={invited ? { ...ipt, borderColor: 'var(--m-success)' } : ipt} value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())} placeholder="e.g. YOTE-JOHN-1A2B" />
+          <p className="ym-cap" style={{ marginTop: 5, color: 'var(--m-success)' }}>
+            <FA i={invited ? 'fa-circle-check' : 'fa-gift'} />{' '}
+            {invited
+              ? <>Invite applied — your <b>first month is free</b>. You can edit it if it's wrong.</>
+              : <>Got a scout's code? Enter it to unlock your <b>first month free</b>.</>}
+          </p>
         </Field>
         {err && <div role="alert" style={errBox}><FA i="fa-circle-exclamation" /> {err}</div>}
         <Btn kind="primary" style={{ width: '100%', marginTop: 16 }} disabled={busy} onClick={submit}>{busy ? 'Creating your store…' : 'Create my store'}</Btn>

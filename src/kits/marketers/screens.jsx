@@ -4,6 +4,7 @@ import { ME, REFERRALS, VERIFIED_COUNT, PENDING_COUNT, TOTAL_REFERRED, LEADERBOA
 import { calcEarnings, calcBatchedEarnings, cycleInfo, nextCheckpoint, merchantsToWithdrawal, ksh, MK_CONFIG } from './econ.js';
 import { Card, Btn, Pill, Avatar, Stat, Bar, Medal, Icon, useTheme, useEarn } from './ui.jsx';
 import { requestMarketerPayout, submitMerchantFollow } from './service.js';
+import { inviteLink } from './kit.jsx';
 const { useState: useS, useMemo, useRef, useEffect: useE } = React;
 
 /* ============ shared: page header ============ */
@@ -71,24 +72,35 @@ export function EarningsCurve({ current, height=210 }){
 // read scoped CSS custom properties from the kit wrapper (vars live on .kit-marketers, not :root)
 function getCSS(v){ const el = document.querySelector('.kit-marketers') || document.documentElement; return getComputedStyle(el).getPropertyValue(v).trim() || '#999'; }
 
-/* ============ referral code block ============ */
+/* ============ referral code block ============
+   The link used to point at marketers.yotemarket.com/r/<code> — a host that doesn't
+   exist (canonical is yotemarket.co.ke), so every share was a dead end. It now points
+   at the merchant signup with ?ref=, which pre-fills the code and actually credits the
+   scout. "Share on WhatsApp" opens WhatsApp for real instead of just changing screen. */
 function ReferralCode({ onShare }){
   const [copied, setCopied] = useS(false);
-  const link = `marketers.yotemarket.com/r/${ME.code}`;
-  const copy = () => { navigator.clipboard && navigator.clipboard.writeText('https://'+link); setCopied(true); setTimeout(()=>setCopied(false),1600); };
+  const link = inviteLink(ME.code);
+  const shown = link.replace(/^https:\/\//, '');
+  const copy = () => { navigator.clipboard && navigator.clipboard.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1600); };
+  const msg = `Habari 👋 Get your shop online on YoteMarket — no commission, and your first month is free with my code ${ME.code}.\n\n${link}`;
   return (
     <div className="rounded-2xl p-4" style={{ background:'rgba(255,255,255,.12)', border:'1px solid rgba(255,255,255,.18)' }}>
       <div className="text-xs font-semibold uppercase tracking-wide" style={{color:'rgba(255,255,255,.7)'}}>Your referral link</div>
       <div className="flex items-center gap-2 mt-2">
-        <code className="flex-1 num text-sm text-white truncate">{link}</code>
+        <code className="flex-1 num text-sm text-white truncate" title={link}>{shown}</code>
         <button onClick={copy} className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
           style={{ background:'#fff', color:'var(--purple-deep)' }}>
           <Icon name={copied?'check':'copy'} /> {copied?'Copied':'Copy'}
         </button>
       </div>
       <div className="flex gap-2 mt-3">
-        <button onClick={onShare} className="flex-1 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 text-white" style={{background:'#25D366'}}><Icon name="whatsapp" brand/> Share on WhatsApp</button>
-        <button onClick={copy} className="px-3 py-2 rounded-lg text-sm font-semibold text-white" style={{background:'rgba(255,255,255,.16)'}}><Icon name="qrcode"/></button>
+        <a href={`https://wa.me/?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer"
+          className="flex-1 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 text-white" style={{background:'#25D366'}}>
+          <Icon name="whatsapp" brand/> Share on WhatsApp
+        </a>
+        <button onClick={onShare} className="px-3 py-2 rounded-lg text-sm font-semibold text-white" style={{background:'rgba(255,255,255,.16)'}} title="Open the marketing kit">
+          <Icon name="bullhorn"/>
+        </button>
       </div>
     </div>
   );
@@ -123,7 +135,7 @@ export function Dashboard({ go }){
               <button onClick={()=>go('simulator')} className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white" style={{background:'rgba(255,255,255,.16)'}}><Icon name="calculator" className="mr-2"/>Simulate</button>
             </div>
           </div>
-          <ReferralCode onShare={()=>go('referrals')} />
+          <ReferralCode onShare={()=>go('kit')} />
         </div>
       </div>
 
