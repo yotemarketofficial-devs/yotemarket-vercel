@@ -62,20 +62,52 @@ const POSTERS = [
     codeSlot: true },
 ];
 
-/* Where the flyer's printed code sits, in % of the image box, plus the paint used to
-   cover the mock code. Percentages (not pixels) so it holds at any render size and in
-   the full-resolution canvas export alike.
-   NOTE: tuned against the shipped artwork — if the flyer is re-exported with the code
-   in a different spot, this is the one place to adjust. */
+/* Where the flyer's printed code sits. MEASURED off the shipped artwork
+   (poster-marketer.png, 1086×1448) rather than eyeballed:
+     • sample code "YOTE-AMANI" occupies x 99–701, y 1117–1178
+     • panel interior sampled #FEFEFE, the code itself #4319D3
+   Percentages (not pixels) so the same numbers drive the on-card preview and the
+   full-resolution export. The cover patch stops short of the dashed border (x≈762) and
+   clears both the "YOUR MARKETER CODE" pill above (ends y≈1087) and the caption below
+   (starts y≈1211). The code is LEFT-aligned in the print, so replacements are too —
+   centring would drift as code lengths differ.
+   If the flyer is ever re-exported, re-measure and change only this block. */
 const CODE_SLOT = {
-  centerX: 50,     // % from left — the flyer centres its code block
-  centerY: 80.5,   // % from top
-  boxWidth: 66,    // % of width to repaint over the mock code
-  boxHeight: 7.2,  // % of height
-  fontPct: 4.4,    // font size as % of image width
-  cover: '#3a1a78',// brand deep violet — the flyer's lower panel
-  color: '#FFFFFF',
+  coverLeft: 8.3, coverTop: 75.9, coverWidth: 59.9, coverHeight: 6.7, // white patch
+  textLeft: 9.12,        // % from left — matches the printed code's left edge
+  centerY: 79.25,        // % from top — vertical centre of the cap-height box
+  capHeightPct: 5.62,    // cap height as % of image WIDTH — matches the print size
+  // Codes are longer than the "YOTE-AMANI" sample (e.g. YOTE-JOHN-1A2B). Room to grow
+  // is measured to the dashed border (x≈762 = 70.2%), not to the patch — the panel to
+  // the right of the sample is already white, so text may run past the patch safely.
+  // A code wider than this is scaled down to fit rather than clipped or overflowing.
+  maxTextWidth: 59.5,    // % of image width, from textLeft
+  cover: '#FEFEFE',      // sampled panel interior
+  color: '#4319D3',      // sampled code colour
 };
+
+const codeFace = (px) => `700 ${px}px Poppins, Inter, sans-serif`;
+
+/* Pick the font size that reproduces the printed cap height, shrinking only when the
+   code is too long for the panel. Shared by the preview and the export so what a scout
+   sees on the card is what downloads. Returns the real ascent too, so the cap box stays
+   centred on the printed centre line even after a shrink. */
+function fitCodeFont(ctx, code, targetCap, maxWidth) {
+  let size = targetCap / 0.7;                 // cap ≈ 0.7em as a starting guess
+  ctx.font = codeFace(size);
+  let m = ctx.measureText(code);
+  if (m.actualBoundingBoxAscent > 0) {        // correct to the real font metrics
+    size *= targetCap / m.actualBoundingBoxAscent;
+    ctx.font = codeFace(size);
+    m = ctx.measureText(code);
+  }
+  if (m.width > maxWidth) {                   // long code — scale to fit the panel
+    size *= maxWidth / m.width;
+    ctx.font = codeFace(size);
+    m = ctx.measureText(code);
+  }
+  return { size, ascent: m.actualBoundingBoxAscent || targetCap };
+}
 
 /* ── 02 · Ready to send ───────────────────────────────────────────────────────
    Written to be sent as-is. Deliberately emoji-free per the brand voice rules — the
@@ -194,6 +226,9 @@ function SectionLabel({ n, children }) {
 /* Draw the flyer at full resolution with the mock code replaced, then save it. Assets
    are same-origin (/public), so the canvas is never tainted and toDataURL works. */
 async function downloadFlyerWithCode(src, code, filename) {
+  // Poppins must be loaded before measuring, or the metrics come from the fallback and
+  // the replacement lands at the wrong size.
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch { /* */ }
   const img = new Image();
   img.decoding = 'sync';
   await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = src; });
@@ -203,18 +238,22 @@ async function downloadFlyerWithCode(src, code, filename) {
   const ctx = c.getContext('2d');
   ctx.drawImage(img, 0, 0, w, h);
 
-  const cx = w * (CODE_SLOT.centerX / 100);
-  const cy = h * (CODE_SLOT.centerY / 100);
-  const bw = w * (CODE_SLOT.boxWidth / 100);
-  const bh = h * (CODE_SLOT.boxHeight / 100);
+  // 1. paint out the sample code
   ctx.fillStyle = CODE_SLOT.cover;
-  ctx.fillRect(cx - bw / 2, cy - bh / 2, bw, bh);
+  ctx.fillRect(w * (CODE_SLOT.coverLeft / 100), h * (CODE_SLOT.coverTop / 100),
+    w * (CODE_SLOT.coverWidth / 100), h * (CODE_SLOT.coverHeight / 100));
 
+  // 2. size to the PRINTED cap height (metrics differ between Poppins and the fallback,
+  //    and a long code is scaled to fit rather than running into the dashed border)
+  const targetCap = w * (CODE_SLOT.capHeightPct / 100);
+  const { ascent } = fitCodeFont(ctx, code, targetCap, w * (CODE_SLOT.maxTextWidth / 100));
+
+  // 3. draw left-aligned, cap box centred on the printed code's centre line. Uses the
+  //    ACTUAL ascent, so a shrunken long code stays centred instead of sitting low.
   ctx.fillStyle = CODE_SLOT.color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(w * (CODE_SLOT.fontPct / 100))}px Poppins, Inter, sans-serif`;
-  ctx.fillText(code, cx, cy);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(code, w * (CODE_SLOT.textLeft / 100), h * (CODE_SLOT.centerY / 100) + ascent / 2);
 
   const url = c.toDataURL('image/png');
   const a = document.createElement('a');
@@ -226,6 +265,20 @@ function Poster({ p, code }) {
   const [failed, setFailed] = useK(false);
   const [saving, setSaving] = useK(false);
   const personalised = p.codeSlot && Boolean(code);
+
+  /* Measure the preview with the same routine the export uses, against a reference
+     width, then express it in cqw — so a long code shrinks on the card exactly as it
+     will in the downloaded flyer. */
+  const fit = React.useMemo(() => {
+    if (!personalised) return null;
+    try {
+      const REF = 1000;
+      const ctx = document.createElement('canvas').getContext('2d');
+      const targetCap = REF * (CODE_SLOT.capHeightPct / 100);
+      const { size, ascent } = fitCodeFont(ctx, code, targetCap, REF * (CODE_SLOT.maxTextWidth / 100));
+      return { fontCqw: (size / REF) * 100, ascentCqw: (ascent / REF) * 100 };
+    } catch { return { fontCqw: CODE_SLOT.capHeightPct / 0.7, ascentCqw: CODE_SLOT.capHeightPct }; }
+  }, [code, personalised]);
 
   const save = async () => {
     if (!personalised) return;
@@ -248,18 +301,24 @@ function Poster({ p, code }) {
               style={{ width: '100%', display: 'block' }} />
             {/* live preview of the swap — matches what the canvas export writes */}
             {personalised && (
-              <div style={{
-                position: 'absolute',
-                left: `${CODE_SLOT.centerX - CODE_SLOT.boxWidth / 2}%`,
-                top: `${CODE_SLOT.centerY - CODE_SLOT.boxHeight / 2}%`,
-                width: `${CODE_SLOT.boxWidth}%`,
-                height: `${CODE_SLOT.boxHeight}%`,
-                background: CODE_SLOT.cover,
-                color: CODE_SLOT.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap',
-                fontSize: `${CODE_SLOT.fontPct}cqw`,
-              }}>{code}</div>
+              <>
+                {/* white patch over the sample code */}
+                <div style={{
+                  position: 'absolute',
+                  left: `${CODE_SLOT.coverLeft}%`, top: `${CODE_SLOT.coverTop}%`,
+                  width: `${CODE_SLOT.coverWidth}%`, height: `${CODE_SLOT.coverHeight}%`,
+                  background: CODE_SLOT.cover,
+                }} />
+                {/* the scout's code, left-aligned on the printed code's centre line */}
+                <div style={{
+                  position: 'absolute',
+                  left: `${CODE_SLOT.textLeft}%`, top: `${CODE_SLOT.centerY}%`,
+                  transform: 'translateY(-50%)',
+                  color: CODE_SLOT.color, fontWeight: 700, whiteSpace: 'nowrap',
+                  fontSize: `${(fit ? fit.fontCqw : CODE_SLOT.capHeightPct / 0.7).toFixed(2)}cqw`,
+                  lineHeight: 1,
+                }}>{code}</div>
+              </>
             )}
           </div>
         )}
