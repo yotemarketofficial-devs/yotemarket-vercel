@@ -9,7 +9,7 @@ import React from 'react';
 import { useMerchant } from './merchant.jsx';
 import { navForRole } from './layout.jsx';
 import { FA } from './primitives.jsx';
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useLayoutEffect, useRef, useCallback } = React;
 
 // Bump when steps change materially — existing merchants have the old version
 // marked done, so a bump is what re-runs the tour once to show what's new.
@@ -57,17 +57,40 @@ function measure(selector) {
 }
 
 const CARD_W = 300;
-function cardPosition(rect) {
+const M = 12;    // keep this much clear of every viewport edge
+const GAP = 14;  // breathing room between the anchor and the card
+
+/* Place the card so it is ALWAYS fully on screen. Takes the card's measured size
+   rather than assuming one: a step whose text wraps on a narrow phone is much taller
+   than a desktop step, and clamping against a guessed height pushed the buttons off
+   the bottom where they couldn't be tapped. Tries beside → below → above the anchor,
+   and if none of those fit, docks to the roomier band. */
+function cardPosition(rect, w, h) {
   if (!rect || typeof window === 'undefined') return null; // centered
   const vw = window.innerWidth; const vh = window.innerHeight;
-  let left = rect.left + rect.width + 16; // prefer to the right of the anchor
-  let top = rect.top;
-  if (left + CARD_W > vw - 12) { // no room right → drop below the anchor
+
+  const fitsRight = rect.left + rect.width + GAP + w <= vw - M;
+  const spaceBelow = vh - (rect.top + rect.height) - GAP - M;
+  const spaceAbove = rect.top - GAP - M;
+
+  let left; let top;
+  if (fitsRight) {                       // desktop: beside the sidebar item
+    left = rect.left + rect.width + GAP;
+    top = rect.top;
+  } else if (spaceBelow >= h) {          // narrow: under the anchor
     left = rect.left;
-    top = rect.top + rect.height + 14;
+    top = rect.top + rect.height + GAP;
+  } else if (spaceAbove >= h) {          // anchor low on screen → sit above it
+    left = rect.left;
+    top = rect.top - GAP - h;
+  } else {                               // nothing fits cleanly → dock to the roomier side
+    left = rect.left;
+    top = spaceBelow >= spaceAbove ? vh - h - M : M;
   }
-  left = Math.max(12, Math.min(left, vw - CARD_W - 12));
-  top = Math.max(12, Math.min(top, vh - 230));
+
+  // Final clamp — the guarantee that the whole card stays on screen.
+  left = Math.max(M, Math.min(left, vw - w - M));
+  top = Math.max(M, Math.min(top, vh - h - M));
   return { left, top };
 }
 
@@ -111,10 +134,24 @@ export function DashboardTour({ setActive, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [finish, next, back]);
 
-  const pos = cardPosition(rect);
+  /* Measure the card as rendered, then position from that. Guarded by a 1px threshold
+     so the state write can't loop. useLayoutEffect so the correction lands before
+     paint — the card never visibly jumps. */
+  const cardRef = useRef(null);
+  const [size, setSize] = useState({ w: CARD_W, h: 240 });
+  useLayoutEffect(() => {
+    const el = cardRef.current; if (!el) return;
+    const w = el.offsetWidth; const h = el.offsetHeight;
+    if (Math.abs(w - size.w) > 1 || Math.abs(h - size.h) > 1) setSize({ w, h });
+  });
+
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+  const cardW = Math.min(CARD_W, Math.max(232, vw - M * 2));   // never wider than the phone
+  const pos = cardPosition(rect, cardW, size.h);
   const cardStyle = pos
-    ? { position: 'fixed', top: pos.top, left: pos.left, width: CARD_W }
-    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(92vw, 360px)' };
+    ? { position: 'fixed', top: pos.top, left: pos.left, width: cardW, maxHeight: vh - M * 2, overflowY: 'auto' }
+    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(92vw, 360px)', maxHeight: vh - M * 2, overflowY: 'auto' };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} role="dialog" aria-modal="true" aria-label="Dashboard tour">
@@ -126,7 +163,7 @@ export function DashboardTour({ setActive, onClose }) {
         <div style={{ position: 'fixed', top: rect.top - 6, left: rect.left - 6, width: rect.width + 12, height: rect.height + 12, borderRadius: 14, pointerEvents: 'none', boxShadow: '0 0 0 3px var(--m-primary), 0 0 0 9999px rgba(8,10,24,.66)', transition: 'top .25s ease, left .25s ease, width .25s ease, height .25s ease' }} />
       )}
 
-      <div className="ym-card" style={{ ...cardStyle, zIndex: 2, padding: 20, boxShadow: 'var(--m-shadow-float)' }}>
+      <div ref={cardRef} className="ym-card" style={{ ...cardStyle, zIndex: 2, padding: 20, boxShadow: 'var(--m-shadow-float)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <span className="ym-cap" style={{ fontWeight: 700, color: 'var(--m-primary)' }}>Tour · {i + 1}/{steps.length}</span>
           <button onClick={finish} aria-label="Skip tour" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--m-fg3)', fontSize: 13, fontFamily: 'inherit' }}>Skip</button>

@@ -15,7 +15,7 @@
    "you/your" to the reader. */
 import React from 'react';
 import { Card, Btn, Icon } from './ui.jsx';
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useLayoutEffect, useRef, useCallback } = React;
 
 // Bump when the steps change materially — existing scouts have the old version marked
 // done, so a bump is what re-runs the tour once to show what's new.
@@ -73,17 +73,40 @@ function measure(anchor) {
 }
 
 const CARD_W = 306;
-function cardPosition(rect) {
+const M = 12;    // keep this much clear of every viewport edge
+const GAP = 14;  // breathing room between the anchor and the card
+
+/* Place the card so it is ALWAYS fully on screen. Takes the card's measured size
+   rather than assuming one: a step whose text wraps on a narrow phone is much taller
+   than a desktop step, and clamping against a guessed height pushed the buttons off
+   the bottom where they couldn't be tapped. Tries beside → below → above the anchor,
+   and if none of those fit, docks to the roomier band. */
+function cardPosition(rect, w, h) {
   if (!rect || typeof window === 'undefined') return null; // centred
   const vw = window.innerWidth; const vh = window.innerHeight;
-  let left = rect.left + rect.width + 16;   // prefer to the right of the anchor
-  let top = rect.top;
-  if (left + CARD_W > vw - 12) {            // no room right → drop below
+
+  const fitsRight = rect.left + rect.width + GAP + w <= vw - M;
+  const spaceBelow = vh - (rect.top + rect.height) - GAP - M;
+  const spaceAbove = rect.top - GAP - M;
+
+  let left; let top;
+  if (fitsRight) {                       // desktop: beside the sidebar item
+    left = rect.left + rect.width + GAP;
+    top = rect.top;
+  } else if (spaceBelow >= h) {          // mobile: under the pill strip
     left = rect.left;
-    top = rect.top + rect.height + 14;
+    top = rect.top + rect.height + GAP;
+  } else if (spaceAbove >= h) {          // anchor low on screen → sit above it
+    left = rect.left;
+    top = rect.top - GAP - h;
+  } else {                               // nothing fits cleanly → dock to the roomier side
+    left = rect.left;
+    top = spaceBelow >= spaceAbove ? vh - h - M : M;
   }
-  left = Math.max(12, Math.min(left, vw - CARD_W - 12));
-  top = Math.max(12, Math.min(top, vh - 250));
+
+  // Final clamp — the guarantee that the whole card stays on screen.
+  left = Math.max(M, Math.min(left, vw - w - M));
+  top = Math.max(M, Math.min(top, vh - h - M));
   return { left, top };
 }
 
@@ -127,10 +150,26 @@ export function MarketerTour({ nav, setActive, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [finish, next, back]);
 
-  const pos = cardPosition(rect);
+  /* Measure the card as rendered, then position from that. Guarded by a 1px threshold
+     so the state write can't loop. useLayoutEffect so the correction lands before
+     paint — the card never visibly jumps. */
+  const cardRef = useRef(null);
+  const [size, setSize] = useState({ w: CARD_W, h: 260 });
+  useLayoutEffect(() => {
+    const el = cardRef.current; if (!el) return;
+    const w = el.offsetWidth; const h = el.offsetHeight;
+    if (Math.abs(w - size.w) > 1 || Math.abs(h - size.h) > 1) setSize({ w, h });
+  });
+
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+  const cardW = Math.min(CARD_W, Math.max(232, vw - M * 2));   // never wider than the phone
+  const pos = cardPosition(rect, cardW, size.h);
   const cardStyle = pos
-    ? { position: 'fixed', top: pos.top, left: pos.left, width: CARD_W, zIndex: 2 }
-    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(92vw, 366px)', zIndex: 2 };
+    ? { position: 'fixed', top: pos.top, left: pos.left, width: cardW, zIndex: 2,
+        maxHeight: vh - M * 2, overflowY: 'auto' }
+    : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        width: `min(92vw, 366px)`, zIndex: 2, maxHeight: vh - M * 2, overflowY: 'auto' };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} role="dialog" aria-modal="true" aria-label="Scout dashboard tour">
@@ -146,7 +185,10 @@ export function MarketerTour({ nav, setActive, onClose }) {
         }} />
       )}
 
-      <Card style={cardStyle} className="p-5">
+      {/* The ref lives on this wrapper, not the Card — Card is a plain function
+          component and can't take one. The wrapper is what gets positioned + measured. */}
+      <div ref={cardRef} style={cardStyle}>
+      <Card className="p-5" style={{ width: '100%' }}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold" style={{ color: 'var(--purple)' }}>Tour · {i + 1}/{steps.length}</span>
           <button onClick={finish} aria-label="Skip tour"
@@ -171,6 +213,7 @@ export function MarketerTour({ nav, setActive, onClose }) {
           </Btn>
         </div>
       </Card>
+      </div>
     </div>
   );
 }
