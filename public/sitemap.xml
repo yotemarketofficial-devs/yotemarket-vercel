@@ -73,6 +73,12 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://yotemarket.co.ke/store/2c8np79trTvWNz62augN</loc>
+    <lastmod>2026-07-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://yotemarket.co.ke/store/4AwDYrNz75xosEoIpA4R</loc>
     <lastmod>2026-07-16</lastmod>
     <changefreq>weekly</changefreq>
@@ -109,12 +115,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/s5</loc>
-    <lastmod>2026-06-17</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://yotemarket.co.ke/store/xfnCa4qfIGaCzoF4wSWa</loc>
     <lastmod>2026-07-18</lastmod>
     <changefreq>weekly</changefreq>
@@ -129,12 +129,6 @@
   <url>
     <loc>https://yotemarket.co.ke/product/eXD2Y9AIk6AeexydWya5</loc>
     <lastmod>2026-07-12</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://yotemarket.co.ke/product/p9</loc>
-    <lastmod>2026-06-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
