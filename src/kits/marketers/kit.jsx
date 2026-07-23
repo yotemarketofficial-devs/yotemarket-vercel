@@ -1,25 +1,30 @@
-/* kit.jsx — the scout's Marketing kit: everything needed to actually sign a merchant.
-   Scouts work face-to-face in markets and over WhatsApp, so this is share-first:
-   a working invite link, messages they can send without writing anything, and a
-   pitch that answers what shop owners actually ask.
+/* kit.jsx — the Marketing kit, implementing the "YoteMarket Marketing Kit" design doc
+   (Claude Design project 0c9210a7 · "Marketing kit with brand cheat sheet").
 
-   Every claim here is taken from what the product really does — Entry is KSh 500/mo
-   and free for a month with a scout code (pages/Pricing.jsx), and YoteMarket takes no
-   commission. Nothing in this file is aspirational: a scout repeating it is telling
-   the truth, and a merchant who signs up gets exactly what they were promised. */
+   Two halves, and they serve different moments:
+     • things to SEND — the scout's invite link, ready-made messages, campaign posters
+     • how to REPRESENT the brand — logo, colour, type, voice, contact
+   The design doc covers the posters and the cheat sheet; the invite link and messages
+   are the operational half a scout uses daily, so both live here.
+
+   Copy discipline comes from the doc's own Voice & tone rules and is enforced, not
+   decorative: NO EMOJI anywhere in the sendable messages, M-Pesa and WhatsApp named by
+   brand (never "mobile money"), "you/your" to the reader. Product claims are checked
+   against pages/Pricing.jsx — Entry is KSh 500/mo, free for a month with a scout code,
+   and there is no commission. A scout repeating any of this is telling the truth. */
 import React from 'react';
 import { ME } from './data.js';
 import { Card, Btn, Icon } from './ui.jsx';
 const { useState: useK } = React;
 
-/* The invite has to land on the merchant signup with the code attached — that route
-   reads ?ref= and pre-fills it (see dashboard/MerchantGate.jsx). Sending merchants to
-   /marketers instead would be the scout-recruitment page, which earns the scout
-   nothing. Canonical host is yotemarket.co.ke (NOT .com). */
+/* The invite must land on the merchant signup with the code attached — that route reads
+   ?ref= and pre-fills it (dashboard/MerchantGate.jsx). Sending merchants to /marketers
+   would be the scout-recruitment page, which earns the scout nothing. Canonical host is
+   yotemarket.co.ke (NOT .com). */
 const SITE = 'https://yotemarket.co.ke';
 export const inviteLink = (code) => `${SITE}/dashboard?ref=${encodeURIComponent(code || '')}`;
 
-/* clipboard fails on http:// and in some in-app browsers — fall back rather than
+/* clipboard fails on http:// and inside some in-app browsers — fall back rather than
    silently doing nothing, since copying IS the feature here. */
 async function copyText(text) {
   try {
@@ -38,111 +43,262 @@ async function copyText(text) {
 
 const waShare = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 
-/* ── the messages ─────────────────────────────────────────────────────────────
-   Written to be SENT, not edited: no blanks to fill except the shop's name, which
-   the scout usually knows. Kept short — a wall of text gets ignored on WhatsApp. */
+/* ── 01 · Campaign posters ────────────────────────────────────────────────────
+   Approved artwork, one per audience. The doc is explicit: use as-is, never recrop,
+   restretch or recolour — so these are download-and-send, not editable templates. */
+const POSTERS = [
+  { id: 'merchant', audience: 'Merchants', title: 'Boost Your Sales', dims: '1254 × 1254 · 1:1',
+    src: '/assets/marketing/poster-merchant.png',
+    blurb: 'Recruit shop owners to the Virtual Mall at KSh 500/month.' },
+  { id: 'rider', audience: 'Riders', title: 'More Stops. More Earnings.', dims: '1254 × 1254 · 1:1',
+    src: '/assets/marketing/poster-rider.png',
+    blurb: 'Recruit riders into the hub-based delivery programme.' },
+  { id: 'marketer', audience: 'Marketers', title: 'Sign Up a Shop. Get Paid.', dims: '1086 × 1448 · 3:4',
+    src: '/assets/marketing/poster-marketer.png',
+    blurb: 'Referral flyer — earn KSh 300–2,100 per merchant signed up.',
+    // This flyer is printed with a MOCK referral code. The artwork itself is approved
+    // and is not redesigned — the placeholder is simply covered and the scout's real
+    // code drawn in its place, so every scout hands out a flyer that credits them.
+    codeSlot: true },
+];
+
+/* Where the flyer's printed code sits, in % of the image box, plus the paint used to
+   cover the mock code. Percentages (not pixels) so it holds at any render size and in
+   the full-resolution canvas export alike.
+   NOTE: tuned against the shipped artwork — if the flyer is re-exported with the code
+   in a different spot, this is the one place to adjust. */
+const CODE_SLOT = {
+  centerX: 50,     // % from left — the flyer centres its code block
+  centerY: 80.5,   // % from top
+  boxWidth: 66,    // % of width to repaint over the mock code
+  boxHeight: 7.2,  // % of height
+  fontPct: 4.4,    // font size as % of image width
+  cover: '#3a1a78',// brand deep violet — the flyer's lower panel
+  color: '#FFFFFF',
+};
+
+/* ── 02 · Ready to send ───────────────────────────────────────────────────────
+   Written to be sent as-is. Deliberately emoji-free per the brand voice rules — the
+   earlier version of this screen used them and was off-brand. */
 const TEMPLATES = (code, link) => ([
   {
-    id: 'intro',
-    label: 'First message',
-    icon: 'comment',
-    note: 'Opening a shop owner you just met, or one you know.',
+    id: 'intro', label: 'First message', icon: 'comment',
+    note: 'Opening a shop owner you just met, or one you already know.',
     text:
-`Habari 👋 I'm a YoteMarket scout.
+`Habari, I am a YoteMarket scout.
 
-YoteMarket is an online mall where Kenyan shops sell — customers find you, message you and pay by M-Pesa.
+YoteMarket is Kenya's Virtual Mall — an online mall where local shops sell. Customers find you, message you, and pay with M-Pesa.
 
-• No commission — you keep 100% of every sale
-• KSh 500/month, and your FIRST MONTH IS FREE with my code
-• Your own storefront page you can share anywhere
+- No commission. You keep 100% of every sale.
+- KSh 500 a month, and your first month is free with my code.
+- Your own storefront page you can share anywhere.
 
-Set up here (my code is already applied):
+Set up here, my code is already applied:
 ${link}
 
-Or enter code ${code} yourself. Takes about 5 minutes — I'll help you list your first items.`,
+Or enter the code ${code} yourself. It takes about five minutes, and I will help you list your first items.`,
   },
   {
-    id: 'followup',
-    label: 'Follow-up',
-    icon: 'rotate-right',
-    note: 'For someone who showed interest but has not signed up yet.',
+    id: 'followup', label: 'Follow-up', icon: 'rotate-right',
+    note: 'For someone who was interested but has not signed up yet.',
     text:
-`Hi again 👋 Just checking in about YoteMarket.
+`Hello again, following up on YoteMarket.
 
-Your first month is still free with my code ${code} — no commission on anything you sell, and you get paid straight to M-Pesa.
+Your first month is still free with my code ${code}. There is no commission on anything you sell, and you are paid straight to M-Pesa.
 
-Here's the link when you're ready:
+Here is the link when you are ready:
 ${link}
 
-Happy to sit with you and set it up, it only takes a few minutes.`,
+I am happy to sit with you and set it up. It only takes a few minutes.`,
   },
   {
-    id: 'sms',
-    label: 'SMS',
-    icon: 'mobile-screen',
-    note: 'Short enough to send as a normal text.',
+    id: 'sms', label: 'SMS', icon: 'mobile-screen',
+    note: 'Short enough to send as a normal text message.',
     text:
-`Habari, it's your YoteMarket scout. Sell online with no commission - KSh 500/mo and your first month free with code ${code}. Sign up: ${link}`,
+`Habari, your YoteMarket scout here. Sell online with no commission - KSh 500/month and your first month free with code ${code}. Sign up: ${link}`,
   },
   {
-    id: 'social',
-    label: 'Social caption',
-    icon: 'bullhorn',
+    id: 'social', label: 'Social caption', icon: 'bullhorn',
     note: 'For your status or page, when you want shops to come to you.',
     text:
-`Do you sell anything in Kenya? 🇰🇪
+`Do you sell anything in Kenya?
 
-Get your shop online on YoteMarket:
-✅ No commission — keep 100% of your sales
-✅ Customers message you and pay by M-Pesa
-✅ Your own storefront link to share
-✅ First month FREE with my code: ${code}
+Put your shop online on YoteMarket, Kenya's Virtual Mall:
+- No commission. Keep 100% of your sales.
+- Customers message you and pay with M-Pesa.
+- Your own storefront link to share.
+- First month free with my code: ${code}
 
-Start here 👉 ${link}
+Start here: ${link}
 
-DM me and I'll set it up with you.`,
+Message me and I will set it up with you.`,
   },
 ]);
 
-/* ── the pitch ────────────────────────────────────────────────────────────────
-   Answers are the ones shop owners actually push back with. Each is factual: the
-   commission and pricing come from the public pricing page, payouts go to M-Pesa. */
-const SELLING_POINTS = [
-  { icon: 'percent', title: 'No commission', body: 'They keep 100% of every sale. YoteMarket charges a monthly plan, not a cut — this is the point most sellers react to.' },
-  { icon: 'gift', title: 'First month free', body: 'Your code makes month one free, so they can try it before paying anything. After that Entry is KSh 500/month.' },
-  { icon: 'mobile-screen', title: 'Paid by M-Pesa', body: 'Customers pay with M-Pesa and money is settled to the seller — no card machine, no bank setup.' },
-  { icon: 'comments', title: 'Customers can message them', body: 'Buyers chat and negotiate in the app, the way they already do on WhatsApp — but with the order attached.' },
-  { icon: 'link', title: 'A storefront link of their own', body: 'A page they can post anywhere, instead of re-sending photos and prices to every new customer.' },
+/* ── 03 · Brand cheat sheet ───────────────────────────────────────────────────
+   Values reproduced exactly from the design doc. Indigo is canon for product; the
+   violet+gold face is marketing-tile only, which is why the gradient is called out
+   separately rather than sitting in the main ramp. */
+const SWATCHES = [
+  { name: 'Primary 600', hex: '#4338CA' },
+  { name: 'Interactive 500', hex: '#4F46E5' },
+  { name: 'Pressed 700', hex: '#3730A3' },
+  { name: 'Secondary', hex: '#A020F0' },
+  { name: 'Amber accent', hex: '#F59E0B' },
+  { name: 'Success', hex: '#10B981' },
+  { name: 'Danger', hex: '#EF4444' },
+  { name: 'Page bg', hex: '#F8FAFC' },
+  { name: 'Footer dark', hex: '#111827' },
+  { name: 'M-Pesa', hex: '#009B3A' },
+  { name: 'WhatsApp', hex: '#25D366' },
+];
+const MARKETING_GRADIENT = 'linear-gradient(135deg, #3a1a78, #7c3aed, #b34df3)';
+
+const TYPE_SCALE = [
+  { spec: 'Bold · 48px', sample: 'Boost Your Sales', style: { fontSize: 30, fontWeight: 700, letterSpacing: '-.02em' } },
+  { spec: 'Bold · 20px', sample: 'Recent Products', style: { fontSize: 19, fontWeight: 700 } },
+  { spec: 'Regular · 16px', sample: 'Body copy sits at 16px, preferring gray-600 over pure black.', style: { fontSize: 15 }, muted: true },
+  { spec: 'Regular · 14px', sample: 'Labels and supporting copy at 14px, gray-500.', style: { fontSize: 13.5 }, muted: true },
+];
+
+const VOICE = [
+  { ok: true, text: 'Friendly, plainspoken, bullet-driven. Short sentences, concrete promises (price, speed, payment).' },
+  { ok: true, text: 'The three-benefit line is the signature pattern: Easy Ordering • Secure Payments • Fast Deliveries' },
+  { ok: true, text: 'Say "you / your" to the user, "we / our" for the company. Never first-person singular.' },
+  { ok: true, text: 'Sentence case in-product; Title Case for headlines; ALL CAPS and "!" for marketing emphasis only.' },
+  { ok: false, text: 'No emoji, ever. Name M-Pesa and WhatsApp by brand — not "mobile money".' },
 ];
 
 const OBJECTIONS = [
-  {
-    q: '"I already sell on WhatsApp / Instagram."',
-    a: 'Good — this does not replace that. It gives them one link to send instead of repeating photos and prices, and the order, payment and delivery are handled in one place. They can keep posting exactly as they do now.',
-  },
-  {
-    q: '"Is it free?"',
-    a: 'The first month is free with your code. After that it is KSh 500/month for Entry. Be straight about this — a merchant who feels tricked in month two is a merchant who leaves, and you are not credited for someone who never activates.',
-  },
-  {
-    q: '"Do you take a percentage of my sales?"',
-    a: 'No. That is the strongest line you have — no commission, they keep 100%. The monthly plan is the whole cost.',
-  },
-  {
-    q: '"How do I get my money?"',
-    a: 'Customers pay by M-Pesa and the seller is paid out to their M-Pesa number. They set that number up during signup.',
-  },
-  {
-    q: '"I am not good with phones / apps."',
-    a: 'Offer to sit with them and do it there — it takes about five minutes. This is the single biggest reason a signup does not happen, and it is the easiest one to fix in person.',
-  },
+  { q: '"I already sell on WhatsApp."', a: 'Good — this does not replace that. It gives them one link to send instead of repeating photos and prices, and the order, payment and delivery are handled in one place. They keep posting exactly as they do now.' },
+  { q: '"Is it free?"', a: 'The first month is free with your code. After that Entry is KSh 500 a month. Be straight about this — a merchant who feels tricked in month two leaves, and you are not credited for someone who never activates.' },
+  { q: '"Do you take a percentage of my sales?"', a: 'No. That is the strongest line you have — no commission, they keep 100%. The monthly plan is the whole cost.' },
+  { q: '"How do I get my money?"', a: 'Customers pay with M-Pesa and the seller is paid out to their M-Pesa number. They set that number during signup.' },
+  { q: '"I am not good with phones."', a: 'Offer to sit with them and do it there — about five minutes. This is the biggest reason a signup does not happen, and the easiest to fix in person.' },
 ];
 
-function Row({ children, className = '' }) {
-  return <div className={'flex items-center gap-2 flex-wrap ' + className}>{children}</div>;
+/* Section label: rule + numbered eyebrow, straight from the doc's section styling. */
+function SectionLabel({ n, children }) {
+  return (
+    <div className="flex items-baseline gap-3 mb-2">
+      <div style={{ width: 26, height: 4, borderRadius: 2, background: 'var(--purple)', flex: 'none' }} />
+      <span className="text-xs font-semibold uppercase" style={{ letterSpacing: '.18em', color: 'var(--purple)' }}>
+        {n} · {children}
+      </span>
+    </div>
+  );
 }
 
-/* One sendable message: preview, copy, and a real WhatsApp hand-off. */
+/* Poster artwork is committed to /public. If a file is missing the card shows a clear
+   placeholder rather than a broken-image icon, so it degrades honestly. */
+/* Draw the flyer at full resolution with the mock code replaced, then save it. Assets
+   are same-origin (/public), so the canvas is never tainted and toDataURL works. */
+async function downloadFlyerWithCode(src, code, filename) {
+  const img = new Image();
+  img.decoding = 'sync';
+  await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = src; });
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const cx = w * (CODE_SLOT.centerX / 100);
+  const cy = h * (CODE_SLOT.centerY / 100);
+  const bw = w * (CODE_SLOT.boxWidth / 100);
+  const bh = h * (CODE_SLOT.boxHeight / 100);
+  ctx.fillStyle = CODE_SLOT.cover;
+  ctx.fillRect(cx - bw / 2, cy - bh / 2, bw, bh);
+
+  ctx.fillStyle = CODE_SLOT.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(w * (CODE_SLOT.fontPct / 100))}px Poppins, Inter, sans-serif`;
+  ctx.fillText(code, cx, cy);
+
+  const url = c.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function Poster({ p, code }) {
+  const [failed, setFailed] = useK(false);
+  const [saving, setSaving] = useK(false);
+  const personalised = p.codeSlot && Boolean(code);
+
+  const save = async () => {
+    if (!personalised) return;
+    setSaving(true);
+    try { await downloadFlyerWithCode(p.src, code, `yotemarket-flyer-${code}.png`); }
+    catch { window.open(p.src, '_blank'); }   // fall back to the plain artwork
+    finally { setSaving(false); }
+  };
+  return (
+    <Card className="overflow-hidden" style={{ padding: 0 }}>
+      <div style={{ background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 190 }}>
+        {failed ? (
+          <div className="text-center px-4 py-10">
+            <Icon name="image" style={{ fontSize: 26, color: 'var(--t3)' }} />
+            <div className="text-xs t3 mt-2">Artwork not uploaded yet<br /><code className="num">{p.src}</code></div>
+          </div>
+        ) : (
+          <div style={{ position: 'relative', width: '100%', containerType: 'inline-size' }}>
+            <img src={p.src} alt={`${p.title} — ${p.audience} poster`} onError={() => setFailed(true)}
+              style={{ width: '100%', display: 'block' }} />
+            {/* live preview of the swap — matches what the canvas export writes */}
+            {personalised && (
+              <div style={{
+                position: 'absolute',
+                left: `${CODE_SLOT.centerX - CODE_SLOT.boxWidth / 2}%`,
+                top: `${CODE_SLOT.centerY - CODE_SLOT.boxHeight / 2}%`,
+                width: `${CODE_SLOT.boxWidth}%`,
+                height: `${CODE_SLOT.boxHeight}%`,
+                background: CODE_SLOT.cover,
+                color: CODE_SLOT.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, letterSpacing: '.02em', whiteSpace: 'nowrap',
+                fontSize: `${CODE_SLOT.fontPct}cqw`,
+              }}>{code}</div>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+          <span className="text-xs font-semibold rounded-full px-2.5 py-1" style={{ background: 'var(--surface2)', color: 'var(--purple)' }}>{p.audience}</span>
+          <span className="text-xs t3 num">{p.dims}</span>
+        </div>
+        <div className="font-bold t1">{p.title}</div>
+        <p className="text-sm t2 mt-1" style={{ lineHeight: 1.5 }}>{p.blurb}</p>
+        {personalised && (
+          <div className="rounded-xl mt-2.5 px-3 py-2 text-xs t2" style={{ background: 'var(--surface2)' }}>
+            Your code <b className="num t1">{code}</b> replaces the sample one — the download carries it.
+          </div>
+        )}
+        {!failed && (
+          <div className="flex items-center gap-2 flex-wrap mt-3">
+            {personalised ? (
+              <Btn kind="primary" size="sm" icon={saving ? 'spinner' : 'download'} onClick={save} disabled={saving}>
+                {saving ? 'Preparing…' : 'Download with my code'}
+              </Btn>
+            ) : (
+              <a href={p.src} download className="px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
+                style={{ background: 'var(--purple)', color: '#fff' }}>
+                <Icon name="download" /> Download
+              </a>
+            )}
+            <a href={p.src} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
+              style={{ background: 'var(--surface2)', color: 'var(--t1)' }}>
+              <Icon name="up-right-from-square" /> Open
+            </a>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function Template({ t }) {
   const [copied, setCopied] = useK(false);
   const [open, setOpen] = useK(false);
@@ -161,26 +317,34 @@ function Template({ t }) {
           <div className="text-xs t3 mt-0.5">{t.note}</div>
         </div>
       </div>
-
       <pre className="text-sm t2 mt-3 rounded-xl p-3"
-        style={{ background: 'var(--surface2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', lineHeight: 1.5,
-          maxHeight: open ? 'none' : 132, overflow: 'hidden', position: 'relative' }}>{t.text}</pre>
+        style={{ background: 'var(--surface2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit',
+          lineHeight: 1.5, maxHeight: open ? 'none' : 132, overflow: 'hidden' }}>{t.text}</pre>
       <button onClick={() => setOpen((v) => !v)} className="text-xs font-semibold mt-1.5"
         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--purple)' }}>
         {open ? 'Show less' : 'Show full message'}
       </button>
-
-      <Row className="mt-3">
+      <div className="flex items-center gap-2 flex-wrap mt-3">
         <Btn kind="primary" size="sm" icon={copied === 'yes' ? 'check' : 'copy'} onClick={copy}>
           {copied === 'yes' ? 'Copied' : copied === 'no' ? 'Press Ctrl+C' : 'Copy message'}
         </Btn>
         <a href={waShare(t.text)} target="_blank" rel="noreferrer"
-          className="px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-white"
-          style={{ background: '#25D366' }}>
+          className="px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-white" style={{ background: '#25D366' }}>
           <Icon name="whatsapp" brand /> Send on WhatsApp
         </a>
-      </Row>
+      </div>
     </Card>
+  );
+}
+
+function Swatch({ s, onCopy, copied }) {
+  return (
+    <button onClick={() => onCopy(s.hex)} title={`Copy ${s.hex}`}
+      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+      <div style={{ height: 70, borderRadius: 10, background: s.hex, border: '1px solid var(--line)' }} />
+      <div className="text-sm font-semibold t1 mt-2">{s.name}</div>
+      <div className="text-xs num t3">{copied === s.hex ? 'Copied' : s.hex}</div>
+    </button>
   );
 }
 
@@ -197,79 +361,160 @@ export function MarketingKit() {
   };
 
   return (
-    <div className="fadeup space-y-6">
-      <div className="mb-2">
-        <h1 className="text-2xl sm:text-3xl font-bold t1" style={{ letterSpacing: '-.01em' }}>Marketing kit</h1>
-        <p className="t3 text-sm mt-1">Your link, ready-made messages and the pitch — everything to sign a merchant today.</p>
-      </div>
-
-      {/* invite link + code */}
-      <div className="grad rounded-2xl p-6 text-white relative overflow-hidden" style={{ boxShadow: 'var(--shadow-lg)' }}>
-        <div className="absolute -right-10 -top-12 w-48 h-48 rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(244,181,48,.35), transparent 70%)' }} />
+    <div className="fadeup space-y-8">
+      {/* ── COVER ── */}
+      <div className="rounded-2xl text-white relative overflow-hidden" style={{ background: MARKETING_GRADIENT, boxShadow: 'var(--shadow-lg)', padding: '38px 32px' }}>
+        <div className="absolute -right-10 -top-14 w-56 h-56 rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(244,181,48,.32), transparent 70%)' }} />
         <div className="relative">
-          <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,.7)' }}>Your invite link</div>
-          <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,.85)' }}>
-            Opens the merchant signup with your code already filled in — so you get credited even if they forget to type it.
+          <div className="text-xs font-semibold uppercase" style={{ letterSpacing: '.22em', opacity: .82 }}>Brand &amp; Campaign Kit</div>
+          <h1 className="font-bold mt-3" style={{ fontSize: 42, lineHeight: 1.04, letterSpacing: '-.02em' }}>Marketing Kit</h1>
+          <p className="mt-3" style={{ fontSize: 16, lineHeight: 1.55, maxWidth: 620, opacity: .92 }}>
+            Everything you need to represent YoteMarket — Kenya's Virtual Mall — in one place. Campaign posters, brand colours, type and voice.
           </p>
-
-          <div className="rounded-xl p-3 mt-4" style={{ background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)' }}>
-            <code className="num text-sm text-white block" style={{ wordBreak: 'break-all' }}>{link}</code>
+          <div className="flex flex-wrap gap-2 mt-5">
+            {['Shoppers', 'Merchants', 'Riders', 'Marketers'].map((t) => (
+              <span key={t} className="rounded-full text-sm font-medium" style={{ background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.28)', padding: '7px 15px' }}>{t}</span>
+            ))}
           </div>
-
-          <Row className="mt-3">
-            <button onClick={() => copyOne('link', link)}
-              className="px-3.5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2"
-              style={{ background: '#fff', color: 'var(--purple-deep)' }}>
-              <Icon name={copied === 'link' ? 'check' : 'copy'} /> {copied === 'link' ? 'Copied' : 'Copy link'}
-            </button>
-            <a href={waShare(templates[0].text)} target="_blank" rel="noreferrer"
-              className="px-3.5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-white"
-              style={{ background: '#25D366' }}>
-              <Icon name="whatsapp" brand /> Share on WhatsApp
-            </a>
-            <button onClick={() => copyOne('code', code)}
-              className="px-3.5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-white"
-              style={{ background: 'rgba(255,255,255,.16)' }}>
-              <Icon name={copied === 'code' ? 'check' : 'hashtag'} /> {copied === 'code' ? 'Copied' : `Copy code ${code}`}
-            </button>
-          </Row>
-
-          <p className="text-xs mt-3" style={{ color: 'rgba(255,255,255,.7)' }}>
-            If they sign up on their own phone, ask them to type <b className="num">{code}</b> in the “Referral code” box.
-          </p>
         </div>
       </div>
 
-      {/* sendable messages */}
+      {/* ── YOUR LINK (operational — not in the doc, but the thing that earns) ── */}
       <div>
-        <h2 className="font-bold t1 text-lg mb-1">Ready to send</h2>
-        <p className="t3 text-sm mb-4">Copy, or hand straight to WhatsApp. Your code and link are already in each one.</p>
+        <SectionLabel n="01">Your invite link</SectionLabel>
+        <h2 className="font-bold t1 mb-1" style={{ fontSize: 24, letterSpacing: '-.01em' }}>Get credited for every shop you sign</h2>
+        <p className="t3 text-sm mb-4">Opens the merchant signup with your code already filled in, so you are credited even if they forget to type it.</p>
+        <Card className="p-4">
+          <div className="rounded-xl p-3" style={{ background: 'var(--surface2)' }}>
+            <code className="num text-sm t1" style={{ wordBreak: 'break-all' }}>{link}</code>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap mt-3">
+            <Btn kind="primary" size="sm" icon={copied === 'link' ? 'check' : 'copy'} onClick={() => copyOne('link', link)}>
+              {copied === 'link' ? 'Copied' : 'Copy link'}
+            </Btn>
+            <a href={waShare(templates[0].text)} target="_blank" rel="noreferrer"
+              className="px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 text-white" style={{ background: '#25D366' }}>
+              <Icon name="whatsapp" brand /> Share on WhatsApp
+            </a>
+            <Btn kind="ghost" size="sm" icon={copied === 'code' ? 'check' : 'hashtag'} onClick={() => copyOne('code', code)}>
+              {copied === 'code' ? 'Copied' : `Copy code ${code}`}
+            </Btn>
+          </div>
+          <p className="text-xs t3 mt-3">If they sign up on their own phone, ask them to type <b className="num t1">{code}</b> in the “Referral code” box.</p>
+        </Card>
+      </div>
+
+      {/* ── 02 · CAMPAIGN POSTERS ── */}
+      <div>
+        <SectionLabel n="02">Campaign posters</SectionLabel>
+        <h2 className="font-bold t1 mb-1" style={{ fontSize: 24, letterSpacing: '-.01em' }}>Ready-to-share social tiles</h2>
+        <p className="t3 text-sm mb-4" style={{ maxWidth: 640 }}>Three approved campaigns, one per audience. Use them as-is — do not recrop, restretch or recolour the artwork.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
+          {POSTERS.map((p) => <Poster key={p.id} p={p} code={code} />)}
+        </div>
+      </div>
+
+      {/* ── 03 · READY TO SEND ── */}
+      <div>
+        <SectionLabel n="03">Ready to send</SectionLabel>
+        <h2 className="font-bold t1 mb-1" style={{ fontSize: 24, letterSpacing: '-.01em' }}>Messages you can send as they are</h2>
+        <p className="t3 text-sm mb-4">Your code and link are already in each one. Copy, or hand straight to WhatsApp.</p>
         <div className="grid lg:grid-cols-2 gap-4">
           {templates.map((t) => <Template key={t.id} t={t} />)}
         </div>
       </div>
 
-      {/* what to say */}
+      {/* ── 04 · BRAND CHEAT SHEET ── */}
       <div>
-        <h2 className="font-bold t1 text-lg mb-1">Why a shop should say yes</h2>
-        <p className="t3 text-sm mb-4">Lead with no commission — it is the line sellers react to.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SELLING_POINTS.map((p) => (
-            <Card key={p.title} className="p-4">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2.5"
-                style={{ background: 'var(--surface2)', color: 'var(--gold-strong, var(--purple))' }}><Icon name={p.icon} /></div>
-              <div className="font-bold t1 text-sm">{p.title}</div>
-              <p className="text-sm t2 mt-1" style={{ lineHeight: 1.5 }}>{p.body}</p>
-            </Card>
-          ))}
+        <SectionLabel n="04">Brand cheat sheet</SectionLabel>
+        <h2 className="font-bold t1 mb-4" style={{ fontSize: 24, letterSpacing: '-.01em' }}>The essentials, at a glance</h2>
+
+        {/* logo */}
+        <Card className="p-5 mb-5">
+          <div className="text-xs font-semibold uppercase t3 mb-4" style={{ letterSpacing: '.16em' }}>Logo</div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div style={{ background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 12, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src="/assets/logo.png" alt="Logo on light" style={{ height: 34, maxWidth: '80%', objectFit: 'contain' }} />
+            </div>
+            <div style={{ background: '#111827', borderRadius: 12, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src="/assets/logo-white.png" alt="Logo on dark" style={{ height: 34, maxWidth: '80%', objectFit: 'contain' }} />
+            </div>
+            <div style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', borderRadius: 12, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img src="/assets/logo-white.png" alt="Logo on brand" style={{ height: 34, maxWidth: '80%', objectFit: 'contain' }} />
+            </div>
+          </div>
+          <p className="text-sm t2 mt-4" style={{ lineHeight: 1.6 }}>
+            The wordmark renders lowercase <b className="t1">yotemarket</b> — that is logotype only. In running prose always write <b className="t1">YoteMarket</b> (one word, capital Y and M).
+            Pair with the strapline <i>“Kenya's Virtual Mall”</i>. Use the white lockup on dark or brand-gradient surfaces; never place the colour mark on a busy photo.
+          </p>
+        </Card>
+
+        {/* colour */}
+        <Card className="p-5 mb-5">
+          <div className="text-xs font-semibold uppercase t3 mb-1" style={{ letterSpacing: '.16em' }}>Colour</div>
+          <p className="text-sm t2 mb-4">Indigo is canon for product; the deep violet and gold face is for marketing tiles only. Tap a swatch to copy its hex.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {SWATCHES.map((s) => <Swatch key={s.hex} s={s} copied={copied} onCopy={(hex) => copyOne(hex, hex)} />)}
+          </div>
+          <div className="rounded-xl mt-5 text-sm text-white" style={{ background: MARKETING_GRADIENT, padding: '14px 16px' }}>
+            <b>Marketing gradient</b> · <code className="num" style={{ opacity: .9 }}>{MARKETING_GRADIENT}</code> — poster backgrounds only.
+          </div>
+        </Card>
+
+        {/* type */}
+        <Card className="p-5 mb-5">
+          <div className="text-xs font-semibold uppercase t3 mb-1" style={{ letterSpacing: '.16em' }}>Typography</div>
+          <p className="text-sm t2 mb-4"><b className="t1">Poppins</b> is the single product typeface (Inter is the fallback). No serif, no display face.</p>
+          <div className="space-y-3">
+            {TYPE_SCALE.map((r) => (
+              <div key={r.spec} className="flex items-baseline gap-4 flex-wrap pb-3" style={{ borderBottom: '1px solid var(--line)' }}>
+                <span className="text-xs t3" style={{ width: 104, flex: 'none' }}>{r.spec}</span>
+                <span className={r.muted ? 't2' : 't1'} style={r.style}>{r.sample}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm t2 mt-4" style={{ lineHeight: 1.6 }}>
+            Signature move: highlight <b className="t1">one word</b> of a neutral headline in indigo — “Connect, Trade &amp; <b style={{ color: '#4F46E5' }}>Earn</b> in Kenya's Social Marketplace”.
+          </p>
+        </Card>
+
+        {/* voice + contact */}
+        <div className="grid lg:grid-cols-2 gap-5">
+          <Card className="p-5">
+            <div className="text-xs font-semibold uppercase t3 mb-4" style={{ letterSpacing: '.16em' }}>Voice &amp; tone</div>
+            <ul className="space-y-3.5" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+              {VOICE.map((v) => (
+                <li key={v.text} className="flex gap-3 text-sm t2" style={{ lineHeight: 1.55 }}>
+                  <Icon name={v.ok ? 'circle-check' : 'circle-xmark'} style={{ color: v.ok ? 'var(--purple)' : 'var(--red, #EF4444)', marginTop: 3, flex: 'none' }} />
+                  <span>{v.text}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card className="p-5" style={{ background: '#111827', borderColor: '#111827' }}>
+            <div className="text-xs font-semibold uppercase mb-4" style={{ letterSpacing: '.16em', color: '#A5B4FC' }}>Contact &amp; handles</div>
+            <img src="/assets/logo-white.png" alt="YoteMarket" style={{ height: 30, display: 'block', marginBottom: 18 }} />
+            <div className="space-y-3.5" style={{ fontSize: 15, color: '#fff' }}>
+              <div className="flex items-center gap-3.5"><Icon name="phone" style={{ color: '#A5B4FC', width: 18 }} /><span className="num">0720 730 861</span></div>
+              <div className="flex items-center gap-3.5"><Icon name="globe" style={{ color: '#A5B4FC', width: 18 }} /><span>www.yotemarket.co.ke</span></div>
+              <div className="flex items-center gap-3.5"><Icon name="store" style={{ color: '#A5B4FC', width: 18 }} /><span>200+ local stores · 47 counties</span></div>
+            </div>
+            <div style={{ height: 1, background: 'rgba(255,255,255,.12)', margin: '20px 0' }} />
+            <div className="text-xs font-semibold uppercase mb-2.5" style={{ letterSpacing: '.14em', color: '#9CA3AF' }}>Iconography</div>
+            <p style={{ fontSize: 13, color: '#D1D5DB', lineHeight: 1.6, margin: 0 }}>
+              Font Awesome 6 (solid) on web and dashboards; Material Symbols Rounded in the Flutter app. Brand marks for M-Pesa, WhatsApp and socials.
+            </p>
+          </Card>
         </div>
       </div>
 
-      {/* objections */}
+      {/* ── 05 · OBJECTIONS ── */}
       <div>
-        <h2 className="font-bold t1 text-lg mb-1">When they push back</h2>
-        <p className="t3 text-sm mb-4">Answer honestly — you are only paid once a merchant actually activates, so a signup won under a false promise is worth nothing.</p>
+        <SectionLabel n="05">When they push back</SectionLabel>
+        <h2 className="font-bold t1 mb-1" style={{ fontSize: 24, letterSpacing: '-.01em' }}>Answer honestly</h2>
+        <p className="t3 text-sm mb-4">You are paid once a merchant activates, so a signup won on a false promise is worth nothing.</p>
         <div className="space-y-3">
           {OBJECTIONS.map((o) => (
             <Card key={o.q} className="p-4">
@@ -279,15 +524,6 @@ export function MarketingKit() {
           ))}
         </div>
       </div>
-
-      <Card className="p-4 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--surface2)', color: 'var(--purple)' }}><Icon name="circle-info" /></div>
-        <p className="text-sm t2" style={{ lineHeight: 1.55 }}>
-          You are credited when a merchant you referred <b className="t1">activates</b> — not at signup. The fastest way to get there is to
-          help them list a few items before you leave, so their store is actually ready to sell.
-        </p>
-      </Card>
     </div>
   );
 }
