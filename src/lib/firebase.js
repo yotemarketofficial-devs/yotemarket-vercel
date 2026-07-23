@@ -308,6 +308,10 @@ export const dismissOrder = callable('dismissOrder');
 export const dismissSettlement = callable('dismissSettlement');
 /** Self-serve: permanently close your account (shopper only; merchants file a request) → { ok }. */
 export const deleteMyAccount = callable('deleteMyAccount');
+/* In-app notifications — reads are direct (rules-scoped to the owner); mutations go
+   through callables so `uid` can't be spoofed and only your own can be touched. */
+export const markNotificationsRead = callable('markNotificationsRead');
+export const deleteNotification = callable('deleteNotification');
 /** Store owner: request closure of your store → staff review → { ok, status }. { reason? }. */
 export const requestAccountDeletion = callable('requestAccountDeletion');
 /** Staff: list store-closure requests → { requests }. */

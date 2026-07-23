@@ -7,6 +7,8 @@ import { SCREEN_FEATURE } from '../../lib/entitlements.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 import SubscriptionMark from '../../components/SubscriptionMark.jsx';
+import NotificationBell from '../../components/NotificationBell.jsx';
+import { useAuth } from '../../lib/useAuth.jsx';
 
 // `roles` = which store roles see the item. owner = all; manager = everything except
 // money (wallet/subscription) & team; cashier = POS + orders + chat.
@@ -115,6 +117,7 @@ export function Sidebar({ active, onChange, onClose }){
 
 export function TopBar({ onMenu, onChange, onHelp }){
   const shop = useShop();
+  const { user: authUser } = useAuth();
   return (
     <header style={{ position:'sticky', top:0, zIndex:40, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
       <div className="wrap" style={{ height:64, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
@@ -126,7 +129,16 @@ export function TopBar({ onMenu, onChange, onHelp }){
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <button onClick={()=>window.open('/storefront','_blank')} className="ym-btn ym-btn-ghost ym-btn-sm view-shop"><FA i="fa-store" /> View storefront</button>
           {onHelp && <button onClick={onHelp} className="icon-btn" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
-          <button onClick={()=>onChange&&onChange('chat')} className="icon-btn" aria-label="Messages" title="Messages"><FA i="fa-bell" /></button>
+          {/* Was a bell that just opened chat (and was labelled "Messages"). It is now a
+              real notification bell: order updates, refund requests, comments and
+              support replies, each routing to the screen it concerns. */}
+          <NotificationBell user={authUser} onOpenNotification={(n)=>{
+            if (!onChange) return;
+            if (n.type === 'chat') { onChange('chat'); return; }
+            if (n.type === 'order') { onChange('sales'); return; }
+            if (n.type === 'dispute') { onChange('refunds'); return; }
+            if (n.type === 'post_comment') { onChange('followers'); return; }
+          }} />
           <ThemeToggle />
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>
             <Avatar src={shop.photo} name={shop.owner} size={36} />

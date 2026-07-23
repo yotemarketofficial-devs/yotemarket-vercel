@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/useAuth.jsx';
 import { useUnreadCount } from '../../lib/chat.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
+import NotificationBell from '../../components/NotificationBell.jsx';
 const { useState: useSC } = React;
 
 export function Header(){
@@ -33,6 +34,17 @@ export function Header(){
           <FA i="fa-comments" />
           {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-secondary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{unread>9?'9+':unread}</span>}
         </button>
+        {/* Notification bell — hidden entirely when signed out (nothing to show), so it
+            is never a dead control. Tapping a row routes to the thing it's about. */}
+        {account.hasAccount && (
+          <NotificationBell user={user} onOpenNotification={(n)=>{
+            const d = n.data || {};
+            if (n.type === 'chat' && d.convId) { nav('messages'); return; }
+            if (n.type === 'order' || n.type === 'dispute') { nav('orders'); return; }
+            if (n.type === 'post_comment') { nav('following'); return; }
+            if (n.type === 'support') { nav('profile'); return; }
+          }} />
+        )}
         <button onClick={()=>setTheme(theme==='dark'?'light':'dark')} className="icon-btn" aria-label="Toggle theme"><FA i={theme==='dark'?'fa-sun':'fa-moon'} /></button>
         <button data-tour="cart" onClick={openCart} className="icon-btn" aria-label="Cart">
           <FA i="fa-cart-shopping" />

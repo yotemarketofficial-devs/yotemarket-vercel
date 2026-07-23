@@ -8,6 +8,7 @@ import { AuthScreen, NotAScoutScreen, StatusScreen } from './auth.jsx';
 import { Dashboard, Referrals, Leaderboard, Payouts, Simulator, Profile } from './screens.jsx';
 import { MarketingKit } from './kit.jsx';
 import { MarketerTour, isTourDone, markTourDone } from './Tour.jsx';
+import { ScoutBell } from './Bell.jsx';
 import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -187,9 +188,7 @@ function App(){
               <button onClick={()=>setTour(true)} className="w-9 h-9 rounded-full flex items-center justify-center t2" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label="Replay the tour" title="Replay the tour">
                 <Icon name="question"/>
               </button>
-              <button className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label="Notifications">
-                <Icon name="bell"/><span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{background:'var(--gold)'}}/>
-              </button>
+              <ScoutBell user={user} go={setActive} />
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
                 <Avatar src={ME.photo} name={ME.name} size={34} />
