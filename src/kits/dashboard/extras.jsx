@@ -592,13 +592,22 @@ function CloseStoreCard({ shop, toast }){
   useEffX(() => {
     if (!firebaseEnabled || !db || !shop.shopId) return undefined;
     return onSnapshot(doc(db, 'deletion_requests', shop.shopId),
-      (s) => setReq(s.exists() ? s.data() : null), () => {});
+      (s) => setReq(s.exists() ? s.data() : null),
+      // A listener that errors is dead for good — don't fail silently, or the card
+      // would keep offering "Request closure" for a request already filed.
+      (e) => console.warn('[close-store] closure-status listener stopped', e));
   }, [shop.shopId]);
   const pending = req && req.status === 'pending';
   const submit = () => {
     setBusy(true);
     requestAccountDeletion({ reason: reason.trim() })
-      .then(()=>{ toast && toast('Closure request sent for review','fa-check'); setConfirm(false); })
+      .then(()=>{
+        toast && toast('Closure request sent for review','fa-check');
+        setConfirm(false);
+        // Reflect it immediately rather than waiting on the listener: the callable is
+        // the source of truth that it's filed, and the snapshot may not deliver.
+        setReq((r)=>({ ...(r||{}), status:'pending' }));
+      })
       .catch((e)=>toast && toast(e?.message||'Could not send request'))
       .finally(()=>setBusy(false));
   };
