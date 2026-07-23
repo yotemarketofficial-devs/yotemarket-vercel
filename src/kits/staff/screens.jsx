@@ -10,7 +10,7 @@ import {
   enterpriseQuote, setEnterprise,
   fetchRuns, optimizeRuns, fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
-  fetchMarketers, setMarketerStage, fetchPayouts, resolvePayout,
+  fetchMarketers, setMarketerStage, setMarketerHireStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
   cleanupSeededTestAccounts, staffRemoveTestCredits,
@@ -626,34 +626,80 @@ function EnterpriseModal({ m, onClose, onDone }){
 }
 const inputStyle = { display:'block', width:'100%', marginTop:5, padding:'8px 10px', borderRadius:10, border:'1px solid var(--line)', background:'var(--surface)', color:'var(--t1)', fontSize:14, fontFamily:'inherit' };
 
-/* ============ MARKETER APPLICATIONS (hiring funnel) ============ */
-const STAGES = ['New','Review','Shortlist','Interview'];
-const NEXT_STAGE = { New:'Review', Review:'Shortlist', Shortlist:'Interview', Interview:'active' };
-export function Applications(){
-  const { data, live } = useStaffResource(fetchMarketers, { applicants: APPLICANTS, scouts: [] });
-  const [rows, setRows] = useSS(null);
-  const [auditA, setAuditA] = useSS(null); // click a card to inspect the full application
-  const [hired, setHired] = useSS(null);   // just-activated scout + their referral code
-  useES(()=>{ setRows(data.applicants || []); }, [data]);
-  const list = rows || [];
-  const byStage = s => list.filter(a=>a.stage===s);
+/* ============ MARKETERS: ACTIVATION + THE HIRING TRACK ============
+   Two separate decisions, deliberately not one funnel:
+     1. ACTIVATE  — an applicant becomes a scout who can recruit on commission.
+                    One yes/no, and it issues their unique referral code.
+     2. HIRE      — an already-active scout, judged on their scouting numbers,
+                    is walked Review → Shortlist → Interview → Hired for a
+                    permanent role. Staying a scout forever is a fine outcome. */
+const HIRE_STAGES = ['Scout','Review','Shortlist','Interview','Hired'];
+const NEXT_HIRE = { Scout:'Review', Review:'Shortlist', Shortlist:'Interview', Interview:'Hired' };
+const hireStageOf = s => HIRE_STAGES.includes(s.hireStage) ? s.hireStage : 'Scout';
 
-  const move = async (a, stage) => {
-    setRows(rs => {
-      const rest = (rs||[]).filter(r=>r.id!==a.id);
-      return (stage==='active' || stage==='rejected') ? rest : [...rest, { ...a, stage }];
-    });
+/* One marketer's full record + the decisions available at their point in the
+   journey. Applicants get activate/reject; scouts get the hiring track. */
+function MarketerDrawer({ m, kind, onActivate, onReject, onHire, onClose }){
+  const skip = new Set(['_busy','photo','avatar']);
+  const entries = Object.entries(m).filter(([k]) => !skip.has(k));
+  const act = fn => { fn(); onClose(); };
+  const next = NEXT_HIRE[hireStageOf(m)];
+  return (
+    <Modal title={m.name} subtitle={kind==='applicant' ? [m.county,'Applicant'].filter(Boolean).join(' · ') : [m.county, hireStageOf(m)].filter(Boolean).join(' · ')}
+      icon="fingerprint" onClose={onClose}
+      footer={<>
+        <span className="text-[11px] t3 mr-auto"><Icon name="lock" className="mr-1"/> Confidential · staff</span>
+        {kind === 'applicant' ? <>
+          <Btn kind="ghost" size="sm" onClick={()=>act(()=>onReject(m))}>Reject</Btn>
+          <Btn kind="success" size="sm" icon="circle-check" onClick={()=>act(()=>onActivate(m))}>Activate as scout</Btn>
+        </> : <>
+          {hireStageOf(m) !== 'Scout' && <Btn kind="ghost" size="sm" onClick={()=>act(()=>onHire(m,'Scout'))}>Remove from track</Btn>}
+          {next && <Btn kind="primary" size="sm" icon="arrow-right" onClick={()=>act(()=>onHire(m,next))}>{next==='Hired' ? 'Hire for the role' : `Move to ${next}`}</Btn>}
+        </>}
+      </>}>
+      {entries.length ? entries.map(([k,v]) => <AuditField key={k} k={k} v={v} />) : <div className="py-6 text-center t3">No details.</div>}
+      <div className="text-xs t3 mt-4">{kind==='applicant'
+        ? 'Activating makes them a commission scout and issues their unique referral code. Hiring for a permanent role is a separate decision, made later on their numbers.'
+        : 'This track is about a permanent role — it does not affect their scouting or earnings.'}</div>
+    </Modal>
+  );
+}
+
+export function Applications(){
+  const { data, live, reload } = useStaffResource(fetchMarketers, { applicants: APPLICANTS, scouts: [] });
+  const [rows, setRows] = useSS(null);      // applicants awaiting activation
+  const [track, setTrack] = useSS(null);    // active scouts, for the hiring track
+  const [open, setOpen] = useSS(null);      // { m, kind } — the drawer
+  const [hired, setHired] = useSS(null);    // just-activated scout + their referral code
+  useES(()=>{ setRows(data.applicants || []); setTrack(data.scouts || []); }, [data]);
+  const list = rows || [];
+  const scouts = track || [];
+  const byHire = s => scouts.filter(x=>hireStageOf(x)===s);
+
+  // 1. Activation — a decision about the applicant, not a position in a funnel.
+  const activate = async (a) => {
+    setRows(rs => (rs||[]).filter(r=>r.id!==a.id));
     try {
-      const r = await setMarketerStage(a.id, stage);
-      // Activation mints the scout's unique referral code — show it so staff can
-      // pass it on straight away.
-      if (stage==='active') setHired({ name:a.name, code:(r && r.code) || a.code || '' });
-    }
-    catch { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); }
+      const r = await setMarketerStage(a.id, 'active');
+      setHired({ name:a.name, code:(r && r.code) || a.code || '' });
+      reload && reload();
+    } catch (e) { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); window.alert(e.message || 'Could not activate.'); }
+  };
+  const reject = async (a) => {
+    setRows(rs => (rs||[]).filter(r=>r.id!==a.id));
+    try { await setMarketerStage(a.id, 'rejected'); }
+    catch (e) { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); window.alert(e.message || 'Could not reject.'); }
+  };
+  // 2. Hiring — moving an active scout toward a permanent role.
+  const hire = async (s, stage) => {
+    const prev = scouts;
+    setTrack(ts => (ts||[]).map(x => x.id===s.id ? { ...x, hireStage:stage } : x));
+    try { await setMarketerHireStage(s.id, stage); }
+    catch (e) { setTrack(prev); window.alert(e.message || 'Could not update the hiring track.'); }
   };
 
-  return (<div className="fadeup space-y-6">
-    <SectionHead icon="briefcase" title="Marketer applications" sub={live ? 'The hiring funnel — advance scouts through to active. Click a card for full details.' : 'Sample funnel — connect the backend for live applicants'} />
+  return (<div className="fadeup space-y-8">
+    <SectionHead icon="briefcase" title="Marketers" sub={live ? 'Activate applicants as scouts, then advance the strongest toward a permanent role' : 'Sample data — connect the backend for live applicants'} />
     {hired && <Card className="p-4 flex flex-wrap items-center gap-3">
       <Icon name="circle-check" style={{color:'var(--green)'}}/>
       <div className="flex-1" style={{minWidth:200}}>
@@ -665,35 +711,74 @@ export function Applications(){
         : <span className="text-xs t3">Code issued — visible in their scout record.</span>}
       <Btn kind="ghost" size="sm" onClick={()=>setHired(null)} title="Dismiss"><Icon name="xmark"/></Btn>
     </Card>}
-    <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-      {STAGES.map(stage=>(
-        <div key={stage} className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="font-bold t1 text-sm">{stage}</span>
-            <span className="num text-xs t3 rounded-full px-2 py-0.5" style={{background:'var(--surface2)'}}>{byStage(stage).length}</span>
-          </div>
-          {byStage(stage).map(a=>(
-            <Card key={a.id} className="p-4" style={{cursor:'pointer'}} onClick={()=>setAuditA(a)} title="Open applicant details">
-              <div className="flex items-center gap-3">
-                <Avatar src={a.photo} name={a.name} size={40} />
-                <div className="min-w-0 flex-1"><div className="font-semibold t1 text-sm truncate">{a.name}</div><div className="text-xs t3">{a.county}</div></div>
-                <Icon name="chevron-right" className="text-xs t3"/>
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-3" style={{borderTop:'1px solid var(--line)'}}>
-                <div><div className="num font-bold t1">{a.verified||0}</div><div className="text-[10px] t3 uppercase">verified</div></div>
-                <span className="text-xs t3 num">{a.applied}</span>
-              </div>
-              <div className="flex gap-2 mt-3">
-                <Btn kind="primary" size="sm" className="flex-1" disabled={a._busy} onClick={e=>{ e.stopPropagation(); move(a, NEXT_STAGE[stage]); }}>{stage==='Interview'?'Activate':'Advance'}</Btn>
-                <Btn kind="ghost" size="sm" disabled={a._busy} onClick={e=>{ e.stopPropagation(); move(a,'rejected'); }} title="Reject"><Icon name="xmark"/></Btn>
-              </div>
-            </Card>
-          ))}
-          {byStage(stage).length===0 && <div className="text-xs t3 px-1 py-4 text-center">—</div>}
-        </div>
-      ))}
+
+    {/* ---- 1. Awaiting activation ---- */}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 px-1">
+        <h3 className="font-bold t1">Awaiting activation</h3>
+        <span className="num text-xs t3 rounded-full px-2 py-0.5" style={{background:'var(--surface2)'}}>{list.length}</span>
+        <span className="text-xs t3 ml-1">Activate to make them a scout and issue their referral code</span>
+      </div>
+      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {list.map(a=>(
+          <Card key={a.id} className="p-4" style={{cursor:'pointer'}} onClick={()=>setOpen({ m:a, kind:'applicant' })} title="Open applicant details">
+            <div className="flex items-center gap-3">
+              <Avatar src={a.photo} name={a.name} size={40} />
+              <div className="min-w-0 flex-1"><div className="font-semibold t1 text-sm truncate">{a.name}</div><div className="text-xs t3 truncate">{a.county || a.phone || '—'}</div></div>
+              <Icon name="chevron-right" className="text-xs t3"/>
+            </div>
+            <div className="text-xs t3 num mt-3 pt-3" style={{borderTop:'1px solid var(--line)'}}>Applied {a.applied || '—'}</div>
+            <div className="flex gap-2 mt-3">
+              <Btn kind="success" size="sm" className="flex-1" icon="circle-check" onClick={e=>{ e.stopPropagation(); activate(a); }}>Activate</Btn>
+              <Btn kind="ghost" size="sm" onClick={e=>{ e.stopPropagation(); reject(a); }} title="Reject"><Icon name="xmark"/></Btn>
+            </div>
+          </Card>
+        ))}
+      </div>
+      {list.length===0 && <Card className="p-8 text-center t3"><Icon name="circle-check" className="text-2xl mb-2" style={{color:'var(--green)'}}/><div>No applicants waiting.</div></Card>}
     </div>
-    {auditA && <RecordAudit title={auditA.name} subtitle={[auditA.county, auditA.stage].filter(Boolean).join(' · ')} record={auditA} onClose={()=>setAuditA(null)} />}
+
+    {/* ---- 2. Hiring track (active scouts, judged on performance) ---- */}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 px-1 flex-wrap">
+        <h3 className="font-bold t1">Hiring track</h3>
+        <span className="text-xs t3">Active scouts considered for a permanent role — advance them on their numbers</span>
+      </div>
+      <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-4">
+        {HIRE_STAGES.map(stage=>(
+          <div key={stage} className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="font-bold t1 text-sm">{stage==='Scout' ? 'Scouts' : stage}</span>
+              <span className="num text-xs t3 rounded-full px-2 py-0.5" style={{background:'var(--surface2)'}}>{byHire(stage).length}</span>
+            </div>
+            {byHire(stage).map(s=>{
+              const next = NEXT_HIRE[stage];
+              return (
+                <Card key={s.id} className="p-4" style={{cursor:'pointer'}} onClick={()=>setOpen({ m:s, kind:'scout' })} title="Open scout details">
+                  <div className="flex items-center gap-3">
+                    <Avatar src={s.photo} name={s.name} size={40} />
+                    <div className="min-w-0 flex-1"><div className="font-semibold t1 text-sm truncate">{s.name}</div><div className="text-xs t3 truncate">{s.county}</div></div>
+                    <Icon name="chevron-right" className="text-xs t3"/>
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3" style={{borderTop:'1px solid var(--line)'}}>
+                    <div><div className="num font-bold t1">{s.verified||0}</div><div className="text-[10px] t3 uppercase">activated</div></div>
+                    <div className="text-right"><div className="num font-bold t1">{s.referred ?? '—'}</div><div className="text-[10px] t3 uppercase">referred</div></div>
+                  </div>
+                  {next && <div className="flex gap-2 mt-3">
+                    <Btn kind={next==='Hired'?'success':'primary'} size="sm" className="flex-1" onClick={e=>{ e.stopPropagation(); hire(s,next); }}>{next==='Hired'?'Hire':`To ${next}`}</Btn>
+                    {stage!=='Scout' && <Btn kind="ghost" size="sm" onClick={e=>{ e.stopPropagation(); hire(s,'Scout'); }} title="Remove from track"><Icon name="xmark"/></Btn>}
+                  </div>}
+                  {stage==='Hired' && s.hiredAt && <div className="text-[11px] t3 num mt-3">Hired {s.hiredAt}</div>}
+                </Card>
+              );
+            })}
+            {byHire(stage).length===0 && <div className="text-xs t3 px-1 py-4 text-center">—</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {open && <MarketerDrawer m={open.m} kind={open.kind} onActivate={activate} onReject={reject} onHire={hire} onClose={()=>setOpen(null)} />}
   </div>);
 }
 

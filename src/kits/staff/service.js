@@ -310,6 +310,11 @@ export async function fetchMarketers() {
 export async function setMarketerStage(uid, stage) {
   return call('staffSetMarketerStage')({ uid, stage });
 }
+/** Permanent-role track for an ALREADY-ACTIVE scout, judged on performance.
+ *  hireStage: 'Scout'|'Review'|'Shortlist'|'Interview'|'Hired' */
+export async function setMarketerHireStage(uid, hireStage) {
+  return call('staffSetMarketerHireStage')({ uid, hireStage });
+}
 export async function fetchPayouts() {
   const d = await call('staffListPayouts')();
   if (!d || !Array.isArray(d.requests)) throw new Error('staffListPayouts: unexpected shape');
