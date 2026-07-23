@@ -203,6 +203,24 @@ function App() {
   const isAdmin = role === 'admin';
   const [active, setActive] = useSApp('command');
   const [menu, setMenu] = useSApp(false);
+
+  /* Land an operator back in the department they actually work in rather than always
+     on Command — Finance opens Finance, Support opens Support. Stored per-uid so a
+     shared machine never drops one person into another's section. Purely a starting
+     point: the `resolved` guard below still re-checks visibility, so an account that
+     loses admin can't be restored into an admin-only screen. */
+  const SECTION_KEY = user?.uid ? `ym_staff_section_${user.uid}` : null;
+  useEApp(() => {
+    if (!SECTION_KEY) return;
+    try {
+      const saved = localStorage.getItem(SECTION_KEY);
+      if (saved && SECTION_INDEX[saved]) setActive(saved);
+    } catch { /* storage blocked — fall back to Command */ }
+  }, [SECTION_KEY]);
+  useEApp(() => {
+    if (!SECTION_KEY) return;
+    try { localStorage.setItem(SECTION_KEY, active); } catch { /* */ }
+  }, [SECTION_KEY, active]);
   useEscape(() => setMenu(false), menu);
   const [palette, setPalette] = useSApp(false);
 
