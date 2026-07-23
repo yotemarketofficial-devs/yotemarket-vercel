@@ -130,6 +130,12 @@ function EmptyBlock({ icon='fa-store', text }){
 }
 
 /* ---------- HOME ---------- */
+/* Every store rail on the home page shows at most this many, and each one carries a
+   "See all" through to the full list in Explore. The home page is a shop window, not
+   the directory: as merchants join, uncapped rails turn into endless side-scrolls
+   nobody reaches the end of. Change here and all four rails move together. */
+const HOME_RAIL_MAX = 5;
+
 export function HomeScreen(){
   const { nav, account, liveOrders } = useYM();
   const { user } = useAuth();
@@ -140,14 +146,17 @@ export function HomeScreen(){
   const [seenClips, setSeenClips] = useSS(() => new Set());
   useEffSS(() => subscribeFeedSeen(user?.uid, setSeenClips), [user?.uid]);
   const clipMap = feedStoreMap(feedClips);                 // storeId → clip info (badges + rail)
-  const featured = YM_STORES.filter(s => s.featured);
-  const featuredIds = new Set(featured.map(s => s.id));    // exclude these from "Now on YoteFeed"
+  const allFeatured = YM_STORES.filter(s => s.featured);
+  const featured = allFeatured.slice(0, HOME_RAIL_MAX);
+  // Built from ALL featured stores, not the visible five: a featured store belongs to
+  // the Featured rail, so one pushed past the cut-off shouldn't resurface below.
+  const featuredIds = new Set(allFeatured.map(s => s.id)); // exclude these from "Now on YoteFeed"
   // New stores — recently joined storefronts (needs a real join date), newest first,
   // excluding the featured ones (already surfaced above) so the sections don't repeat.
   const newStores = [...YM_STORES]
     .filter(s => !s.featured && tsSec(s.createdAt) > 0)
     .sort((a, b) => tsSec(b.createdAt) - tsSec(a.createdAt))
-    .slice(0, 12);
+    .slice(0, HOME_RAIL_MAX);
   const IN_PROGRESS = ['queued','accepted','picked_up','at_hub','out','awaiting'];
   const activeOrder = (account.hasAccount && liveOrders) ? liveOrders.find(o=>IN_PROGRESS.includes(o.status)) : null;
   return (
@@ -257,7 +266,7 @@ export function HomeScreen(){
 
       {/* Top brands — enterprise-subscription businesses, premium horizontal rail */}
       {(() => {
-        const brands = YM_STORES.filter(s => s.topBrand);
+        const brands = YM_STORES.filter(s => s.topBrand).slice(0, HOME_RAIL_MAX);
         if (!brands.length) return null;
         return (
           <div className="wrap" style={{ marginTop:34 }}>
@@ -272,7 +281,12 @@ export function HomeScreen(){
       {/* Featured — staff-picked flagship stores; those with clips get feed badges */}
       {featured.length > 0 && (
         <div className="wrap" style={{ marginTop:30 }}>
-          <SectionTitle>Featured stores</SectionTitle>
+          {/* "See all" only earns its place once the cut-off is actually hiding
+              someone — otherwise it promises more than the mall has. */}
+          <SectionTitle
+            action={allFeatured.length > featured.length ? 'See all' : undefined}
+            onAction={()=>nav('search',{ tab:'stores' })}
+          >Featured stores</SectionTitle>
           <FeaturedStores stores={featured} clips={clipMap} seen={seenClips} />
         </div>
       )}
@@ -478,6 +492,7 @@ function FeedStoresRail({ clips, exclude, seen }){
   let stores = [...feedStoreMap(clips).values()].sort((a,b)=>b.ts - a.ts);
   if (exclude && exclude.size) stores = stores.filter(cs => !exclude.has(cs.storeId));
   if (!stores.length) return null;
+  stores = stores.slice(0, HOME_RAIL_MAX); // rest are one tap away in YoteFeed
   const nowS = Date.now()/1000;
   return (
     <div className="wrap" style={{ marginTop:30 }}>
