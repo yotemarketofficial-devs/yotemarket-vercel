@@ -25,26 +25,29 @@ export const isTourDone = (uid) => { try { return localStorage.getItem(keyFor(ui
 export const markTourDone = (uid) => { try { localStorage.setItem(keyFor(uid), '1'); } catch { /* private mode */ } };
 
 /* Per-section copy. Only nav keys present here become steps, so a new nav item simply
-   doesn't appear in the tour until it's given an entry. */
+   doesn't appear in the tour until it's given an entry. Emoji in the TOUR titles are
+   friendly onboarding — they match the merchant dashboard tour. This is distinct from
+   the Marketing kit's "no emoji" rule, which governs the messages a scout SENDS to
+   merchants; those templates stay emoji-free. */
 const COPY = {
-  dashboard:   { title: 'Your dashboard', body: 'Everything you have earned across all cycles, how far you are from the next checkpoint, and your referral link ready to share.' },
-  kit:         { title: 'Marketing kit', body: 'The important one. Your invite link, messages you can send as they are, campaign posters, and a flyer printed with your own code.' },
-  referrals:   { title: 'My referrals', body: 'Every shop you have signed up. A merchant only counts once they make their first paid sale — their free month does not count.' },
-  leaderboard: { title: 'Leaderboard', body: 'How you rank against other scouts across Kenya this month. Top scouts get invited to interview for full-time roles.' },
-  payouts:     { title: 'Payouts', body: 'Cash out to M-Pesa once your balance reaches the minimum, and track every withdrawal you have made.' },
-  simulator:   { title: 'Simulator', body: 'Try the numbers before you chase them — see exactly what a given number of activated merchants pays.' },
-  profile:     { title: 'Your profile', body: 'Your details, county and M-Pesa number. Keep the payout number correct, it is where your money goes.' },
+  dashboard:   { title: 'Your dashboard 📊', body: 'Everything you have earned across all cycles, how far you are from the next checkpoint, and your referral link ready to share.' },
+  kit:         { title: 'Marketing kit 📣', body: 'The important one. Your invite link, messages you can send as they are, campaign posters, and a flyer printed with your own code.' },
+  referrals:   { title: 'My referrals 🏪', body: 'Every shop you have signed up. A merchant only counts once they make their first paid sale — their free month does not count.' },
+  leaderboard: { title: 'Leaderboard 🏆', body: 'How you rank against other scouts across Kenya this month. Top scouts get invited to interview for full-time roles.' },
+  payouts:     { title: 'Payouts 💸', body: 'Cash out to M-Pesa once your balance reaches the minimum, and track every withdrawal you have made.' },
+  simulator:   { title: 'Simulator 🧮', body: 'Try the numbers before you chase them — see exactly what a given number of activated merchants pays.' },
+  profile:     { title: 'Your profile 👤', body: 'Your details, county and M-Pesa number. Keep the payout number correct, it is where your money goes.' },
 };
 
 function buildSteps(nav) {
   const intro = {
     center: true,
-    title: 'Welcome to your scout dashboard',
+    title: 'Welcome to your scout dashboard 👋',
     body: 'A quick tour of how you sign up shops and get paid for it. Under a minute, and you can skip anytime.',
   };
   const outro = {
     center: true, screen: 'kit',
-    title: 'Start with your Marketing kit',
+    title: 'Start with your Marketing kit 🚀',
     body: 'Copy your invite link and send it to one shop today. Any merchant who signs up with your code gets their first month free, and you get credited when they activate. Tap the ? in the top bar to replay this tour.',
   };
   const steps = nav
