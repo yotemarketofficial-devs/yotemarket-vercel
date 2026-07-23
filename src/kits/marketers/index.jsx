@@ -7,6 +7,7 @@ import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { AuthScreen, NotAScoutScreen, StatusScreen } from './auth.jsx';
 import { Dashboard, Referrals, Leaderboard, Payouts, Simulator, Profile } from './screens.jsx';
 import { MarketingKit } from './kit.jsx';
+import { MarketerTour, isTourDone, markTourDone } from './Tour.jsx';
 import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -58,7 +59,7 @@ function Sidebar({ active, go, onClose, onSignOut }){
         {NAV.map(n=>{
           const on = active===n.key;
           return (
-            <button key={n.key} onClick={()=>{go(n.key); onClose&&onClose();}}
+            <button key={n.key} data-tour={n.key} onClick={()=>{go(n.key); onClose&&onClose();}}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
               style={ on?{background:'var(--purple-soft)',color:'var(--purple)'}:{color:'var(--t2)'}}>
               <Icon name={n.icon} className="w-5 text-center" style={{color: on?'var(--purple)':'var(--t3)'}} />
@@ -86,6 +87,7 @@ function App(){
   const [menu, setMenu] = useSApp(false);
   const [profile, setProfile] = useSApp(undefined); // undefined=unknown · null=none · obj=registered
   const [ver, setVer] = useSApp(0);
+  const [tour, setTour] = useSApp(false);
 
   const loadSig = useRefApp('');
   const loadAll = useCbApp(async (uid) => {
@@ -117,6 +119,17 @@ function App(){
     }).catch(() => { if (on) setProfile(null); });
     return () => { on = false; };
   }, [user?.uid, loadAll]);
+
+  /* Auto-run the tour once, and only for an APPROVED scout — an applicant is held at
+     the status screen and never sees the console, so running it there would mark the
+     tour done against a screen they were never shown. Marked done as it opens, so a
+     refresh mid-tour doesn't replay it. */
+  useEApp(() => {
+    if (!user?.uid || !profile || profile.status !== 'active') return;
+    if (isTourDone(user.uid)) return;
+    markTourDone(user.uid);
+    setTour(true);
+  }, [user?.uid, profile]);
 
   // Real-time: silently refresh the scout's referrals/payouts/leaderboard on an
   // interval while the tab is visible + the moment it regains focus. The loadAll
@@ -150,7 +163,7 @@ function App(){
     <div className="min-h-screen bg-page" data-screen-label={'Marketers — '+LABELS[active]} key={ver}>
       <div className="flex">
         {/* desktop sidebar */}
-        <aside className="hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
+        <aside className="mk-aside hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
           <Sidebar active={active} go={setActive} onSignOut={signOutUser} />
         </aside>
 
@@ -166,10 +179,14 @@ function App(){
             <div className="flex items-center gap-3">
               <button onClick={()=>setMenu(true)} className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center t2" style={{background:'var(--surface2)'}} aria-label="Menu"><Icon name="bars"/></button>
               <span className="text-sm font-semibold t3 hidden sm:flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-xs" style={{background:'var(--purple-soft)',color:'var(--purple)'}}>marketers.yotemarket.com</span>
+                {/* canonical host is yotemarket.co.ke — the old marketers.yotemarket.com never existed */}
+                <span className="px-2 py-0.5 rounded-md text-xs" style={{background:'var(--purple-soft)',color:'var(--purple)'}}>yotemarket.co.ke/marketers</span>
               </span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              <button onClick={()=>setTour(true)} className="w-9 h-9 rounded-full flex items-center justify-center t2" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label="Replay the tour" title="Replay the tour">
+                <Icon name="question"/>
+              </button>
               <button className="w-9 h-9 rounded-full flex items-center justify-center t2 relative" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label="Notifications">
                 <Icon name="bell"/><span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{background:'var(--gold)'}}/>
               </button>
@@ -192,6 +209,8 @@ function App(){
           </footer>
         </div>
       </div>
+
+      {tour && <MarketerTour nav={NAV} setActive={setActive} onClose={()=>setTour(false)} />}
     </div>
   );
 }
