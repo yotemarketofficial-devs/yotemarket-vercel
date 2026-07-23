@@ -15,6 +15,7 @@
    "you/your" to the reader. */
 import React from 'react';
 import { Card, Btn, Icon } from './ui.jsx';
+import { measureAnchor, cardPosition, cardWidth, TOUR_M } from '../../lib/tourEngine.js';
 const { useState, useEffect, useLayoutEffect, useRef, useCallback } = React;
 
 // Bump when the steps change materially — existing scouts have the old version marked
@@ -56,59 +57,12 @@ function buildSteps(nav) {
   return [intro, ...steps, outro];
 }
 
-/* Both the desktop sidebar and the mobile pill strip carry data-tour="<key>", and only
-   one is visible at a time. Pick the VISIBLE one so the spotlight lands on the pills on
-   a phone instead of always falling back to the centred card. */
-function measure(anchor) {
-  if (!anchor) return null;
-  const els = document.querySelectorAll(`.kit-marketers [data-tour="${anchor}"]`);
-  for (const el of els) {
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) continue; // hidden (display:none)
-    try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch { /* older browsers */ }
-    const r2 = el.getBoundingClientRect();
-    return { top: r2.top, left: r2.left, width: r2.width, height: r2.height };
-  }
-  return null;
-}
+/* Both the desktop sidebar and the mobile pill strip carry data-tour="<key>"; the shared
+   engine picks whichever is visible so the spotlight lands on the pills on a phone. */
+const measure = (anchor) => measureAnchor(anchor, '.kit-marketers');
 
 const CARD_W = 306;
-const M = 12;    // keep this much clear of every viewport edge
-const GAP = 14;  // breathing room between the anchor and the card
-
-/* Place the card so it is ALWAYS fully on screen. Takes the card's measured size
-   rather than assuming one: a step whose text wraps on a narrow phone is much taller
-   than a desktop step, and clamping against a guessed height pushed the buttons off
-   the bottom where they couldn't be tapped. Tries beside → below → above the anchor,
-   and if none of those fit, docks to the roomier band. */
-function cardPosition(rect, w, h) {
-  if (!rect || typeof window === 'undefined') return null; // centred
-  const vw = window.innerWidth; const vh = window.innerHeight;
-
-  const fitsRight = rect.left + rect.width + GAP + w <= vw - M;
-  const spaceBelow = vh - (rect.top + rect.height) - GAP - M;
-  const spaceAbove = rect.top - GAP - M;
-
-  let left; let top;
-  if (fitsRight) {                       // desktop: beside the sidebar item
-    left = rect.left + rect.width + GAP;
-    top = rect.top;
-  } else if (spaceBelow >= h) {          // mobile: under the pill strip
-    left = rect.left;
-    top = rect.top + rect.height + GAP;
-  } else if (spaceAbove >= h) {          // anchor low on screen → sit above it
-    left = rect.left;
-    top = rect.top - GAP - h;
-  } else {                               // nothing fits cleanly → dock to the roomier side
-    left = rect.left;
-    top = spaceBelow >= spaceAbove ? vh - h - M : M;
-  }
-
-  // Final clamp — the guarantee that the whole card stays on screen.
-  left = Math.max(M, Math.min(left, vw - w - M));
-  top = Math.max(M, Math.min(top, vh - h - M));
-  return { left, top };
-}
+const M = TOUR_M;
 
 export function MarketerTour({ nav, setActive, onClose }) {
   const steps = useRef(buildSteps(nav || [])).current;   // fixed at open time
@@ -163,8 +117,8 @@ export function MarketerTour({ nav, setActive, onClose }) {
 
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
-  const cardW = Math.min(CARD_W, Math.max(232, vw - M * 2));   // never wider than the phone
-  const pos = cardPosition(rect, cardW, size.h);
+  const cardW = cardWidth(CARD_W, vw);
+  const pos = cardPosition(rect, cardW, size.h, vw, vh);
   const cardStyle = pos
     ? { position: 'fixed', top: pos.top, left: pos.left, width: cardW, zIndex: 2,
         maxHeight: vh - M * 2, overflowY: 'auto' }

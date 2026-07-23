@@ -9,6 +9,7 @@ import React from 'react';
 import { useMerchant } from './merchant.jsx';
 import { navForRole } from './layout.jsx';
 import { FA } from './primitives.jsx';
+import { cardPosition, cardWidth, TOUR_M } from '../../lib/tourEngine.js';
 const { useState, useEffect, useLayoutEffect, useRef, useCallback } = React;
 
 // Bump when steps change materially — existing merchants have the old version
@@ -57,42 +58,7 @@ function measure(selector) {
 }
 
 const CARD_W = 300;
-const M = 12;    // keep this much clear of every viewport edge
-const GAP = 14;  // breathing room between the anchor and the card
-
-/* Place the card so it is ALWAYS fully on screen. Takes the card's measured size
-   rather than assuming one: a step whose text wraps on a narrow phone is much taller
-   than a desktop step, and clamping against a guessed height pushed the buttons off
-   the bottom where they couldn't be tapped. Tries beside → below → above the anchor,
-   and if none of those fit, docks to the roomier band. */
-function cardPosition(rect, w, h) {
-  if (!rect || typeof window === 'undefined') return null; // centered
-  const vw = window.innerWidth; const vh = window.innerHeight;
-
-  const fitsRight = rect.left + rect.width + GAP + w <= vw - M;
-  const spaceBelow = vh - (rect.top + rect.height) - GAP - M;
-  const spaceAbove = rect.top - GAP - M;
-
-  let left; let top;
-  if (fitsRight) {                       // desktop: beside the sidebar item
-    left = rect.left + rect.width + GAP;
-    top = rect.top;
-  } else if (spaceBelow >= h) {          // narrow: under the anchor
-    left = rect.left;
-    top = rect.top + rect.height + GAP;
-  } else if (spaceAbove >= h) {          // anchor low on screen → sit above it
-    left = rect.left;
-    top = rect.top - GAP - h;
-  } else {                               // nothing fits cleanly → dock to the roomier side
-    left = rect.left;
-    top = spaceBelow >= spaceAbove ? vh - h - M : M;
-  }
-
-  // Final clamp — the guarantee that the whole card stays on screen.
-  left = Math.max(M, Math.min(left, vw - w - M));
-  top = Math.max(M, Math.min(top, vh - h - M));
-  return { left, top };
-}
+const M = TOUR_M;
 
 export function DashboardTour({ setActive, onClose }) {
   const { role } = useMerchant();
@@ -147,8 +113,8 @@ export function DashboardTour({ setActive, onClose }) {
 
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
-  const cardW = Math.min(CARD_W, Math.max(232, vw - M * 2));   // never wider than the phone
-  const pos = cardPosition(rect, cardW, size.h);
+  const cardW = cardWidth(CARD_W, vw);
+  const pos = cardPosition(rect, cardW, size.h, vw, vh);
   const cardStyle = pos
     ? { position: 'fixed', top: pos.top, left: pos.left, width: cardW, maxHeight: vh - M * 2, overflowY: 'auto' }
     : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(92vw, 360px)', maxHeight: vh - M * 2, overflowY: 'auto' };

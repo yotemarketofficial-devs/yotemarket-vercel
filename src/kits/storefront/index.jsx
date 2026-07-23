@@ -16,6 +16,7 @@ import { applyCatalog, ymProduct } from './data.js';
 import { useCatalogSync, subscribeUserOrders } from '../../lib/catalog.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
+import { ShopperTour, isTourDone, markTourDone } from './Tour.jsx';
 const { useState, useEffect, useRef } = React;
 
 const SCREENS = { home:HomeScreen, search:SearchScreen, product:ProductScreen, store:StoreScreen, feed:FeedScreen, following:FollowingScreen, checkout:CheckoutScreen, orders:OrdersScreen, messages:MessagesScreen, ai:AIScreen, profile:ProfileScreen };
@@ -67,6 +68,7 @@ export default function StorefrontApp(){
   const [cartOpen, setCartOpen] = useState(false);
   const [toastState, setToast] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [tour, setTour] = useState(false);
   const toastTimer = useRef(null);
   const pendingRef = useRef(null);
 
@@ -144,6 +146,20 @@ export default function StorefrontApp(){
     setStack([{ screen, params }]); window.scrollTo(0,0);
   };
 
+  /* Welcome tour — greets a shopper once, just after they sign up.
+     Deliberately gated on the account being NEW (Firebase creationTime within the last
+     10 minutes) rather than merely "hasn't seen it": an established shopper shouldn't
+     be interrupted by a welcome tour mid-session. Everyone gets the flag set either
+     way, and anyone can replay it from the account menu ("Take the tour"). */
+  useEffect(() => {
+    if (!hasAccount || !user?.uid) return;
+    if (isTourDone(user.uid)) return;
+    const created = Date.parse(user.metadata?.creationTime || '') || 0;
+    const isNew = created > 0 && (Date.now() - created) < 10 * 60 * 1000;
+    markTourDone(user.uid);
+    if (isNew) setTour(true);
+  }, [hasAccount, user?.uid]);
+
   const account = {
     hasAccount,
     name: hasAccount ? (user.displayName || (user.email ? user.email.split('@')[0] : 'Account')) : 'Guest',
@@ -156,7 +172,8 @@ export default function StorefrontApp(){
 
   const ctx = { nav, back, reset, theme, setTheme, cart, cartCount, addToCart, setCartQty, removeFromCart, clearCart,
     cartOpen, openCart:()=>setCartOpen(true), closeCart:()=>setCartOpen(false), toast,
-    account, openAuth, requireAuth, signOut: doSignOut, liveOrders };
+    account, openAuth, requireAuth, signOut: doSignOut, liveOrders,
+    startTour: () => setTour(true) };
 
   // YoteAI floats as a glass overlay over the page you were on — so render the
   // underlying (previous) screen as the base and paint AIScreen on top; its
@@ -182,6 +199,9 @@ export default function StorefrontApp(){
           <Auth overlay onShopper={onAuthedReal} onGuest={closeAuth} onClose={closeAuth}
             theme={theme} onTheme={()=>setTheme(theme==='dark'?'light':'dark')} />
         )}
+        {/* Not while the feed is immersive or the auth overlay is up — the header it
+            points at isn't on screen in either case. */}
+        {tour && !immersive && !showAuth && <ShopperTour onClose={()=>setTour(false)} />}
       </div>
     </YMContext.Provider>
   );

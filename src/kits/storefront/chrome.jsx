@@ -9,7 +9,7 @@ import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState: useSC } = React;
 
 export function Header(){
-  const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut } = useYM();
+  const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut, startTour } = useYM();
   const { user } = useAuth();
   const unread = useUnreadCount(user, 'shopper');
   const [acct, setAcct] = useSC(false);
@@ -19,28 +19,28 @@ export function Header(){
         <button onClick={()=>reset('home')} style={{ border:'none', background:'none', cursor:'pointer', flexShrink:0 }}>
           <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:28, display:'block' }} />
         </button>
-        <button onClick={()=>nav('search')} className="ym-hdr-search" style={{ flex:1, maxWidth:520, height:46, borderRadius:9999, border:'none', cursor:'pointer',
+        <button data-tour="search" onClick={()=>nav('search')} className="ym-hdr-search" style={{ flex:1, maxWidth:520, height:46, borderRadius:9999, border:'none', cursor:'pointer',
           background:'var(--m-surface-2)', display:'flex', alignItems:'center', gap:11, padding:'0 18px', fontFamily:'inherit', fontSize:14.5, color:'var(--m-fg3)' }}>
           <FA i="fa-magnifying-glass" style={{ color:'var(--m-primary)', fontSize:15 }} /> Search the mall…
         </button>
         <div className="ym-hdr-spacer" style={{ flex:1 }} />
         {/* Secondary actions collapse into the account menu on phones (see the mobile
             media query below) — the header keeps only AI, messages, cart + account. */}
-        <button onClick={()=>nav('feed')} className="icon-btn ym-hdr-collapse" aria-label="YoteFeed"><YoteFeedMark size={22} /></button>
+        <button data-tour="feed" onClick={()=>nav('feed')} className="icon-btn ym-hdr-collapse" aria-label="YoteFeed"><YoteFeedMark size={22} /></button>
         {account.hasAccount && <button onClick={()=>nav('following')} className="icon-btn ym-hdr-collapse" aria-label="Following"><FA i="fa-heart" /></button>}
-        <button onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><YoteAiMark size={25} color="#fff" /></button>
-        <button onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
+        <button data-tour="ai" onClick={()=>nav('ai')} className="icon-btn" aria-label="Ask YoteAI" style={{ background:'var(--m-grad)', color:'#fff', boxShadow:'var(--m-glow)' }}><YoteAiMark size={25} color="#fff" /></button>
+        <button data-tour="messages" onClick={()=>nav('messages')} className="icon-btn" aria-label="Messages">
           <FA i="fa-comments" />
           {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-secondary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{unread>9?'9+':unread}</span>}
         </button>
         <button onClick={()=>setTheme(theme==='dark'?'light':'dark')} className="icon-btn" aria-label="Toggle theme"><FA i={theme==='dark'?'fa-sun':'fa-moon'} /></button>
-        <button onClick={openCart} className="icon-btn" aria-label="Cart">
+        <button data-tour="cart" onClick={openCart} className="icon-btn" aria-label="Cart">
           <FA i="fa-cart-shopping" />
           {cartCount>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:20, height:20, borderRadius:9999, background:'var(--m-primary)', color:'#fff', fontSize:11, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{cartCount}</span>}
         </button>
         {account.hasAccount ? (
           <div style={{ position:'relative' }}>
-            <button onClick={()=>setAcct(a=>!a)} style={{ display:'flex', alignItems:'center', gap:8, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit' }}>
+            <button data-tour="account" onClick={()=>setAcct(a=>!a)} style={{ display:'flex', alignItems:'center', gap:8, border:'none', background:'none', cursor:'pointer', fontFamily:'inherit' }}>
               {account.photo
                 ? <img src={account.photo} alt="" style={{ width:38, height:38, borderRadius:9999, objectFit:'cover' }} />
                 : <div style={{ width:38, height:38, borderRadius:9999, background:'var(--m-grad)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14 }}>{account.initials}</div>}
@@ -61,6 +61,11 @@ export function Header(){
                       : <FA i={ic} style={{ width:18, color:'var(--m-fg3)' }} />} {l}
                   </button>
                 ))}
+                {/* Replay of the welcome tour — the storefront has no "?" button, so this
+                    is how anyone (not just a brand-new signup) can see it again. */}
+                <button onClick={()=>{ setAcct(false); startTour && startTour(); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
+                  <FA i="fa-circle-question" style={{ width:18, color:'var(--m-fg3)' }} /> Take the tour
+                </button>
                 <button onClick={()=>{ setAcct(false); signOut(); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-inactive-fg)', borderRadius:10, marginTop:4, borderTop:'1px solid var(--m-border)' }}>
                   <FA i="fa-arrow-right-from-bracket" style={{ width:18 }} /> Sign out
                 </button>
