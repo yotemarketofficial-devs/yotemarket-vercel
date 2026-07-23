@@ -126,7 +126,7 @@ export function Dashboard({ go }){
         <div className="grid lg:grid-cols-2 gap-6 relative">
           <div>
             <div className="text-xs font-semibold uppercase tracking-widest" style={{color:'rgba(255,255,255,.7)'}}>Total earnings · all cycles</div>
-            <div className="num font-extrabold mt-2" style={{ fontSize:48, lineHeight:1, color:'var(--gold-bright)' }}>{ksh(total)}</div>
+            <div className="num font-extrabold mt-2" style={{ fontSize:'clamp(32px, 9vw, 48px)', lineHeight:1, color:'var(--gold-bright)', wordBreak:'break-word' }}>{ksh(total)}</div>
             <div className="text-sm mt-2" style={{color:'rgba(255,255,255,.85)'}}>
               {cyc.batches>0 && <>{cyc.batches} batch{cyc.batches===1?'':'es'} × {ksh(fullBatchPay)} + </>}this cycle {ksh(earn.total)} · {cyc.inCycle}/{cyc.batchSize} activated
             </div>
@@ -542,7 +542,7 @@ export function Simulator(){
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="p-6 lg:col-span-2" style={{background:`radial-gradient(120% 140% at 100% 0%, ${e.bg}, var(--surface) 55%)`}}>
           <div className="text-xs font-semibold uppercase tracking-widest t3">Total earnings</div>
-          <div key={earn.total} className="num font-extrabold mt-2" style={{fontSize:52,lineHeight:1,color:e.fg,animation:'pop .3s ease'}}>{ksh(earn.total)}</div>
+          <div key={earn.total} className="num font-extrabold mt-2" style={{fontSize:'clamp(34px, 10vw, 52px)',lineHeight:1,color:e.fg,animation:'pop .3s ease',wordBreak:'break-word'}}>{ksh(earn.total)}</div>
           <div className="text-sm t2 mt-2">{earn.qualified ? `Qualification ${ksh(earn.qualifyPay)} + bonus ${ksh(earn.bonusPay)}` : `${earn.toQualify} more verified merchants to unlock the ${ksh(MK_CONFIG.qualifyBonus)} qualification`}</div>
           <div className="mt-5"><EarningsCurve current={m} /></div>
         </Card>

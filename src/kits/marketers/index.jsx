@@ -201,6 +201,26 @@ function App(){
             </div>
           </header>
 
+          {/* Mobile primary nav — a sticky, horizontally-scrollable strip of pills under
+              the top bar (the sidebar is hidden on phones). Mirrors the merchant dashboard
+              and keeps navigation immediate instead of buried in the drawer. */}
+          <nav className="lg:hidden sticky z-20 flex gap-2 overflow-x-auto no-bar px-4 py-2.5"
+            style={{ top:64, background:'var(--surface)', borderBottom:'1px solid var(--line)' }}
+            aria-label="Sections">
+            {NAV.map((n)=>{
+              const on = active===n.key;
+              return (
+                <button key={n.key} data-tour={n.key} onClick={()=>setActive(n.key)} aria-current={on?'page':undefined}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap flex-shrink-0 transition-colors"
+                  style={ on?{background:'var(--grad)',color:'#fff'}:{background:'var(--surface2)',color:'var(--t2)',border:'1px solid var(--line)'}}>
+                  <Icon name={n.icon} className="text-sm" style={{color: on?'#fff':'var(--t3)'}} /> {n.label}
+                  {n.badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[18px] text-center"
+                    style={{background: on?'rgba(255,255,255,.25)':'var(--gold)', color:'#fff'}}>{n.badge}</span>}
+                </button>
+              );
+            })}
+          </nav>
+
           <main className="p-4 sm:p-7 max-w-[1180px] mx-auto"><Screen go={setActive} /></main>
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1180px] mx-auto">

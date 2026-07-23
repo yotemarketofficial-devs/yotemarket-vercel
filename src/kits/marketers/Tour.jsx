@@ -52,18 +52,24 @@ function buildSteps(nav) {
   };
   const steps = nav
     .filter((n) => COPY[n.key])
-    .map((n) => ({ selector: `.mk-aside [data-tour="${n.key}"]`, screen: n.key, ...COPY[n.key] }));
+    .map((n) => ({ anchor: n.key, screen: n.key, ...COPY[n.key] }));
   return [intro, ...steps, outro];
 }
 
-function measure(selector) {
-  if (!selector) return null;
-  const el = document.querySelector(selector);
-  if (!el) return null;
-  try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch { /* older browsers */ }
-  const r = el.getBoundingClientRect();
-  if (r.width === 0 && r.height === 0) return null; // hidden (sidebar on mobile)
-  return { top: r.top, left: r.left, width: r.width, height: r.height };
+/* Both the desktop sidebar and the mobile pill strip carry data-tour="<key>", and only
+   one is visible at a time. Pick the VISIBLE one so the spotlight lands on the pills on
+   a phone instead of always falling back to the centred card. */
+function measure(anchor) {
+  if (!anchor) return null;
+  const els = document.querySelectorAll(`.kit-marketers [data-tour="${anchor}"]`);
+  for (const el of els) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue; // hidden (display:none)
+    try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch { /* older browsers */ }
+    const r2 = el.getBoundingClientRect();
+    return { top: r2.top, left: r2.left, width: r2.width, height: r2.height };
+  }
+  return null;
 }
 
 const CARD_W = 306;
@@ -98,7 +104,7 @@ export function MarketerTour({ nav, setActive, onClose }) {
   // Measure the anchor after the screen switch settles; keep it fresh on resize/scroll.
   useEffect(() => {
     if (step.center) { setRect(null); return undefined; }
-    const update = () => setRect(measure(step.selector));
+    const update = () => setRect(measure(step.anchor));
     const t1 = setTimeout(update, 70);
     const t2 = setTimeout(update, 260);      // second pass after layout/smooth-scroll
     window.addEventListener('resize', update);
