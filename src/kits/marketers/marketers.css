@@ -31,6 +31,10 @@ html.dark .kit-marketers{
   /* root guard: no stray element ever causes horizontal page scroll on a phone —
      the same guard the storefront carries. Tables opt back in locally via overflow-x-auto. */
   overflow-x:hidden; }
+/* Same preflight-off fix as the staff kit: a native <button> keeps the UA's light
+   default background, which turns any backgroundless button into a light fill under
+   near-white text in dark mode. Buttons that set their own background still win. */
+.kit-marketers button{ background-color:transparent; }
 /* Phones: tighten the shell padding so content isn't crushed, matching the storefront's
    fluid feel. Scoped to the kit so it can't leak into the marketing site. */
 @media (max-width:560px){

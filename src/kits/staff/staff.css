@@ -34,6 +34,13 @@ html.dark .kit-staff{
 }
 .kit-staff, .kit-staff{ font-family:'Poppins','Inter',system-ui,sans-serif; background:var(--bg); color:var(--t2);
   -webkit-font-smoothing:antialiased; transition:background .25s, color .25s; min-height:100vh; }
+/* Tailwind preflight is disabled globally (tailwind.config.js), so a native <button>
+   keeps the user agent's LIGHT default background. Any nav button that set no background
+   of its own (e.g. the inactive section-nav items) then rendered as a light fill under
+   near-white --t1 text in dark mode — an invisible label, which is exactly the bug.
+   Restore just the background reset preflight would have provided. A button that sets
+   its own background (inline, or Btn's solid/soft kinds) still wins over this. */
+.kit-staff button{ background-color:transparent; }
 .kit-staff .surface{background:var(--surface);} .kit-staff .surface2{background:var(--surface2);}
 .kit-staff .bg-page{background:var(--bg);} .kit-staff .bg-page2{background:var(--bg2);}
 .kit-staff .t1{color:var(--t1);} .kit-staff .t2{color:var(--t2);} .kit-staff .t3{color:var(--t3);}
