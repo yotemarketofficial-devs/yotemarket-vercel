@@ -199,6 +199,11 @@ export async function setMerchantStatus(storeId, action) {
 export async function purgeSuspendedStores() {
   return call('staffPurgeSuspendedStores')({});
 }
+/** Maintenance: repair products saved with an inverted discount (was < price).
+ *  Returns { ok, count, fixed:[{id,name,price,was}] }. */
+export async function fixInvertedPrices() {
+  return call('staffFixInvertedPrices')({});
+}
 
 /** Full merchant/store dossier for the console detail view (profile, owner, stats,
  *  subscription, balance, recent products/orders/withdrawals, closure, notes). */

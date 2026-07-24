@@ -13,7 +13,7 @@ import {
   fetchMarketers, setMarketerStage, setMarketerHireStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
-  cleanupSeededTestAccounts, staffRemoveTestCredits, purgeSuspendedStores,
+  cleanupSeededTestAccounts, staffRemoveTestCredits, purgeSuspendedStores, fixInvertedPrices,
   fetchDeletionRequests, resolveDeletionRequest,
   fetchMerchantDetail, addStaffNote,
 } from './service.js';
@@ -1181,7 +1181,42 @@ export function Maintenance(){
     </Card>
     <TestCreditCleanup />
     <SuspendedStoreCleanup />
+    <InvertedPriceFix />
   </div>);
+}
+
+/* One-off repair for products saved before the add-product price fix, where the sale
+   price and the struck-through "was" were stored inverted (was < price). Swaps them.
+   Idempotent — re-running finds nothing once clean. */
+function InvertedPriceFix(){
+  const [busy, setBusy] = useSS(false);
+  const [res, setRes] = useSS(null); // { ok, count, fixed:[{name,price,was}] } | { error }
+  const run = async () => {
+    if (!window.confirm('Repair products whose discount was stored inverted (struck-through price cheaper than the current one)? This swaps the two prices so the discount reads correctly. Safe to re-run.')) return;
+    setBusy(true); setRes(null);
+    try { setRes(await fixInvertedPrices()); }
+    catch (e) { setRes({ error: e.message || 'Could not repair prices.' }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Card className="p-4" style={{maxWidth:640, border:'1px solid var(--amber)'}}>
+      <div className="flex items-start gap-4 flex-wrap">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--amber-bg)',color:'var(--amber)'}}><Icon name="tags"/></div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="font-bold t1">Fix inverted discount prices</div>
+          <div className="text-xs t3">Products added before the pricing fix stored the sale price and the original (struck-through) price the wrong way round, so the discount showed a negative “Save”. This swaps them. Safe to re-run.</div>
+          {res && !res.error && (
+            <div className="text-xs" style={{color:'var(--green)'}}>
+              Repaired {res.count} product{res.count===1?'':'s'}{res.fixed && res.fixed.length ? ': ' + res.fixed.map(p=>p.name||p.id).join(', ') : ''}.
+              {res.count===0 && ' None were inverted.'}
+            </div>
+          )}
+          {res && res.error && <div className="text-xs" style={{color:'var(--red)'}}>{res.error}</div>}
+        </div>
+        <Btn kind="soft" size="sm" icon={busy?'spinner':'wrench'} onClick={run} disabled={busy}>{busy?'Fixing…':'Fix prices'}</Btn>
+      </div>
+    </Card>
+  );
 }
 
 /* Permanently delete every store flagged suspended — the store plus its catalogue,
