@@ -194,6 +194,11 @@ export async function fetchTranscript(convId) {
 export async function setMerchantStatus(storeId, action) {
   return call('staffSetMerchantStatus')({ storeId, action });
 }
+/** Maintenance: permanently delete every suspended store (incl. temporarily suspended).
+ *  Returns { ok, count, purged:[{id,name}] }. */
+export async function purgeSuspendedStores() {
+  return call('staffPurgeSuspendedStores')({});
+}
 
 /** Full merchant/store dossier for the console detail view (profile, owner, stats,
  *  subscription, balance, recent products/orders/withdrawals, closure, notes). */

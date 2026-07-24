@@ -13,7 +13,7 @@ import {
   fetchMarketers, setMarketerStage, setMarketerHireStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
   fetchReviewReports, removeReview, dismissReviewReport,
-  cleanupSeededTestAccounts, staffRemoveTestCredits,
+  cleanupSeededTestAccounts, staffRemoveTestCredits, purgeSuspendedStores,
   fetchDeletionRequests, resolveDeletionRequest,
   fetchMerchantDetail, addStaffNote,
 } from './service.js';
@@ -1180,7 +1180,42 @@ export function Maintenance(){
       </div>
     </Card>
     <TestCreditCleanup />
+    <SuspendedStoreCleanup />
   </div>);
+}
+
+/* Permanently delete every store flagged suspended — the store plus its catalogue,
+   feed clips, broadcasts, team and POS terminals. Orders/settlements/receipts are kept
+   (financial history). Includes TEMPORARILY suspended stores, hence the loud confirm. */
+function SuspendedStoreCleanup(){
+  const [busy, setBusy] = useSS(false);
+  const [res, setRes] = useSS(null); // { ok, count, purged:[{id,name}] } | { error }
+  const run = async () => {
+    if (!window.confirm('Permanently DELETE every store currently suspended — including any that were only TEMPORARILY suspended by staff (not just closed ones)? Each store, its products, feed clips, broadcasts, team and POS terminals are removed. Orders and financial records are kept. This cannot be undone.')) return;
+    setBusy(true); setRes(null);
+    try { setRes(await purgeSuspendedStores()); }
+    catch (e) { setRes({ error: e.message || 'Could not clear suspended stores.' }); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Card className="p-4" style={{maxWidth:640, border:'1px solid var(--red)'}}>
+      <div className="flex items-start gap-4 flex-wrap">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'rgba(239,68,68,.12)',color:'var(--red)'}}><Icon name="store-slash"/></div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="font-bold t1">Clear suspended stores</div>
+          <div className="text-xs t3">Permanently removes every store flagged suspended — the store plus its products, feed clips, broadcasts, team and POS terminals. Orders, settlements and receipts are kept. <b>Includes temporarily-suspended stores</b>, so use with care.</div>
+          {res && !res.error && (
+            <div className="text-xs" style={{color:'var(--green)'}}>
+              Removed {res.count} store{res.count===1?'':'s'}{res.purged && res.purged.length ? ': ' + res.purged.map(p=>p.name||p.id).join(', ') : ''}.
+              {res.count===0 && ' None were suspended.'}
+            </div>
+          )}
+          {res && res.error && <div className="text-xs" style={{color:'var(--red)'}}>{res.error}</div>}
+        </div>
+        <Btn kind="danger" size="sm" icon={busy?'spinner':'trash'} onClick={run} disabled={busy}>{busy?'Clearing…':'Clear suspended'}</Btn>
+      </div>
+    </Card>
+  );
 }
 
 /* Reverse sandbox test credits. The tool that MINTED them is gone — any balance it
