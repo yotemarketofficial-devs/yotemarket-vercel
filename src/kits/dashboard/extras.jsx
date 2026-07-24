@@ -180,7 +180,7 @@ function WithdrawSheet({ balance, payout, onClose, toast }){
   if (done) return (
     <Sheet title="Withdrawal sent" onClose={onClose}>
       <div style={{ textAlign:'center', padding:'8px 0' }}>
-        <div style={{ width:64, height:64, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, margin:'0 auto 14px' }}><FA i="fa-check" /></div>
+        <div style={{ width:64, height:64, borderRadius:9999, background:'var(--m-success)', color:'var(--m-on-accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, margin:'0 auto 14px' }}><FA i="fa-check" /></div>
         <p className="ym-body">Your payout to <b style={{ color:'var(--m-fg1)' }}>{payoutLabel(payout)}</b> is processing. It'll show as <b>Paid</b> here once M-Pesa confirms.</p>
         <Btn kind="primary" style={{ width:'100%', marginTop:18 }} onClick={onClose}>Done</Btn>
       </div>

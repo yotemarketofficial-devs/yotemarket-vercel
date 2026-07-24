@@ -65,7 +65,7 @@ function Sidebar({ active, go, onClose, onSignOut }){
               style={ on?{background:'var(--purple-soft)',color:'var(--purple)'}:{color:'var(--t2)'}}>
               <Icon name={n.icon} className="w-5 text-center" style={{color: on?'var(--purple)':'var(--t3)'}} />
               <span className="flex-1 text-left">{n.label}</span>
-              {n.badge>0 && <span className="num text-xs font-bold text-white rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--gold)'}}>{n.badge}</span>}
+              {n.badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--gold)',color:'var(--on-accent)'}}>{n.badge}</span>}
             </button>
           );
         })}
@@ -214,7 +214,7 @@ function App(){
                   style={ on?{background:'var(--grad)',color:'#fff'}:{background:'var(--surface2)',color:'var(--t2)',border:'1px solid var(--line)'}}>
                   <Icon name={n.icon} className="text-sm" style={{color: on?'#fff':'var(--t3)'}} /> {n.label}
                   {n.badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[18px] text-center"
-                    style={{background: on?'rgba(255,255,255,.25)':'var(--gold)', color:'#fff'}}>{n.badge}</span>}
+                    style={{background: on?'rgba(255,255,255,.25)':'var(--gold)', color: on?'#fff':'var(--on-accent)'}}>{n.badge}</span>}
                 </button>
               );
             })}

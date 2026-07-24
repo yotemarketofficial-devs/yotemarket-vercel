@@ -50,8 +50,8 @@ export function ScoutBell({ user, go }) {
         aria-expanded={open} aria-haspopup="true">
         <Icon name="bell" />
         {unread > 0 && (
-          <span className="num absolute -top-1 -right-1 text-[10px] font-bold text-white rounded-full min-w-[17px] h-[17px] px-1 flex items-center justify-center"
-            style={{ background: 'var(--gold)', border: '2px solid var(--surface)' }}>{unread > 9 ? '9+' : unread}</span>
+          <span className="num absolute -top-1 -right-1 text-[10px] font-bold rounded-full min-w-[17px] h-[17px] px-1 flex items-center justify-center"
+            style={{ background: 'var(--gold)', color: 'var(--on-accent)', border: '2px solid var(--surface)' }}>{unread > 9 ? '9+' : unread}</span>
         )}
       </button>
 

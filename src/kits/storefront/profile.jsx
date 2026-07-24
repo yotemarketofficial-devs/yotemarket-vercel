@@ -504,7 +504,7 @@ function WalletTopUp({ defaultPhone, holderName, onClose, toast }){
   if (phase === 'done') return (
     <Modal title="Wallet topped up" onClose={onClose}>
       <div style={{ textAlign:'center', padding:'10px 0 4px' }}>
-        <div style={{ width:72, height:72, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 16px' }}><FA i="fa-check" /></div>
+        <div style={{ width:72, height:72, borderRadius:9999, background:'var(--m-success)', color:'var(--m-on-accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 16px' }}><FA i="fa-check" /></div>
         <p className="ym-body">Your wallet balance has been updated.</p>
         <button className="ym-btn ym-btn-primary" style={{ marginTop:20, width:'100%' }} onClick={onClose}>Done</button>
       </div>

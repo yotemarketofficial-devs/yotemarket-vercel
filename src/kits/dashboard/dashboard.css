@@ -1,6 +1,6 @@
 .kit-dashboard{
   --m-primary:#4f46e5; --m-primary-deep:#4338ca; --m-primary-press:#3730a3;
-  --m-secondary:#a020f0; --m-amber:#fcd34d; --m-gold:#f4b530;
+  --m-secondary:#a020f0; --m-amber:#fcd34d; --m-gold:#f4b530; --m-on-accent:#12151f;
   --m-success:#10b981; --m-danger:#ef4444; --m-mpesa:#009b3a; --m-whatsapp:#25d366;
   --m-grad:linear-gradient(135deg,#2a0e64 0%,#5b2c9c 55%,#8b3fea 100%);
   --m-grad-deep:linear-gradient(160deg,#1a0640 0%,#3a1a78 50%,#8b3fea 100%);

@@ -257,7 +257,7 @@ function FollowModal({ storeId, onClose }){
         <Card className="p-6">
           {done ? (
             <div className="text-center">
-              <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center text-white mb-3" style={{background:'var(--green)'}}><Icon name="check"/></div>
+              <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-3" style={{background:'var(--green)',color:'var(--on-accent)'}}><Icon name="check"/></div>
               <div className="font-bold t1">Submitted for review</div>
               <p className="text-sm t2 mt-1">We'll confirm the follow and credit your reward once approved.</p>
               <Btn kind="primary" className="mt-4" onClick={onClose}>Done</Btn>

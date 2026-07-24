@@ -203,7 +203,7 @@ export function CheckoutScreen({ params }){
   if(phase==='paid'){
     return (
       <div className="wrap anim-up" style={{ paddingTop:48, maxWidth:560, textAlign:'center', paddingBottom:40, margin:'0 auto' }}>
-        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i={paidMethod==='cash'?'fa-box-check':'fa-check'} /></div>
+        <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'var(--m-on-accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i={paidMethod==='cash'?'fa-box-check':'fa-check'} /></div>
         <h1 className="ym-h1">{paidMethod==='cash' ? 'Order placed!' : 'Payment confirmed!'}</h1>
         <p className="ym-body" style={{ marginTop:8 }}>{paidMethod==='cash' ? <>Your order is being prepared — <b style={{ color:'var(--m-fg1)' }}>pay {ymPrice(total)} on collection</b> at </> : <>Your order is confirmed and being prepared. You'll collect at </>}<b style={{ color:'var(--m-fg1)' }}>{fulfillment==='store_pickup' ? (sellStore?.name || 'the store') : hub.name}</b> — we'll notify you when it's ready.</p>
         <div className="ym-card" style={{ padding:20, margin:'24px 0', textAlign:'left' }}>

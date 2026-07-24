@@ -288,7 +288,7 @@ export function Pos({ toast }){
   if (phase === 'done') return (
     <div className="anim-up" style={{ maxWidth:460, margin:'40px auto' }}>
       <Card style={{ padding:26, textAlign:'center' }}>
-        <div style={{ width:70, height:70, borderRadius:9999, background:'var(--m-success)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 16px' }}><FA i="fa-check" /></div>
+        <div style={{ width:70, height:70, borderRadius:9999, background:'var(--m-success)', color:'var(--m-on-accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:30, margin:'0 auto 16px' }}><FA i="fa-check" /></div>
         <h1 className="ym-h2">Sale complete</h1>
         <div className="ym-cap" style={{ marginTop:4 }}>Tax invoice {receipt?.invoiceNo}{receipt?.kraPin ? ` · KRA PIN ${receipt.kraPin}` : ''}</div>
         <div style={{ textAlign:'left', marginTop:18, display:'flex', flexDirection:'column', gap:8, borderTop:'1px solid var(--m-border)', paddingTop:16 }}>
