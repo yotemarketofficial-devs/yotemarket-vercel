@@ -125,8 +125,12 @@ export function AddProductModal({ onClose, onSave, editing }){
   // must survive the round trip distinctly from '0' (sold out).
   const [form, setForm] = useStateP(() => isEdit ? {
     name: editing.name || '', catId: editing.catId || 'electronics', sub: editing.sub || '',
-    summary: '', desc: editing.desc || '', price: editing.price != null ? String(editing.price) : '',
-    discount: editing.was ? String(editing.was) : '',
+    summary: '', desc: editing.desc || '',
+    // `was` is the regular (struck-through) price, `price` is what the shopper pays.
+    // So the "Price" field shows the regular price and "Discounted price" the sale one —
+    // matching how they're entered, not inverted.
+    price: editing.was != null ? String(editing.was) : (editing.price != null ? String(editing.price) : ''),
+    discount: (editing.was != null && editing.price != null) ? String(editing.price) : '',
     stock: typeof editing.stock === 'number' ? String(editing.stock) : '',
     images: Array.isArray(editing.images) && editing.images.length ? editing.images.filter(Boolean) : (editing.img ? [editing.img] : []),
   } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', images:[] });
@@ -146,12 +150,21 @@ export function AddProductModal({ onClose, onSave, editing }){
     if (stockStr !== '' && (!/^\d+$/.test(stockStr) || Number(stockStr) < 0)) {
       setErr('Quantity in stock must be a whole number of units, or empty if you don\'t track it.'); setStep(2); return;
     }
+    // Regular price + optional lower sale price. A discount MUST be below the price, or
+    // the storefront's "Save …" / "-x%" badge and the struck-through price go negative.
+    const regular = Number(form.price) || 0;
+    const sale = String(form.discount).trim() !== '' ? Number(form.discount) : null;
+    if (sale != null && (!(sale > 0) || sale >= regular)) {
+      setErr('The discounted price must be a positive amount that is lower than the price.'); setStep(2); return;
+    }
     setSaving(true); setErr('');
     try {
       await saveProduct({
         ...(isEdit ? { id: editing.id } : {}),
-        name: form.name.trim(), price: Number(form.price) || 0,
-        was: form.discount ? Number(form.discount) : null,
+        // What the shopper pays = the sale price when discounted, else the regular price;
+        // `was` (struck through) is the regular price, only when there's a real discount.
+        name: form.name.trim(), price: sale != null ? sale : regular,
+        was: sale != null ? regular : null,
         stock: stockStr === '' ? null : Number(stockStr), // null = untracked, distinct from 0
         catId: form.catId || null, sub: form.sub || null, desc: form.desc || form.summary || '',
         images: form.images, img: form.images[0] || null,
@@ -186,8 +199,8 @@ export function AddProductModal({ onClose, onSave, editing }){
           </div>}
           {step===2 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <Field label="Price (Ksh)"><input className="ipt" type="number" value={form.price} onChange={e=>set('price',e.target.value)} placeholder="14360" /></Field>
-              <Field label="Discounted price"><input className="ipt" type="number" value={form.discount} onChange={e=>set('discount',e.target.value)} placeholder="12250" /></Field>
+              <Field label="Price (Ksh)" hint="The normal price"><input className="ipt" type="number" value={form.price} onChange={e=>set('price',e.target.value)} placeholder="14360" /></Field>
+              <Field label="Discounted price" hint="Optional sale price — must be lower than the price"><input className="ipt" type="number" value={form.discount} onChange={e=>set('discount',e.target.value)} placeholder="12250" /></Field>
             </div>
             <Field label="Quantity in stock" hint="Leave empty if you don't count this item — it'll always show as available. Set a number and YoteMarket counts it down as it sells, online and at your till.">
               <input className="ipt" type="number" min={0} step={1} value={form.stock} onChange={e=>set('stock',e.target.value)} placeholder="Not tracked" />
