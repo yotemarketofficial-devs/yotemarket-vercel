@@ -40,8 +40,10 @@ export const YM_ECON = {
     },
   },
 
-  // Rider badge fees — one-time, per rider, non-refundable; ring-fenced to fund
-  // goods-in-transit insurance; NOT recognised as platform revenue.
+  // Rider badge — a MONTHLY per-rider qualification subscription (NOT one-time);
+  // ring-fenced to fund goods-in-transit insurance, NOT platform revenue. The tier
+  // qualifies the rider for the jobs they receive (by distance, vehicle class, goods
+  // value & rating); no rider receives jobs without an active badge.
   badges: { Starter: 200, Growth: 500, Pro: 700 },
 
   // Non-delivery (software-only) monthly tiers — no delivery runs included.
@@ -95,5 +97,55 @@ export function ymRunEconomics(bandKey, subTierId, plan = 'Starter') {
     revenue, cost, margin: revenue - cost,
     marginPct: Math.round(((revenue - cost) / revenue) * 100),
     paidKm, costPerRun, runsPerMonth,
+  };
+}
+
+/* ── Enterprise — the premium tier (mirrors firebase/functions/index.js) ──────────
+ * Quote-based & staff-activated (no self-serve STK price): everything in Pro + a high
+ * monthly delivery allotment + "Top brand" placement. The quote is GROUNDED in the
+ * standard tiers — each distance sub-tier's marginal package rate (its Pro plan, price ÷
+ * deliveries) × volume, less any negotiated discount. Kept here so economics.js stays the
+ * single source of truth; the server copy stays authoritative. */
+export const ENTERPRISE = { deliveriesCap: 150, months: 1 };
+
+/* Find a delivery sub-tier by id across all bands; returns it tagged with its band. */
+export function ymSubTierAny(subTierId) {
+  for (const bandKey of Object.keys(YM_ECON.bands)) {
+    const st = (YM_ECON.bands[bandKey].subTiers || []).find((s) => s.id === subTierId);
+    if (st) return { ...st, band: bandKey };
+  }
+  return null;
+}
+
+/* Enterprise per-package + per-package-per-km rate card — one row per delivery sub-tier. */
+export function ymEnterpriseRateCard() {
+  const rows = [];
+  for (const bandKey of Object.keys(YM_ECON.bands)) {
+    for (const t of YM_ECON.bands[bandKey].subTiers || []) {
+      const perPackage = t.plans.Pro.p / t.plans.Pro.d; // marginal (highest-volume) rate
+      rows.push({
+        subTier: t.id, band: bandKey, range: t.range, km: t.ub,
+        perPackage: Math.round(perPackage),
+        perPackagePerKm: Math.round((perPackage / t.ub) * 100) / 100,
+      });
+    }
+  }
+  return rows;
+}
+
+/* Derive an Enterprise monthly quote from the unit economics + volume + discount. */
+export function ymEnterpriseQuote({ subTier, packages, discountPct = 0 } = {}) {
+  const t = ymSubTierAny(subTier);
+  if (!t) return null;
+  const pkgs = Math.max(1, Math.round(Number(packages) || ENTERPRISE.deliveriesCap));
+  const perPackage = t.plans.Pro.p / t.plans.Pro.d;
+  const disc = Math.min(90, Math.max(0, Number(discountPct) || 0));
+  const gross = perPackage * pkgs;
+  const monthly = Math.round(gross * (1 - disc / 100));
+  return {
+    subTier, band: t.band, range: t.range, km: t.ub, packages: pkgs,
+    perPackage: Math.round(perPackage),
+    perPackagePerKm: Math.round((perPackage / t.ub) * 100) / 100,
+    gross: Math.round(gross), discountPct: disc, monthly, deliveriesCap: pkgs,
   };
 }

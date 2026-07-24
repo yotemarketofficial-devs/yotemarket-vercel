@@ -266,7 +266,7 @@ function Fees() {
   const badgeUnlocks = { Starter: 'Starter-tier runs', Growth: 'Growth + Starter runs', Pro: 'All delivery tiers' };
   return (
     <div>
-      <SectionHead icon="id-badge" title="Rider badges & software-only tiers" sub="One-time rider access fees and non-delivery merchant plans." />
+      <SectionHead icon="id-badge" title="Rider badges & software-only tiers" sub="Monthly rider badge subscriptions and non-delivery merchant plans." />
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <h3 className="font-bold text-gray-900 mb-1">Delivery tier access (badge) fees</h3>
