@@ -45,6 +45,7 @@ function RiderJoin({ formRef }) {
     setErr('');
     if (!form.name.trim()) { setErr('Please tell us your name.'); return; }
     if (form.phone.replace(/\D/g, '').length < 9) { setErr('Enter the M-Pesa number we should pay and reach you on.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setErr('Enter a valid email — you’ll sign in to the rider app with it.'); return; }
     if (!form.county.trim()) { setErr('Tell us where you’ll be riding.'); return; }
     setBusy(true);
     try {
@@ -93,8 +94,8 @@ function RiderJoin({ formRef }) {
                   </label>
                 </div>
                 <div className="rider-row">
-                  <label>Email
-                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" />
+                  <label>Email <span className="req">*</span>
+                    <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" inputMode="email" autoComplete="email" required />
                   </label>
                   <label>Where will you ride? <span className="req">*</span>
                     <input value={form.county} onChange={(e) => set('county', e.target.value)} placeholder="e.g. Nairobi — Westlands, Kilimani" required />
