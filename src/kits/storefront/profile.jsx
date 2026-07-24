@@ -311,7 +311,7 @@ function DeleteAccountModal({ onClose, onDone, toast }){
     <Modal title="Close your account" onClose={busy?undefined:onClose}>
       <div style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'2px 0 12px' }}>
         <div style={{ width:40, height:40, borderRadius:12, flexShrink:0, background:'rgba(220,38,38,.12)', color:'var(--m-danger,#dc2626)', display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-triangle-exclamation" /></div>
-        <div className="ym-sub" style={{ fontSize:13.5, lineHeight:1.5 }}>This permanently deletes your profile, saved addresses, followed stores and wallet history. <b>This can’t be undone.</b> Make sure your wallet is empty and no order is in progress.</div>
+        <div className="ym-sub" style={{ fontSize:13.5, lineHeight:1.5 }}>This permanently deletes your profile, saved addresses, followed stores and wallet history. <b>If you run a store, this also closes it and ends your subscription.</b> <b>This can’t be undone.</b> Make sure your wallet and any store earnings are withdrawn and no order is in progress.</div>
       </div>
       {err && <div style={{ padding:'10px 12px', borderRadius:10, background:'rgba(220,38,38,.1)', color:'var(--m-danger,#dc2626)', fontSize:13, marginBottom:12 }}>{err}</div>}
       <label className="ym-label">Type <b>CLOSE</b> to confirm</label>
