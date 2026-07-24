@@ -6,7 +6,7 @@
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv, Modal, kes } from './ui.jsx';
 import { staffListUsers } from '../../lib/firebase.js';
-import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
+import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
@@ -130,6 +130,15 @@ function UserConsole({ row, onClose, onChanged }){
     catch (e) { window.alert(e.message || 'Role change failed.'); }
     finally { setBusy(null); }
   };
+  // Remedy for a wrong role: reset to a plain shopper (strips merchant/rider identity).
+  // The backend refuses while a live store exists — close it first.
+  const resetToShopper = async () => {
+    if (!window.confirm(`Reset ${p.email || uid} to a plain shopper? This removes their merchant/rider identity. Any store must already be closed.`)) return;
+    setBusy('shopper');
+    try { await setUserRole(uid, 'shopper'); reload(); onChanged && onChanged(); }
+    catch (e) { window.alert(e.message || 'Could not reset role.'); }
+    finally { setBusy(null); }
+  };
   const addNote = async () => {
     const t = note.trim(); if (!t) return;
     setBusy('note');
@@ -177,6 +186,7 @@ function UserConsole({ row, onClose, onChanged }){
             {!isStaff && <Btn kind="soft" size="sm" icon="user-shield" onClick={()=>changeRole('moderator')} disabled={busy==='role'}>Make staff</Btn>}
             {isStaff && !roles.includes('admin') && <Btn kind="soft" size="sm" icon="crown" onClick={()=>changeRole('admin')} disabled={busy==='role'}>Make admin</Btn>}
             {isStaff && <Btn kind="ghost" size="sm" icon="user-slash" onClick={()=>changeRole('none')} disabled={busy==='role'}>Revoke staff</Btn>}
+            {(roles.includes('merchant') || roles.includes('rider')) && <Btn kind="soft" size="sm" icon={busy==='shopper'?'spinner':'user-tag'} onClick={resetToShopper} disabled={busy==='shopper'} title="Fix a wrong role — reset to a plain shopper">Reset to shopper</Btn>}
             <Btn kind="danger" size="sm" icon={busy==='delete'?'spinner':'trash'} onClick={eraseAccount} disabled={busy==='delete'} className="ml-auto" title="Permanently delete this account and its personal data">Delete account</Btn>
             {p.email && <a href={`mailto:${p.email}`} className="ml-auto"><Btn kind="ghost" size="sm" icon="envelope">Email</Btn></a>}
           </>}

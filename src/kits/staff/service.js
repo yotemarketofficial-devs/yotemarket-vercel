@@ -222,6 +222,12 @@ export async function setUserDisabled(uid, disabled) {
   return call('staffSetUserDisabled')({ uid, disabled });
 }
 
+/** Admin: fix a wrong role — reset a user to a plain shopper (strips merchant/rider
+ *  identity). Refused while they still run a live store. { ok, role }. */
+export async function setUserRole(uid, role) {
+  return call('staffSetUserRole')({ uid, role });
+}
+
 /** Staff: generate a password-reset link to send the customer → { email, link }. */
 export async function sendPasswordReset(uid) {
   return call('staffSendPasswordReset')({ uid });
