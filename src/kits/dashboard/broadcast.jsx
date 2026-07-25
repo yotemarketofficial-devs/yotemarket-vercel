@@ -4,6 +4,7 @@
    The follower graph becomes a re-marketing + sales channel. */
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
+import { ScreenCoach } from './ScreenCoach.jsx';
 import { useMerchant } from './merchant.jsx';
 import { OfferComposer } from './extras.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -22,6 +23,10 @@ const KINDS = [
 const KIND_LABEL = Object.fromEntries(KINDS.map(([k, l]) => [k, l]));
 const fmt = (ms) => { try { return new Date(ms).toLocaleString('en-KE', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' }); } catch { return ''; } };
 
+const FOLLOWERS_COACH = [
+  { selector: '[data-coach="followers-tabs"]', title: 'Your followers channel', body: 'Broadcast to everyone who follows your store — a new arrival, a restock, or a followers-only deal. Tag a product to make the post tap-to-buy; it pushes a notification to their feed. Switch to Audience to see who follows you.' },
+];
+
 export function Broadcast({ toast, onOpenChat }){
   const { store, products } = useMerchant();
   const followers = Number(store?.followers) || 0;
@@ -39,6 +44,7 @@ export function Broadcast({ toast, onOpenChat }){
 
   return (
     <div className="anim-up">
+      <ScreenCoach id="followers" steps={FOLLOWERS_COACH} />
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap', marginBottom:6 }}>
         <h1 className="ym-h1">Followers</h1>
         <div className="ym-card" style={{ padding:'8px 14px', display:'flex', alignItems:'center', gap:9 }}>
@@ -48,7 +54,7 @@ export function Broadcast({ toast, onOpenChat }){
       </div>
       <p className="ym-sub" style={{ marginBottom:16 }}>Post to everyone who follows you — a new arrival, a restock, or a followers-only deal. They get a notification and see it in their feed. Tag a product to make it tap-to-buy.</p>
 
-      <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
+      <div data-coach="followers-tabs" style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {TABS.map(([k, l, ic]) => (
           <button key={k} onClick={() => setTab(k)} style={{ display:'inline-flex', alignItems:'center', gap:7, height:36, padding:'0 15px', borderRadius:9999, cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:700,
             border:'1px solid '+(tab===k?'var(--m-primary)':'var(--m-border)'), background: tab===k?'var(--m-primary)':'var(--m-surface)', color: tab===k?'#fff':'var(--m-fg2)' }}>

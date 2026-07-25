@@ -28,6 +28,26 @@ const WALLET_COACH = [
   { selector: '[data-coach="wallet-balance"]', title: 'Your earnings', body: 'This is your available balance from sales. Withdraw it straight to M-Pesa whenever you like.' },
   { selector: '[data-coach="wallet-payout"]', title: 'Set your payout method', body: 'Add where you want to be paid — M-Pesa number, Pochi, Till or Paybill. For your security, changing it later needs a quick staff approval.' },
 ];
+// Per-screen coaches for the remaining extras.jsx sections (fire once on first visit,
+// after the full tour). Each anchors a real control via data-coach="…".
+const SALES_COACH = [
+  { selector: '[data-coach="sales-stats"]', title: 'Track every order', body: 'Your live revenue, order count and averages up top. Below, switch between Completed, Pending and Cancelled to follow each order — from payment through hand-off to the rider or store pickup.' },
+];
+const SUB_COACH = [
+  { selector: '[data-coach="sub-plan"]', title: 'Your plan', body: 'YoteMarket charges a monthly subscription with M-Pesa — no per-sale commission. Your plan sets your hub-delivery allowance and unlocks premium features (the 🔒 items in the sidebar). Change or upgrade it below.' },
+];
+const SETTINGS_COACH = [
+  { selector: '[data-coach="settings-profile"]', title: 'Set up your store', body: 'Everything about your shop lives here — profile & logo, opening hours, pickup location (so shoppers get a map), social links, tax and notifications. Your opening hours also decide the delivery slots buyers can book at checkout.' },
+];
+const CHAT_COACH = [
+  { selector: '[data-coach="chat-grid"]', title: 'Talk to buyers', body: 'Every customer conversation lands here. Answer questions and send a price offer they accept in one tap. On Pro, AI Deal Assist shows what’s in their cart from your store and suggests a deal to close the sale.' },
+];
+const ASSISTANT_COACH = [
+  { selector: '[data-coach="assistant-card"]', title: 'Your AI growth partner', body: 'YoteAI reads your real store stats and products. Ask it to write a listing, draft a reply to a buyer, or advise on what to stock or price. Tap a suggestion to start.' },
+];
+const INSIGHT_COACH = [
+  { selector: '[data-coach="insight-focus"]', title: 'Business insights on demand', body: 'Generate a data-backed report on your store — sales & growth, pricing benchmarked against the market, or what to restock. Pick a focus to build it; YoteAI reads your real numbers and never invents data.' },
+];
 
 const fmtTs = (ts) => { try { return new Date((ts.seconds || ts._seconds) * 1000).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
 
@@ -59,8 +79,9 @@ export function Sales(){
   const tabLabel = (TABS.find((t) => t[0] === tab) || TABS[0])[1];
   return (
     <div className="anim-up">
+      <ScreenCoach id="sales" steps={SALES_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Sales</h1>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
+      <div data-coach="sales-stats" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
         <Stat label="Revenue" value={ksh(revenue)} icon="fa-coins" tone="#7c3aed" />
         <Stat label="Orders" value={String(os.length)} icon="fa-bag-shopping" tone="#3b82f6" />
         <Stat label="Avg order value" value={ksh(avg)} icon="fa-receipt" tone="#10b981" />
@@ -398,10 +419,11 @@ export function Subscription(){
 
   return (
     <div className="anim-up">
+      <ScreenCoach id="subscription" steps={SUB_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:6 }}>Subscription</h1>
       <p className="ym-sub" style={{ marginBottom:20 }}>No sales commission — a monthly plan paid with M-Pesa. Delivery plans are priced by your delivery range.</p>
 
-      <Card style={{ padding:22, marginBottom:22, display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:16, alignItems:'center' }}>
+      <Card data-coach="sub-plan" style={{ padding:22, marginBottom:22, display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:16, alignItems:'center' }}>
         {current ? (<>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}><span className="ym-h2">{current.plan}{isSoftware ? ' · Software' : ' plan'}</span><Pill tone="active">Active</Pill></div>
@@ -634,10 +656,11 @@ export function Settings({ toast }){
   const tg = k=>setN(s=>{ const next={ ...s, [k]:!s[k] }; try { localStorage.setItem('ym_merchant_notif', JSON.stringify(next)); } catch { /* private mode */ } return next; });
   return (
     <div className="anim-up">
+      <ScreenCoach id="settings" steps={SETTINGS_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Settings</h1>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="set-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
-          <SectionCard title="Shop profile">
+          <SectionCard title="Shop profile" data-coach="settings-profile">
             <StoreBranding toast={toast} />
             <ShopProfileForm shop={shop} toast={toast} />
           </SectionCard>
@@ -840,6 +863,7 @@ export function Chat({ startConv }){
 
   return (
     <div className="anim-up">
+      <ScreenCoach id="chat" steps={CHAT_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Chats</h1>
       <MerchantNotifyBanner user={user} />
       {!live ? (
@@ -849,7 +873,7 @@ export function Chat({ startConv }){
           <div className="ym-sub">Your buyer conversations appear here once you’re signed in.</div>
         </Card>
       ) : (
-      <Card data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'300px 1fr', overflow:'hidden', height:'min(660px, calc(100vh - 220px))', minHeight:480 }} className="chat-grid">
+      <Card data-view={sel ? 'thread' : 'list'} data-coach="chat-grid" style={{ display:'grid', gridTemplateColumns:'300px 1fr', overflow:'hidden', height:'min(660px, calc(100vh - 220px))', minHeight:480 }} className="chat-grid">
         <div className="chat-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           {convos === null && <div style={{ padding:'22px 16px', color:'var(--m-fg3)', fontSize:13.5 }}>Loading chats…</div>}
           {convos !== null && visible.length === 0 && (
@@ -1276,9 +1300,10 @@ export function Assistant(){
 
   return (
     <div className="anim-up">
+      <ScreenCoach id="assistant" steps={ASSISTANT_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:6 }}>YoteAI</h1>
       <p className="ym-sub" style={{ marginBottom:20 }}>Your AI growth assistant — grounded in your real {live ? 'store stats and products' : 'store data'}. Ask for listing copy or data-backed insights.</p>
-      <Card style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:560 }}>
+      <Card data-coach="assistant-card" style={{ overflow:'hidden', display:'flex', flexDirection:'column', height:560 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 20px', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
           <div style={{ width:42, height:42, borderRadius:12, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={22} color="#fff" /></div>
           <div style={{ flex:1 }}><div style={{ color:'#fff', fontWeight:700, fontSize:16 }}>YoteAI</div><div style={{ color:'rgba(255,255,255,.82)', fontSize:12.5, display:'flex', alignItems:'center', gap:5 }}><span style={{ width:7, height:7, borderRadius:9999, background:'#6ee7b7' }} /> Growth assistant</div></div>
@@ -1380,6 +1405,7 @@ export function Insight(){
 
   return (
     <div className="anim-up">
+      <ScreenCoach id="insight" steps={INSIGHT_COACH} />
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
         <div>
           <h1 className="ym-h1" style={{ marginBottom:6 }}>YoteMarket Insight</h1>
@@ -1389,7 +1415,7 @@ export function Insight(){
       </div>
 
       {/* focus chips — regenerate the report for a given lens */}
-      <div className="scroll-x" style={{ gap:8, margin:'16px 0 18px' }}>
+      <div className="scroll-x" data-coach="insight-focus" style={{ gap:8, margin:'16px 0 18px' }}>
         {INSIGHT_FOCUS.map(f => {
           const on = focus===f.key && (report || busy);
           return (
