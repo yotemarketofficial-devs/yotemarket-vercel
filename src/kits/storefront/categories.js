@@ -117,15 +117,20 @@ export function subTerms(subLabel) {
 // and any free-text fields to keyword-match against. No sub selected ⇒ always true.
 export function matchesSub(subLabel, itemSub, ...texts) {
   if (!subLabel) return true;
-  if (itemSub && String(itemSub).toLowerCase() === String(subLabel).toLowerCase()) return true;
+  const want = String(subLabel).trim().toLowerCase();
+  // An explicit sub tag is AUTHORITATIVE: the item belongs to that sub and no other.
+  // Keyword-matching a tagged item wrongly cross-contaminates sibling subs that share a
+  // word — a "Mobile Phones" product would surface under "Phone & Tablet Accessories"
+  // (and vice-versa) because both contain "phone". Trust the tag; exact match only.
+  if (itemSub != null && String(itemSub).trim() !== '') {
+    return String(itemSub).trim().toLowerCase() === want;
+  }
+  // Untagged (older listings, or stores matched by name/tagline): approximate by keyword.
+  // No usable terms (e.g. "TVs" → the 2-char "tv", dropped) → match nothing, not
+  // everything (which is what made the "TVs" filter show all electronics).
   const terms = subTerms(subLabel);
-  // No usable keyword terms (e.g. "TVs" stems to the 2-char "tv", which the term filter
-  // drops) → fall back to EXACT sub match only, which the check above already handled, so
-  // return false. Returning true here made such a sub match EVERY product in the category —
-  // the "TVs" filter showed all electronics. Products carry an explicit sub from the form,
-  // so exact match is what these need anyway.
   if (!terms.length) return false;
-  const hay = [itemSub, ...texts].join(' ').toLowerCase();
+  const hay = texts.join(' ').toLowerCase();
   return terms.some((t) => hay.includes(t));
 }
 
