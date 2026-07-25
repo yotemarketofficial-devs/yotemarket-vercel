@@ -4,9 +4,14 @@
    Reads via listStoreDisputes, responds via respondDispute. */
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
+import { ScreenCoach } from './ScreenCoach.jsx';
 import { listStoreDisputes, respondDispute } from '../../lib/firebase.js';
 import { ksh } from './data.js';
 const { useState, useEffect, useCallback } = React;
+
+const REFUNDS_COACH = [
+  { selector: '[data-coach="refunds-intro"]', title: 'Handling refunds', body: 'When a buyer reports a problem with an order, it lands here. Open the request, add your side of the story, and our team makes the final call — refund to the buyer’s wallet, replace, or decline. Replying quickly keeps your store rating healthy.' },
+];
 
 const REASON_LABEL = { not_received:'Not received', damaged:'Arrived damaged', not_as_described:'Not as described', wrong_item:'Wrong item', other:'Other issue' };
 const STATUS = { open:['Awaiting review', 'var(--m-warning,#d97706)'], under_review:['In review', 'var(--m-primary)'], resolved:['Refunded', 'var(--m-success)'], rejected:['Declined', 'var(--m-danger)'] };
@@ -24,7 +29,8 @@ export function Disputes({ toast }){
 
   return (
     <div className="anim-up">
-      <h1 className="ym-h1" style={{ marginBottom:6 }}>Refund requests</h1>
+      <ScreenCoach id="refunds" steps={REFUNDS_COACH} />
+      <h1 className="ym-h1" data-coach="refunds-intro" style={{ marginBottom:6 }}>Refund requests</h1>
       <p className="ym-sub" style={{ marginBottom:20 }}>When a buyer reports a problem with an order, it shows here. Add your side of the story — our team reviews every case before any refund.</p>
 
       {rows === null ? (

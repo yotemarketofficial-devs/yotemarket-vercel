@@ -35,7 +35,7 @@ const COPY = {
   wallet:       { title: 'Wallet',                body: 'Track your earnings and withdraw to M-Pesa. Set your payout method here.' },
   subscription: { title: 'Subscription',          body: 'Your plan decides what you can use — anything showing a 🔒 in the sidebar comes with a higher tier. Manage it, upgrade, or add hub deliveries here.' },
   team:         { title: 'Team',                  body: 'Invite cashiers and managers with their own logins and the right permissions.' },
-  settings:     { title: 'Settings',              body: 'Shop profile, social links, tax details, followers — and closing your store.' },
+  settings:     { title: 'Settings',              body: 'Shop profile, opening hours, pickup location, social links and tax details — and closing your store.' },
 };
 
 function buildSteps(role) {

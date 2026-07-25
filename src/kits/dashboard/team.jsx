@@ -3,8 +3,13 @@
    everything except Wallet, Subscription & Team. Backed by the store-team callables. */
 import React from 'react';
 import { FA, Btn, SectionCard } from './primitives.jsx';
+import { ScreenCoach } from './ScreenCoach.jsx';
 import { listStoreEmployees, addStoreEmployee, setStoreEmployeeRole, removeStoreEmployee } from '../../lib/firebase.js';
 const { useState, useEffect } = React;
+
+const TEAM_COACH = [
+  { selector: '[data-coach="team-add"]', title: 'Build your team', body: 'Invite a Cashier (Point of sale + orders) or a Manager (everything except money & team) by their email — they must have signed in to YoteMarket once. They run the store from their own account with exactly the access you choose.' },
+];
 
 export function TeamManager({ toast }){
   const [list, setList] = useState(null);
@@ -30,12 +35,13 @@ export function TeamManager({ toast }){
 
   return (
     <div className="fadeup" style={{ display:'flex', flexDirection:'column', gap:20, maxWidth:680 }}>
+      <ScreenCoach id="team" steps={TEAM_COACH} />
       <div>
         <h1 className="ym-h1" style={{ marginBottom:6 }}>Team</h1>
         <p className="ym-sub">Add employees to help run your store — they sign in with their own account.</p>
       </div>
 
-      <SectionCard title="Add an employee" sub="They must have signed into YoteMarket at least once.">
+      <SectionCard title="Add an employee" sub="They must have signed into YoteMarket at least once." data-coach="team-add">
         <div style={{ padding:16, display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div style={{ flex:1, minWidth:200 }}>
             <label className="ym-label">Email</label>

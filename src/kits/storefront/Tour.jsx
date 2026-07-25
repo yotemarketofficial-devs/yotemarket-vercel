@@ -36,7 +36,7 @@ const STEPS = [
   { anchor: 'messages', title: 'Chat with sellers 💬',
     body: 'Message any shop before you buy. Ask about sizes or condition, and negotiate a price — sellers can send you an offer you accept in one tap.' },
   { anchor: 'cart', title: 'Cart & checkout 🛒',
-    body: 'Pay with M-Pesa, then collect at your nearest pickup hub or have it delivered. Your order is tracked end to end.' },
+    body: 'Pay with M-Pesa, then book a delivery slot — we match you to the collection point nearest you and map it — or collect from the store. Your order is tracked end to end.' },
   { anchor: 'account', title: 'Your account 👤',
     body: 'Orders, saved addresses, followed shops and your YoteWallet all live here.' },
 ];

@@ -4,11 +4,16 @@
 import React from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { FA, Card, Btn, SectionCard } from './primitives.jsx';
+import { ScreenCoach } from './ScreenCoach.jsx';
 import { useShop } from './merchant.jsx';
 import { ksh } from './data.js';
 import { db, createFeedPost, editFeedPost, deleteFeedPost } from '../../lib/firebase.js';
 import { subscribeStoreFeed, feedVideoUrl, uploadFeedVideo } from '../../lib/feed.js';
 const { useState, useEffect, useRef } = React;
+
+const FEED_COACH = [
+  { selector: '[data-coach="feed-composer"]', title: 'Sell with short clips', body: 'Post a short vertical video and tag a product — it shows on your store page and in the YoteFeed. Shoppers watch, tap the tag, and buy on the spot. Views, likes and shop-taps appear under each clip.' },
+];
 
 export function FeedManager({ toast }){
   const shop = useShop();
@@ -76,7 +81,8 @@ export function FeedManager({ toast }){
   const list = clips || [];
   return (
     <div className="fadeup" style={{ display:'flex', flexDirection:'column', gap:20 }}>
-      <SectionCard title="Post a clip" sub="Shortform videos that appear on your store page and in the YoteFeed.">
+      <ScreenCoach id="feed" steps={FEED_COACH} />
+      <SectionCard title="Post a clip" sub="Shortform videos that appear on your store page and in the YoteFeed." data-coach="feed-composer">
         <div style={{ display:'flex', gap:18, flexWrap:'wrap', padding:20 }}>
           <input ref={inputRef} type="file" accept="video/*" onChange={pick} style={{ display:'none' }} />
           {!url ? (
