@@ -7,6 +7,7 @@ import { HUBS, findHub, DEFAULT_HUB_ID, nearestHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { placeOrder, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
+import { normalizeHours, minutesOf } from '../../lib/hours.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
 const DELIVERY_FEE = 150;
@@ -97,7 +98,7 @@ export function CheckoutScreen({ params }){
   // when it falls inside BOTH the seller's hand-off window and the collection point's
   // receive window (and clears the prep+transit lead time). Rebuilt every render so the
   // availability stays live as time passes and as the matched hub changes.
-  const slotGrid = buildDaySlots(sellStore, hub, 4);
+  const slotGrid = buildDaySlots(sellStore, hub, 7);
   const [slotStart, setSlotStart] = useSCm(null);
   useEffCm(() => {
     if (fulfillment !== 'hub') return;
@@ -378,39 +379,64 @@ export function CheckoutScreen({ params }){
 }
 function Row({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
 
-/* Delivery-slot model (powers the Morrisons-style picker). We don't yet hold per-store
-   trading hours in the catalogue, so a seller's hand-off window and a hub's collection
-   window both default to 8am–8pm; a slot is only bookable when it falls inside the
-   INTERSECTION of the two (plus a prep+transit lead time). The moment real hours land on
-   the store/hub docs, they flow straight through `storeWindow`/`hubWindow`. */
-const SLOT_LEAD_MIN = 90;                 // prep + batching + transit before the first bookable hour
-const DEFAULT_OPEN = 8, DEFAULT_CLOSE = 20;
-const storeWindow = (s) => ({ open: Number(s?.hours?.open) || DEFAULT_OPEN, close: Number(s?.hours?.close) || DEFAULT_CLOSE });
-const hubWindow = (h) => ({ open: Number(h?.hours?.open) || DEFAULT_OPEN, close: Number(h?.hours?.close) || DEFAULT_CLOSE });
+/* Delivery-slot model (powers the Morrisons-style picker). A slot is bookable only when
+   its whole hour falls inside the INTERSECTION of the seller's hand-off window and the
+   collection point's receive window, and it clears a prep+transit lead time. The seller
+   window comes from the store's REAL opening hours (lib/hours.js per-weekday shape) when
+   set — so availability genuinely reflects when that shop is open on that day — and falls
+   back to 8am–8pm only when a store has published none. The hub receive window is a fixed
+   8am–8pm today; when hubs (or opted-in collection stores) gain hours, they plug into
+   `pointWindowFor` the same way. */
+const SLOT_LEAD_MIN = 90;                          // prep + batching + transit before the first bookable hour
+const DAY_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']; // JS getDay() → lib/hours.js key
+const DEFAULT_OPEN_MIN = 8 * 60, DEFAULT_CLOSE_MIN = 20 * 60;       // 8am–8pm fallback (no hours set)
+const HUB_OPEN_MIN = 8 * 60, HUB_CLOSE_MIN = 20 * 60;              // collection-point receive window
 const hourLabel = (x) => { const h = ((x % 24) + 24) % 24; const ap = h < 12 ? 'am' : 'pm'; const hh = h % 12 === 0 ? 12 : h % 12; return hh + ap; };
 
+// The open window (minutes past midnight) for a place on a given date. Reads real
+// per-weekday hours when present; else the given default. Returns null when it's closed
+// that day. A window whose close is at/before its open runs past midnight → clamp to
+// end-of-day for slot purposes (overnight delivery isn't a thing we batch).
+function pointWindowFor(hours, date, defOpen, defClose){
+  const norm = normalizeHours(hours);
+  if (!norm) return { open: defOpen, close: defClose };
+  const d = norm[DAY_KEY[date.getDay()]];
+  if (!d || d.closed) return null;
+  let open = minutesOf(d.open), close = minutesOf(d.close);
+  if (open == null || close == null) return { open: defOpen, close: defClose };
+  if (close <= open) close = 24 * 60;
+  return { open, close };
+}
+
 // Build `days` days of 1-hour delivery slots for a seller store + collection hub. Each
-// slot carries `ok` (bookable) and, when not, a short `reason`.
+// slot carries `ok` (bookable) and, when not, a short `reason`; each day flags whether the
+// seller is closed so the picker can say "Closed" vs "Full".
 function buildDaySlots(sellStore, hub, days = 4){
-  const sw = storeWindow(sellStore), hw = hubWindow(hub);
-  const open = Math.max(sw.open, hw.open), close = Math.min(sw.close, hw.close);
   const now = Date.now(), minStart = now + SLOT_LEAD_MIN * 60000;
   const out = [];
-  for (let d = 0; d < days; d++){
-    const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(base.getDate() + d);
+  for (let di = 0; di < days; di++){
+    const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(base.getDate() + di);
+    const sw = pointWindowFor(sellStore?.hours, base, DEFAULT_OPEN_MIN, DEFAULT_CLOSE_MIN);
+    const hw = pointWindowFor(hub?.hours, base, HUB_OPEN_MIN, HUB_CLOSE_MIN);
+    const storeClosed = !sw, hubClosed = !hw;
     const slots = [];
-    for (let h = open; h < close; h++){
-      const t = new Date(base.getTime()); t.setHours(h); const ms = t.getTime();
-      let ok = true, reason = '';
-      if (ms + 3600000 <= now) { ok = false; reason = 'Passed'; }
-      else if (ms < minStart) { ok = false; reason = 'Too soon'; }
-      slots.push({ start: ms, label: hourLabel(h) + '–' + hourLabel(h + 1), ok, reason });
+    if (sw && hw){
+      const open = Math.max(sw.open, hw.open), close = Math.min(sw.close, hw.close);
+      for (let h = 0; h < 24; h++){
+        if (h * 60 < open) continue;          // hour block starts before the window opens
+        if ((h + 1) * 60 > close) break;      // block (and every later one) ends after it closes
+        const t = new Date(base.getTime()); t.setHours(h); const ms = t.getTime();
+        let ok = true, reason = '';
+        if (ms + 3600000 <= now) { ok = false; reason = 'Passed'; }
+        else if (ms < minStart) { ok = false; reason = 'Too soon'; }
+        slots.push({ start: ms, label: hourLabel(h) + '–' + hourLabel(h + 1), ok, reason });
+      }
     }
     out.push({
-      key: d, dateMs: base.getTime(),
-      label: d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : base.toLocaleDateString(undefined, { weekday: 'short' }),
+      key: di, dateMs: base.getTime(),
+      label: di === 0 ? 'Today' : di === 1 ? 'Tomorrow' : base.toLocaleDateString(undefined, { weekday: 'short' }),
       sub: base.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
-      slots, hasOpen: slots.some((s) => s.ok),
+      slots, hasOpen: slots.some((s) => s.ok), storeClosed: storeClosed || hubClosed,
     });
   }
   return out;
@@ -437,7 +463,7 @@ function SlotPicker({ grid, value, onChange }){
           return (
             <button key={dd.key} onClick={()=>setDay(i)} style={{ flex:'0 0 auto', minWidth:82, padding:'9px 12px', borderRadius:12, cursor:'pointer', fontFamily:'inherit', textAlign:'center', background: on?'var(--m-primary)':'var(--m-surface)', color: on?'#fff':'var(--m-fg2)', border: on?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
               <div style={{ fontSize:13, fontWeight:700 }}>{dd.label}</div>
-              <div style={{ fontSize:11, opacity: on?0.85:0.6 }}>{dd.hasOpen ? dd.sub : 'Full'}</div>
+              <div style={{ fontSize:11, opacity: on?0.85:0.6 }}>{dd.hasOpen ? dd.sub : dd.storeClosed ? 'Closed' : 'Full'}</div>
             </button>
           );
         })}
@@ -460,7 +486,7 @@ function SlotPicker({ grid, value, onChange }){
           })}
         </div>
       ) : (
-        <div className="ym-cap" style={{ padding:'8px 0' }}>No slots available this day — pick another day above.</div>
+        <div className="ym-cap" style={{ padding:'8px 0' }}>{active && active.storeClosed ? 'The store is closed this day' : 'No slots left this day'} — pick another day above.</div>
       )}
     </div>
   );
