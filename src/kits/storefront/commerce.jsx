@@ -3,7 +3,7 @@ import React from 'react';
 import { addDoc, collection, serverTimestamp, doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from './ui.jsx';
 import { ymProduct, ymStore, ymPrice } from './data.js';
-import { HUBS, findHub, DEFAULT_HUB_ID } from './hubs.js';
+import { HUBS, findHub, DEFAULT_HUB_ID, nearestHub } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { placeOrder, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
@@ -68,30 +68,51 @@ export function CheckoutScreen({ params }){
   const confirmTimerRef = useRefCm(null);
   const cidRef = useRefCm(null);
   const hub = findHub(hubId) || HUBS[0];
-  // Bookable 1-hour delivery slots (PT-1) — 8am–8pm, today + tomorrow, ≥15 min ahead.
-  const slots = (() => {
-    const out = []; const minStart = Date.now() + 15 * 60000;
-    const ap = (x) => { const a = x < 12 ? 'am' : 'pm'; const hh = x % 12 === 0 ? 12 : x % 12; return hh + a; };
-    for (let day = 0; day < 2; day++) {
-      const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(base.getDate() + day);
-      for (let h = 8; h < 20; h++) {
-        const t = new Date(base.getTime()); t.setHours(h); const ms = t.getTime();
-        if (ms < minStart) continue;
-        out.push({ start: ms, label: (day === 0 ? 'Today' : 'Tomorrow') + ' ' + ap(h) + '–' + ap(h + 1) });
-      }
-    }
-    return out;
-  })();
-  const [slotStart, setSlotStart] = useSCm(null);
-  useEffCm(() => { if (fulfillment === 'hub' && slotStart == null && slots.length) setSlotStart(slots[0].start); }, [fulfillment, slots.length]); // eslint-disable-line
 
-  // Prefill from the shopper's profile: default pickup hub + M-Pesa phone.
+  // Delivery location = the collection point NEAREST the shopper, matched automatically
+  // rather than picked off a list. We read the browser location once, route to the
+  // closest hub, and show it on a map with directions. Denied/unavailable → keep the
+  // saved default and offer a manual "use my location" retry + a "choose a different
+  // point" override, so the auto-match is never a trap.
+  const [geoState, setGeoState] = useSCm('idle'); // idle | locating | ok | denied
+  const [matchKm, setMatchKm] = useSCm(null);
+  const matchedRef = useRefCm(false);
+  const locateAndMatch = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setGeoState('denied'); return; }
+    setGeoState('locating');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const m = nearestHub({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGeoState('ok');
+        if (m) { matchedRef.current = true; setHubId(m.hub.id); setMatchKm(m.km); }
+      },
+      () => setGeoState('denied'),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  };
+  // Kick off the match as soon as delivery is the chosen mode (not for store pickup).
+  useEffCm(() => { if (fulfillment === 'hub' && geoState === 'idle') locateAndMatch(); }, [fulfillment]); // eslint-disable-line
+
+  // Morrisons-style slot grid: 1-hour windows over the next few days, each bookable only
+  // when it falls inside BOTH the seller's hand-off window and the collection point's
+  // receive window (and clears the prep+transit lead time). Rebuilt every render so the
+  // availability stays live as time passes and as the matched hub changes.
+  const slotGrid = buildDaySlots(sellStore, hub, 4);
+  const [slotStart, setSlotStart] = useSCm(null);
+  useEffCm(() => {
+    if (fulfillment !== 'hub') return;
+    const stillOk = slotStart != null && slotGrid.some((d) => d.slots.some((s) => s.start === slotStart && s.ok));
+    if (!stillOk) setSlotStart(firstOpenSlot(slotGrid));
+  }, [fulfillment, hubId, slotStart]); // eslint-disable-line
+
+  // Prefill from the shopper's profile: default pickup hub (unless we've already matched
+  // a nearer one from live location) + M-Pesa phone.
   useEffCm(() => {
     const uid = auth?.currentUser?.uid;
     if (!firebaseEnabled || !db || !uid) return;
     getDoc(doc(db, 'users', uid)).then((s) => {
       const d = s.data() || {};
-      if (d.defaultHubId && findHub(d.defaultHubId)) setHubId(d.defaultHubId);
+      if (d.defaultHubId && findHub(d.defaultHubId) && !matchedRef.current) setHubId(d.defaultHubId);
       if (d.phone) setPhone((cur) => cur || d.phone);
     }).catch(() => {});
   }, [hasAccount]);
@@ -255,7 +276,7 @@ export function CheckoutScreen({ params }){
             <div className="ym-h3" style={{ marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-truck-fast" style={{ color:'var(--m-primary)' }} /> How would you like it?</div>
             <div style={{ display:'flex', gap:10, marginBottom:16 }} className="fulfil-row">
               {[
-                ...(offersDelivery ? [['hub','fa-warehouse','Hub delivery', deliveryFee>0 ? `Delivered to a YoteMarket hub · ${ymPrice(deliveryFee)}` : 'Delivered to a YoteMarket hub · Free']] : []),
+                ...(offersDelivery ? [['hub','fa-truck-fast','Delivery location', deliveryFee>0 ? `To the point nearest you · ${ymPrice(deliveryFee)}` : 'To the point nearest you · Free']] : []),
                 ['store_pickup','fa-store','Pick up from store',`Collect from ${sellStore?.name || 'the store'} · Free`],
               ].map(([id,ic,t,sub])=>(
                 <button key={id} onClick={()=>setFulfillment(id)} style={{ flex:1, textAlign:'left', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: fulfillment===id?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
@@ -269,19 +290,34 @@ export function CheckoutScreen({ params }){
             {offersDelivery && deliv?.note && <div className="ym-cap" style={{ margin:'-6px 0 14px' }}><FA i="fa-circle-info" /> {deliv.note}</div>}
             {fulfillment==='hub' ? (
               <>
+                <div className="ym-cap" style={{ margin:'0 0 10px', display:'flex', gap:7, alignItems:'center' }}>
+                  {geoState==='locating'
+                    ? <><FA i="fa-circle-notch" style={{ color:'var(--m-primary)', animation:'ym-spin 1s linear infinite' }} /> Finding the collection point nearest you…</>
+                    : matchedRef.current
+                    ? <><FA i="fa-location-crosshairs" style={{ color:'var(--m-primary)' }} /> Matched to the collection point nearest you.</>
+                    : geoState==='denied'
+                    ? <><FA i="fa-location-crosshairs" style={{ color:'var(--m-fg3)' }} /> Location off — showing a default point. Turn on location to match the nearest.</>
+                    : <><FA i="fa-location-crosshairs" style={{ color:'var(--m-primary)' }} /> We route your parcel to the collection point nearest you.</>}
+                </div>
                 <div style={{ display:'flex', alignItems:'center', gap:14, padding:14, borderRadius:14, border:'2px solid var(--m-primary)', background:'var(--m-surface-3)' }}>
-                  <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}><FA i="fa-warehouse" /></div>
-                  <div style={{ flex:1 }}><div className="ym-h3" style={{ fontSize:14 }}>{hub.name}</div><div className="ym-cap">{hub.area} · secure pickup</div></div>
+                  <div style={{ width:44, height:44, borderRadius:13, background:'var(--m-primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17 }}><FA i="fa-location-dot" /></div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div className="ym-h3" style={{ fontSize:14, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>{hub.name}
+                      {matchedRef.current && <span style={{ fontSize:10.5, fontWeight:700, color:'var(--m-primary)', background:'var(--m-surface)', border:'1px solid var(--m-primary)', borderRadius:9999, padding:'2px 8px' }}>Nearest to you{matchKm!=null ? ' · ' + (matchKm<1 ? Math.round(matchKm*1000)+' m' : matchKm.toFixed(1)+' km') : ''}</span>}
+                    </div>
+                    <div className="ym-cap">{hub.area} · secure pickup</div>
+                  </div>
                   <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />
                 </div>
-                <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:12 }} onClick={()=>setHubOpen(true)}><FA i="fa-pen" /> Change hub</button>
-                <div style={{ marginTop:14 }}>
-                  <label className="ym-label">Delivery time</label>
-                  <select className="ym-input" value={slotStart||''} onChange={e=>setSlotStart(Number(e.target.value)||null)}>
-                    {slots.length===0 && <option value="">Next available</option>}
-                    {slots.map(s=><option key={s.start} value={s.start}>{s.label}</option>)}
-                  </select>
-                  <div className="ym-cap" style={{ marginTop:6 }}>We batch deliveries heading the same way — your parcel arrives within your chosen hour.</div>
+                <div style={{ marginTop:12 }}><HubMap hub={hub} height={160} /></div>
+                <div style={{ display:'flex', gap:10, marginTop:12, flexWrap:'wrap' }}>
+                  {(geoState==='denied' || geoState==='idle') && <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={locateAndMatch}><FA i="fa-location-crosshairs" /> Use my location</button>}
+                  <button className="ym-btn ym-btn-ghost ym-btn-sm" onClick={()=>setHubOpen(true)}><FA i="fa-pen" /> Choose a different point</button>
+                </div>
+                <div style={{ marginTop:16 }}>
+                  <label className="ym-label">Choose a delivery time</label>
+                  <SlotPicker grid={slotGrid} value={slotStart} onChange={setSlotStart} />
+                  <div className="ym-cap" style={{ marginTop:8 }}>Times show when {sellStore?.name || 'the store'} can hand off and {hub.name} can receive — we batch parcels heading the same way, so it arrives within your chosen hour.</div>
                 </div>
               </>
             ) : (
@@ -321,7 +357,7 @@ export function CheckoutScreen({ params }){
           <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, display:'flex', flexDirection:'column', gap:8 }}>
             <Row l="Subtotal" v={ymPrice(subtotal)} />
             {offer && offerCatalog > subtotal && <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-handshake" /> {offerLines.length>1?'Bundle deal':'Agreed offer'}</span><span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:700 }}>−{ymPrice(offerCatalog - subtotal)}</span></div>}
-            {fulfillment==='hub' ? <Row l="Hub delivery" v={ymPrice(fee)} /> : <Row l="Store pickup" v="Free" />}
+            {fulfillment==='hub' ? <Row l="Delivery" v={ymPrice(fee)} /> : <Row l="Store pickup" v="Free" />}
             <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3">Total</span><span className="ym-h2" style={{ fontSize:22 }}>{ymPrice(total)}</span></div>
           </div>
           {Math.floor(total/100) > 0 && <div className="ym-cap" style={{ marginTop:10, display:'flex', gap:7, alignItems:'center', color:'var(--m-primary)' }}><FA i="fa-gift" /> Earn {Math.floor(total/100)} YotePoint{Math.floor(total/100)!==1?'s':''} on this order</div>}
@@ -341,6 +377,94 @@ export function CheckoutScreen({ params }){
   );
 }
 function Row({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
+
+/* Delivery-slot model (powers the Morrisons-style picker). We don't yet hold per-store
+   trading hours in the catalogue, so a seller's hand-off window and a hub's collection
+   window both default to 8am–8pm; a slot is only bookable when it falls inside the
+   INTERSECTION of the two (plus a prep+transit lead time). The moment real hours land on
+   the store/hub docs, they flow straight through `storeWindow`/`hubWindow`. */
+const SLOT_LEAD_MIN = 90;                 // prep + batching + transit before the first bookable hour
+const DEFAULT_OPEN = 8, DEFAULT_CLOSE = 20;
+const storeWindow = (s) => ({ open: Number(s?.hours?.open) || DEFAULT_OPEN, close: Number(s?.hours?.close) || DEFAULT_CLOSE });
+const hubWindow = (h) => ({ open: Number(h?.hours?.open) || DEFAULT_OPEN, close: Number(h?.hours?.close) || DEFAULT_CLOSE });
+const hourLabel = (x) => { const h = ((x % 24) + 24) % 24; const ap = h < 12 ? 'am' : 'pm'; const hh = h % 12 === 0 ? 12 : h % 12; return hh + ap; };
+
+// Build `days` days of 1-hour delivery slots for a seller store + collection hub. Each
+// slot carries `ok` (bookable) and, when not, a short `reason`.
+function buildDaySlots(sellStore, hub, days = 4){
+  const sw = storeWindow(sellStore), hw = hubWindow(hub);
+  const open = Math.max(sw.open, hw.open), close = Math.min(sw.close, hw.close);
+  const now = Date.now(), minStart = now + SLOT_LEAD_MIN * 60000;
+  const out = [];
+  for (let d = 0; d < days; d++){
+    const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(base.getDate() + d);
+    const slots = [];
+    for (let h = open; h < close; h++){
+      const t = new Date(base.getTime()); t.setHours(h); const ms = t.getTime();
+      let ok = true, reason = '';
+      if (ms + 3600000 <= now) { ok = false; reason = 'Passed'; }
+      else if (ms < minStart) { ok = false; reason = 'Too soon'; }
+      slots.push({ start: ms, label: hourLabel(h) + '–' + hourLabel(h + 1), ok, reason });
+    }
+    out.push({
+      key: d, dateMs: base.getTime(),
+      label: d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : base.toLocaleDateString(undefined, { weekday: 'short' }),
+      sub: base.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+      slots, hasOpen: slots.some((s) => s.ok),
+    });
+  }
+  return out;
+}
+const firstOpenSlot = (grid) => { for (const day of grid) { const s = day.slots.find((x) => x.ok); if (s) return s.start; } return null; };
+
+/* Morrisons-style delivery-time picker: a scrollable row of day tabs, then a grid of
+   1-hour slot chips for the chosen day. Unavailable slots (outside the combined
+   store+hub window, already passed, or under the lead time) render greyed and disabled
+   rather than being hidden, so the shopper sees the full shape of the day. */
+function SlotPicker({ grid, value, onChange }){
+  const [day, setDay] = useSCm(() => {
+    const sel = grid.findIndex((dd) => dd.slots.some((s) => s.start === value));
+    if (sel >= 0) return sel;
+    const open = grid.findIndex((dd) => dd.hasOpen);
+    return open >= 0 ? open : 0;
+  });
+  const active = grid[day] || grid[0];
+  return (
+    <div>
+      <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, marginBottom:12 }}>
+        {grid.map((dd, i) => {
+          const on = i === day;
+          return (
+            <button key={dd.key} onClick={()=>setDay(i)} style={{ flex:'0 0 auto', minWidth:82, padding:'9px 12px', borderRadius:12, cursor:'pointer', fontFamily:'inherit', textAlign:'center', background: on?'var(--m-primary)':'var(--m-surface)', color: on?'#fff':'var(--m-fg2)', border: on?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
+              <div style={{ fontSize:13, fontWeight:700 }}>{dd.label}</div>
+              <div style={{ fontSize:11, opacity: on?0.85:0.6 }}>{dd.hasOpen ? dd.sub : 'Full'}</div>
+            </button>
+          );
+        })}
+      </div>
+      {active && active.hasOpen ? (
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(108px, 1fr))', gap:8 }}>
+          {active.slots.map((s) => {
+            const on = s.start === value;
+            return (
+              <button key={s.start} type="button" disabled={!s.ok} onClick={()=>onChange(s.start)} title={s.ok ? '' : s.reason}
+                style={{ padding:'10px 8px', borderRadius:11, fontFamily:'inherit', fontSize:12.5, fontWeight:600, textAlign:'center',
+                  cursor: s.ok?'pointer':'not-allowed',
+                  background: on?'var(--m-primary)':(s.ok?'var(--m-surface)':'var(--m-surface-2)'),
+                  color: on?'#fff':(s.ok?'var(--m-fg1)':'var(--m-fg4)'),
+                  border: on?'2px solid var(--m-primary)':'2px solid var(--m-border)',
+                  opacity: s.ok?1:0.55, textDecoration: s.ok?'none':'line-through' }}>
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="ym-cap" style={{ padding:'8px 0' }}>No slots available this day — pick another day above.</div>
+      )}
+    </div>
+  );
+}
 
 /* Lazy-loads the order's tax invoice (invoices/inv_<orderId>) and shows the VAT
    breakdown + invoice number on demand. */

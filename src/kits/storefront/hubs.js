@@ -18,3 +18,27 @@ export const HUBS = [
 
 export const DEFAULT_HUB_ID = 'westlands';
 export const findHub = (id) => HUBS.find((h) => h.id === id) || null;
+
+/* Great-circle distance in km between two {lat,lng} points (haversine). Used to route
+   a shopper to the collection point nearest them, so checkout can auto-match instead
+   of asking them to pick a hub off a list. */
+export function distanceKm(a, b) {
+  if (!a || !b || !Number.isFinite(a.lat) || !Number.isFinite(b.lat)) return Infinity;
+  const R = 6371, rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/* The collection hub nearest a shopper location → { hub, km }, or null if the location
+   is unknown. This is the "matched with the nearest point" step the checkout runs the
+   moment it has the shopper's coordinates. */
+export function nearestHub(loc) {
+  if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) return null;
+  let best = null, bestD = Infinity;
+  for (const h of HUBS) {
+    const d = distanceKm(loc, h.location);
+    if (d < bestD) { bestD = d; best = h; }
+  }
+  return best ? { hub: best, km: bestD } : null;
+}
