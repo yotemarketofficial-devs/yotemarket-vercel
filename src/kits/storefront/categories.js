@@ -15,7 +15,11 @@ export const CATEGORY_TREE = [
       'Security & Surveillance', 'Converters & Stabilizers', 'Software'],
   },
   {
-    id: 'phones', label: 'Phones & Tablets', short: 'Phones', icon: 'fa-mobile-screen-button', tint: '#06b6d4', match: ['electronics'],
+    // Phones is its own top level and merchants list against it directly, so its catId
+    // IS 'phones' — `match:['phones']`, not ['electronics']. Pointing it at 'electronics'
+    // meant a product saved as catId 'phones' matched NO node (electronics filters
+    // 'electronics') and fell into "Other". Same self-consistent pattern as Furniture.
+    id: 'phones', label: 'Phones & Tablets', short: 'Phones', icon: 'fa-mobile-screen-button', tint: '#06b6d4', match: ['phones'],
     subs: ['Mobile Phones', 'Tablets', 'Phone & Tablet Accessories', 'Smart Watches', 'Power Banks', 'Phone Cases & Covers'],
   },
   {
