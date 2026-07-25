@@ -79,11 +79,14 @@ function WelcomeBanner({ onCopy }){
           <h1 style={{ fontSize:24, fontWeight:800, margin:0 }}>Karibu, {shop.first}! 👋</h1>
           <p style={{ color:'rgba(255,255,255,.85)', fontSize:14.5, marginTop:6, maxWidth:420 }}>Share your storefront link and keep customers coming back.</p>
         </div>
-        <div style={{ background:'rgba(255,255,255,.14)', borderRadius:14, padding:14, minWidth:320, border:'1px solid rgba(255,255,255,.2)' }}>
-          <div style={{ color:'rgba(255,255,255,.75)', fontSize:12, marginBottom:8 }}>Your store link</div>
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <code style={{ flex:1, color:'#fff', fontSize:13, fontFamily:'ui-monospace,Menlo,monospace', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{link}</code>
-            <button onClick={copy} style={{ background:'#fff', color:'var(--m-primary-deep)', fontWeight:700, padding:'8px 14px', borderRadius:10, border:'none', cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>{copied?'Copied':'Copy'}</button>
+        {/* Label, link and Copy all on one line. It also grows into the space left
+            beside the greeting (and shrinks on phones rather than clipping), so more
+            of the link is readable than when the label sat stacked above it. */}
+        <div style={{ background:'rgba(255,255,255,.14)', borderRadius:14, padding:'12px 14px', flex:'1 1 360px', minWidth:0, maxWidth:560, border:'1px solid rgba(255,255,255,.2)' }}>
+          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+            <span style={{ color:'rgba(255,255,255,.75)', fontSize:12, whiteSpace:'nowrap', flexShrink:0 }}>Your store link</span>
+            <code style={{ flex:1, minWidth:0, color:'#fff', fontSize:13, fontFamily:'ui-monospace,Menlo,monospace', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{link}</code>
+            <button onClick={copy} style={{ background:'#fff', color:'var(--m-primary-deep)', fontWeight:700, padding:'8px 14px', borderRadius:10, border:'none', cursor:'pointer', fontSize:13, fontFamily:'inherit', flexShrink:0 }}>{copied?'Copied':'Copy'}</button>
           </div>
         </div>
       </div>
