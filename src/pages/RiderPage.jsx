@@ -28,7 +28,7 @@ const FEATURES = [
 /* Join form — a real application into rider_applications, vetted by logistics. */
 function RiderJoin({ formRef }) {
   const { user } = useAuth();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', county: '', vehicle: 'motorbike', plate: '', licence: '', availability: 'full-time', note: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', county: '', vehicle: 'motorbike', plate: '', licence: '', logbook: '', policeClearance: '', availability: 'full-time', note: '' });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null); // { ref }
   const [err, setErr] = useState('');
@@ -52,6 +52,7 @@ function RiderJoin({ formRef }) {
       const r = await submitRiderApplication({
         name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(), county: form.county.trim(),
         vehicle: form.vehicle, plate: form.plate.trim(), licence: form.licence.trim(),
+        logbook: form.logbook.trim(), policeClearance: form.policeClearance.trim(),
         availability: form.availability, note: form.note.trim(),
       });
       setDone({ ref: r.ref });
@@ -127,6 +128,15 @@ function RiderJoin({ formRef }) {
                     <select value={form.availability} onChange={(e) => set('availability', e.target.value)}>
                       {AVAILABILITY.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
                     </select>
+                  </label>
+                </div>
+
+                <div className="rider-row">
+                  <label>Logbook / authorization no.
+                    <input value={form.logbook} onChange={(e) => set('logbook', e.target.value)} placeholder="Optional — speeds up vetting" />
+                  </label>
+                  <label>Police clearance no.
+                    <input value={form.policeClearance} onChange={(e) => set('policeClearance', e.target.value)} placeholder="Optional — speeds up vetting" />
                   </label>
                 </div>
 
