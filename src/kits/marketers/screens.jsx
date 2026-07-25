@@ -1,6 +1,6 @@
 /* screens.jsx — Marketers app screens (scout-facing). */
 import React from 'react';
-import { ME, REFERRALS, VERIFIED_COUNT, PENDING_COUNT, TOTAL_REFERRED, LEADERBOARD, PAYOUTS, COUNTIES } from './data.js';
+import { ME, REFERRALS, VERIFIED_COUNT, PENDING_COUNT, TOTAL_REFERRED, LEADERBOARD, PAYOUTS } from './data.js';
 import { calcEarnings, calcBatchedEarnings, cycleInfo, nextCheckpoint, merchantsToWithdrawal, ksh, MK_CONFIG } from './econ.js';
 import { Card, Btn, Pill, Avatar, Stat, Bar, Medal, Icon, useTheme, useEarn } from './ui.jsx';
 import { requestMarketerPayout, submitMerchantFollow } from './service.js';
@@ -595,7 +595,11 @@ function Mini({ k, v, c, small }){
 /* ============ PROFILE / SETTINGS ============ */
 export function Profile(){
   const { dark, toggle, accent, setAccent } = useTheme();
-  const [county, setCounty] = useS(ME.county);
+  const [copied, setCopied] = useS(false);
+  const copyCode = () => {
+    if (!ME.code) return;
+    try { navigator.clipboard && navigator.clipboard.writeText(ME.code); setCopied(true); setTimeout(()=>setCopied(false), 1500); } catch { /* clipboard blocked */ }
+  };
   return (
     <div className="fadeup space-y-6">
       <PageHead title="Profile & settings" sub="Manage your scout account and app preferences." />
@@ -612,21 +616,32 @@ export function Profile(){
         </Card>
 
         <Card className="p-6 lg:col-span-2">
-          <h3 className="font-bold t1 mb-4">Account details</h3>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Full name" value={ME.name} />
-            <Field label="Phone (M-Pesa)" value={ME.phone} />
-            <Field label="Email" value={ME.email} />
-            <div>
-              <label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">County</label>
-              <select className="ym-input" value={county} onChange={e=>setCounty(e.target.value)}>
-                {COUNTIES.map(c=><option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <Field label="Referral code" value={ME.code} mono />
-            <Field label="Joined" value={ME.joined} />
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <h3 className="font-bold t1">Account details</h3>
+            {/* Read-only on purpose: a scout must never change their referral code (the
+                attribution key) or identity from here. Staff adjust details in the console. */}
+            <span className="text-xs t3 inline-flex items-center gap-1.5"><Icon name="lock"/> Read-only · staff manage changes</span>
           </div>
-          <div className="flex gap-2 mt-5"><Btn kind="primary" icon="check">Save changes</Btn><Btn kind="ghost">Cancel</Btn></div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <ReadRow label="Full name" value={ME.name} />
+            <ReadRow label="Phone (M-Pesa)" value={ME.phone} />
+            <ReadRow label="Email" value={ME.email} />
+            <ReadRow label="County" value={ME.county} />
+            <ReadRow label="Joined" value={ME.joined} />
+          </div>
+
+          {/* Referral code — PERMANENT. Merchants enter it to credit you, so changing it
+              would orphan everyone who already used the old one. Display + copy only. */}
+          <div className="mt-5 rounded-xl p-4" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-xs font-semibold t3 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Icon name="hashtag"/> Your referral code</div>
+                <div className="num font-extrabold t1" style={{ fontSize:22, letterSpacing:'.02em' }}>{ME.code || '—'}</div>
+              </div>
+              <Btn kind="soft" size="sm" icon={copied?'check':'copy'} onClick={copyCode} disabled={!ME.code}>{copied?'Copied':'Copy'}</Btn>
+            </div>
+            <div className="text-xs t3 mt-2 flex items-start gap-1.5"><Icon name="lock" className="mt-0.5"/> Permanent — this is how merchants credit you, so it can't be changed.</div>
+          </div>
         </Card>
       </div>
 
@@ -650,9 +665,11 @@ export function Profile(){
     </div>
   );
 }
-function Field({ label, value, mono }){
+/* Read-only account field — a styled display, NOT an editable input. Scouts can't change
+   their own details here (identity + the referral code are server-controlled). */
+function ReadRow({ label, value }){
   return (<div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5">{label}</label>
-    <input className={`ym-input ${mono?'num':''}`} defaultValue={value} /></div>);
+    <div className="ym-input flex items-center" style={{ background:'var(--surface2)', color:'var(--t2)', cursor:'default', minHeight:44 }}>{value || <span className="t3">—</span>}</div></div>);
 }
 function SettingRow({ title, sub, children }){
   return (<div className="flex items-center justify-between gap-4 rounded-xl p-4" style={{background:'var(--surface2)'}}>
