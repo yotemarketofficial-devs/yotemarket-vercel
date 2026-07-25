@@ -42,6 +42,26 @@ export function approxCenterFor(area) {
   return DEFAULT_MAP_CENTER;
 }
 
+// Turn a pin into a human address (Mapbox reverse geocoding), so a merchant who taps
+// "Use current location" doesn't have to type out where they already are. Returns ''
+// with no token, on a network/API failure, or when Mapbox has nothing there — the
+// address field is always editable by hand, so this can only ever be a head start.
+export async function reverseGeocode(lat, lng) {
+  if (!MAPBOX_TOKEN || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+    `?access_token=${MAPBOX_TOKEN}&limit=1&language=en&types=address,poi,neighborhood,locality,place`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return '';
+    const json = await res.json();
+    const name = (json.features && json.features[0] && json.features[0].place_name) || '';
+    // Mapbox tails every result with ", Kenya" — the shopper already knows.
+    return name.replace(/,\s*Kenya\s*$/i, '').trim();
+  } catch {
+    return '';
+  }
+}
+
 // Build a Mapbox Static Images API URL: a rendered PNG with a brand pin at lat/lng,
 // usable directly as an <img src>. Requested @2x for retina; width/height are the
 // pixel size Mapbox renders (the <img> is scaled to its container with object-fit).

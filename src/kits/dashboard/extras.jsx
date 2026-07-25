@@ -16,6 +16,8 @@ import {
   markConversationRead, otherParticipant, hideConversation, fmtTime, fmtWhen, tsMillis, visibleMessages, dayLabel, sameDayMs, offerItems, offerTotal,
 } from '../../lib/chat.js';
 import { usePushPrompt } from '../../lib/push.js';
+import { reverseGeocode } from '../../lib/maps.js';
+import { DAYS, defaultHours, normalizeHours } from '../../lib/hours.js';
 import ImageUpload from '../../components/ImageUpload.jsx';
 import { Receipt, normalizeReceipt } from '../../components/Receipt.jsx';
 import { coverPath, logoPath } from '../../lib/storage.js';
@@ -489,11 +491,31 @@ function StorePickupLocation({ toast }){
   const [addr, setAddr] = useStateX(shop.address || '');
   const [busy, setBusy] = useStateX(false);
   const [locating, setLocating] = useStateX(false);
+  const [autoAddr, setAutoAddr] = useStateX(false);  // address came from the pin, not typed
+  // The store doc arrives AFTER first render, so seeding state from `shop` once left a
+  // merchant who had already saved a pin looking at an empty card — and re-saving would
+  // have been their only way out. Re-sync whenever the saved values change.
+  useEffX(() => {
+    setCoords(shop.location || null);
+    setAddr(shop.address || '');
+    setAutoAddr(false);
+  }, [shop.shopId, shop.location?.lat, shop.location?.lng, shop.address]);
   const locate = () => {
     if (!navigator.geolocation) { toast && toast('Geolocation not supported on this device'); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setCoords({ lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) }); setLocating(false); },
+      async (pos) => {
+        const lat = +pos.coords.latitude.toFixed(6); const lng = +pos.coords.longitude.toFixed(6);
+        setCoords({ lat, lng });
+        // Fill the address from the pin so the merchant doesn't retype where they're
+        // standing. Only into an empty field — never overwrite what they wrote (their
+        // "shop 4, next to the chemist" beats any geocoder).
+        if (!addr.trim()) {
+          const found = await reverseGeocode(lat, lng);
+          if (found) { setAddr(found); setAutoAddr(true); }
+        }
+        setLocating(false);
+      },
       () => { toast && toast('Could not get your location — allow location access'); setLocating(false); },
       { enableHighAccuracy: true, timeout: 10000 },
     );
@@ -501,7 +523,7 @@ function StorePickupLocation({ toast }){
   const save = async () => {
     if (!coords) { toast && toast('Set the pin first — tap “Use current location”'); return; }
     setBusy(true);
-    try { await updateStoreLocation({ lat: coords.lat, lng: coords.lng, address: addr.trim() }); toast && toast('Pickup location saved'); }
+    try { await updateStoreLocation({ lat: coords.lat, lng: coords.lng, address: addr.trim() }); setAutoAddr(false); toast && toast('Pickup location saved'); }
     catch (e) { toast && toast(e.message || 'Could not save location'); } finally { setBusy(false); }
   };
   return (
@@ -509,11 +531,73 @@ function StorePickupLocation({ toast }){
       <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14 }}>
         <div className="ym-cap">Set your store's spot so shoppers who choose “pick up from store” get a map + directions to you.</div>
         <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-          <Btn kind="soft" icon={locating?'fa-circle-notch':'fa-location-crosshairs'} onClick={locate} disabled={locating}>{locating?'Locating…':'Use current location'}</Btn>
+          <Btn kind="soft" icon={locating?'fa-circle-notch':'fa-location-crosshairs'} onClick={locate} disabled={locating}>{locating?'Locating…':coords?'Update pin':'Use current location'}</Btn>
           {coords && <span className="ym-cap"><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> {coords.lat}, {coords.lng}</span>}
         </div>
-        <div><label className="ym-label">Address / landmark</label><input className="ipt" value={addr} onChange={e=>setAddr(e.target.value)} placeholder="e.g. Mpaka Rd, Westlands — shop 4" /></div>
+        <div>
+          <label className="ym-label">Address / landmark</label>
+          <input className="ipt" value={addr} onChange={e=>{ setAddr(e.target.value); setAutoAddr(false); }} placeholder="e.g. Mpaka Rd, Westlands — shop 4" />
+          {autoAddr && <div className="ym-cap" style={{ marginTop:6, color:'var(--m-primary)' }}><FA i="fa-wand-magic-sparkles" /> Filled in from your pin — edit it if it's not exact.</div>}
+        </div>
         <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save location'}</Btn>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* Opening hours — the "are they open right now?" answer on the public store page.
+   Saved on the store doc via updateStoreProfile; the shopper side reads it through
+   storeOpenState() in lib/hours.js. */
+function StoreHoursForm({ shop, toast }){
+  const [hours, setHours] = useStateX(() => normalizeHours(shop.hours) || defaultHours());
+  const [busy, setBusy] = useStateX(false);
+  const saved = normalizeHours(shop.hours);
+  // Same late-arriving-store-doc problem as the pin above: adopt real hours when they land.
+  useEffX(() => { const h = normalizeHours(shop.hours); if (h) setHours(h); }, [shop.shopId, shop.hours]);
+  const setDay = (k, patch) => setHours(h => ({ ...h, [k]: { ...h[k], ...patch } }));
+  // Most shops keep one set of hours all week — type them once.
+  const copyDown = () => setHours(h => Object.fromEntries(DAYS.map(d => [d.k, { ...h.mon }])));
+  const save = () => {
+    setBusy(true);
+    updateStoreProfile({ hours })
+      .then((res)=>{
+        // An older deployed backend silently drops an unknown field, which would look
+        // like a successful save and lose the merchant's work. It echoes what it wrote.
+        if (res && Array.isArray(res.saved) && !res.saved.includes('hours')) {
+          toast && toast('Hours aren’t supported by the server yet — nothing was saved');
+          return;
+        }
+        toast && toast('Opening hours saved','fa-check');
+      })
+      .catch((e)=>toast&&toast(e?.message||'Could not save hours'))
+      .finally(()=>setBusy(false));
+  };
+  return (
+    <SectionCard title="Opening hours" sub="Shown on your store page as “Open now” or “Closed”">
+      <div style={{ padding:20, display:'flex', flexDirection:'column', gap:10 }}>
+        {!saved && <div className="ym-cap">Not set yet — shoppers see no hours on your store page until you save.</div>}
+        {DAYS.map(d=>{
+          const v = hours[d.k] || { closed:true };
+          return (
+            <div key={d.k} style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span className="ym-h3" style={{ fontSize:13.5, width:44, flexShrink:0 }}>{d.short}</span>
+              {v.closed ? (
+                <span className="ym-cap" style={{ flex:1, minWidth:120 }}>Closed</span>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', gap:8, flex:1, minWidth:180 }}>
+                  <input type="time" className="ipt" value={v.open||'09:00'} onChange={e=>setDay(d.k,{ open:e.target.value })} style={{ minHeight:38, padding:'0 10px', width:'auto', flex:'0 1 118px' }} />
+                  <span className="ym-cap">to</span>
+                  <input type="time" className="ipt" value={v.close||'18:00'} onChange={e=>setDay(d.k,{ close:e.target.value })} style={{ minHeight:38, padding:'0 10px', width:'auto', flex:'0 1 118px' }} />
+                </div>
+              )}
+              <Toggle on={!v.closed} onClick={()=>setDay(d.k, v.closed ? { closed:false, open:v.open||'09:00', close:v.close||'18:00' } : { closed:true })} />
+            </div>
+          );
+        })}
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginTop:4 }}>
+          <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save}>{busy?'Saving…':'Save hours'}</Btn>
+          <Btn kind="ghost" icon="fa-copy" onClick={copyDown}>Copy Mon to all days</Btn>
+        </div>
       </div>
     </SectionCard>
   );
@@ -562,6 +646,7 @@ export function Settings({ toast }){
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           <TaxSettings toast={toast} />
           <StorePickupLocation toast={toast} />
+          <StoreHoursForm shop={shop} toast={toast} />
           <SectionCard title="Appearance">
             <div style={{ padding:'8px 20px' }}><Row label="Dark mode" sub="Switch the dashboard theme" last><Toggle on={theme==='dark'} onClick={()=>setTheme(theme==='dark'?'light':'dark')} /></Row></div>
           </SectionCard>

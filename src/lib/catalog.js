@@ -90,6 +90,7 @@ const normStore = (d) => ({
   verified: !!d.verified,
   tagline: d.tagline,
   socials: d.socials || null,  // { instagram, facebook, tiktok, x, youtube, whatsapp, website } — owner-set links
+  hours: d.hours || null,      // opening hours by weekday → "Open now"/"Closed" (lib/hours.js)
   phone: d.phone || undefined,
   tint: d.tint || '#4f46e5',
   icon: faIcon(d.icon, 'fa-store'),

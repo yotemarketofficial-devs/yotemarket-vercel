@@ -9,6 +9,7 @@ import { subscribeProductReviews, subscribeStoreReviews } from '../../lib/review
 import { submitReview, reportReview } from '../../lib/firebase.js';
 import { StoreClipsRail } from './feed.jsx';
 import { subscribeFeed, subscribeFeedSeen } from '../../lib/feed.js';
+import { storeOpenState, todayWindow } from '../../lib/hours.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState: useSS, useEffect: useEffSS } = React;
@@ -688,6 +689,14 @@ export function StoreScreen({ params }){
   const [sub, setSub] = useSS(null);
   const [sort, setSort] = useSS('featured');
   const [inStockOnly, setInStockOnly] = useSS(false);
+  // "Open now" is a claim about this minute, so re-check on the minute — a page left
+  // open at closing time must not keep telling a shopper the shop is open.
+  const [, tick] = useSS(0);
+  useEffSS(() => {
+    if (!s?.hours) return undefined;
+    const t = setInterval(() => tick((n) => n + 1), 60000);
+    return () => clearInterval(t);
+  }, [s?.hours]);
   const toggleFollow = () => {
     if (!uid) { requireAuth(() => {}); return; }
     const nf = !following;
@@ -696,6 +705,7 @@ export function StoreScreen({ params }){
       .catch(() => toast('Could not update follow', 'fa-triangle-exclamation'));
   };
   if (!s) return <NotFound back={back} label="Store not found" />;
+  const openNow = storeOpenState(s.hours);   // null when the merchant hasn't set hours
   const cats = ['all', ...Array.from(new Set(all.map(p=>p.cat)))];
   // Subcategory options come from the store's ACTUAL products (not the full tree),
   // so a shopper only ever sees types this store really carries.
@@ -746,7 +756,11 @@ export function StoreScreen({ params }){
       </div>
       <div className="wrap" style={{ marginTop:20 }}>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:24 }}>
-          {[[fmtK((s.followers||0)+(following?1:0)),'Followers'],[s.products||0,'Products'],[(s.reviews>0?s.rating:'—')+' ★',`${fmtK(s.reviews||0)} reviews`],['Since '+(s.since||'—'),'On YoteMarket'],...(s.isHub?[['Pickup','Hub store']]:[])].map(([v,l])=>(
+          {[[fmtK((s.followers||0)+(following?1:0)),'Followers'],[s.products||0,'Products'],[(s.reviews>0?s.rating:'—')+' ★',`${fmtK(s.reviews||0)} reviews`],
+            // Only when the merchant has actually set hours — an unset store says
+            // nothing rather than implying it's shut.
+            ...(openNow ? [[<span key="o" style={{ color: openNow.open ? '#16a34a' : 'var(--m-fg3)' }}>{openNow.open?'Open now':'Closed'}</span>, openNow.label.replace(/^(Open now|Closed) · /,'')||todayWindow(s.hours)]] : []),
+            ['Since '+(s.since||'—'),'On YoteMarket'],...(s.isHub?[['Pickup','Hub store']]:[])].map(([v,l])=>(
             <div key={l} className="ym-card" style={{ padding:'14px 20px', textAlign:'center', flex:'1 1 140px' }}>
               <div style={{ fontWeight:700, fontSize:17, color:'var(--m-fg1)' }}>{v}</div><div className="ym-cap" style={{ marginTop:2 }}>{l}</div>
             </div>

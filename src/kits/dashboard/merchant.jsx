@@ -133,6 +133,7 @@ export function useShop() {
     followers: s.followers || 0,
     location: s.location || null,
     address: s.address || '',
+    hours: s.hours || null,   // { mon:{closed,open,close}, … } — see lib/hours.js
     plan: '',
     photo: null,
     logo: s.logo || null, // store logo (denormalised on the store doc) for POS/branding
