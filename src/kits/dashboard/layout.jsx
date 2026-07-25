@@ -127,7 +127,10 @@ export function TopBar({ onMenu, onChange, onHelp }){
           <span className="ym-cap" style={{ borderLeft:'1px solid var(--m-border)', paddingLeft:12, fontWeight:600 }}>Merchant</span>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <button onClick={()=>window.open('/storefront','_blank')} className="ym-btn ym-btn-ghost ym-btn-sm view-shop"><FA i="fa-store" /> View storefront</button>
+          {/* Switches this tab over to the mall (it used to force a second tab, which
+              piled up duplicates over a shift). A real link, so ctrl/cmd-click still
+              opens it in a new tab when that's what the merchant actually wants. */}
+          <a href="/storefront" className="ym-btn ym-btn-ghost ym-btn-sm view-shop" style={{ textDecoration:'none' }}><FA i="fa-store" /> View storefront</a>
           {onHelp && <button onClick={onHelp} className="icon-btn" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
           {/* Was a bell that just opened chat (and was labelled "Messages"). It is now a
               real notification bell: order updates, refund requests, comments and
