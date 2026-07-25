@@ -1,18 +1,34 @@
 /* chrome.jsx — Storefront header, category nav, footer, cart drawer. */
 import React from 'react';
 import { useYM, FA, Thumb, QtyStepper } from './ui.jsx';
-import { ymProduct, ymPrice } from './data.js';
+import { ymProduct, ymPrice, ymStore } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useUnreadCount } from '../../lib/chat.js';
+import { useMerchantAccess } from '../../lib/merchantAccess.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 import NotificationBell from '../../components/NotificationBell.jsx';
 const { useState: useSC } = React;
 
+/* One row in the account menu. Either moves around inside the storefront (onClick) or
+   is a real link to another YoteMarket app (href) — an <a> there, so a merchant can
+   middle-click / long-press "My store" into its own tab and keep shopping in this one. */
+const acctIcon = { width:18, color:'var(--m-fg3)' };
+function AcctRow({ icon, label, sub, href, onClick, style }){
+  const base = { display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none',
+    cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left', boxSizing:'border-box', ...style };
+  const body = <>{icon}<span style={{ minWidth:0 }}>{label}
+    {sub && <span className="ym-cap" style={{ display:'block', lineHeight:1.35, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{sub}</span>}
+  </span></>;
+  if (href) return <a href={href} onClick={onClick} style={{ ...base, textDecoration:'none' }}>{body}</a>;
+  return <button onClick={onClick} style={base}>{body}</button>;
+}
+
 export function Header(){
   const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut, startTour } = useYM();
   const { user } = useAuth();
   const unread = useUnreadCount(user, 'shopper');
+  const merchant = useMerchantAccess(user);
   const [acct, setAcct] = useSC(false);
   return (
     <header style={{ position:'sticky', top:0, zIndex:60, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
@@ -64,23 +80,29 @@ export function Header(){
                 <div style={{ padding:'10px 12px', borderBottom:'1px solid var(--m-border)', marginBottom:6 }}>
                   <div className="ym-h3">{account.name}</div><div className="ym-cap">{account.email || account.phone || 'Signed in'}</div>
                 </div>
-                {[['fa-user','My profile','profile'],['fa-heart','Following','following'],[null,'YoteFeed','feed'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
-                  <button key={l} onClick={()=>{ setAcct(false); if(scr) nav(scr); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
-                    {scr==='ai'
+                <AcctRow icon={<FA i="fa-user" style={acctIcon} />} label="My profile" onClick={()=>{ setAcct(false); nav('profile'); }} />
+                {/* Merchants shop the mall too — this is their one tap back into their own
+                    store instead of typing /dashboard. Only rendered when they really have
+                    one (merchants/{uid} or an active store_staff/{uid}), so it's never a
+                    dead link; cashiers go to the POS terminal, which is where they work. */}
+                {merchant.isMerchant && (
+                  <AcctRow icon={<FA i="fa-store" style={acctIcon} />} href={merchant.href} onClick={()=>setAcct(false)}
+                    label={merchant.role==='cashier' ? 'Store terminal' : 'My store'}
+                    sub={merchant.storeName || ymStore(merchant.storeId)?.name || undefined} />
+                )}
+                {[['fa-heart','Following','following'],[null,'YoteFeed','feed'],['fa-box','My orders','orders'],['fa-comments','Messages','messages'],['fa-wand-magic-sparkles','Ask YoteAI','ai']].map(([ic,l,scr])=>(
+                  <AcctRow key={l} label={l} onClick={()=>{ setAcct(false); nav(scr); }}
+                    icon={scr==='ai'
                       ? <span style={{ width:18, display:'inline-flex', justifyContent:'center', color:'var(--m-fg3)' }}><YoteAiMark size={16} color="currentColor" /></span>
                       : scr==='feed'
                       ? <span style={{ width:18, display:'inline-flex', justifyContent:'center' }}><YoteFeedMark size={14} /></span>
-                      : <FA i={ic} style={{ width:18, color:'var(--m-fg3)' }} />} {l}
-                  </button>
+                      : <FA i={ic} style={acctIcon} />} />
                 ))}
                 {/* Replay of the welcome tour — the storefront has no "?" button, so this
                     is how anyone (not just a brand-new signup) can see it again. */}
-                <button onClick={()=>{ setAcct(false); startTour && startTour(); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-fg2)', borderRadius:10, textAlign:'left' }}>
-                  <FA i="fa-circle-question" style={{ width:18, color:'var(--m-fg3)' }} /> Take the tour
-                </button>
-                <button onClick={()=>{ setAcct(false); signOut(); }} style={{ display:'flex', alignItems:'center', gap:12, width:'100%', padding:'10px 12px', border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14, color:'var(--m-inactive-fg)', borderRadius:10, marginTop:4, borderTop:'1px solid var(--m-border)' }}>
-                  <FA i="fa-arrow-right-from-bracket" style={{ width:18 }} /> Sign out
-                </button>
+                <AcctRow icon={<FA i="fa-circle-question" style={acctIcon} />} label="Take the tour" onClick={()=>{ setAcct(false); startTour && startTour(); }} />
+                <AcctRow icon={<FA i="fa-arrow-right-from-bracket" style={{ width:18 }} />} label="Sign out"
+                  onClick={()=>{ setAcct(false); signOut(); }} style={{ color:'var(--m-inactive-fg)', marginTop:4, borderTop:'1px solid var(--m-border)' }} />
               </div>
             </>)}
           </div>
