@@ -134,8 +134,10 @@ export function TopBar({ onMenu, onChange, onHelp }){
           {onHelp && <button onClick={onHelp} className="icon-btn" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
           {/* Was a bell that just opened chat (and was labelled "Messages"). It is now a
               real notification bell: order updates, refund requests, comments and
-              support replies, each routing to the screen it concerns. */}
-          <NotificationBell user={authUser} onOpenNotification={(n)=>{
+              support replies, each routing to the screen it concerns.
+              STORE notifications only — the owner's own shopping stays in the
+              storefront bell, so running a shop doesn't bury it. */}
+          <NotificationBell user={authUser} audience="merchant" onOpenNotification={(n)=>{
             if (!onChange) return;
             if (n.type === 'chat') { onChange('chat'); return; }
             if (n.type === 'order') { onChange('sales'); return; }

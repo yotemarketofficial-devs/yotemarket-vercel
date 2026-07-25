@@ -51,9 +51,12 @@ export function Header(){
           {unread>0 && <span style={{ position:'absolute', top:-2, right:-2, minWidth:18, height:18, borderRadius:9999, background:'var(--m-secondary)', color:'#fff', fontSize:10.5, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 5px', border:'2px solid var(--m-bg)' }}>{unread>9?'9+':unread}</span>}
         </button>
         {/* Notification bell — hidden entirely when signed out (nothing to show), so it
-            is never a dead control. Tapping a row routes to the thing it's about. */}
+            is never a dead control. Tapping a row routes to the thing it's about.
+            audience="shopper": this same account's STORE notifications (a new refund
+            request, a comment on a store post, a buyer's message) belong in the merchant
+            dashboard, not here while they're out shopping. */}
         {account.hasAccount && (
-          <NotificationBell user={user} onOpenNotification={(n)=>{
+          <NotificationBell user={user} audience="shopper" onOpenNotification={(n)=>{
             const d = n.data || {};
             if (n.type === 'chat' && d.convId) { nav('messages'); return; }
             if (n.type === 'order' || n.type === 'dispute') { nav('orders'); return; }

@@ -24,8 +24,8 @@ const TONE = {
   muted: 'var(--m-fg3)',
 };
 
-export default function NotificationBell({ user, onOpenNotification, className = 'icon-btn' }) {
-  const { items, unread, enabled, markRead, markAllRead, dismiss } = useNotifications(user);
+export default function NotificationBell({ user, onOpenNotification, className = 'icon-btn', audience }) {
+  const { items, unread, enabled, markRead, markAllRead, dismiss } = useNotifications(user, audience);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
