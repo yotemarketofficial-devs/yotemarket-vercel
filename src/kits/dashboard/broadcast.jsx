@@ -5,6 +5,9 @@
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { useMerchant } from './merchant.jsx';
+import { OfferComposer } from './extras.jsx';
+import { useAuth } from '../../lib/useAuth.jsx';
+import { merchantConversationWith, sendChatMessage } from '../../lib/chat.js';
 import { createStorePost, listMyStorePosts, deleteStorePost, listPostComments, deletePostComment, listStoreFollowers } from '../../lib/firebase.js';
 import { ksh } from './data.js';
 const { useState, useEffect, useCallback } = React;
@@ -19,7 +22,7 @@ const KINDS = [
 const KIND_LABEL = Object.fromEntries(KINDS.map(([k, l]) => [k, l]));
 const fmt = (ms) => { try { return new Date(ms).toLocaleString('en-KE', { day:'numeric', month:'short', hour:'numeric', minute:'2-digit' }); } catch { return ''; } };
 
-export function Broadcast({ toast }){
+export function Broadcast({ toast, onOpenChat }){
   const { store, products } = useMerchant();
   const followers = Number(store?.followers) || 0;
   const prodList = Array.isArray(products) ? products : [];
@@ -73,7 +76,7 @@ export function Broadcast({ toast }){
           )}
         </>
       ) : (
-        <Audience />
+        <Audience toast={toast} onOpenChat={onOpenChat} />
       )}
     </div>
   );
@@ -81,14 +84,55 @@ export function Broadcast({ toast }){
 
 /* Who follows this store — the audience behind the broadcast channel. Its own tab
    so the follower list is separate from composing posts. Owner/manager only. */
-function Audience(){
+/* The follower list, and what you can do with it: message a follower directly, or
+   send that one person an exclusive deal. Both ride the existing chat rails — the
+   deal is a real chat OFFER, so the shopper taps "Accept & pay" and checkout re-reads
+   the price from the offer server-side. Nothing here is a coupon code to key in. */
+function Audience({ toast, onOpenChat }){
+  const { store, products, role, live } = useMerchant();
+  const { user } = useAuth();
+  // Only an OWNER's offer is payable: checkout re-reads the offer server-side and
+  // rejects any whose sender isn't the store owner (resolveChatOffer). A manager
+  // would be sending a deal nobody could accept, so they get "Message" only.
+  const canDeal = !live || role === 'owner';
   const [list, setList] = useState(null);
+  const [dealFor, setDealFor] = useState(null);   // the follower being offered a deal
+  const [sending, setSending] = useState('');     // uid mid-send
   useEffect(() => {
     let alive = true;
     listStoreFollowers().then((r) => { if (alive) setList(r.followers || []); }).catch(() => { if (alive) setList([]); });
     return () => { alive = false; };
   }, []);
   const when = (ms) => { if (!ms) return ''; try { return new Date(ms).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }); } catch { return ''; } };
+
+  /* A thread with this follower — deterministic id, so it lands in the SAME chat
+     they'd get by messaging the store themselves. Not written until a message is
+     actually sent (see merchantConversationWith). */
+  const threadWith = (f) => merchantConversationWith({ store, merchantUid: user?.uid, shopper: f });
+
+  const message = (f) => {
+    try { onOpenChat(threadWith(f)); }
+    catch (e) { toast && toast(e.message || 'Could not open that chat'); }
+  };
+
+  const sendDeal = async (offer) => {
+    const f = dealFor;
+    setDealFor(null);
+    if (!f) return;
+    setSending(f.uid);
+    try {
+      const conv = threadWith(f);
+      const its = offer.items || [];
+      const what = its.length > 1 ? `${its.length} items` : (its[0]?.productName || 'this');
+      await sendChatMessage({
+        convId: conv.id, conv, user, recipientUid: f.uid,
+        text: `Exclusive deal for you on ${what} — ${ksh(offer.price)}. Tap to accept and pay.`,
+        offer,
+      });
+      toast && toast(`Deal sent to ${f.name || 'follower'}`, 'fa-circle-check');
+    } catch (e) { toast && toast(e.message || 'Could not send that deal'); }
+    finally { setSending(''); }
+  };
 
   if (list === null) return <Card style={{ padding:'34px', textAlign:'center' }}><FA i="fa-circle-notch" style={{ animation:'ym-spin 1s linear infinite', color:'var(--m-primary)', fontSize:20 }} /></Card>;
   if (list.length === 0) return (
@@ -99,14 +143,30 @@ function Audience(){
     </Card>
   );
   return (
-    <Card style={{ padding:8 }}>
-      {list.map((f) => (
-        <div key={f.uid} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px' }}>
-          <div style={{ width:42, height:42, borderRadius:999, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>{f.photoUrl ? <img src={f.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i="fa-user" />}</div>
-          <div style={{ flex:1, minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name || 'Shopper'}</div><div className="ym-cap">Following since {when(f.followedAt) || '—'}</div></div>
-        </div>
-      ))}
-    </Card>
+    <>
+      <Card style={{ padding:8 }}>
+        {list.map((f) => (
+          <div key={f.uid} className="aud-row" style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', flexWrap:'wrap' }}>
+            <div style={{ width:42, height:42, borderRadius:999, flexShrink:0, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>{f.photoUrl ? <img src={f.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i="fa-user" />}</div>
+            <div style={{ flex:'1 1 140px', minWidth:0 }}><div className="ym-h3" style={{ fontSize:14, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{f.name || 'Shopper'}</div><div className="ym-cap">Following since {when(f.followedAt) || '—'}</div></div>
+            <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+              <Btn kind="ghost" size="sm" icon="fa-comment-dots" onClick={()=>message(f)}>Message</Btn>
+              {canDeal && <Btn kind="primary" size="sm" icon="fa-tag" disabled={sending===f.uid} onClick={()=>setDealFor(f)}>{sending===f.uid?'Sending…':'Send a deal'}</Btn>}
+            </div>
+          </div>
+        ))}
+      </Card>
+      {dealFor && (
+        <OfferComposer
+          products={Array.isArray(products) ? products : []}
+          storeId={store?.id}
+          title={`Exclusive deal for ${dealFor.name || 'this follower'}`}
+          onClose={()=>setDealFor(null)}
+          onSend={sendDeal}
+        />
+      )}
+      <style>{`@media (max-width:520px){ .aud-row .ym-btn{ flex:1; } }`}</style>
+    </>
   );
 }
 

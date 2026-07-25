@@ -78,18 +78,25 @@ export default function DashboardApp(){
   // Register the merchant's browser for chat/order push; toast foreground messages.
   useChatPush(user, (payload)=>toastFn(payload?.notification?.title || 'New message'));
 
-  const props = { onAdd:()=>setAddOpen(true), onCopyLink:()=>toastFn('Store link copied to clipboard!'), onOpenProducts:()=>setActive('products'), onNav:setActive, onTour:()=>setTourOpen(true), toast:toastFn };
+  // A thread the merchant chose to start (Followers → Message). Handed to the Chat
+  // screen so it opens on that customer; cleared the moment they navigate elsewhere,
+  // or coming back to Chats later would keep re-opening an old conversation.
+  const [chatStart, setChatStart] = useState(null);
+  const go = (key) => { if (key !== 'chat') setChatStart(null); setActive(key); };
+
+  const props = { onAdd:()=>setAddOpen(true), onCopyLink:()=>toastFn('Store link copied to clipboard!'), onOpenProducts:()=>go('products'), onNav:go, onTour:()=>setTourOpen(true), toast:toastFn,
+    onOpenChat:(conv)=>{ setChatStart(conv); setActive('chat'); }, startConv:chatStart };
 
   return (
     <MerchantProvider>
     <ThemeCtx.Provider value={{ theme, setTheme }}>
       <div data-screen-label={'Dashboard — '+LABELS[active]} style={{ minHeight:'100vh', display:'flex', flexDirection:'column' }}>
-        <TopBar onMenu={()=>setMenu(true)} onChange={setActive} onHelp={()=>setTourOpen(true)} />
-        <MobileNav active={active} onChange={setActive} />
+        <TopBar onMenu={()=>setMenu(true)} onChange={go} onHelp={()=>setTourOpen(true)} />
+        <MobileNav active={active} onChange={go} />
         <main style={{ flex:1, padding:'28px 0' }}>
           <div className="wrap dash-shell" style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:28, alignItems:'start' }}>
-            <aside className="dash-aside" style={{ position:'sticky', top:88, maxHeight:'calc(100dvh - 108px)', overflowY:'auto' }}><Sidebar active={active} onChange={setActive} /></aside>
-            <div style={{ minWidth:0 }}><GuardedScreen active={active} setActive={setActive} screenProps={props} /></div>
+            <aside className="dash-aside" style={{ position:'sticky', top:88, maxHeight:'calc(100dvh - 108px)', overflowY:'auto' }}><Sidebar active={active} onChange={go} /></aside>
+            <div style={{ minWidth:0 }}><GuardedScreen active={active} setActive={go} screenProps={props} /></div>
           </div>
         </main>
 
@@ -98,7 +105,7 @@ export default function DashboardApp(){
             <div style={{ position:'absolute', inset:0, background:'rgba(8,10,24,.5)' }} />
             <div style={{ position:'absolute', left:0, top:0, bottom:0, width:300, background:'var(--m-bg)', padding:16, overflowY:'auto' }}>
               <button onClick={()=>setMenu(false)} className="icon-btn" aria-label="Close menu" style={{ marginBottom:12 }}><FA i="fa-xmark" /></button>
-              <Sidebar active={active} onChange={k=>{ setActive(k); setMenu(false); }} onClose={()=>setMenu(false)} />
+              <Sidebar active={active} onChange={k=>{ go(k); setMenu(false); }} onClose={()=>setMenu(false)} />
             </div>
           </div>
         )}

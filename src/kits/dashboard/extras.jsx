@@ -814,16 +814,22 @@ function MerchantNotifyBanner({ user }){
 }
 
 /* ---------- CHAT (merchant ↔ buyer) — live Firestore threads ---------- */
-export function Chat(){
+/* `startConv` opens a specific thread on arrival — the Followers list hands over a
+   conversation the merchant chose to start. It may not exist in Firestore yet (it's
+   written on the first message), so it's merged into the inbox until the real one
+   lands, otherwise the merchant would land on an empty "Select a conversation". */
+export function Chat({ startConv }){
   const { user } = useAuth();
   const uid = user?.uid;
   const live = chatEnabled(user);
   const [convos, setConvos] = useStateX(null); // null = loading
-  const [sel, setSel] = useStateX(null);
+  const [sel, setSel] = useStateX(startConv?.id || null);
 
   useEffX(() => { if (live) return subscribeConversations(uid, setConvos, 'merchant'); setConvos([]); return undefined; }, [uid, live]);
+  useEffX(() => { if (startConv?.id) setSel(startConv.id); }, [startConv?.id]);
 
-  const list = convos || [];
+  const real = convos || [];
+  const list = startConv && !real.some((c) => c.id === startConv.id) ? [startConv, ...real] : real;
   const visible = list.filter((c) => !c.hidden); // rows exclude "deleted for me"
   const selConv = list.find((c) => c.id === sel) || visible[0] || null;
   const removeConv = (c) => {
@@ -989,7 +995,9 @@ function OfferCounterModal({ base, onClose, onSend }){
 
 /* Merchant composes a deal — ONE or MANY catalog products bundled at a single
    negotiated total — sent as an `offer`-tagged message the shopper can accept & pay. */
-function OfferComposer({ products, storeId, initialItems, initialPrice, onClose, onSend }){
+/* Build a priced offer for a chat thread. Used from a live chat and from the
+   Followers list (an exclusive deal for one follower — hence the `title` override). */
+export function OfferComposer({ products, storeId, initialItems, initialPrice, title, onClose, onSend }){
   const list = Array.isArray(products) ? products : [];
   const [sel, setSel] = useStateX(Array.isArray(initialItems) ? initialItems.map((i) => ({ productId: i.productId, qty: Number(i.qty) || 1 })) : []); // [{ productId, qty }]
   const [addPid, setAddPid] = useStateX('');
@@ -1016,7 +1024,7 @@ function OfferComposer({ products, storeId, initialItems, initialPrice, onClose,
     <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:400, background:'rgba(8,10,24,.6)', backdropFilter:'blur(3px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div onClick={(e)=>e.stopPropagation()} className="ym-card" style={{ width:'100%', maxWidth:440, maxHeight:'86vh', overflowY:'auto', padding:20 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8 }}><FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:'var(--m-primary)' }} /> {bundle ? 'Bundle offer' : 'Send an offer'}</div>
+          <div className="ym-h2" style={{ fontSize:17, display:'flex', alignItems:'center', gap:8, minWidth:0 }}><FA i={bundle ? 'fa-boxes-stacked' : 'fa-handshake'} style={{ color:'var(--m-primary)', flexShrink:0 }} /> <span style={{ minWidth:0, overflow:'hidden', textOverflow:'ellipsis' }}>{title || (bundle ? 'Bundle offer' : 'Send an offer')}</span></div>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--m-fg3)', fontSize:18 }}><FA i="fa-xmark" /></button>
         </div>
         {list.length === 0 ? (

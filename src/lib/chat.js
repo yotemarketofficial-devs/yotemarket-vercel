@@ -183,6 +183,42 @@ export async function openStoreConversation({ store, user, shopperName, product 
 }
 
 /**
+ * The other direction: a MERCHANT opening a thread with one of their own shoppers
+ * (from the Followers list). Returns a conversation object shaped like a real one but
+ * NOT yet written — `sendChatMessage` creates the doc on the first message, so a
+ * merchant who changes their mind never leaves an empty "New conversation" sitting in
+ * a shopper's inbox. Reuses the same deterministic id, so it merges with any existing
+ * thread instead of forking a second one.
+ */
+export function merchantConversationWith({ store, merchantUid, shopper }) {
+  const storeId = store?.id;
+  const shopperUid = shopper?.uid;
+  if (!storeId || !merchantUid || !shopperUid) throw new Error('Missing store or shopper.');
+  if (merchantUid === shopperUid) throw new Error('That’s your own account.');
+  return {
+    id: conversationId(storeId, shopperUid),
+    participants: [shopperUid, merchantUid],
+    storeId,
+    status: 'active',
+    info: {
+      [shopperUid]: { name: shopper.name || 'Shopper', role: 'shopper', ...(shopper.photoUrl ? { img: shopper.photoUrl } : {}) },
+      [merchantUid]: {
+        name: store.name || 'Store',
+        role: 'merchant',
+        storeId,
+        icon: store.icon || 'fa-store',
+        tint: store.tint || '#4f46e5',
+        ...(store.img ? { img: store.img } : {}),
+        ...(store.logo ? { logo: store.logo } : {}),
+      },
+    },
+    unread: {},
+    lastMessage: '',
+    lastSenderId: '',
+  };
+}
+
+/**
  * Guarantee a conversation doc exists before we post into it. The message-create rule
  * reads the parent conversation, so a just-opened (synthesized) thread whose create is
  * still in flight would be denied — this closes that race. Throws a clear, user-facing
