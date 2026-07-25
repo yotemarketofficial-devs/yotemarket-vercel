@@ -94,7 +94,7 @@ export function CheckoutScreen({ params }){
   // Kick off the match as soon as delivery is the chosen mode (not for store pickup).
   useEffCm(() => { if (fulfillment === 'hub' && geoState === 'idle') locateAndMatch(); }, [fulfillment]); // eslint-disable-line
 
-  // Morrisons-style slot grid: 1-hour windows over the next few days, each bookable only
+  // Slotted delivery-time grid: 1-hour windows over the next few days, each bookable only
   // when it falls inside BOTH the seller's hand-off window and the collection point's
   // receive window (and clears the prep+transit lead time). Rebuilt every render so the
   // availability stays live as time passes and as the matched hub changes.
@@ -379,7 +379,7 @@ export function CheckoutScreen({ params }){
 }
 function Row({ l, v }){ return <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{l}</span><span className="ym-sub" style={{ fontWeight:600, color:'var(--m-fg1)' }}>{v}</span></div>; }
 
-/* Delivery-slot model (powers the Morrisons-style picker). A slot is bookable only when
+/* Delivery-slot model (powers the book-a-slot picker). A slot is bookable only when
    its whole hour falls inside the INTERSECTION of the seller's hand-off window and the
    collection point's receive window, and it clears a prep+transit lead time. The seller
    window comes from the store's REAL opening hours (lib/hours.js per-weekday shape) when
@@ -443,7 +443,7 @@ function buildDaySlots(sellStore, hub, days = 4){
 }
 const firstOpenSlot = (grid) => { for (const day of grid) { const s = day.slots.find((x) => x.ok); if (s) return s.start; } return null; };
 
-/* Morrisons-style delivery-time picker: a scrollable row of day tabs, then a grid of
+/* Slotted delivery-time picker: a scrollable row of day tabs, then a grid of
    1-hour slot chips for the chosen day. Unavailable slots (outside the combined
    store+hub window, already passed, or under the lead time) render greyed and disabled
    rather than being hidden, so the shopper sees the full shape of the day. */
