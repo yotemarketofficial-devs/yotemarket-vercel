@@ -199,7 +199,7 @@ export function ProductsTable({ rows, onAdd, onOpenProducts }){
           <tbody>
             {rows.map(r=>(
               <tr key={r.id}>
-                <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb icon={r.icon} tint={r.tint} size={40} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</span></div></td>
+                <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb img={r.img || (r.images && r.images[0])} icon={r.icon} tint={r.tint} size={40} /><span style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</span></div></td>
                 <td>{r.cat}</td>
                 <td style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(r.price)}</td>
                 <td>{r.stock == null ? <span className="ym-cap" title="Not tracked">—</span>

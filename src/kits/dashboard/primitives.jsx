@@ -54,7 +54,14 @@ export const Avatar = ({ src, name, size=38 }) => {
   return <div style={{ width:size, height:size, borderRadius:9999, background:'var(--m-grad)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:size*0.38, flexShrink:0 }}>{initials}</div>;
 };
 
-export function Thumb({ icon, tint='#7c3aed', size=44, radius=12 }){
+export function Thumb({ icon, tint='#7c3aed', size=44, radius=12, img }){
+  const [failed, setFailed] = useState(false);
+  // Show the product's cover photo when it has one; fall back to the tinted icon when
+  // there's no image or it fails to load (so a broken URL never leaves an empty box).
+  if (img && !failed) {
+    return <img src={img} alt="" loading="lazy" onError={()=>setFailed(true)} className="ym-img"
+      style={{ width:size, height:size, borderRadius:radius, flexShrink:0, objectFit:'cover', background:'var(--m-surface-2)' }} />;
+  }
   return <div className="ym-img" style={{ width:size, height:size, borderRadius:radius, flexShrink:0, background:`linear-gradient(135deg, ${tint}2e, ${tint}55)` }}>
     <FA i={icon} style={{ fontSize:Math.round(size*0.4), color:tint, position:'relative' }} />
   </div>;

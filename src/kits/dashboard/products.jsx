@@ -90,7 +90,7 @@ export function Products({ onAdd, toast }){
               {rows.map(r=>(
                 <tr key={r.id}>
                   <td><input type="checkbox" aria-label={`Select ${r.name}`} /></td>
-                  <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb icon={r.icon} tint={r.tint} size={44} /><div><div style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</div><div className="ym-cap" style={{ fontFamily:'ui-monospace,Menlo,monospace', marginTop:1 }}>{r.sku || (r.id||'').toUpperCase()}</div></div></div></td>
+                  <td><div style={{ display:'flex', alignItems:'center', gap:12 }}><Thumb img={r.img || (r.images && r.images[0])} icon={r.icon} tint={r.tint} size={44} /><div><div style={{ fontWeight:600, color:'var(--m-fg1)' }}>{r.name}</div><div className="ym-cap" style={{ fontFamily:'ui-monospace,Menlo,monospace', marginTop:1 }}>{r.sku || (r.id||'').toUpperCase()}</div></div></div></td>
                   <td>{r.cat}</td>
                   <td style={{ fontWeight:600, color:'var(--m-fg1)' }}>{ksh(r.price)}</td>
                   <td><StockCell stock={r.stock} /></td>
