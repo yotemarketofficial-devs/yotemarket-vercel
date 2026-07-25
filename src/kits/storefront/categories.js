@@ -63,15 +63,18 @@ export const CATEGORY_TREE = [
       'Toys', 'Prams & Strollers', 'Maternity & Pregnancy', 'School Supplies'],
   },
   {
-    id: 'pets', label: 'Animals & Pets', short: 'Pets', icon: 'fa-paw', tint: '#d97706', match: [],
+    // match is the node's own id (not []): a product saved under this category carries
+    // that catId, so the node must resolve to it. Empty [] worked only via the
+    // catalogIdsFor fallback — brittle if anything ever reads node.match directly.
+    id: 'pets', label: 'Animals & Pets', short: 'Pets', icon: 'fa-paw', tint: '#d97706', match: ['pets'],
     subs: ['Pet Food', 'Pet Accessories', 'Dogs & Puppies', 'Cats & Kittens', 'Birds', 'Fish', 'Pet Health & Grooming'],
   },
   {
-    id: 'leisure', label: 'Sports, Arts & Leisure', short: 'Leisure', icon: 'fa-futbol', tint: '#16a34a', match: [],
+    id: 'leisure', label: 'Sports, Arts & Leisure', short: 'Leisure', icon: 'fa-futbol', tint: '#16a34a', match: ['leisure'],
     subs: ['Sports Equipment', 'Fitness & Gym', 'Bicycles', 'Camping & Outdoors', 'Musical Instruments', 'Books', 'Arts & Crafts', 'Games & Hobbies'],
   },
   {
-    id: 'commercial', label: 'Commercial & Industrial Equipment', short: 'Business', icon: 'fa-screwdriver-wrench', tint: '#64748b', match: [],
+    id: 'commercial', label: 'Commercial & Industrial Equipment', short: 'Business', icon: 'fa-screwdriver-wrench', tint: '#64748b', match: ['commercial'],
     subs: ['Office Equipment & Supplies', 'Restaurant & Catering', 'Salon & Spa Equipment', 'Medical & Lab Equipment',
       'Industrial Machinery', 'Generators & Power Equipment', 'Printing Equipment', 'Safety & Security Equipment'],
   },
@@ -81,7 +84,7 @@ export const CATEGORY_TREE = [
       'Doors & Gates', 'Windows & Glass', 'Solar & Renewable Energy', 'Paint & Finishes', 'Hardware & Fasteners', 'Measuring & Levelling Tools'],
   },
   {
-    id: 'vehicles', label: 'Vehicles', short: 'Vehicles', icon: 'fa-car', tint: '#0ea5e9', match: [],
+    id: 'vehicles', label: 'Vehicles', short: 'Vehicles', icon: 'fa-car', tint: '#0ea5e9', match: ['vehicles'],
     subs: ['Cars', 'Motorcycles & Scooters', 'Vehicle Parts & Accessories', 'Buses & Microbuses', 'Trucks & Trailers',
       'Heavy Equipment', 'Watercraft & Boats'],
   },
@@ -116,7 +119,12 @@ export function matchesSub(subLabel, itemSub, ...texts) {
   if (!subLabel) return true;
   if (itemSub && String(itemSub).toLowerCase() === String(subLabel).toLowerCase()) return true;
   const terms = subTerms(subLabel);
-  if (!terms.length) return true;
+  // No usable keyword terms (e.g. "TVs" stems to the 2-char "tv", which the term filter
+  // drops) → fall back to EXACT sub match only, which the check above already handled, so
+  // return false. Returning true here made such a sub match EVERY product in the category —
+  // the "TVs" filter showed all electronics. Products carry an explicit sub from the form,
+  // so exact match is what these need anyway.
+  if (!terms.length) return false;
   const hay = [itemSub, ...texts].join(' ').toLowerCase();
   return terms.some((t) => hay.includes(t));
 }
