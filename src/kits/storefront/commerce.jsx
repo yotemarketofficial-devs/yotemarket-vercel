@@ -68,6 +68,22 @@ export function CheckoutScreen({ params }){
   const confirmTimerRef = useRefCm(null);
   const cidRef = useRefCm(null);
   const hub = findHub(hubId) || HUBS[0];
+  // Bookable 1-hour delivery slots (PT-1) — 8am–8pm, today + tomorrow, ≥15 min ahead.
+  const slots = (() => {
+    const out = []; const minStart = Date.now() + 15 * 60000;
+    const ap = (x) => { const a = x < 12 ? 'am' : 'pm'; const hh = x % 12 === 0 ? 12 : x % 12; return hh + a; };
+    for (let day = 0; day < 2; day++) {
+      const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(base.getDate() + day);
+      for (let h = 8; h < 20; h++) {
+        const t = new Date(base.getTime()); t.setHours(h); const ms = t.getTime();
+        if (ms < minStart) continue;
+        out.push({ start: ms, label: (day === 0 ? 'Today' : 'Tomorrow') + ' ' + ap(h) + '–' + ap(h + 1) });
+      }
+    }
+    return out;
+  })();
+  const [slotStart, setSlotStart] = useSCm(null);
+  useEffCm(() => { if (fulfillment === 'hub' && slotStart == null && slots.length) setSlotStart(slots[0].start); }, [fulfillment, slots.length]); // eslint-disable-line
 
   // Prefill from the shopper's profile: default pickup hub + M-Pesa phone.
   useEffCm(() => {
@@ -117,7 +133,7 @@ export function CheckoutScreen({ params }){
           ? { offer: { convId: offer.convId, offerId: offer.id } }
           : { items: items.map(x => ({ pid: x.pid, qty: x.qty })) }),
         fulfillment,
-        ...(fulfillment === 'store_pickup' ? {} : { hubId: hub.id, hubName: hub.name }),
+        ...(fulfillment === 'store_pickup' ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
         payMethod: pay,
         buyerName: account?.name || auth?.currentUser?.displayName || (auth?.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Customer'),
         buyerPhone: phone.trim() || account?.phone || null,
@@ -259,6 +275,14 @@ export function CheckoutScreen({ params }){
                   <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:18 }} />
                 </div>
                 <button className="ym-btn ym-btn-ghost ym-btn-sm" style={{ marginTop:12 }} onClick={()=>setHubOpen(true)}><FA i="fa-pen" /> Change hub</button>
+                <div style={{ marginTop:14 }}>
+                  <label className="ym-label">Delivery time</label>
+                  <select className="ym-input" value={slotStart||''} onChange={e=>setSlotStart(Number(e.target.value)||null)}>
+                    {slots.length===0 && <option value="">Next available</option>}
+                    {slots.map(s=><option key={s.start} value={s.start}>{s.label}</option>)}
+                  </select>
+                  <div className="ym-cap" style={{ marginTop:6 }}>We batch deliveries heading the same way — your parcel arrives within your chosen hour.</div>
+                </div>
               </>
             ) : (
               <div>
