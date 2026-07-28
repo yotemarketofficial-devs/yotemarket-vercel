@@ -1,7 +1,8 @@
-/* hubs.js — YoteMarket pickup-hub network (canonical list, like the category tree).
-   Hubs are a fixed operational network defined by ops, not user-generated, so they
-   live in code. Shoppers pick a default hub in their profile and can switch it at
-   checkout; the chosen hub id + name are stamped on the order. */
+/* hubs.js — YoteMarket pickup-hub network. Hubs are FLUID: every merchant store with a
+   physical location that opts into pickup IS a hub (resolveHubs derives them live from the
+   catalog). The fixed list below is only a BOOTSTRAP so coverage is never empty in an area
+   with no enrolled merchant-hubs yet. Shoppers pick a hub at checkout; the chosen id + name
+   are stamped on the order. ("Fixed roads, fluid hubs" model.) */
 
 export const HUBS = [
   { id: 'westlands', name: 'Westlands Hub', area: 'Mpaka Road · near Sarit Centre', town: 'Nairobi', location: { lat: -1.2635, lng: 36.8030 } },
@@ -19,6 +20,23 @@ export const HUBS = [
 export const DEFAULT_HUB_ID = 'westlands';
 export const findHub = (id) => HUBS.find((h) => h.id === id) || null;
 
+/* A merchant store becomes a pickup HUB once it has a physical location and opts in. */
+export const storeToHub = (s) => ({
+  id: s.id, name: s.name || 'Pickup point',
+  area: s.area || s.address || '', town: s.town || s.area || '',
+  location: s.location, store: true,
+});
+export const merchantHubs = (stores) => (stores || [])
+    .filter((s) => s && s.pickupEnabled && s.location && Number.isFinite(s.location.lat))
+    .map(storeToHub);
+/* The LIVE hub set = real merchant hubs, with the bootstrap list filling in where none
+   exist yet (deduped by id). This is the fluid-hub model the whole engine assumes. */
+export const resolveHubs = (stores) => {
+  const real = merchantHubs(stores);
+  const seen = new Set(real.map((h) => h.id));
+  return [...real, ...HUBS.filter((h) => !seen.has(h.id))];
+};
+
 /* Great-circle distance in km between two {lat,lng} points (haversine). Used to route
    a shopper to the collection point nearest them, so checkout can auto-match instead
    of asking them to pick a hub off a list. */
@@ -33,10 +51,10 @@ export function distanceKm(a, b) {
 /* The collection hub nearest a shopper location → { hub, km }, or null if the location
    is unknown. This is the "matched with the nearest point" step the checkout runs the
    moment it has the shopper's coordinates. */
-export function nearestHub(loc) {
+export function nearestHub(loc, hubs = HUBS) {
   if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) return null;
   let best = null, bestD = Infinity;
-  for (const h of HUBS) {
+  for (const h of hubs) {
     const d = distanceKm(loc, h.location);
     if (d < bestD) { bestD = d; best = h; }
   }

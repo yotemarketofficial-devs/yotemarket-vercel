@@ -55,6 +55,7 @@ export function ProductCard({ p }){
         {p.was && <span style={{ position:'absolute', top:10, left:10, zIndex:2, background:'var(--m-danger)', color:'#fff', fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:9999 }}>-{Math.round((1-p.price/p.was)*100)}%</span>}
         {!p.inStock ? <span style={{ position:'absolute', top:10, right:10, zIndex:2, background:'rgba(17,24,39,.7)', color:'#fff', fontSize:10.5, fontWeight:600, padding:'3px 9px', borderRadius:9999 }}>Out of stock</span>
           : p.stock != null && p.stock <= LOW_STOCK && <span style={{ position:'absolute', top:10, right:10, zIndex:2, background:'rgba(217,119,6,.92)', color:'#fff', fontSize:10.5, fontWeight:600, padding:'3px 9px', borderRadius:9999 }}>Only {p.stock} left</span>}
+        {p.negotiable && <span style={{ position:'absolute', bottom:10, left:10, zIndex:2, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, padding:'3px 9px', borderRadius:9999, display:'inline-flex', gap:5, alignItems:'center' }}><FA i="fa-handshake" style={{ fontSize:10 }} /> Negotiable</span>}
       </div>
       <div style={{ padding:'12px 14px 14px' }}>
         <div className="ym-h3 line2" style={{ fontSize:14, height:38 }}>{p.name}</div>
@@ -191,11 +192,11 @@ export function Modal({ title, onClose, children, maxWidth=440 }){
 }
 
 /* Pickup-hub chooser used at checkout and in the profile editor. */
-export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup hub' }){
+export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup hub', hubs=HUBS }){
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {HUBS.map(h=>{
+        {hubs.map(h=>{
           const on = h.id===selected;
           return (
             <button key={h.id} onClick={()=>{ onSelect(h); onClose(); }} style={{ display:'flex', alignItems:'center', gap:13, width:'100%', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', textAlign:'left', background:'var(--m-surface)', border: on?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>

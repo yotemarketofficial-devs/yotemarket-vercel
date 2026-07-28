@@ -2,8 +2,8 @@
 import React from 'react';
 import { addDoc, collection, serverTimestamp, doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from './ui.jsx';
-import { ymProduct, ymStore, ymPrice } from './data.js';
-import { HUBS, findHub, DEFAULT_HUB_ID, nearestHub } from './hubs.js';
+import { ymProduct, ymStore, ymPrice, YM_STORES } from './data.js';
+import { HUBS, findHub, DEFAULT_HUB_ID, nearestHub, resolveHubs } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { placeOrder, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
@@ -68,7 +68,9 @@ export function CheckoutScreen({ params }){
   const timerRef = useRefCm(null);
   const confirmTimerRef = useRefCm(null);
   const cidRef = useRefCm(null);
-  const hub = findHub(hubId) || HUBS[0];
+  // Fluid hubs: real merchant-store hubs (pickup-enabled + located), bootstrap filling in.
+  const hubs = resolveHubs(YM_STORES);
+  const hub = hubs.find(h => h.id === hubId) || hubs[0] || HUBS[0];
 
   // Delivery location = the collection point NEAREST the shopper, matched automatically
   // rather than picked off a list. We read the browser location once, route to the
@@ -372,7 +374,7 @@ export function CheckoutScreen({ params }){
           <div className="ym-cap" style={{ textAlign:'center', marginTop:10, display:'flex', gap:6, justifyContent:'center' }}><FA i="fa-lock" /> Secure payment · escrow protected</div>
         </div>
       </div>
-      {hubOpen && <HubPicker selected={hubId} onSelect={(h)=>setHubId(h.id)} onClose={()=>setHubOpen(false)} />}
+      {hubOpen && <HubPicker selected={hubId} onSelect={(h)=>setHubId(h.id)} onClose={()=>setHubOpen(false)} hubs={hubs} />}
       <style>{`@media (max-width:760px){ .checkout-grid{ grid-template-columns:1fr !important; } }`}</style>
     </div>
   );
