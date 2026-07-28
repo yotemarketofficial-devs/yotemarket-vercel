@@ -44,6 +44,7 @@ const normProduct = (d) => ({
   name: d.name,
   price: Number(d.price) || 0,
   was: d.was != null ? Number(d.was) : undefined,
+  negotiable: d.negotiable === true, // merchant marked "price negotiable" → shopper tag (default fixed)
   store: d.storeId || d.store,
   cat: d.catId || d.cat,
   sub: d.sub || d.subcat || d.subcategory || undefined, // subcategory tag → precise sub-filter
