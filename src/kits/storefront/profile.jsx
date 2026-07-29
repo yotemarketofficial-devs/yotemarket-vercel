@@ -5,9 +5,9 @@
 import React from 'react';
 import { doc, onSnapshot, collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate, Modal, HubPicker } from './ui.jsx';
-import { ymStore, ymProduct, ymPrice } from './data.js';
+import { ymStore, ymProduct, ymPrice, YM_STORES } from './data.js';
 import { Receipt, normalizeReceipt } from '../../components/Receipt.jsx';
-import { findHub } from './hubs.js';
+import { findHub, resolveHubs } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, topUpWallet, confirmPayment, redeemPoints, deleteMyAccount } from '../../lib/firebase.js';
 import { saveProfile, subscribeAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, updateAvatar } from '../../lib/account.js';
@@ -92,7 +92,8 @@ export function ProfileScreen({ params }){
   const orders = liveOrders || [];
   const phone = prof.phone || account.phone || '';
   const recent = orders.slice(0, 3);
-  const hub = findHub(prof.defaultHubId);
+  const hubs = resolveHubs(YM_STORES); // fluid: real merchant-hubs + bootstrap fallback
+  const hub = hubs.find(h => h.id === prof.defaultHubId) || findHub(prof.defaultHubId);
   const fullName = prof.name || account.name || '';
   const firstName = fullName.trim().split(/\s+/)[0] || '';
 
@@ -272,7 +273,7 @@ export function ProfileScreen({ params }){
       </div>
 
       {editOpen && <ProfileEditor uid={uid} initial={{ name:prof.name||account.name||'', phone, defaultHubId:prof.defaultHubId }} onClose={()=>setEditOpen(false)} toast={toast} />}
-      {hubOpen && <HubPicker selected={prof.defaultHubId} onSelect={changeDefaultHub} onClose={()=>setHubOpen(false)} title="Default pickup hub" />}
+      {hubOpen && <HubPicker selected={prof.defaultHubId} onSelect={changeDefaultHub} onClose={()=>setHubOpen(false)} title="Default pickup hub" hubs={hubs} />}
       {addrEdit && <AddressEditor uid={uid} initial={addrEdit} onClose={()=>setAddrEdit(null)} toast={toast} />}
       {topupOpen && <WalletTopUp defaultPhone={phone} holderName={fullName} onClose={()=>setTopupOpen(false)} toast={toast} />}
       {redeemOpen && <RedeemPoints points={prof.points} onClose={()=>setRedeemOpen(false)} toast={toast} />}
