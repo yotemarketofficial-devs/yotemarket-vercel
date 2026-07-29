@@ -63,11 +63,37 @@ async function fetchCollection(name) {
   return out;
 }
 
-const url = (loc, changefreq, priority, lastmod = today) =>
-  `  <url>\n    <loc>${SITE}${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n` +
-  `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+// XML-escape text + attribute content. Critical for image URLs: Firebase Storage
+// links carry `?alt=media&token=…`, and a raw `&` is invalid XML that breaks the
+// whole sitemap. Also covers < > " ' in names/captions.
+const xmlEsc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+// Firestore REST returns typed values ({ stringValue }, { arrayValue }, …).
+const str = (f) => (f && f.stringValue) || '';
+const num = (f) => (f && (f.integerValue != null ? Number(f.integerValue) : f.doubleValue != null ? Number(f.doubleValue) : null));
+// A product's cover photo: explicit img, else the first of the gallery.
+const productImage = (fields) => str(fields.img) || str(fields.imageUrl) || str(fields.photo) ||
+    ((fields.images?.arrayValue?.values || []).map((v) => v.stringValue).find(Boolean) || '');
+// A store's picture: logo first (it's the avatar shoppers recognise), else the banner.
+const storeImage = (fields) => str(fields.logo) || str(fields.img) || str(fields.imageUrl) || '';
+
+// One <url>, optionally carrying a Google image-sitemap entry so product photos and
+// store logos are discoverable in Google Images (SEO "more info" per URL).
+const url = (loc, changefreq, priority, lastmod = today, image = null) => {
+  const imgXml = image && image.loc && /^https?:\/\//.test(image.loc)
+    ? `\n    <image:image>\n      <image:loc>${xmlEsc(image.loc)}</image:loc>` +
+      (image.title ? `\n      <image:title>${xmlEsc(image.title)}</image:title>` : '') +
+      (image.caption ? `\n      <image:caption>${xmlEsc(image.caption)}</image:caption>` : '') +
+      `\n    </image:image>`
+    : '';
+  return `  <url>\n    <loc>${SITE}${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n` +
+    `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>${imgXml}\n  </url>`;
+};
 
 const day = (iso) => (iso ? String(iso).slice(0, 10) : today);
+const ksh = (n) => (n != null ? `KSh ${Number(n).toLocaleString('en-KE')}` : '');
 
 async function main() {
   const urls = STATIC.map(([loc, f, p]) => url(loc, f, p));
@@ -79,14 +105,21 @@ async function main() {
     // A suspended store is off the storefront — don't ask Google to index it.
     const live = stores.filter((s) => s.fields.suspended?.booleanValue !== true);
     const liveIds = new Set(live.map((s) => s.id));
-    for (const s of live) urls.push(url(`/store/${encodeURIComponent(s.id)}`, 'weekly', '0.8', day(s.updateTime)));
+    for (const s of live) {
+      urls.push(url(`/store/${encodeURIComponent(s.id)}`, 'weekly', '0.8', day(s.updateTime),
+          { loc: storeImage(s.fields), title: str(s.fields.name), caption: str(s.fields.tagline) || str(s.fields.area) }));
+    }
 
     // Skip products whose store is suspended or missing — those pages render empty.
     const listable = products.filter((p) => {
       const sid = p.fields.storeId?.stringValue || p.fields.store?.stringValue;
       return sid && liveIds.has(sid);
     });
-    for (const p of listable) urls.push(url(`/product/${encodeURIComponent(p.id)}`, 'weekly', '0.7', day(p.updateTime)));
+    for (const p of listable) {
+      const price = num(p.fields.price);
+      urls.push(url(`/product/${encodeURIComponent(p.id)}`, 'weekly', '0.7', day(p.updateTime),
+          { loc: productImage(p.fields), title: str(p.fields.name), caption: [str(p.fields.name), ksh(price)].filter(Boolean).join(' · ') }));
+    }
 
     note = `${live.length} stores + ${listable.length} products`;
     if (products.length !== listable.length) note += ` (skipped ${products.length - listable.length} on suspended/unknown stores)`;
@@ -95,7 +128,7 @@ async function main() {
     console.warn(`[sitemap] could not read the catalogue (${err.message}) — writing static pages only.`);
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join('\n')}\n</urlset>\n`;
   writeFileSync(OUT, xml);
   console.log(`[sitemap] ${urls.length} urls → public/sitemap.xml (${note})`);
 }

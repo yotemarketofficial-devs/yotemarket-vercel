@@ -1,74 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://yotemarket.co.ke/</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/storefront</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/pricing</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/about</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/mobile</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/rider</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/marketers</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/careers</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/help</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/contact</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/terms</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/privacy</loc>
-    <lastmod>2026-07-23</lastmod>
+    <lastmod>2026-07-29</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
@@ -80,9 +80,14 @@
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/4AwDYrNz75xosEoIpA4R</loc>
-    <lastmod>2026-07-16</lastmod>
+    <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2F4AwDYrNz75xosEoIpA4R%2Flogo_1782554431905_lkzvr.jpg?alt=media&amp;token=589a975a-ae95-43f3-bc8b-f898e43076be</image:loc>
+      <image:title>yotemarket</image:title>
+      <image:caption>Ruiru</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/Cow7Jo7OzNsYGSa3sGbp</loc>
@@ -92,9 +97,14 @@
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/D1BGQRwmbraVmuYga9br</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-07-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2Flogo_1784913303103_qvzlv.jpg?alt=media&amp;token=a6aa5dca-58d4-43b0-bf6a-e4b27693d3f4</image:loc>
+      <image:title>SWANKY HOUSEHOLDS</image:title>
+      <image:caption>Let&apos;s transform your home together 😊</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/aXAp9cy8Tyu6e6CP0m3f</loc>
@@ -104,38 +114,155 @@
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/dOZ76XDeLP19kFlSTUxl</loc>
-    <lastmod>2026-07-21</lastmod>
+    <lastmod>2026-07-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FdOZ76XDeLP19kFlSTUxl%2Flogo_1783508321492_iaa1n.jpg?alt=media&amp;token=50ed517f-7d70-4382-b115-9705790d313c</image:loc>
+      <image:title>Freehold Accessories</image:title>
+      <image:caption>Ruiru</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/oqqr9npqZVIBDjUYUfSg</loc>
     <lastmod>2026-07-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2Foqqr9npqZVIBDjUYUfSg%2Flogo_1784707796194_va5fx.jpg?alt=media&amp;token=59894de2-8389-4131-ab58-39b642550d8c</image:loc>
+      <image:title>Abejoh General Supplies</image:title>
+      <image:caption>We deal with all construction materials at affordable prices. Buy from us today!</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/xfnCa4qfIGaCzoF4wSWa</loc>
-    <lastmod>2026-07-18</lastmod>
+    <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2Flogo_1782737283594_scjs1.jpg?alt=media&amp;token=8829ee93-3810-41a9-b189-8e91b20cf0fd</image:loc>
+      <image:title>Prime Gadgetgrove</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/1e8Ese5O4AJ7FJm5Uu3Q</loc>
+    <lastmod>2026-07-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1784986725668_tda56.jpg?alt=media&amp;token=36843e9b-f260-482a-8e97-d36651d2e6f9</image:loc>
+      <image:title>Spring fitted Acrylic 3 slot serviet holder</image:title>
+      <image:caption>Spring fitted Acrylic 3 slot serviet holder · KSh 999</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/2H0MFrT7E9NtB5GYmXKe</loc>
+    <lastmod>2026-07-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1784963930163_gbwkw.jpg?alt=media&amp;token=2bff8d74-8aeb-4891-8b23-f01846e7bd99</image:loc>
+      <image:title>Realme C100i</image:title>
+      <image:caption>Realme C100i · KSh 21,000</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/product/ArzZto44kZA0Am6qIibC</loc>
     <lastmod>2026-07-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FdOZ76XDeLP19kFlSTUxl%2F1784268819180_q0bmk.jpg?alt=media&amp;token=764ab5ea-e3fb-4762-8923-fb6d0c3d1ce4</image:loc>
+      <image:title>Tote bags</image:title>
+      <image:caption>Tote bags · KSh 600</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/Q6icaP33mGoLiK7ELOjh</loc>
+    <lastmod>2026-07-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1784964085358_17xyl.jpg?alt=media&amp;token=5ad308a2-6baa-40cb-b0a3-c03d56e60658</image:loc>
+      <image:title>Oppo A6 4G</image:title>
+      <image:caption>Oppo A6 4G · KSh 34,000</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/VNX7mI1zWw7DgGkJPnKa</loc>
+    <lastmod>2026-07-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1784963240833_uls24.jpg?alt=media&amp;token=678ae28a-0497-4f94-95d9-4e7cd28ea870</image:loc>
+      <image:title>Redmi A7 4G</image:title>
+      <image:caption>Redmi A7 4G · KSh 13,500</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/Y4FwOzS5IBteiyXXee1C</loc>
+    <lastmod>2026-07-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785078422652_l8oqk.jpg?alt=media&amp;token=ff954b1f-1d7b-4270-9c0f-77932b097ac8</image:loc>
+      <image:title>*10PC Bosch Granite Cooking pots</image:title>
+      <image:caption>*10PC Bosch Granite Cooking pots · KSh 7,800</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/YzpGhdZ6mzCvcdmQTCvi</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1784905326802_kldpp.jpg?alt=media&amp;token=37b04833-e5f8-48e4-8fe5-c17ad8f66074</image:loc>
+      <image:title>Bags</image:title>
+      <image:caption>Bags · KSh 900</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/cPWYxjMwk7S8jntFkRRd</loc>
+    <lastmod>2026-07-25</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1784987047026_0bfoz.jpg?alt=media&amp;token=ca63ebb3-d06f-4c88-b650-64e1ba408eb3</image:loc>
+      <image:title>Pantry stickers, 80pcs  and a pen</image:title>
+      <image:caption>Pantry stickers, 80pcs  and a pen · KSh 450</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/product/eXD2Y9AIk6AeexydWya5</loc>
-    <lastmod>2026-07-12</lastmod>
+    <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1782737442885_u1h8f.jpg?alt=media&amp;token=3b8b80b8-17f6-4fc6-baf8-5d9a27fd827f</image:loc>
+      <image:title>Motorola G05</image:title>
+      <image:caption>Motorola G05 · KSh 18,500</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/sEKZKBhRgsCGCDQV0dO0</loc>
+    <lastmod>2026-07-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1784912804165_ptyvq.jpg?alt=media&amp;token=9f98f694-860e-4216-ac5a-44a484162617</image:loc>
+      <image:title>WHISTLING KETTLE</image:title>
+      <image:caption>WHISTLING KETTLE · KSh 3,600</image:caption>
+    </image:image>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/product/vEYcBqGxGslBDgV5QeUG</loc>
-    <lastmod>2026-07-10</lastmod>
+    <lastmod>2026-07-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2F4AwDYrNz75xosEoIpA4R%2F1782725991178_yc80v.jpg?alt=media&amp;token=d8bbf68d-5135-4f42-9150-b1f992e21c31</image:loc>
+      <image:title>Organic African Map Pen Holder</image:title>
+      <image:caption>Organic African Map Pen Holder · KSh 1,800</image:caption>
+    </image:image>
   </url>
 </urlset>
