@@ -17,7 +17,7 @@ const ORDER_STEPS = ['Order placed','Paid · finding a rider','Rider assigned','
 const STORE_PICKUP_STEPS = ['Order placed','Paid · preparing','Ready for pickup','Collected'];
 
 export function CheckoutScreen({ params }){
-  const { cart, clearCart, reset, nav, back, toast, requireAuth, account } = useYM();
+  const { cart, clearCart, removeFromCart, reset, nav, back, toast, requireAuth, account } = useYM();
   const { hasAccount } = useAuth();
   // A negotiated in-chat offer → single-item checkout at the AGREED price (the
   // merchant set it, so it's authorised). Otherwise a normal cart checkout.
@@ -194,6 +194,9 @@ export function CheckoutScreen({ params }){
           if (pay === 'wallet') await payOrderWithWallet({ orderId });
           else if (pay === 'cash') await placeCashOrder({ orderId });
           else await awaitMpesa(orderId, storeName);
+          // Paid → drop this store's items from the cart so a partial-failure retry can't
+          // re-order + re-charge them (S6).
+          groups[sid].forEach((x) => removeFromCart && removeFromCart(x.pid));
         }
         setErr(''); setBusy(false); settle(lastRcpt, pay); return;
       } catch (e) {
