@@ -18,6 +18,7 @@ import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
 import GoogleOneTap from './components/GoogleOneTap.jsx';
 import Analytics from './components/Analytics.jsx';
+import CookieConsent from './components/CookieConsent.jsx';
 
 // Imported design kits are full-bleed apps with their own chrome — code-split so the
 // marketing landing stays lean and each kit's scoped CSS only loads on its route.
@@ -40,8 +41,9 @@ function App() {
       {/* Per-route PWA manifest — makes /storefront, /dashboard, /pos and
           /marketers/app installable as four separate apps. See lib/pwa.js. */}
       <AppManifest />
-      {/* Vercel Web Analytics — counts client-side route changes too. */}
+      {/* Vercel Web Analytics — counts client-side route changes too (consent-gated). */}
       <Analytics />
+      <CookieConsent />
       <GoogleOneTap />
       <Routes>
         {/* Marketing site (shared nav/footer chrome) */}
