@@ -81,7 +81,7 @@ function Pricing() {
 
           {mode === 'plans' ? (
             <>
-              <div className="price-grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
+              <div className="price-grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(min(220px, 100%), 1fr))' }}>
                 {TIERS.map((t) => (
                   <div key={t.name} className={`price-card ${t.feat ? 'feat' : ''}`} style={t.price === null ? { borderColor: 'var(--purple)' } : undefined}>
                     {t.feat && <span className="badge">Popular</span>}

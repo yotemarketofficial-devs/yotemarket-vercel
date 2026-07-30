@@ -135,13 +135,13 @@ export function ProfileScreen({ params }){
       </div>
 
       {/* quick stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:16, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap:16, marginBottom:20 }}>
         <StatTile icon="fa-wallet" tint="#7c3aed" label="Wallet balance" value={ymPrice(prof.walletBalance)} />
         <StatTile icon="fa-coins" tint="#f4b530" label="YotePoints" value={prof.points} />
         <StatTile icon="fa-box" tint="#3b82f6" label="Orders" value={orders.length} onClick={()=>nav('orders')} />
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="profile-grid">
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:20, alignItems:'start' }} className="profile-grid">
         {/* left col */}
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           <Card title="Account details" icon="fa-user" action="Edit" onAction={()=>setEditOpen(true)}>
@@ -280,7 +280,7 @@ export function ProfileScreen({ params }){
       {receiptOpen && <ReceiptDetail r={receiptOpen} account={account} onClose={()=>setReceiptOpen(null)} />}
       {delOpen && <DeleteAccountModal onClose={()=>setDelOpen(false)} onDone={signOutUser} toast={toast} />}
 
-      <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`@media (max-width:820px){ .profile-grid{ grid-template-columns:minmax(0,1fr) !important; } }`}</style>
     </div>
   );
 }

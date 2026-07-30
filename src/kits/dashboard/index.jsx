@@ -94,7 +94,7 @@ export default function DashboardApp(){
         <TopBar onMenu={()=>setMenu(true)} onChange={go} onHelp={()=>setTourOpen(true)} />
         <MobileNav active={active} onChange={go} />
         <main style={{ flex:1, padding:'28px 0' }}>
-          <div className="wrap dash-shell" style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:28, alignItems:'start' }}>
+          <div className="wrap dash-shell" style={{ display:'grid', gridTemplateColumns:'280px minmax(0,1fr)', gap:28, alignItems:'start' }}>
             <aside className="dash-aside" style={{ position:'sticky', top:88, maxHeight:'calc(100dvh - 108px)', overflowY:'auto' }}><Sidebar active={active} onChange={go} /></aside>
             <div style={{ minWidth:0 }}><GuardedScreen active={active} setActive={go} screenProps={props} /></div>
           </div>
@@ -115,7 +115,7 @@ export default function DashboardApp(){
         <TourController open={tourOpen} setOpen={setTourOpen} setActive={setActive} />
         <Toast toast={toast} />
       </div>
-      <style>{`@media (max-width:900px){ .dash-shell{ grid-template-columns:1fr !important; } .dash-aside{ display:none !important; } }`}</style>
+      <style>{`@media (max-width:900px){ .dash-shell{ grid-template-columns:minmax(0,1fr) !important; } .dash-aside{ display:none !important; } }`}</style>
     </ThemeCtx.Provider>
     </MerchantProvider>
   );

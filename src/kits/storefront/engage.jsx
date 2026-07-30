@@ -110,7 +110,7 @@ function LiveMessages({ params, user, account }){
         <h1 className="ym-h1" style={{ margin:0 }}>Messages</h1>
       </div>
       <NotifyBanner user={user} />
-      <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px 1fr', overflow:'hidden', height:'min(680px, calc(100dvh - 200px))', minHeight:460 }}>
+      <div className="ym-card msg-grid" data-view={sel ? 'thread' : 'list'} style={{ display:'grid', gridTemplateColumns:'320px minmax(0,1fr)', overflow:'hidden', height:'min(680px, calc(100dvh - 200px))', minHeight:460 }}>
         <div className="msg-list" style={{ borderRight:'1px solid var(--m-border)', overflowY:'auto' }}>
           <button onClick={()=>nav('ai')} style={{ width:'100%', textAlign:'left', border:'none', cursor:'pointer', fontFamily:'inherit', padding:14, display:'flex', alignItems:'center', gap:12, background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)' }}>
             <div style={{ width:46, height:46, borderRadius:13, background:'rgba(255,255,255,.16)', display:'flex', alignItems:'center', justifyContent:'center' }}><YoteAiMark size={24} color="#fff" /></div>
@@ -155,7 +155,7 @@ function LiveMessages({ params, user, account }){
         @media (max-width:820px){
           /* Collapse to a single full-width column early so the thread never gets
              squeezed next to the 320px conversation list on tablets/large phones. */
-          .msg-grid{ grid-template-columns:1fr !important; height:calc(100dvh - 168px) !important; min-height:440px; }
+          .msg-grid{ grid-template-columns:minmax(0,1fr) !important; height:calc(100dvh - 168px) !important; min-height:440px; }
           .msg-grid[data-view="thread"] .msg-list{ display:none !important; }
           .msg-grid[data-view="list"] .msg-thread{ display:none !important; }
           .msg-back{ display:inline-flex !important; }

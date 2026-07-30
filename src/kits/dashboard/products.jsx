@@ -58,7 +58,7 @@ export function Products({ onAdd, toast }){
         <div><h1 className="ym-h1">My Products</h1><p className="ym-sub" style={{ marginTop:4 }}>{total} product{total!==1?'s':''}{out?` · ${out} out of stock`:''}{low?` · ${low} running low`:''}</p></div>
         <Btn kind="primary" icon="fa-plus" onClick={onAdd} data-coach="products-add">Add product</Btn>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))', gap:16, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(150px, 100%), 1fr))', gap:16, marginBottom:20 }}>
         <Stat label="Total" value={String(total)} icon="fa-box" tone="#7c3aed" />
         <Stat label="Active" value={String(active)} icon="fa-circle-check" tone="#10b981" />
         <Stat label="Running low" value={String(low)} icon="fa-arrow-trend-down" tone="#f59e0b" />
@@ -212,7 +212,7 @@ export function AddProductModal({ onClose, onSave, editing }){
           {step===3 && <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div>
               <label className="ym-label">Photos <span className="ym-cap" style={{ fontWeight:400 }}>· {form.images.length}/6 · first is the cover</span></label>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap:12, marginTop:8 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(120px, 100%), 1fr))', gap:12, marginTop:8 }}>
                 {form.images.map((url, idx)=>(
                   <div key={idx} style={{ position:'relative', borderRadius:12, overflow:'hidden', aspectRatio:'1 / 1', border:'1px solid var(--m-border)' }}>
                     <img src={url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />

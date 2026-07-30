@@ -164,7 +164,9 @@ export function HomeScreen(){
     <div className="anim-up">
       {/* hero */}
       <div className="wrap" style={{ paddingTop:24 }}>
-        <div style={{ position:'relative', overflow:'hidden', borderRadius:24, backgroundImage:'var(--m-banner)', backgroundSize:'cover', backgroundPosition:'center 72%', padding:'48px 44px', color:'#fff', boxShadow:'var(--m-shadow-float)' }}>
+        {/* Fluid padding: a fixed 44px inset costs 88px of a 320px screen, which left the
+            hero buttons no room and pushed them past the edge. */}
+        <div style={{ position:'relative', overflow:'hidden', borderRadius:24, backgroundImage:'var(--m-banner)', backgroundSize:'cover', backgroundPosition:'center 72%', padding:'clamp(26px,6vw,48px) clamp(18px,5.5vw,44px)', color:'#fff', boxShadow:'var(--m-shadow-float)' }}>
           <div style={{ maxWidth:560, position:'relative' }}>
             <div style={{ fontSize:13, letterSpacing:'.18em', textTransform:'uppercase', fontWeight:700, color:'var(--m-amber)' }}>Welcome to our Virtual Mall</div>
             <h1 style={{ fontSize:'clamp(28px,4vw,44px)', fontWeight:800, lineHeight:1.08, margin:'12px 0 0', textShadow:'0 2px 14px rgba(16,6,50,.6)' }}>Shop local. <span style={{ color:'var(--m-amber)' }}>Delivered</span> fast.</h1>
@@ -235,7 +237,7 @@ export function HomeScreen(){
                 style={{ cursor:'pointer', fontFamily:'inherit', textAlign:'left', padding:15, display:'flex', alignItems:'center', gap:13, border:open?`1.5px solid ${node.tint}`:'1.5px solid transparent' }}>
                 <span style={{ width:46, height:46, borderRadius:13, flexShrink:0, background:node.tint+'22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:19 }}><FA i={node.icon} /></span>
                 <span style={{ minWidth:0, flex:1 }}>
-                  <span className="ym-h3" style={{ fontSize:14.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{node.short || node.label}</span>
+                  <span className="ym-h3 cat-name" style={{ fontSize:14.5, display:'block', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{node.short || node.label}</span>
                   <span className="ym-cap">{count ? `${count} shop${count!==1?'s':''}` : `${node.subs.length} types`}</span>
                 </span>
                 <FA i={open?'fa-chevron-up':'fa-chevron-down'} style={{ fontSize:11, color:'var(--m-fg4)', flexShrink:0 }} />
@@ -313,7 +315,7 @@ export function HomeScreen(){
         return (
           <div className="wrap" style={{ marginTop:40 }}>
             <SectionTitle action="Browse all" onAction={()=>nav('search')}>{guest ? 'Latest products' : 'For you'}</SectionTitle>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap:18 }}>
               {items.map(p=><ProductCard key={p.id} p={p} />)}
             </div>
           </div>
@@ -391,19 +393,19 @@ export function SearchScreen({ params }){
         prods.length ? (
           (cat==='all' && !q)
             ? <GroupedByCategory items={prods} onPick={pickCat} itemWidth={200} belongs={(p,n)=>catalogIdsFor(n.id).includes(p.cat)} renderItem={(p)=><ProductCard p={p} />} />
-            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap:18 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
         ) : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q ? `No results for “${q}”` : `No products in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different word or browse categories.' : 'Check back soon — merchants are adding stock to this category.')} />
       ) : tab==='brands' ? (
         brands.length ? (
           (cat==='all' && !q)
             ? <GroupedByCategory items={brands} onPick={pickCat} itemWidth={288} renderItem={(s)=><TopBrandCard s={s} width="100%" />} />
-            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:18 }}>{brands.map(s=><TopBrandCard key={s.id} s={s} width="100%" />)}</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(260px, 100%), 1fr))', gap:18 }}>{brands.map(s=><TopBrandCard key={s.id} s={s} width="100%" />)}</div>
         ) : <Empty icon="fa-crown" t={q ? `No top brands for “${q}”` : `No top brands in ${catTitle||'this category'} yet`} s="Top brands are our flagship enterprise storefronts — check back soon." />
       ) : (
         stores.length ? (
           (cat==='all' && !q)
             ? <GroupedByCategory items={stores} onPick={pickCat} itemWidth={232} renderItem={(s)=><StoreCard s={s} />} />
-            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap:18 }}>{stores.map(s=><StoreCard key={s.id} s={s} />)}</div>
         ) : <Empty icon="fa-store" t={q ? `No stores for “${q}”` : `No stores in ${sub || catTitle || 'this category'} yet`} s={sub ? 'Try “All ' + (node?.short || catTitle) + '” or another subcategory.' : (q ? 'Try a different name or category.' : 'Check back soon — merchants are joining this category.')} />
       )}
     </div>
@@ -544,13 +546,17 @@ function GroupedByCategory({ items, onPick, renderItem, itemWidth = 232, belongs
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginBottom:12 }}>
               <button onClick={pick} style={{ display:'inline-flex', alignItems:'center', gap:9, background:'none', border:'none', cursor:node.id!=='more'?'pointer':'default', fontFamily:'inherit', padding:0, minWidth:0 }}>
                 <span style={{ width:30, height:30, borderRadius:9, background:node.tint + '22', color:node.tint, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}><FA i={node.icon} /></span>
-                <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap' }}>{node.label}</span>
-                <span className="ym-cap">· {list.length}</span>
+                {/* nowrap + ellipsis rather than nowrap alone: a long category name
+                    ("Home & Appliances") set a floor wider than a 320px screen. */}
+                <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 }}>{node.label}</span>
+                <span className="ym-cap" style={{ flexShrink:0 }}>· {list.length}</span>
               </button>
               {node.id !== 'more' && list.length > 3 && <button onClick={pick} className="ym-btn ym-btn-ghost ym-btn-sm" style={{ flexShrink:0 }}>See all <FA i="fa-chevron-right" style={{ fontSize:10 }} /></button>}
             </div>
             <div className="scroll-x" style={{ gap:14 }}>
-              {list.slice(0, 10).map((it) => <div key={it.id} style={{ width:itemWidth, flexShrink:0 }}>{renderItem(it)}</div>)}
+              {/* Capped against the viewport so a rail card never exceeds the screen —
+                  on a phone it lands at ~82vw, which leaves the next card peeking. */}
+              {list.slice(0, 10).map((it) => <div key={it.id} style={{ width:`min(${itemWidth}px, 82vw)`, flexShrink:0 }}>{renderItem(it)}</div>)}
             </div>
           </div>
         );
@@ -577,7 +583,7 @@ export function ProductScreen({ params }){
   return (
     <div className="wrap anim-up" style={{ paddingTop:20 }}>
       <button onClick={back} aria-label="Back" className="icon-btn" style={{ marginBottom:18 }}><FA i="fa-arrow-left" /></button>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:36, alignItems:'start' }} className="prod-detail">
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:36, alignItems:'start' }} className="prod-detail">
         <div>
           <div className="ym-img" style={{ height:420, borderRadius:22, background:`linear-gradient(135deg, ${tint}30, ${tint}60)`, position:'relative' }}>
             <FA i={p.icon} style={{ fontSize:130, color:tint, position:'relative' }} />
@@ -632,10 +638,10 @@ export function ProductScreen({ params }){
       {related.length>0 && (
         <div style={{ marginTop:48 }}>
           <SectionTitle>You might also like</SectionTitle>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18 }}>{related.map(r=><ProductCard key={r.id} p={r} />)}</div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap:18 }}>{related.map(r=><ProductCard key={r.id} p={r} />)}</div>
         </div>
       )}
-      <style>{`@media (max-width:760px){ .prod-detail{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`@media (max-width:900px){ .prod-detail{ grid-template-columns:minmax(0,1fr) !important; gap:22px !important; } }`}</style>
     </div>
   );
 }
@@ -811,7 +817,7 @@ export function StoreScreen({ params }){
         )}
 
         {prods.length
-          ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:18, paddingBottom:8 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
+          ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap:18, paddingBottom:8 }}>{prods.map(p=><ProductCard key={p.id} p={p} />)}</div>
           : <Empty icon={q?'fa-magnifying-glass':'fa-box-open'} t={q?`No matches for “${q}”`:'Nothing matches those filters'} s="Try a different word, or clear the filters to see everything in this store." />}
         <StoreReviews store={s} />
       </div>

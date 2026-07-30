@@ -130,7 +130,7 @@ export function TopBar({ onMenu, onChange, onHelp }){
           {/* Switches this tab over to the mall (it used to force a second tab, which
               piled up duplicates over a shift). A real link, so ctrl/cmd-click still
               opens it in a new tab when that's what the merchant actually wants. */}
-          <a href="/storefront" className="ym-btn ym-btn-ghost ym-btn-sm view-shop" style={{ textDecoration:'none' }}><FA i="fa-store" /> View storefront</a>
+          <a href="/storefront" className="ym-btn ym-btn-ghost ym-btn-sm view-shop" style={{ textDecoration:'none' }} title="View storefront" aria-label="View storefront"><FA i="fa-store" /> <span className="view-shop-label">View storefront</span></a>
           {onHelp && <button onClick={onHelp} className="icon-btn" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
           {/* Was a bell that just opened chat (and was labelled "Messages"). It is now a
               real notification bell: order updates, refund requests, comments and
@@ -151,7 +151,16 @@ export function TopBar({ onMenu, onChange, onHelp }){
           </div>
         </div>
       </div>
-      <style>{`@media (max-width:900px){ header [data-menu]{ display:flex !important; } } @media (max-width:560px){ .view-shop,.acct{ display:none !important; } }`}</style>
+      <style>{`
+        @media (max-width:900px){ header [data-menu]{ display:flex !important; } }
+        @media (max-width:560px){
+          .acct{ display:none !important; }
+          /* "View storefront" is how a merchant checks their own shop — it used to be
+             hidden outright on phones, which is where most of them work. It keeps its
+             place as an icon-only button instead of disappearing. */
+          .view-shop{ padding:0 !important; width:38px; min-width:38px; gap:0 !important; }
+          .view-shop-label{ display:none; }
+        }`}</style>
     </header>
   );
 }

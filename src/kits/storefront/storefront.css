@@ -86,13 +86,22 @@
 .kit-storefront .prod-card:hover{transform:translateY(-5px); box-shadow:var(--m-shadow-float);}
 .kit-storefront .store-card{cursor:pointer; overflow:hidden; transition:transform .25s, box-shadow .25s;}
 .kit-storefront .store-card:hover{transform:translateY(-5px); box-shadow:var(--m-shadow-float);}
-.kit-storefront .cat-grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:14px;}
-@media (max-width:900px){ .kit-storefront .cat-grid{grid-template-columns:repeat(3, 1fr);} }
-@media (max-width:560px){ .kit-storefront .cat-grid{grid-template-columns:repeat(2, 1fr); gap:10px;} }
-/* Very narrow phones: one column so a tile is never squeezed to where its label
-   truncates to nothing. */
-@media (max-width:360px){ .kit-storefront .cat-grid{grid-template-columns:1fr;} }
-.kit-storefront .cat-tile{min-width:0;}   /* let the label ellipsis instead of pushing the grid wide */
+/* Column COUNT is derived from the space available rather than from hardcoded counts,
+   so the grid re-flows continuously (5 across at 1240px, 4, then 3…) instead of jumping
+   at two breakpoints. 200px is the floor a tile needs for its label not to truncate;
+   min(…,100%) keeps that floor from ever exceeding the container. */
+.kit-storefront .cat-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap:14px;}
+/* Phones are the exception: two across reads better than one tall column, and the
+   label wrapping (below) buys back the width the tighter track costs. */
+@media (max-width:640px){ .kit-storefront .cat-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;} }
+@media (max-width:340px){ .kit-storefront .cat-grid{grid-template-columns:minmax(0, 1fr);} }
+.kit-storefront .cat-tile{min-width:0;}   /* let the label wrap instead of pushing the grid wide */
+/* Two tiles across on a phone leaves ~60px for the label, which ellipsised
+   "Construction" down to nothing. Let it use a second line instead — grid rows
+   stretch, so the tiles stay the same height as each other. */
+@media (max-width:640px){
+  .kit-storefront .cat-tile .cat-name{white-space:normal !important; overflow:visible !important; text-overflow:clip !important;}
+}
 .kit-storefront .cat-tile{transition:transform .2s, box-shadow .2s;}
 .kit-storefront .cat-tile:hover{transform:translateY(-3px); box-shadow:var(--m-shadow-float);}
 .kit-storefront .top-brand-card{border:1px solid rgba(244,181,48,.35);}

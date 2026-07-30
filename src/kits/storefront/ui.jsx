@@ -228,12 +228,17 @@ export function PlaceMap({ location, name='Location', area, address, height=180 
   const mapImg = mapboxStaticUrl(loc.lat, loc.lng, { zoom: real ? 15 : 12 });
   return (
     <div>
+      {/* minWidth:0 is load-bearing, not tidying. The Mapbox still is a 720px-wide
+          image and an OSM iframe defaults to 300px; without it their INTRINSIC width
+          becomes the minimum size of the grid/flex column they sit in, which blew the
+          checkout column out to 683px inside a 362px phone screen and let the storefront's
+          overflow-x:hidden slice the page off at the right edge. */}
       {mapImg ? (
-        <img src={mapImg} alt={`Map showing ${name}`} width="100%" height={height} loading="lazy"
-          style={{ border:0, borderRadius:14, display:'block', width:'100%', height, objectFit:'cover' }} />
+        <img src={mapImg} alt={`Map showing ${name}`} height={height} loading="lazy"
+          style={{ border:0, borderRadius:14, display:'block', width:'100%', minWidth:0, maxWidth:'100%', height, objectFit:'cover' }} />
       ) : (
-        <iframe title={`${name} location`} width="100%" height={height} loading="lazy"
-          style={{ border:0, borderRadius:14, display:'block' }}
+        <iframe title={`${name} location`} height={height} loading="lazy"
+          style={{ border:0, borderRadius:14, display:'block', width:'100%', minWidth:0, maxWidth:'100%' }}
           src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`} />
       )}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginTop:10, flexWrap:'wrap' }}>

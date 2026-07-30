@@ -100,7 +100,7 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(200px, 100%), 1fr))', gap: 16 }}>
         {mode === 'delivery'
           ? PLAN_ORDER.map((planName) => {
             const pl = tier.plans[planName];

@@ -25,7 +25,7 @@ export function UpgradeScreen({ feature, currentTier = 'Free', onNav }) {
 
         <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--m-border)', textAlign: 'left' }}>
           <div className="ym-cap" style={{ fontWeight: 700, marginBottom: 10 }}>Everything you unlock on {need}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(200px, 100%), 1fr))', gap: 8 }}>
             {unlocks.map((label) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--m-fg2)' }}>
                 <FA i="fa-circle-check" style={{ color: 'var(--m-green, #10b981)' }} /> {label}

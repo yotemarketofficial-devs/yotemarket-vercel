@@ -117,8 +117,8 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
     : { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--m-bg)' };
 
   return (
-    <div style={wrapStyle} onClick={(e) => { if (overlay && onClose && e.target === e.currentTarget) onClose(); }}>
-      <div className="ym-card anim-up auth-modal" style={{ position: 'relative', margin: 'auto', width: '100%', maxWidth: 880, minHeight: 520, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
+    <div className={overlay ? 'auth-overlay' : undefined} style={wrapStyle} onClick={(e) => { if (overlay && onClose && e.target === e.currentTarget) onClose(); }}>
+      <div className="ym-card anim-up auth-modal" style={{ position: 'relative', margin: 'auto', width: '100%', maxWidth: 880, minHeight: 520, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
         {onClose && (
           <button onClick={onClose} aria-label="Close" className="icon-btn" style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, background: 'rgba(255,255,255,.16)', color: '#fff' }}><FA i="fa-xmark" /></button>
         )}
@@ -207,7 +207,12 @@ export default function AuthPanel({ overlay = false, onClose, theme, onTheme, st
           </div>
         </div>
       </div>
-      <style>{`@media (max-width:780px){ .auth-brand{ display:none; } .auth-modal{ grid-template-columns:1fr !important; min-height:auto !important; } } @media (max-width:480px){ .auth-form-panel{ padding:32px 20px !important; } }`}</style>
+      <style>{`
+        @media (max-width:780px){ .auth-brand{ display:none; } .auth-modal{ grid-template-columns:minmax(0,1fr) !important; min-height:auto !important; } }
+        @media (max-width:480px){ .auth-form-panel{ padding:28px 18px !important; } }
+        /* A 24px inset on a 320px phone leaves the form 272px wide — too tight for the
+           inputs to breathe. Give the sheet the edges back on small screens. */
+        @media (max-width:420px){ .auth-overlay{ padding:12px !important; } }`}</style>
     </div>
   );
 }

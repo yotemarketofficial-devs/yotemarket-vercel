@@ -252,7 +252,7 @@ function RiderPage() {
       .rider-head h2{ font-size:26px; font-weight:800; color:var(--t1); margin-top:6px; }
       .rider-head p{ color:var(--t3); margin-top:8px; font-size:15px; }
       .rider-form{ margin-top:22px; display:flex; flex-direction:column; gap:16px; }
-      .rider-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+      .rider-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(180px, 100%), 1fr)); gap:16px; }
       /* label is BLOCK, not flex-column: as a column flex container the caption text
          and the "*" became separate flex items, dropping the asterisk onto its own
          line under the word. Inline flow keeps "Full name *" together. */

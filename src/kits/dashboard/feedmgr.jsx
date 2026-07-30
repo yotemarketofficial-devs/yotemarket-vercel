@@ -126,7 +126,7 @@ export function FeedManager({ toast }){
         ) : list.length === 0 ? (
           <div style={{ color:'var(--m-fg3)', fontSize:14, padding:'20px' }}>No clips yet — post your first one above.</div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px, 1fr))', gap:14, padding:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(150px, 100%), 1fr))', gap:14, padding:16 }}>
             {list.map((c) => (
               <Card key={c.id} style={{ padding:0, overflow:'hidden' }}>
                 <div style={{ position:'relative', aspectRatio:'9 / 16', background:'#000' }}>

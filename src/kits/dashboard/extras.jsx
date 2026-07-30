@@ -81,7 +81,7 @@ export function Sales(){
     <div className="anim-up">
       <ScreenCoach id="sales" steps={SALES_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Sales</h1>
-      <div data-coach="sales-stats" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
+      <div data-coach="sales-stats" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(160px, 100%), 1fr))', gap:16, marginBottom:22 }}>
         <Stat label="Revenue" value={ksh(revenue)} icon="fa-coins" tone="#7c3aed" />
         <Stat label="Orders" value={String(os.length)} icon="fa-bag-shopping" tone="#3b82f6" />
         <Stat label="Avg order value" value={ksh(avg)} icon="fa-receipt" tone="#10b981" />
@@ -271,7 +271,7 @@ export function Wallet({ toast }){
     <div className="anim-up">
       <ScreenCoach id="wallet" steps={WALLET_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Wallet</h1>
-      <div style={{ display:'grid', gridTemplateColumns:'1.3fr 1fr', gap:20, alignItems:'start' }} className="wallet-grid">
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.3fr) minmax(0,1fr)', gap:20, alignItems:'start' }} className="wallet-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           <Card style={{ padding:24, color:'#fff', background:'var(--m-grad-deep)', boxShadow:'var(--m-glow)', position:'relative', overflow:'hidden' }} data-coach="wallet-balance">
             <FA i="fa-wallet" style={{ position:'absolute', right:14, bottom:-10, fontSize:96, color:'rgba(255,255,255,.1)' }} />
@@ -349,7 +349,7 @@ export function Wallet({ toast }){
           </div>
         </Card>
       </div>
-      <style>{`@media (max-width:820px){ .wallet-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`@media (max-width:820px){ .wallet-grid{ grid-template-columns:minmax(0,1fr) !important; } }`}</style>
       {modal === 'setup' && <PayoutForm onClose={()=>setModal(null)} toast={toast} />}
       {modal === 'change' && <PayoutForm change onClose={()=>setModal(null)} toast={toast} />}
       {modal === 'withdraw' && <WithdrawSheet balance={balance} payout={payout} onClose={()=>setModal(null)} toast={toast} />}
@@ -658,7 +658,7 @@ export function Settings({ toast }){
     <div className="anim-up">
       <ScreenCoach id="settings" steps={SETTINGS_COACH} />
       <h1 className="ym-h1" style={{ marginBottom:20 }}>Settings</h1>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, alignItems:'start' }} className="set-grid">
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:20, alignItems:'start' }} className="set-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
           <SectionCard title="Shop profile" data-coach="settings-profile">
             <StoreBranding toast={toast} />
@@ -684,7 +684,7 @@ export function Settings({ toast }){
           <CloseStoreCard shop={shop} toast={toast} />
         </div>
       </div>
-      <style>{`@media (max-width:820px){ .set-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`@media (max-width:820px){ .set-grid{ grid-template-columns:minmax(0,1fr) !important; } }`}</style>
     </div>
   );
 }

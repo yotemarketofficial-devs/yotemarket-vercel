@@ -175,7 +175,7 @@ function Insights(){
   return (
     <Card style={{ padding:22, marginBottom:22 }}>
       <div className="ym-h2" style={{ fontSize:17, marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-wand-magic-sparkles" style={{ color:'var(--m-secondary)' }} /> Store intelligence</div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(220px, 100%), 1fr))', gap:12 }}>
         {INSIGHTS.map((it,i)=>(
           <div key={i} style={{ display:'flex', gap:12, padding:13, borderRadius:14, background:'var(--m-surface-2)' }}>
             <div style={{ width:38, height:38, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:it.tint+'22', color:it.tint }}><FA i={it.icon} /></div>
@@ -325,7 +325,7 @@ export function Overview({ onAdd, onCopyLink, onOpenProducts, onNav, onTour }){
     <div className="anim-up">
       <WelcomeBanner onCopy={onCopyLink} />
       <GetStartedChecklist onNav={onNav} onAdd={onAdd} onTour={onTour} />
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:16, marginBottom:22 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(160px, 100%), 1fr))', gap:16, marginBottom:22 }}>
         {ov.kpis.map(k=><Stat key={k.label} {...k} delta={k.delta} up={k.up} />)}
       </div>
       <WeekChart data={ov.week} />

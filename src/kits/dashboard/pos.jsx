@@ -317,7 +317,7 @@ export function Pos({ toast }){
           <Btn kind="soft" size="sm" icon="fa-plug" onClick={() => setDevOpen(true)}>Devices</Btn>
         </div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:22, alignItems:'start', marginTop:14 }} className="pos-grid">
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.4fr) minmax(0,1fr)', gap:22, alignItems:'start', marginTop:14 }} className="pos-grid">
         {/* LEFT: products catalog · store pickup · on-screen number pad (tabbed) */}
         <Card style={{ padding:0, overflow:'hidden' }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, padding:'12px 14px', borderBottom:'1px solid var(--m-border)', flexWrap:'wrap' }}>
@@ -349,7 +349,7 @@ export function Pos({ toast }){
               {catalog.length === 0 ? (
                 <div style={{ textAlign:'center', color:'var(--m-fg3)', fontSize:13.5, padding:'24px 0' }}><FA i="fa-box-open" style={{ fontSize:22, display:'block', marginBottom:8 }} /> No products yet — search adds nothing, but you can still ring up custom items.</div>
               ) : (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))', gap:10 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(min(120px, 100%), 1fr))', gap:10 }}>
                   {shown.map((p) => (
                     <button key={p.id} onClick={() => addProduct(p)} style={{ textAlign:'left', padding:12, borderRadius:13, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border:'1px solid var(--m-border)' }}>
                       <div style={{ width:34, height:34, borderRadius:9, background:'var(--m-surface-2)', color:'var(--m-primary)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:8 }}><FA i={p.icon || 'fa-box'} /></div>
@@ -422,7 +422,7 @@ export function Pos({ toast }){
         </SectionCard>
       </div>
       {devOpen && <PosDevices scanMode={scanMode} setScanMode={setScanMode} printMethod={printMethod} setPrintMethod={setPrintMethod} btName={btName} onConnect={connectBt} onDisconnect={disconnectBt} onTest={testPrint} onClose={() => setDevOpen(false)} />}
-      <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`@media (max-width:860px){ .pos-grid{ grid-template-columns:minmax(0,1fr) !important; } }`}</style>
     </div>
   );
 }
