@@ -138,6 +138,28 @@ export function CheckoutScreen({ params }){
     finally { setChecking(false); }
   };
 
+  // Await ONE order's M-Pesa payment (used by the multi-store checkout loop) — resolves on
+  // paid/failed via the payment doc, with a confirmPayment fallback ~20s in, giving up at 2m.
+  const awaitMpesa = (orderId, storeName) => new Promise((resolve, reject) => {
+    mpesaStkPush({ orderId, phone, storeName }).then((res) => {
+      const cid = res && res.checkoutRequestId;
+      if (!cid) { reject(new Error('Couldn’t start the M-Pesa request.')); return; }
+      let done = false, t1, t2, unsub;
+      const finish = (ok, rcpt) => {
+        if (done) return; done = true;
+        if (unsub) unsub(); clearTimeout(t1); clearTimeout(t2);
+        if (ok) resolve(rcpt); else reject(new Error('Payment was cancelled or failed.'));
+      };
+      unsub = onSnapshot(doc(db, 'mpesa_payments', cid), (snap) => {
+        const d = snap.data(); if (!d) return;
+        if (d.status === 'paid' || d.settled) finish(true, d.mpesaReceipt);
+        else if (d.status === 'failed') finish(false);
+      }, () => {});
+      t1 = setTimeout(() => { confirmPayment({ checkoutRequestId: cid }).catch(() => {}); }, 20000);
+      t2 = setTimeout(() => finish(false), 120000);
+    }).catch(reject);
+  });
+
   // Reached only once signed in (checkout requires an account). Reads the LIVE firebase
   // user so it's correct even when invoked immediately after sign-in via requireAuth().
   const payNow = async () => {
@@ -146,6 +168,40 @@ export function CheckoutScreen({ params }){
     // Demo mode only (no backend): optimistic confirmation.
     if (!firebaseEnabled || !db || !uid) { settle('YM-' + Math.floor(58300 + Math.random() * 99), pay); return; }
     if (pay === 'mpesa' && !phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
+
+    // Multi-store cart → one order PER store, placed + paid sequentially (PT-18). The backend
+    // requires single-store orders, so we split here; each store settles to its own merchant.
+    const groups = {};
+    for (const it of items) { const sid = it.p.store; (groups[sid] = groups[sid] || []).push(it); }
+    const storeIds = Object.keys(groups);
+    if (!offer && storeIds.length > 1) {
+      setBusy(true);
+      const buyerName = account?.name || auth?.currentUser?.displayName || (auth?.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Customer');
+      const buyerPhone = phone.trim() || account?.phone || null;
+      let lastRcpt = '';
+      try {
+        for (let i = 0; i < storeIds.length; i++) {
+          const sid = storeIds[i];
+          const storeName = ymStore(sid)?.name || '';
+          setErr(`Ordering from ${storeName || 'store'} (${i + 1} of ${storeIds.length})…`);
+          const { orderId } = await placeOrder({
+            items: groups[sid].map(x => ({ pid: x.pid, qty: x.qty })),
+            fulfillment,
+            ...(fulfillment === 'store_pickup' ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
+            payMethod: pay, buyerName, buyerPhone,
+          });
+          lastRcpt = orderId.slice(0, 6).toUpperCase();
+          if (pay === 'wallet') await payOrderWithWallet({ orderId });
+          else if (pay === 'cash') await placeCashOrder({ orderId });
+          else await awaitMpesa(orderId, storeName);
+        }
+        setErr(''); setBusy(false); settle(lastRcpt, pay); return;
+      } catch (e) {
+        setBusy(false);
+        setErr((e && e.message) || 'Checkout stopped — some orders may already be placed. Check My Orders.');
+        return;
+      }
+    }
     setBusy(true);
     try {
       const storeName = ymStore(items[0]?.p?.store)?.name || '';
@@ -272,7 +328,10 @@ export function CheckoutScreen({ params }){
         <button onClick={back} aria-label="Back" className="icon-btn" style={{ flexShrink:0 }}><FA i="fa-arrow-left" /></button>
         <h1 className="ym-h1" style={{ margin:0 }}>Checkout</h1>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:28, alignItems:'start' }} className="checkout-grid">
+      {/* minmax(0,…) rather than a bare fr: an fr track's floor is its content's
+          min-content width, so one wide child (a map still, a long unbreakable code)
+          can push the column past the screen. */}
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.5fr) minmax(0,1fr)', gap:28, alignItems:'start' }} className="checkout-grid">
         <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
           {/* fulfillment */}
           <div className="ym-card" style={{ padding:22 }}>
@@ -375,7 +434,14 @@ export function CheckoutScreen({ params }){
         </div>
       </div>
       {hubOpen && <HubPicker selected={hubId} onSelect={(h)=>setHubId(h.id)} onClose={()=>setHubOpen(false)} hubs={hubs} />}
-      <style>{`@media (max-width:760px){ .checkout-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`
+        @media (max-width:760px){ .checkout-grid{ grid-template-columns:minmax(0,1fr) !important; gap:16px !important; }
+          .checkout-grid > div > .ym-card, .checkout-grid > .ym-card{ padding:16px !important; }
+          /* The summary is the last thing on a phone, so pinning it does nothing but
+             fight the scroll. */
+          .checkout-grid > .ym-card{ position:static !important; } }
+        /* Delivery vs store pickup stack rather than squeeze into two 130px cards. */
+        @media (max-width:520px){ .fulfil-row{ flex-direction:column; } }`}</style>
     </div>
   );
 }
@@ -471,7 +537,7 @@ function SlotPicker({ grid, value, onChange }){
         })}
       </div>
       {active && active.hasOpen ? (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(108px, 1fr))', gap:8 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(108px, 100%), 1fr))', gap:8 }}>
           {active.slots.map((s) => {
             const on = s.start === value;
             return (
