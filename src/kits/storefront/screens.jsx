@@ -12,7 +12,47 @@ import { subscribeFeed, subscribeFeedSeen } from '../../lib/feed.js';
 import { storeOpenState, todayWindow } from '../../lib/hours.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
-const { useState: useSS, useEffect: useEffSS } = React;
+const { useState: useSS, useEffect: useEffSS, useRef: useRefSS } = React;
+
+/* How many columns a responsive auto-fill grid is CURRENTLY showing.
+   The product grids size themselves from the space available, so "5 rows" is not a
+   fixed item count — it's 5 x however many columns fit right now. Reads the resolved
+   grid-template-columns (auto-fill has already collapsed it to real tracks) and
+   re-measures on resize, so the cap holds on a phone and on a desktop alike. */
+function useGridColumns(ref, fallback = 1) {
+  const [cols, setCols] = useSS(fallback);
+  useEffSS(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => {
+      const t = getComputedStyle(el).gridTemplateColumns;
+      const n = t && t !== 'none' ? t.split(' ').filter(Boolean).length : 0;
+      if (n > 0) setCols((c) => (c === n ? c : n));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return cols;
+}
+
+/* The home feed caps at MAX_FEED_ROWS rows — the section is a taster with a
+   "Browse all" way through to the full catalogue, not the catalogue itself. Signed-in
+   shoppers previously rendered EVERY product here, which grew without bound as the
+   catalogue does. */
+const MAX_FEED_ROWS = 5;
+
+function FeedGrid({ items }) {
+  const ref = useRefSS(null);
+  const cols = useGridColumns(ref);
+  const shown = items.slice(0, MAX_FEED_ROWS * cols);
+  return (
+    <div ref={ref} style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap:18 }}>
+      {shown.map((p) => <ProductCard key={p.id} p={p} />)}
+    </div>
+  );
+}
 
 /* ---------- PRODUCT REVIEWS (live, functional) ---------- */
 function fmtReviewDate(r){ return r?.createdAt?.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-KE',{ day:'numeric', month:'short', year:'numeric' }) : ''; }
@@ -310,14 +350,14 @@ export function HomeScreen(){
       {YM_PRODUCTS.length > 0 && (() => {
         const guest = !account.hasAccount;
         const items = guest
-          ? [...YM_PRODUCTS].sort((a, b) => tsSec(b.createdAt) - tsSec(a.createdAt)).slice(0, 24)
+          // Pool only — FeedGrid applies the real 5-row cap. Kept above any plausible
+          // 5 x columns so the pre-slice never decides what's shown.
+          ? [...YM_PRODUCTS].sort((a, b) => tsSec(b.createdAt) - tsSec(a.createdAt)).slice(0, 40)
           : YM_PRODUCTS;
         return (
           <div className="wrap" style={{ marginTop:40 }}>
             <SectionTitle action="Browse all" onAction={()=>nav('search')}>{guest ? 'Latest products' : 'For you'}</SectionTitle>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(200px, 100%), 1fr))', gap:18 }}>
-              {items.map(p=><ProductCard key={p.id} p={p} />)}
-            </div>
+            <FeedGrid items={items} />
           </div>
         );
       })()}
