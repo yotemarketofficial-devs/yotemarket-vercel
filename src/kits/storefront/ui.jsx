@@ -225,6 +225,7 @@ export function HubPicker({ selected, onSelect, onClose, title='Choose a collect
    marker (from the area text) so the map is never an empty grey box — the caption flags
    it and directions still use the real area name. */
 export function PlaceMap({ location, name='Location', area, address, height=180 }){
+  const [zoom, setZoom] = useState(false);
   const real = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? location : null;
   const loc = real || approxCenterFor(area);       // always resolves → map is never grey
   const approx = !real;
@@ -232,6 +233,17 @@ export function PlaceMap({ location, name='Location', area, address, height=180 
   const dirHref = `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=driving`;
   const d = 0.006;
   const mapImg = mapboxStaticUrl(loc.lat, loc.lng, { zoom: real ? 15 : 12 });
+  // The inline preview can't zoom (a Mapbox still is a PNG; an inline interactive map
+  // hijacks page scroll on a phone). So tapping it opens a keyless, fully interactive
+  // OSM map — scroll/pinch + the +/- controls — in an overlay the shopper can zoom freely.
+  const dz = 0.0035;
+  const embed = `https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-dz}%2C${loc.lat-dz}%2C${loc.lng+dz}%2C${loc.lat+dz}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`;
+  useEffect(() => {
+    if (!zoom) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setZoom(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [zoom]);
   return (
     <div>
       {/* minWidth:0 is load-bearing, not tidying. The Mapbox still is a 720px-wide
@@ -239,18 +251,39 @@ export function PlaceMap({ location, name='Location', area, address, height=180 
           becomes the minimum size of the grid/flex column they sit in, which blew the
           checkout column out to 683px inside a 362px phone screen and let the storefront's
           overflow-x:hidden slice the page off at the right edge. */}
-      {mapImg ? (
-        <img src={mapImg} alt={`Map showing ${name}`} height={height} loading="lazy"
-          style={{ border:0, borderRadius:14, display:'block', width:'100%', minWidth:0, maxWidth:'100%', height, objectFit:'cover' }} />
-      ) : (
-        <iframe title={`${name} location`} height={height} loading="lazy"
-          style={{ border:0, borderRadius:14, display:'block', width:'100%', minWidth:0, maxWidth:'100%' }}
-          src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`} />
-      )}
+      <div style={{ position:'relative', minWidth:0 }}>
+        {mapImg ? (
+          <img src={mapImg} alt={`Map showing ${name}`} height={height} loading="lazy" onClick={()=>setZoom(true)}
+            style={{ border:0, borderRadius:14, display:'block', width:'100%', minWidth:0, maxWidth:'100%', height, objectFit:'cover', cursor:'zoom-in' }} />
+        ) : (
+          <iframe title={`${name} location`} height={height} loading="lazy"
+            style={{ border:0, borderRadius:14, display:'block', width:'100%', minWidth:0, maxWidth:'100%' }}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-d}%2C${loc.lat-d}%2C${loc.lng+d}%2C${loc.lat+d}&layer=mapnik&marker=${loc.lat}%2C${loc.lng}`} />
+        )}
+        {/* Zoom → opens the interactive map. Sits ABOVE the iframe too, so it works whether
+            the preview is the static image or the (pointer-capturing) OSM iframe. */}
+        <button onClick={()=>setZoom(true)} aria-label="Expand and zoom the map" title="Zoom map"
+          style={{ position:'absolute', top:8, right:8, zIndex:2, width:34, height:34, borderRadius:9, border:'none', background:'rgba(17,24,39,.72)', color:'#fff', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(3px)' }}>
+          <FA i="fa-magnifying-glass-plus" />
+        </button>
+      </div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, marginTop:10, flexWrap:'wrap' }}>
         <span className="ym-cap" style={{ display:'inline-flex', gap:7, alignItems:'center', minWidth:0 }}><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{address || area || name}{approx ? ' · approximate area' : ''}</span></span>
         <a href={dirHref} target="_blank" rel="noreferrer" className="ym-btn ym-btn-primary ym-btn-sm"><FA i="fa-diamond-turn-right" /> Get directions</a>
       </div>
+
+      {zoom && (
+        <div onClick={()=>setZoom(false)} role="dialog" aria-modal="true" aria-label={`${name} map`}
+          style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(8,10,24,.74)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ width:'min(960px, 96vw)', height:'min(82vh, 680px)', background:'var(--m-surface)', borderRadius:16, overflow:'hidden', position:'relative', boxShadow:'var(--m-shadow-float)' }}>
+            <iframe title={`${name} — zoomable map`} width="100%" height="100%" loading="lazy" style={{ border:0, display:'block' }} src={embed} />
+            <button onClick={()=>setZoom(false)} aria-label="Close map"
+              style={{ position:'absolute', top:10, right:10, zIndex:2, width:38, height:38, borderRadius:9999, border:'none', background:'rgba(17,24,39,.8)', color:'#fff', cursor:'pointer', fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <FA i="fa-xmark" /></button>
+            <a href={dirHref} target="_blank" rel="noreferrer" className="ym-btn ym-btn-primary ym-btn-sm" style={{ position:'absolute', bottom:12, left:12, zIndex:2 }}><FA i="fa-diamond-turn-right" /> Get directions</a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
