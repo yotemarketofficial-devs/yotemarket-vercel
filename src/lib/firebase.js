@@ -57,7 +57,7 @@ if (firebaseEnabled) {
     // enforceAppCheck on callables), which is still OFF — so nothing is blocked yet and
     // the client can't lock itself out. Enforce only after console metrics show real
     // traffic producing valid tokens.
-    const appCheckKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY || '6LcJG28tAAAAACvuxDBLMKUFWI5P__81OrXpTDP7';
+    const appCheckKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY || '6LdRWW8tAAAAALQ8vTc8UMxkBTzuR4I_BMs-FdUm';
     if (appCheckKey) {
       try {
         // Local dev has no reCAPTCHA-verified domain; a debug token (logged to the
