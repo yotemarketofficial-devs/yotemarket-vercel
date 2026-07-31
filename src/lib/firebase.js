@@ -151,6 +151,9 @@ export const aiAssistant = callable('aiAssistant', { timeout: 300000 });
  *  Clients can't write `orders` directly — the server prices every line. */
 export const placeOrder = callable('placeOrder');
 export const quoteDelivery = callable('quoteDelivery');
+/** One door for every specialist AI task -> see web_app/docs/ai-architecture.md.
+ *  { task, input } -> the task's result, stamped with _source/_cached/_model. */
+export const aiTask = callable('aiTask', { timeout: 60000 });
 /** AI packed-shipping-weight estimate for a product -> { kg, basis, confidence, units }. */
 export const estimateProductWeight = callable('estimateProductWeight', { timeout: 60000 });
 
