@@ -8,6 +8,28 @@
  */
 export function ymPaidKm(upperBoundKm) { return Math.max(0, upperBoundKm - 2); }
 
+/* ---- Weight (locked 2026-07-24) ----
+ * The billing unit is a DELIVERY, not a parcel: 1 delivery = ≤10 kg AND ≤3 parcels, and
+ * WEIGHT IS SUPREME — it outranks parcel count and everything else (2 parcels at 10 kg is
+ * 20 kg, so it splits at two, never three). The 15→10 kg change was made precisely because
+ * it makes the per-run maxima fall out of merchantsPerRun (5/10/20 × 10 kg = 50/100/200 kg),
+ * so no separately-invented vehicle capacity number is needed.
+ * Weight decides WHICH deliveries join a run, never HOW MANY — a too-heavy candidate is
+ * skipped in favour of a lighter one, never a reason to dispatch a run under-filled. */
+export const YM_WEIGHT = {
+  perDeliveryKg: 10,      // hard cap on one delivery unit — supreme over parcel count
+  parcelsPerDelivery: 3,  // ceiling heavy goods never reach
+};
+/** Implied per-run weight ceiling for a band = deliveries per run × the 10 kg unit cap. */
+export function ymRunWeightKg(bandKey) {
+  const b = YM_ECON.bands[bandKey];
+  return b ? b.merchantsPerRun * YM_WEIGHT.perDeliveryKg : 0;
+}
+/** How many delivery UNITS a consignment of `kg` occupies (weight supreme, min 1). */
+export function ymDeliveryUnits(kg) {
+  return Math.max(1, Math.ceil((Number(kg) || 0) / YM_WEIGHT.perDeliveryKg));
+}
+
 export const YM_ECON = {
   // Batching by band: how many merchants (drops) aggregate into one batched run.
   bands: {
@@ -98,6 +120,87 @@ export function ymRunEconomics(bandKey, subTierId, plan = 'Starter') {
     marginPct: Math.round(((revenue - cost) / revenue) * 100),
     paidKm, costPerRun, runsPerMonth,
   };
+}
+
+/* ── Shopper-paid single delivery ────────────────────────────────────────────
+ * When a merchant's plan doesn't cover a delivery (no plan, allotment spent, or the
+ * point is outside their paid reach), the shopper buys that ONE delivery. Its price
+ * comes from the same locked table: each band's subscription price ÷ the deliveries it
+ * bundles = the cost of one delivery at that distance. Starter is used deliberately —
+ * a one-off buyer doesn't get a volume plan's rate.
+ *
+ * The server (firebase/functions/index.js singleDeliveryFee) is authoritative; this is
+ * the shared copy so the staff console shows exactly what shoppers are charged. */
+
+/** Locked ladder: [{ km: band ceiling, price: cost of ONE delivery at that ceiling }]. */
+export function ymDeliveryLadder() {
+  const out = [];
+  for (const bandKey of Object.keys(YM_ECON.bands)) {
+    for (const t of YM_ECON.bands[bandKey].subTiers || []) {
+      out.push({ band: bandKey, id: t.id, range: t.range, km: t.ub, price: t.plans.Starter.p / t.plans.Starter.d });
+    }
+  }
+  return out.sort((a, b) => a.km - b.km);
+}
+
+/** Marginal KSh/km inside each band — the rate actually charged across those km. */
+export function ymDeliveryPerKm() {
+  let prevKm = 0, prevPrice = 0;
+  return ymDeliveryLadder().map((s) => {
+    const perKm = (s.price - prevPrice) / (s.km - prevKm);
+    const row = { ...s, fromKm: prevKm, perKm };
+    prevKm = s.km; prevPrice = s.price;
+    return row;
+  });
+}
+
+/** What a shopper pays for a single delivery of `km`, PRORATED by actual distance.
+ *  Charges each band's marginal rate only across the km inside it, so the price is
+ *  smooth and monotonic and lands exactly on the locked price at every band ceiling. */
+export function ymSingleDeliveryFee(km) {
+  const d = Math.max(0, Number(km) || 0);
+  const ladder = ymDeliveryLadder();
+  if (!ladder.length) return 0;
+  let prevKm = 0, prevPrice = 0, fee = 0;
+  for (const step of ladder) {
+    const rate = (step.price - prevPrice) / (step.km - prevKm);
+    if (d <= step.km) return Math.max(1, Math.round(prevPrice + (d - prevKm) * rate));
+    fee = step.price; prevKm = step.km; prevPrice = step.price;
+  }
+  const last = ladder[ladder.length - 1];
+  const prev = ladder.length > 1 ? ladder[ladder.length - 2] : { km: 0, price: 0 };
+  const tail = (last.price - prev.price) / (last.km - prev.km);
+  return Math.max(1, Math.round(fee + (d - last.km) * tail));
+}
+
+/** Step-by-step working for a shopper-paid delivery of `km` — one row per band the
+ *  trip passes through, so the arithmetic can be shown rather than asserted.
+ *  Returns { rows:[{from,to,km,perKm,amount,range,band}], total }. */
+export function ymDeliveryFeeBreakdown(km) {
+  const d = Math.max(0, Number(km) || 0);
+  const ladder = ymDeliveryLadder();
+  const rows = [];
+  let prevKm = 0, prevPrice = 0, total = 0;
+  for (const step of ladder) {
+    const perKm = (step.price - prevPrice) / (step.km - prevKm);
+    const to = Math.min(d, step.km);
+    if (to > prevKm) {
+      const span = to - prevKm;
+      const amount = span * perKm;
+      total += amount;
+      rows.push({ band: step.band, range: step.range, from: prevKm, to, km: span, perKm, amount });
+    }
+    prevKm = step.km; prevPrice = step.price;
+    if (d <= step.km) break;
+  }
+  if (d > prevKm) { // past the longest band — final marginal rate continues
+    const last = ladder[ladder.length - 1], prev = ladder[ladder.length - 2] || { km: 0, price: 0 };
+    const perKm = (last.price - prev.price) / (last.km - prev.km);
+    const span = d - prevKm, amount = span * perKm;
+    total += amount;
+    rows.push({ band: last.band, range: 'beyond ' + last.km + ' km', from: prevKm, to: d, km: span, perKm, amount, tail: true });
+  }
+  return { rows, total: Math.max(1, Math.round(total)) };
 }
 
 /* ── Enterprise — the premium tier (mirrors firebase/functions/index.js) ──────────

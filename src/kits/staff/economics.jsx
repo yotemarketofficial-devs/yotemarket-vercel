@@ -1,7 +1,9 @@
 /* economics.jsx — Staff console · Pricing & Unit Economics (CONFIDENTIAL).
    Surfaces YM_ECON (the locked single source of truth from the mobile kit). */
 import React from 'react';
-import { YM_ECON, ymPaidKm, ymRunPayout, ymSubTier, ymRunEconomics } from '../mobile/economics.js';
+import { YM_ECON, ymPaidKm, ymRunPayout, ymSubTier, ymRunEconomics,
+  ymDeliveryPerKm, ymSingleDeliveryFee, ymDeliveryFeeBreakdown, ymEnterpriseRateCard, ENTERPRISE,
+  YM_WEIGHT, ymRunWeightKg, ymDeliveryUnits } from '../mobile/economics.js';
 import { Card, SectionHead, Seg, Icon, kes } from './ui.jsx';
 const { useState: useSE, useEffect: useEE } = React;
 const BANDS = ['A','B','C'];
@@ -138,7 +140,129 @@ function Calculator(){
 function CField({ label, children }){ return <div><label className="block text-xs font-semibold t3 uppercase tracking-wide mb-2">{label}</label>{children}</div>; }
 function CRow({ l, v }){ return <div className="flex justify-between" style={{color:'rgba(255,255,255,.85)'}}><span>{l}</span><span className="font-semibold text-white num">{v}</span></div>; }
 
-const ECON_TABS = [['ratecard','Rate card',RateCard],['riderpay','Rider pay',RiderPay],['unit','Unit economics',UnitEcon],['fees','Badges & software',Fees],['calc','Run calculator',Calculator]];
+
+/* What a SHOPPER pays for one delivery when the merchant's plan doesn't cover it —
+   plus the Enterprise per-package rates the quotes are grounded in. */
+function ShopperDelivery(){
+  const rows = ymDeliveryPerKm();
+  const ent = ymEnterpriseRateCard();
+  const [demo, setDemo] = useSE(35);
+  const bd = ymDeliveryFeeBreakdown(demo);
+  const ceilings = new Set(rows.map(r=>r.km));
+  const lastKm = rows.length ? rows[rows.length-1].km : 90;
+  const allKm = Array.from({length: lastKm}, (_,i)=>i+1);
+  return (<div className="space-y-5">
+    {/* Weight is the billing unit's hard boundary — it decides how many deliveries a
+        consignment IS, which is what everything else is priced off. */}
+    <Card className="p-5">
+      <div className="font-bold t1 mb-1">The delivery unit &amp; weight caps</div>
+      <div className="text-sm t3 mb-4">Billing counts DELIVERIES, not parcels. One delivery is
+        <b className="t1"> ≤{YM_WEIGHT.perDeliveryKg} kg and ≤{YM_WEIGHT.parcelsPerDelivery} parcels</b> — and weight is supreme:
+        2 parcels at {YM_WEIGHT.perDeliveryKg} kg is {YM_WEIGHT.perDeliveryKg*2} kg, so it splits at two, never three. The per-run
+        ceilings below fall out of that cap × the band&rsquo;s deliveries per run, so no separate vehicle capacity is invented.</div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {Object.keys(YM_ECON.bands).map(k=>{ const b=YM_ECON.bands[k]; return (
+          <div key={k} className="rounded-lg p-4" style={{background:'var(--surface2)',border:'1px solid var(--line)'}}>
+            <div className="text-xs t3 uppercase tracking-wide">Band {k} · {b.label}</div>
+            <div className="text-lg font-bold t1 num">{ymRunWeightKg(k)} kg <span className="text-sm t3 font-normal">per run</span></div>
+            <div className="text-xs t3 mt-1">{b.merchantsPerRun} deliveries × {YM_WEIGHT.perDeliveryKg} kg · {b.vehicle}</div>
+          </div>); })}
+      </div>
+      <div className="text-xs t3 mt-4">A consignment occupies <b className="t1">ceil(kg ÷ {YM_WEIGHT.perDeliveryKg})</b> delivery units —
+        e.g. 10 kg = {ymDeliveryUnits(10)} unit, 10.5 kg = {ymDeliveryUnits(10.5)} units, 25 kg = {ymDeliveryUnits(25)} units.
+        Weight decides WHICH deliveries join a run, never how many: a too-heavy candidate is skipped for a lighter one,
+        never a reason to dispatch under-filled.</div>
+    </Card>
+
+    <Card className="p-5">
+      <div className="font-bold t1 mb-1">Cost of ONE delivery</div>
+      <div className="text-sm t3 mb-4">Each band&rsquo;s subscription price ÷ the deliveries it bundles (Starter — a one-off
+        buyer doesn&rsquo;t get a volume rate). The shopper is charged pro-rata across the km actually inside each band, so the
+        price is smooth and lands exactly on the locked figure at every ceiling.</div>
+      <div className="overflow-x-auto no-bar"><table className="w-full text-sm">
+        <thead><tr className="t3 text-left"><th className="py-2">Band</th><th>Range</th><th className="text-right">Sub ÷ deliveries</th>
+          <th className="text-right">Cost of 1 delivery</th><th className="text-right">Charged per km</th></tr></thead>
+        <tbody>{rows.map(r=>{
+          const t = ymSubTier(r.band, r.id);
+          return (<tr key={r.id} style={{borderTop:'1px solid var(--line)'}}>
+            <td className="py-2 font-semibold t1">{r.band}</td>
+            <td className="t2">{r.range}</td>
+            <td className="text-right t3 num">{t ? `${kes(t.plans.Starter.p)} ÷ ${t.plans.Starter.d}` : '—'}</td>
+            <td className="text-right font-bold t1 num">{kes(Math.round(r.price))}</td>
+            <td className="text-right t2 num">{kes(Math.round(r.perKm))}/km<span className="t3"> ({r.fromKm}–{r.km} km)</span></td>
+          </tr>);
+        })}</tbody>
+      </table></div>
+    </Card>
+
+    {/* The arithmetic, shown rather than asserted — pick a distance and read the working. */}
+    <Card className="p-5">
+      <div className="font-bold t1 mb-1">How the price is worked out</div>
+      <div className="text-sm t3 mb-4">Each band charges its own rate, but only across the kilometres that actually fall
+        inside it — the way a tax bracket works. Nothing is charged for distance that wasn&rsquo;t travelled, and because every
+        band still ends on its locked figure, the totals never drift from the table above.</div>
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <span className="text-xs font-semibold t3 uppercase tracking-wide">Distance</span>
+        {[1.9,5,10,25,35,55,90,120].map(k=>(
+          <button key={k} onClick={()=>setDemo(k)} className="px-3 py-1.5 rounded-md text-sm font-semibold transition"
+            style={demo===k?{background:'var(--pri)',color:'#fff'}:{background:'var(--surface2)',color:'var(--t2)',border:'1px solid var(--line)'}}>{k} km</button>
+        ))}
+      </div>
+      <div className="overflow-x-auto no-bar"><table className="w-full text-sm">
+        <thead><tr className="t3 text-left"><th className="py-2">Segment</th><th>Band</th><th className="text-right">km in band</th>
+          <th className="text-right">rate</th><th className="text-right">amount</th></tr></thead>
+        <tbody>
+          {bd.rows.map((r,i)=>(<tr key={i} style={{borderTop:'1px solid var(--line)'}}>
+            <td className="py-2 t2 num">{r.from}–{r.to} km</td>
+            <td className="t3">{r.band}{r.tail?' (tail)':''}</td>
+            <td className="text-right t2 num">{Math.round(r.km*10)/10}</td>
+            <td className="text-right t3 num">× {kes(Math.round(r.perKm))}/km</td>
+            <td className="text-right font-semibold t1 num">{kes(Math.round(r.amount))}</td>
+          </tr>))}
+          <tr style={{borderTop:'2px solid var(--line)'}}>
+            <td className="py-2 font-bold t1" colSpan={4}>Total for {demo} km</td>
+            <td className="text-right font-bold t1 num">{kes(bd.total)}</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </Card>
+
+    {/* Explicit price for every kilometre — no interpolation left to the reader. */}
+    <Card className="p-5">
+      <div className="font-bold t1 mb-1">Price at every distance</div>
+      <div className="text-sm t3 mb-4">Every kilometre from 1 to 90, then the tail rate beyond the longest band.
+        Bold rows are band ceilings, where the price equals the locked cost of one delivery exactly.</div>
+      <div className="grid gap-x-5 gap-y-1" style={{gridTemplateColumns:'repeat(auto-fill, minmax(min(120px,100%), 1fr))'}}>
+        {allKm.map(km=>{
+          const ceiling = ceilings.has(km);
+          return (<div key={km} className="flex justify-between text-sm py-0.5"
+            style={ceiling?{borderTop:'1px solid var(--line)'}:undefined}>
+            <span className={ceiling?'font-bold t1':'t3'}>{km} km</span>
+            <span className={'num ' + (ceiling?'font-bold t1':'t2')}>{kes(ymSingleDeliveryFee(km))}</span>
+          </div>);
+        })}
+      </div>
+      <div className="text-xs t3 mt-4">Past {lastKm} km the final band&rsquo;s marginal rate keeps applying — there is no cap.
+        e.g. 100 km = {kes(ymSingleDeliveryFee(100))}, 120 km = {kes(ymSingleDeliveryFee(120))}, 150 km = {kes(ymSingleDeliveryFee(150))}.</div>
+    </Card>
+
+    <Card className="p-0 overflow-hidden"><div className="p-5 pb-0">
+      <div className="font-bold t1 mb-1">Enterprise rates</div>
+      <div className="text-sm t3 mb-4">Quote-based, but grounded in the same table: each band&rsquo;s marginal (Pro) package
+        rate and its per-km equivalent. Default allotment {ENTERPRISE.deliveriesCap} deliveries/month.</div>
+    </div><div className="overflow-x-auto no-bar"><table className="w-full text-sm">
+      <thead><tr className="t3 text-left"><th className="py-2 pl-5">Band</th><th>Range</th><th className="text-right">Per package</th><th className="text-right pr-5">Per package / km</th></tr></thead>
+      <tbody>{ent.map(r=>(<tr key={r.subTier} style={{borderTop:'1px solid var(--line)'}}>
+        <td className="py-2 pl-5 font-semibold t1">{r.band}</td>
+        <td className="t2">{r.range}</td>
+        <td className="text-right font-bold t1 num">{kes(r.perPackage)}</td>
+        <td className="text-right t2 num pr-5">{r.perPackagePerKm}</td>
+      </tr>))}</tbody>
+    </table></div></Card>
+  </div>);
+}
+
+const ECON_TABS = [['ratecard','Rate card',RateCard],['riderpay','Rider pay',RiderPay],['unit','Unit economics',UnitEcon],['fees','Badges & software',Fees],['calc','Run calculator',Calculator],['shopper','Shopper delivery',ShopperDelivery]];
 
 export function Economics(){
   const [tab,setTab] = useSE('ratecard');
