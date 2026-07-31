@@ -1,7 +1,7 @@
 /* ui.jsx — Storefront shared primitives (web, mirrors mobile app visual language). */
 import React from 'react';
 import { ymPrice, ymStore, ymCat } from './data.js';
-import { HUBS } from './hubs.js';
+import { resolveHubs } from './hubs.js';
 import { mapboxStaticUrl, approxCenterFor } from '../../lib/maps.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
 
@@ -192,11 +192,17 @@ export function Modal({ title, onClose, children, maxWidth=440 }){
 }
 
 /* Pickup-hub chooser used at checkout and in the profile editor. */
-export function HubPicker({ selected, onSelect, onClose, title='Choose a pickup hub', hubs=HUBS }){
+export function HubPicker({ selected, onSelect, onClose, title='Choose a collection point', hubs }){
+  const list = hubs || resolveHubs();
   return (
     <Modal title={title} onClose={onClose}>
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {hubs.map(h=>{
+        {list.length === 0 && (
+          <div className="ym-cap" style={{ padding:'18px 4px', textAlign:'center' }}>
+            No collection points near you yet — choose “Pick up from store” instead.
+          </div>
+        )}
+        {list.map(h=>{
           const on = h.id===selected;
           return (
             <button key={h.id} onClick={()=>{ onSelect(h); onClose(); }} style={{ display:'flex', alignItems:'center', gap:13, width:'100%', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', textAlign:'left', background:'var(--m-surface)', border: on?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>

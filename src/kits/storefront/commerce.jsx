@@ -3,14 +3,13 @@ import React from 'react';
 import { addDoc, collection, serverTimestamp, doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from './ui.jsx';
 import { ymProduct, ymStore, ymPrice, YM_STORES } from './data.js';
-import { HUBS, findHub, DEFAULT_HUB_ID, nearestHub, resolveHubs } from './hubs.js';
+import { findHub, nearestHub, resolveHubs } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { placeOrder, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { placeOrder, quoteDelivery, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
 import { normalizeHours, minutesOf } from '../../lib/hours.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
-const DELIVERY_FEE = 150;
 // Custody lifecycle (index = order.step): placed→queued→accepted→picked_up→at_hub→delivered.
 const ORDER_STEPS = ['Order placed','Paid · finding a rider','Rider assigned','Picked up from store','Arrived at your hub','Collected'];
 // Store-pickup lifecycle: placed→preparing(paid)→ready_pickup→delivered.
@@ -44,16 +43,10 @@ export function CheckoutScreen({ params }){
   const offerCatalog = offer ? offerLines.reduce((s, it) => { const p = ymProduct(it.productId); return s + (Number(p?.price) || 0) * (Number(it.qty) || 1); }, 0) : 0;
   const [fulfillment, setFulfillment] = useSCm('hub'); // hub | store_pickup
   const sellStore = ymStore(items[0]?.p?.store);
-  // Delivery rules for the selling store (fall back to the flat fee when unset).
+  // Delivery rules for the selling store.
   const deliv = sellStore?.delivery || null;
-  const offersDelivery = deliv ? deliv.offers !== false : true;
-  const baseFee = deliv && deliv.fee != null ? Number(deliv.fee) : DELIVERY_FEE;
+  const storeOffersDelivery = deliv ? deliv.offers !== false : true;
   const freeOver = deliv && Number(deliv.freeOver) > 0 ? Number(deliv.freeOver) : 0;
-  const deliveryFee = (freeOver > 0 && subtotal >= freeOver) ? 0 : baseFee;
-  // If the store doesn't offer delivery, checkout is pickup-only.
-  useEffCm(() => { if (!offersDelivery && fulfillment !== 'store_pickup') setFulfillment('store_pickup'); }, [offersDelivery]); // eslint-disable-line
-  const fee = (fulfillment === 'hub' && items.length) ? deliveryFee : 0;
-  const total = subtotal + fee;
   const [pay, setPay] = useSCm('mpesa');
   const [phone, setPhone] = useSCm('');
   const [phase, setPhase] = useSCm('form'); // form | waiting | timeout | paid
@@ -61,16 +54,49 @@ export function CheckoutScreen({ params }){
   const [err, setErr] = useSCm('');
   const [receipt, setReceipt] = useSCm('');
   const [paidMethod, setPaidMethod] = useSCm('mpesa');
-  const [hubId, setHubId] = useSCm(DEFAULT_HUB_ID);
+  const [hubId, setHubId] = useSCm(null);
   const [hubOpen, setHubOpen] = useSCm(false);
   const [checking, setChecking] = useSCm(false);
   const unsubRef = useRefCm(null);
   const timerRef = useRefCm(null);
   const confirmTimerRef = useRefCm(null);
   const cidRef = useRefCm(null);
-  // Fluid hubs: real merchant-store hubs (pickup-enabled + located), bootstrap filling in.
+  // Collection points are REAL enrolled stores — there is no invented hub network, so
+  // this list can legitimately be empty (nobody nearby has enrolled yet). When it is,
+  // delivery isn't offered and checkout falls back to collecting from the store.
   const hubs = resolveHubs(YM_STORES);
-  const hub = hubs.find(h => h.id === hubId) || hubs[0] || HUBS[0];
+  const hub = hubs.find(h => h.id === hubId) || hubs[0] || null;
+  // Delivery is only on the table when the store offers it AND a real collection point
+  // exists to route to.
+  const offersDelivery = storeOffersDelivery && hubs.length > 0;
+
+  // THE delivery price comes from the server, not from a constant here. The rule is
+  // "the store's plan pays, or the shopper pays their own" — and only the server knows
+  // whether the merchant has a delivery plan, whether this point is inside the reach
+  // they pay for, and whether their monthly allotment still has room. Checkout used to
+  // print a flat KSh 150 that matched none of that. `quoteDelivery` reserves nothing,
+  // so re-quoting as the shopper changes point or basket is free.
+  const [quote, setQuote] = useSCm(null);      // null = not quoted yet
+  const [quoting, setQuoting] = useSCm(false);
+  useEffCm(() => {
+    if (!offersDelivery || fulfillment !== 'hub' || !sellStore?.id || !hub?.id || !items.length) { setQuote(null); return; }
+    if (!firebaseEnabled) { setQuote(null); return; }
+    let live = true;
+    setQuoting(true);
+    quoteDelivery({ storeId: sellStore.id, hubId: hub.id, subtotal })
+      .then((r) => { if (live) setQuote(r?.data || null); })
+      .catch(() => { if (live) setQuote(null); })
+      .finally(() => { if (live) setQuoting(false); });
+    return () => { live = false; };
+  }, [offersDelivery, fulfillment, sellStore?.id, hub?.id, subtotal, items.length]); // eslint-disable-line
+
+  // Until the quote lands we show nothing rather than a number we'd have to correct.
+  const deliveryFee = quote ? Number(quote.fee) || 0 : null;
+  const deliveryPaidBy = quote ? quote.paidBy : null;
+  // If the store doesn't deliver (or nowhere to deliver to), checkout is pickup-only.
+  useEffCm(() => { if (!offersDelivery && fulfillment !== 'store_pickup') setFulfillment('store_pickup'); }, [offersDelivery]); // eslint-disable-line
+  const fee = (fulfillment === 'hub' && items.length) ? (deliveryFee || 0) : 0;
+  const total = subtotal + fee;
 
   // Delivery location = the collection point NEAREST the shopper, matched automatically
   // rather than picked off a list. We read the browser location once, route to the
@@ -341,7 +367,11 @@ export function CheckoutScreen({ params }){
             <div className="ym-h3" style={{ marginBottom:14, display:'flex', alignItems:'center', gap:8 }}><FA i="fa-truck-fast" style={{ color:'var(--m-primary)' }} /> How would you like it?</div>
             <div style={{ display:'flex', gap:10, marginBottom:16 }} className="fulfil-row">
               {[
-                ...(offersDelivery ? [['hub','fa-truck-fast','Delivery location', deliveryFee>0 ? `To the point nearest you · ${ymPrice(deliveryFee)}` : 'To the point nearest you · Free']] : []),
+                ...(offersDelivery ? [['hub','fa-truck-fast','Delivery location',
+                  quoting ? 'To the point nearest you · checking price…'
+                  : deliveryFee == null ? 'To the point nearest you'
+                  : deliveryFee > 0 ? `To the point nearest you · ${ymPrice(deliveryFee)}`
+                  : 'To the point nearest you · Free']] : []),
                 ['store_pickup','fa-store','Pick up from store',`Collect from ${sellStore?.name || 'the store'} · Free`],
               ].map(([id,ic,t,sub])=>(
                 <button key={id} onClick={()=>setFulfillment(id)} style={{ flex:1, textAlign:'left', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: fulfillment===id?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
@@ -422,7 +452,22 @@ export function CheckoutScreen({ params }){
           <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, display:'flex', flexDirection:'column', gap:8 }}>
             <Row l="Subtotal" v={ymPrice(subtotal)} />
             {offer && offerCatalog > subtotal && <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-handshake" /> {offerLines.length>1?'Bundle deal':'Agreed offer'}</span><span className="ym-cap" style={{ color:'var(--m-primary)', fontWeight:700 }}>−{ymPrice(offerCatalog - subtotal)}</span></div>}
-            {fulfillment==='hub' ? <Row l="Delivery" v={ymPrice(fee)} /> : <Row l="Store pickup" v="Free" />}
+            {fulfillment==='hub'
+              ? <Row l="Delivery" v={quoting && deliveryFee == null ? 'Checking…' : deliveryFee == null ? '—' : fee > 0 ? ymPrice(fee) : 'Free'} />
+              : <Row l="Store pickup" v="Free" />}
+            {/* Why it's free (or not) — the shopper should never wonder what they're
+                being charged for. */}
+            {fulfillment==='hub' && deliveryPaidBy === 'merchant' && (
+              <div className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Delivery covered by {sellStore?.name || 'the store'}.</div>
+            )}
+            {fulfillment==='hub' && deliveryPaidBy === 'shopper' && fee > 0 && (
+              <div className="ym-cap">
+                <FA i="fa-circle-info" /> {quote?.reason === 'out_of_reach'
+                  ? 'This point is outside the range this store covers, so this delivery is yours to pay for.'
+                  : 'This store doesn’t cover this delivery, so it’s priced for your own single trip'}
+                {quote?.distKm ? ` · ${quote.distKm} km` : ''}.
+              </div>
+            )}
             <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:'1px solid var(--m-border)' }}><span className="ym-h3">Total</span><span className="ym-h2" style={{ fontSize:22 }}>{ymPrice(total)}</span></div>
           </div>
           {Math.floor(total/100) > 0 && <div className="ym-cap" style={{ marginTop:10, display:'flex', gap:7, alignItems:'center', color:'var(--m-primary)' }}><FA i="fa-gift" /> Earn {Math.floor(total/100)} YotePoint{Math.floor(total/100)!==1?'s':''} on this order</div>}

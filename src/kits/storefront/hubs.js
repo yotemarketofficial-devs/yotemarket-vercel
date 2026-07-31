@@ -1,26 +1,11 @@
-/* hubs.js — YoteMarket pickup-hub network. Hubs are FLUID: every merchant store with a
-   physical location that opts into pickup IS a hub (resolveHubs derives them live from the
-   catalog). The fixed list below is only a BOOTSTRAP so coverage is never empty in an area
-   with no enrolled merchant-hubs yet. Shoppers pick a hub at checkout; the chosen id + name
-   are stamped on the order. ("Fixed roads, fluid hubs" model.) */
+/* hubs.js — YoteMarket collection points. There is no invented hub network: every
+   collection point IS a real merchant store that has a physical location and has opted
+   into pickup, so a hubId is a storeId and its address/coordinates are the store's own.
+   Shoppers pick a point at checkout; the chosen id + name are stamped on the order.
+   ("Fixed roads, fluid hubs" — the roads are fixed, the points are whoever enrolled.) */
+import { YM_STORES } from './data.js';
 
-export const HUBS = [
-  { id: 'westlands', name: 'Westlands Hub', area: 'Mpaka Road · near Sarit Centre', town: 'Nairobi', location: { lat: -1.2635, lng: 36.8030 } },
-  { id: 'cbd', name: 'CBD Hub', area: 'Moi Avenue · Nairobi CBD', town: 'Nairobi', location: { lat: -1.2841, lng: 36.8266 } },
-  { id: 'kilimani', name: 'Kilimani Hub', area: 'Yaya Centre', town: 'Nairobi', location: { lat: -1.2925, lng: 36.7840 } },
-  { id: 'karen', name: 'Karen Hub', area: 'Karen Crossroads', town: 'Nairobi', location: { lat: -1.3190, lng: 36.7060 } },
-  { id: 'thika-road', name: 'Thika Road Hub', area: 'TRM Drive · Roysambu', town: 'Nairobi', location: { lat: -1.2190, lng: 36.8880 } },
-  { id: 'eastlands', name: 'Eastlands Hub', area: 'Buruburu · Mumias Road', town: 'Nairobi', location: { lat: -1.2870, lng: 36.8770 } },
-  { id: 'rongai', name: 'Ongata Rongai Hub', area: 'Maasai Mall', town: 'Kajiado', location: { lat: -1.3960, lng: 36.7450 } },
-  { id: 'mombasa', name: 'Mombasa Hub', area: 'Nyali · City Mall', town: 'Mombasa', location: { lat: -4.0300, lng: 39.7000 } },
-  { id: 'kisumu', name: 'Kisumu Hub', area: 'Mega Plaza', town: 'Kisumu', location: { lat: -0.0917, lng: 34.7680 } },
-  { id: 'nakuru', name: 'Nakuru Hub', area: 'Westside Mall', town: 'Nakuru', location: { lat: -0.2870, lng: 36.0660 } },
-];
-
-export const DEFAULT_HUB_ID = 'westlands';
-export const findHub = (id) => HUBS.find((h) => h.id === id) || null;
-
-/* A merchant store becomes a pickup HUB once it has a physical location and opts in. */
+/* A merchant store becomes a collection point once it has a location and opts in. */
 export const storeToHub = (s) => ({
   id: s.id, name: s.name || 'Pickup point',
   area: s.area || s.address || '', town: s.town || s.area || '',
@@ -29,12 +14,18 @@ export const storeToHub = (s) => ({
 export const merchantHubs = (stores) => (stores || [])
     .filter((s) => s && s.pickupEnabled && s.location && Number.isFinite(s.location.lat))
     .map(storeToHub);
-/* The LIVE hub set = real merchant hubs, with the bootstrap list filling in where none
-   exist yet (deduped by id). This is the fluid-hub model the whole engine assumes. */
-export const resolveHubs = (stores) => {
-  const real = merchantHubs(stores);
-  const seen = new Set(real.map((h) => h.id));
-  return [...real, ...HUBS.filter((h) => !seen.has(h.id))];
+
+/* The LIVE collection-point set — real enrolled stores only. Empty is a legitimate
+   state (nobody near this shopper has enrolled yet); callers must handle it by falling
+   back to store pickup rather than inventing a point. */
+export const resolveHubs = (stores) => merchantHubs(stores || YM_STORES);
+
+/* Look a point up by id. Reads the store itself, so an order stamped with a point that
+   later opted out still renders its real name and location. */
+export const findHub = (id, stores) => {
+  if (!id) return null;
+  const s = (stores || YM_STORES || []).find((x) => x && x.id === id);
+  return s && s.location ? storeToHub(s) : null;
 };
 
 /* Great-circle distance in km between two {lat,lng} points (haversine). Used to route
@@ -51,10 +42,11 @@ export function distanceKm(a, b) {
 /* The collection hub nearest a shopper location → { hub, km }, or null if the location
    is unknown. This is the "matched with the nearest point" step the checkout runs the
    moment it has the shopper's coordinates. */
-export function nearestHub(loc, hubs = HUBS) {
+export function nearestHub(loc, hubs) {
+  const list = hubs || resolveHubs();
   if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) return null;
   let best = null, bestD = Infinity;
-  for (const h of hubs) {
+  for (const h of list) {
     const d = distanceKm(loc, h.location);
     if (d < bestD) { bestD = d; best = h; }
   }

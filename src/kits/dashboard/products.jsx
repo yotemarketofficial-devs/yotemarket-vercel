@@ -132,8 +132,9 @@ export function AddProductModal({ onClose, onSave, editing }){
     price: editing.was != null ? String(editing.was) : (editing.price != null ? String(editing.price) : ''),
     discount: (editing.was != null && editing.price != null) ? String(editing.price) : '',
     stock: typeof editing.stock === 'number' ? String(editing.stock) : '',
+    negotiable: editing.negotiable === true,
     images: Array.isArray(editing.images) && editing.images.length ? editing.images.filter(Boolean) : (editing.img ? [editing.img] : []),
-  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', images:[] });
+  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', negotiable:false, images:[] });
   const [saving, setSaving] = useStateP(false);
   const [err, setErr] = useStateP('');
   const set = (k,v)=>setForm(f=>({ ...f, [k]:v }));
@@ -167,6 +168,7 @@ export function AddProductModal({ onClose, onSave, editing }){
         was: sale != null ? regular : null,
         stock: stockStr === '' ? null : Number(stockStr), // null = untracked, distinct from 0
         catId: form.catId || null, sub: form.sub || null, desc: form.desc || form.summary || '',
+        negotiable: form.negotiable === true,
         images: form.images, img: form.images[0] || null,
       });
       onSave(form);
@@ -206,6 +208,27 @@ export function AddProductModal({ onClose, onSave, editing }){
               <input className="ipt" type="number" min={0} step={1} value={form.stock} onChange={e=>set('stock',e.target.value)} placeholder="Not tracked" />
             </Field>
             {form.stock !== '' && Number(form.stock) === 0 && <div className="ym-cap" style={{ color:'var(--m-danger)', marginTop:-8 }}>0 units — this product will show as “Out of stock” and can't be bought.</div>}
+            {/* The shopper-facing "Negotiable" tag has been live for a while, but nothing
+                could switch it on — this is the control that sets it. */}
+            <button type="button" onClick={()=>set('negotiable', !form.negotiable)} aria-pressed={form.negotiable}
+              style={{ display:'flex', alignItems:'center', gap:13, width:'100%', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+                padding:14, borderRadius:14, background:'var(--m-surface)',
+                border: form.negotiable ? '2px solid var(--m-primary)' : '2px solid var(--m-border)' }}>
+              <span style={{ width:40, height:40, borderRadius:11, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16,
+                background: form.negotiable ? 'var(--m-primary)' : 'var(--m-surface-2)', color: form.negotiable ? '#fff' : 'var(--m-fg3)' }}>
+                <FA i="fa-handshake" />
+              </span>
+              <span style={{ flex:1, minWidth:0 }}>
+                <span className="ym-h3" style={{ display:'block', fontSize:14 }}>Price is negotiable</span>
+                <span className="ym-cap" style={{ display:'block', marginTop:2 }}>Shows a “Negotiable” tag on this product and invites buyers to make an offer in chat.</span>
+              </span>
+              {/* Switch — the pressed state is on the button, this is the visual. */}
+              <span style={{ width:44, height:26, borderRadius:9999, flexShrink:0, padding:3, transition:'background .18s',
+                background: form.negotiable ? 'var(--m-primary)' : 'var(--m-surface-2)' }}>
+                <span style={{ display:'block', width:20, height:20, borderRadius:9999, background:'#fff', transition:'transform .18s',
+                  transform: form.negotiable ? 'translateX(18px)' : 'translateX(0)', boxShadow:'0 1px 3px rgba(0,0,0,.3)' }} />
+              </span>
+            </button>
             <Field label="SKU" hint={isEdit ? 'Your store SKU (assigned on first save)' : 'Assigned automatically per store on save (e.g. WAN-0001)'}><input className="ipt" value={isEdit && editing.sku ? editing.sku : 'Auto-generated'} disabled style={{ opacity:.65 }} /></Field>
             <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via the in-app messenger before confirming.</div></div>
           </div>}

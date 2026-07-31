@@ -7,7 +7,7 @@
 import React from 'react';
 import { auth, firebaseEnabled, hubListOrders, confirmHandover, assignHubOperator } from '../../lib/firebase.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { HUBS, findHub } from '../storefront/hubs.js';
+import { resolveHubs, findHub } from '../storefront/hubs.js';
 const { useState, useEffect, useCallback } = React;
 
 const OWNER_EMAILS = ['007arnogichuche@gmail.com', 'yotemarketofficial@gmail.com'];
@@ -96,7 +96,9 @@ function HubDenied({ email, onSignOut }) {
 }
 
 function HubConsole({ fixedHubId, isStaff, email, onSignOut }) {
-  const [pickHub, setPickHub] = useState(fixedHubId || (isStaff ? HUBS[0].id : null));
+  // Collection points are real enrolled stores; staff pick from whichever exist.
+  const allHubs = resolveHubs();
+  const [pickHub, setPickHub] = useState(fixedHubId || (isStaff ? (allHubs[0]?.id || null) : null));
   const hubId = fixedHubId || pickHub;
   const hub = findHub(hubId);
   const [data, setData] = useState({ orders: [], incoming: 0, atHub: 0, enRoute: 0 });
@@ -129,7 +131,7 @@ function HubConsole({ fixedHubId, isStaff, email, onSignOut }) {
         </div>
         {isStaff && !fixedHubId && (
           <select value={hubId} onChange={(e) => setPickHub(e.target.value)} style={{ ...ipt, width: 'auto', padding: '8px 12px' }}>
-            {HUBS.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+            {allHubs.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
         )}
         <button onClick={load} style={{ ...btn(C.soft, C.fg1), padding: '9px 14px' }}><FA i="fa-rotate" /> Refresh</button>

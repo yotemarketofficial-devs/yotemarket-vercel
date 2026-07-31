@@ -127,6 +127,7 @@ export const aiAssistant = callable('aiAssistant', { timeout: 300000 });
  *  → { orderId, subtotal, deliveryFee, total, storeId, storeName }.
  *  Clients can't write `orders` directly — the server prices every line. */
 export const placeOrder = callable('placeOrder');
+export const quoteDelivery = callable('quoteDelivery');
 
 /** Lipa na M-Pesa STK push → { checkoutRequestId, merchantRequestId }. */
 export const mpesaStkPush = callable('mpesaStkPush');

@@ -216,6 +216,13 @@ function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
           <span style={{ fontSize:11.5, color:sub }}>{bundle ? `${its.length} items` : 'Total'}</span>
           <b style={{ fontSize:15, color:fg }}>{ymPrice(total)}</b>
         </div>
+        {/* The store threw delivery in as part of this deal — worth saying plainly,
+            because it changes what they'll pay at checkout. */}
+        {offer.deliveryIncluded && (
+          <div style={{ fontSize:12, marginTop:7, display:'inline-flex', alignItems:'center', gap:6, fontWeight:700, color: dark ? '#fff' : 'var(--m-mpesa)' }}>
+            <FA i="fa-truck-fast" /> Free delivery included
+          </div>
+        )}
         {offer.note && <div style={{ fontSize:12, color:sub, marginTop:7 }}>{offer.note}</div>}
         {active && !mine && (
           <div style={{ display:'flex', gap:7, marginTop:9 }}>
