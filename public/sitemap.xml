@@ -2,73 +2,73 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://yotemarket.co.ke/</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/storefront</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/pricing</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/about</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/mobile</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/rider</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/marketers</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/careers</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/help</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/contact</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/terms</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://yotemarket.co.ke/privacy</loc>
-    <lastmod>2026-07-29</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
@@ -97,7 +97,7 @@
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/D1BGQRwmbraVmuYga9br</loc>
-    <lastmod>2026-07-26</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -114,7 +114,7 @@
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/dOZ76XDeLP19kFlSTUxl</loc>
-    <lastmod>2026-07-24</lastmod>
+    <lastmod>2026-07-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -136,12 +136,24 @@
   </url>
   <url>
     <loc>https://yotemarket.co.ke/store/xfnCa4qfIGaCzoF4wSWa</loc>
-    <lastmod>2026-07-25</lastmod>
+    <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2Flogo_1782737283594_scjs1.jpg?alt=media&amp;token=8829ee93-3810-41a9-b189-8e91b20cf0fd</image:loc>
       <image:title>Prime Gadgetgrove</image:title>
+      <image:caption>Ruiru</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/0bo4JGAetW8ahGHeBhB0</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1785320383275_47oij.jpg?alt=media&amp;token=90bbb950-b27d-4d5f-817d-699055b60419</image:loc>
+      <image:title>Redmi Pad 2 9.7</image:title>
+      <image:caption>Redmi Pad 2 9.7 · KSh 26,000</image:caption>
     </image:image>
   </url>
   <url>
@@ -167,6 +179,39 @@
     </image:image>
   </url>
   <url>
+    <loc>https://yotemarket.co.ke/product/7UnNF67eAl5hyUKTHzI9</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785345141227_3ttc2.jpg?alt=media&amp;token=552303aa-9d08-492e-ade1-b121f2d63021</image:loc>
+      <image:title>Foldable 4in1 under garment organizer</image:title>
+      <image:caption>Foldable 4in1 under garment organizer · KSh 1,200</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/9gwEh1BvrWR1QWkc8kHg</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785344575449_wsy8m.jpg?alt=media&amp;token=b001627b-ae81-46ea-ab0b-998e20175cf4</image:loc>
+      <image:title>*Big size Jeep laptop bag unisex</image:title>
+      <image:caption>*Big size Jeep laptop bag unisex · KSh 1,900</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/A5AUqW3laZWKYAUmlXZY</loc>
+    <lastmod>2026-07-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1785418076040_13kbo.jpg?alt=media&amp;token=328ce1b3-7d92-4af7-98bd-7fd0fe9bf82a</image:loc>
+      <image:title>Samsung Galaxy A07 4G</image:title>
+      <image:caption>Samsung Galaxy A07 4G · KSh 15,500</image:caption>
+    </image:image>
+  </url>
+  <url>
     <loc>https://yotemarket.co.ke/product/ArzZto44kZA0Am6qIibC</loc>
     <lastmod>2026-07-17</lastmod>
     <changefreq>weekly</changefreq>
@@ -175,6 +220,17 @@
       <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FdOZ76XDeLP19kFlSTUxl%2F1784268819180_q0bmk.jpg?alt=media&amp;token=764ab5ea-e3fb-4762-8923-fb6d0c3d1ce4</image:loc>
       <image:title>Tote bags</image:title>
       <image:caption>Tote bags · KSh 600</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/BcEcY9oHmxwDtJdHEnT1</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1785320651821_1uj71.jpg?alt=media&amp;token=b2f61126-9d31-4618-8de6-c2029fe26ec3</image:loc>
+      <image:title>Redmi Pad 2 4G</image:title>
+      <image:caption>Redmi Pad 2 4G · KSh 27,000</image:caption>
     </image:image>
   </url>
   <url>
@@ -222,6 +278,39 @@
     </image:image>
   </url>
   <url>
+    <loc>https://yotemarket.co.ke/product/ZN8uD55ijASb2FGvtf0B</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785500108023_2ut80.jpg?alt=media&amp;token=905a5fb3-511c-4c65-97fb-f26c9ab3b9c1</image:loc>
+      <image:title>Soup spoons</image:title>
+      <image:caption>Soup spoons · KSh 650</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/aDN9BnqqJubyulYmqxc0</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785344008664_13apr.jpg?alt=media&amp;token=968df184-3efd-4f8e-abaa-af28bef8ecb9</image:loc>
+      <image:title>Ribbed jug 1.8 litres</image:title>
+      <image:caption>Ribbed jug 1.8 litres · KSh 699</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/cGK5aUlvpfkyYfOnQT2v</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785516580506_5s82p.jpg?alt=media&amp;token=c2a4b366-91d7-4f76-a664-c44b21ddac03</image:loc>
+      <image:title>Un breakable stainless steel Gift pack thermocup</image:title>
+      <image:caption>Un breakable stainless steel Gift pack thermocup · KSh 1,200</image:caption>
+    </image:image>
+  </url>
+  <url>
     <loc>https://yotemarket.co.ke/product/cPWYxjMwk7S8jntFkRRd</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
@@ -244,6 +333,28 @@
     </image:image>
   </url>
   <url>
+    <loc>https://yotemarket.co.ke/product/kQCHAh1XbDELKqgx49WR</loc>
+    <lastmod>2026-07-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1785417646171_hqyhn.jpg?alt=media&amp;token=2f202381-fd9f-484d-8bb1-9fb589a10185</image:loc>
+      <image:title>Motorola Moto Pad 60 Neo 5G</image:title>
+      <image:caption>Motorola Moto Pad 60 Neo 5G · KSh 32,000</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/nrEAfr0jnISQi2fSZjAU</loc>
+    <lastmod>2026-07-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785517346538_c51i3.jpg?alt=media&amp;token=fea40de5-bfe2-4c3e-b45e-c49f0ee1635e</image:loc>
+      <image:title>1L acrylic fridge bottle with tight duo lid</image:title>
+      <image:caption>1L acrylic fridge bottle with tight duo lid · KSh 599</image:caption>
+    </image:image>
+  </url>
+  <url>
     <loc>https://yotemarket.co.ke/product/sEKZKBhRgsCGCDQV0dO0</loc>
     <lastmod>2026-07-24</lastmod>
     <changefreq>weekly</changefreq>
@@ -263,6 +374,28 @@
       <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2F4AwDYrNz75xosEoIpA4R%2F1782725991178_yc80v.jpg?alt=media&amp;token=d8bbf68d-5135-4f42-9150-b1f992e21c31</image:loc>
       <image:title>Organic African Map Pen Holder</image:title>
       <image:caption>Organic African Map Pen Holder · KSh 1,800</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/yOAozgSnxSUVWugzdT7g</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785343764260_1jwxt.jpg?alt=media&amp;token=4ff6f322-209f-48a6-9142-6b7347b5c63e</image:loc>
+      <image:title>Ribbed glasses 410ml</image:title>
+      <image:caption>Ribbed glasses 410ml · KSh 999</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://yotemarket.co.ke/product/ztmidVvk3gy09Lq3DJuX</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785344371503_z7g4w.jpg?alt=media&amp;token=9e989d58-de28-49a3-99df-c973df35cddf</image:loc>
+      <image:title>Jeep sling bags</image:title>
+      <image:caption>Jeep sling bags · KSh 1,250</image:caption>
     </image:image>
   </url>
 </urlset>

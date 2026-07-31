@@ -95,8 +95,33 @@ const url = (loc, changefreq, priority, lastmod = today, image = null) => {
 const day = (iso) => (iso ? String(iso).slice(0, 10) : today);
 const ksh = (n) => (n != null ? `KSh ${Number(n).toLocaleString('en-KE')}` : '');
 
+// IndexNow — ping participating search engines (Bing, Yandex, Seznam, …) with the current
+// URL set so new/changed stores & products get crawled without waiting for a sitemap
+// re-fetch. The KEY proves ownership: it's served at /<key>.txt from public/. Only fires
+// on a real Vercel deploy (not local builds) and never fails the build.
+const INDEXNOW_KEY = '5247e78c88105f5049d9886cbf4e68f0';
+async function submitIndexNow(locs) {
+  if (!process.env.VERCEL || !locs.length) return;
+  try {
+    const res = await fetch('https://api.indexnow.org/indexnow', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+      body: JSON.stringify({
+        host: SITE.replace(/^https?:\/\//, ''),
+        key: INDEXNOW_KEY,
+        keyLocation: `${SITE}/${INDEXNOW_KEY}.txt`,
+        urlList: locs.slice(0, 10000), // IndexNow caps one submission at 10k URLs
+      }),
+    });
+    console.log(`[indexnow] submitted ${Math.min(locs.length, 10000)} urls → HTTP ${res.status}`);
+  } catch (err) {
+    console.warn(`[indexnow] submit skipped (${err.message})`);
+  }
+}
+
 async function main() {
   const urls = STATIC.map(([loc, f, p]) => url(loc, f, p));
+  const locs = STATIC.map(([loc]) => `${SITE}${loc}`); // plain URLs, for IndexNow
   let note = 'marketing pages only';
 
   try {
@@ -108,6 +133,7 @@ async function main() {
     for (const s of live) {
       urls.push(url(`/store/${encodeURIComponent(s.id)}`, 'weekly', '0.8', day(s.updateTime),
           { loc: storeImage(s.fields), title: str(s.fields.name), caption: str(s.fields.tagline) || str(s.fields.area) }));
+      locs.push(`${SITE}/store/${encodeURIComponent(s.id)}`);
     }
 
     // Skip products whose store is suspended or missing — those pages render empty.
@@ -119,6 +145,7 @@ async function main() {
       const price = num(p.fields.price);
       urls.push(url(`/product/${encodeURIComponent(p.id)}`, 'weekly', '0.7', day(p.updateTime),
           { loc: productImage(p.fields), title: str(p.fields.name), caption: [str(p.fields.name), ksh(price)].filter(Boolean).join(' · ') }));
+      locs.push(`${SITE}/product/${encodeURIComponent(p.id)}`);
     }
 
     note = `${live.length} stores + ${listable.length} products`;
@@ -131,6 +158,7 @@ async function main() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join('\n')}\n</urlset>\n`;
   writeFileSync(OUT, xml);
   console.log(`[sitemap] ${urls.length} urls → public/sitemap.xml (${note})`);
+  await submitIndexNow(locs);
 }
 
 main();
