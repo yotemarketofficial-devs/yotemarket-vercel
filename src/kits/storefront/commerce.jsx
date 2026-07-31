@@ -213,7 +213,7 @@ export function CheckoutScreen({ params }){
           const { orderId } = await placeOrder({
             items: groups[sid].map(x => ({ pid: x.pid, qty: x.qty })),
             fulfillment,
-            ...(fulfillment === 'store_pickup' ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
+            ...(fulfillment === 'store_pickup' || !hub ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
             payMethod: pay, buyerName, buyerPhone,
           });
           lastRcpt = orderId.slice(0, 6).toUpperCase();
@@ -242,7 +242,7 @@ export function CheckoutScreen({ params }){
           ? { offer: { convId: offer.convId, offerId: offer.id } }
           : { items: items.map(x => ({ pid: x.pid, qty: x.qty })) }),
         fulfillment,
-        ...(fulfillment === 'store_pickup' ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
+        ...(fulfillment === 'store_pickup' || !hub ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
         payMethod: pay,
         buyerName: account?.name || auth?.currentUser?.displayName || (auth?.currentUser?.email ? auth.currentUser.email.split('@')[0] : 'Customer'),
         buyerPhone: phone.trim() || account?.phone || null,
@@ -330,7 +330,7 @@ export function CheckoutScreen({ params }){
       <div className="wrap anim-up" style={{ paddingTop:48, maxWidth:560, textAlign:'center', paddingBottom:40, margin:'0 auto' }}>
         <div style={{ width:84, height:84, borderRadius:9999, background:'var(--m-success)', color:'var(--m-on-accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, margin:'0 auto 18px' }}><FA i={paidMethod==='cash'?'fa-box-check':'fa-check'} /></div>
         <h1 className="ym-h1">{paidMethod==='cash' ? 'Order placed!' : 'Payment confirmed!'}</h1>
-        <p className="ym-body" style={{ marginTop:8 }}>{paidMethod==='cash' ? <>Your order is being prepared — <b style={{ color:'var(--m-fg1)' }}>pay {ymPrice(total)} on collection</b> at </> : <>Your order is confirmed and being prepared. You'll collect at </>}<b style={{ color:'var(--m-fg1)' }}>{fulfillment==='store_pickup' ? (sellStore?.name || 'the store') : hub.name}</b> — we'll notify you when it's ready.</p>
+        <p className="ym-body" style={{ marginTop:8 }}>{paidMethod==='cash' ? <>Your order is being prepared — <b style={{ color:'var(--m-fg1)' }}>pay {ymPrice(total)} on collection</b> at </> : <>Your order is confirmed and being prepared. You'll collect at </>}<b style={{ color:'var(--m-fg1)' }}>{fulfillment==='store_pickup' ? (sellStore?.name || 'the store') : (hub?.name || sellStore?.name || 'your collection point')}</b> — we'll notify you when it's ready.</p>
         <div className="ym-card" style={{ padding:20, margin:'24px 0', textAlign:'left' }}>
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}><span className="ym-sub">{paidMethod==='cash'?'Order':paidMethod==='wallet'?'Wallet payment':'M-Pesa receipt'}</span><span className="ym-h3">{receipt}</span></div>
           <div style={{ display:'flex', justifyContent:'space-between' }}><span className="ym-sub">{paidMethod==='cash'?'Amount due':'Total paid'}</span><span className="ym-h3">{ymPrice(total)}</span></div>
@@ -383,7 +383,7 @@ export function CheckoutScreen({ params }){
             </div>
             {offersDelivery && freeOver>0 && subtotal<freeOver && <div className="ym-cap" style={{ margin:'-6px 0 14px', color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Add {ymPrice(freeOver-subtotal)} more for free delivery.</div>}
             {offersDelivery && deliv?.note && <div className="ym-cap" style={{ margin:'-6px 0 14px' }}><FA i="fa-circle-info" /> {deliv.note}</div>}
-            {fulfillment==='hub' ? (
+            {fulfillment==='hub' && hub ? (
               <>
                 <div className="ym-cap" style={{ margin:'0 0 10px', display:'flex', gap:7, alignItems:'center' }}>
                   {geoState==='locating'
