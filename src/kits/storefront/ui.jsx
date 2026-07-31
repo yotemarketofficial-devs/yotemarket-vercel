@@ -2,7 +2,7 @@
 import React from 'react';
 import { ymPrice, ymStore, ymCat } from './data.js';
 import { resolveHubs } from './hubs.js';
-import { mapboxStaticUrl, approxCenterFor } from '../../lib/maps.js';
+import { mapboxStaticUrl, approxCenterFor, MAPBOX_TOKEN } from '../../lib/maps.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
 
 export const YMContext = createContext(null);
@@ -224,6 +224,38 @@ export function HubPicker({ selected, onSelect, onClose, title='Choose a collect
    token is configured. When a place has no saved pin, it drops an APPROXIMATE town-level
    marker (from the area text) so the map is never an empty grey box — the caption flags
    it and directions still use the real area name. */
+/* A live, interactive Mapbox map (pan / scroll-pinch zoom / +− controls) for the zoom
+   overlay. Mapbox GL JS is heavy, so it's lazy-loaded only when a shopper opens the map.
+   Falls back to the keyless OSM embed if the library fails or the token is missing, so a
+   map is never a blank box. */
+function LiveMap({ lat, lng }){
+  const ref = useRef(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let map; let cancelled = false;
+    (async () => {
+      try {
+        const [{ default: mapboxgl }] = await Promise.all([
+          import('mapbox-gl'),
+          import('mapbox-gl/dist/mapbox-gl.css'),
+        ]);
+        if (cancelled || !ref.current) return;
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+        map = new mapboxgl.Map({ container: ref.current, style: 'mapbox://styles/mapbox/streets-v12', center: [lng, lat], zoom: 15 });
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+        new mapboxgl.Marker({ color: '#4f46e5' }).setLngLat([lng, lat]).addTo(map);
+      } catch { if (!cancelled) setFailed(true); }
+    })();
+    return () => { cancelled = true; if (map) { try { map.remove(); } catch { /* already gone */ } } };
+  }, [lat, lng]);
+  if (failed) {
+    const dz = 0.0035;
+    return <iframe title="Zoomable map" width="100%" height="100%" loading="lazy" style={{ border:0, display:'block' }}
+      src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng-dz}%2C${lat-dz}%2C${lng+dz}%2C${lat+dz}&layer=mapnik&marker=${lat}%2C${lng}`} />;
+  }
+  return <div ref={ref} style={{ width:'100%', height:'100%' }} />;
+}
+
 export function PlaceMap({ location, name='Location', area, address, height=180 }){
   const [zoom, setZoom] = useState(false);
   const real = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? location : null;
@@ -276,7 +308,9 @@ export function PlaceMap({ location, name='Location', area, address, height=180 
         <div onClick={()=>setZoom(false)} role="dialog" aria-modal="true" aria-label={`${name} map`}
           style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(8,10,24,.74)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={e=>e.stopPropagation()} style={{ width:'min(960px, 96vw)', height:'min(82vh, 680px)', background:'var(--m-surface)', borderRadius:16, overflow:'hidden', position:'relative', boxShadow:'var(--m-shadow-float)' }}>
-            <iframe title={`${name} — zoomable map`} width="100%" height="100%" loading="lazy" style={{ border:0, display:'block' }} src={embed} />
+            {MAPBOX_TOKEN
+              ? <LiveMap lat={loc.lat} lng={loc.lng} />
+              : <iframe title={`${name} — zoomable map`} width="100%" height="100%" loading="lazy" style={{ border:0, display:'block' }} src={embed} />}
             <button onClick={()=>setZoom(false)} aria-label="Close map"
               style={{ position:'absolute', top:10, right:10, zIndex:2, width:38, height:38, borderRadius:9999, border:'none', background:'rgba(17,24,39,.8)', color:'#fff', cursor:'pointer', fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>
               <FA i="fa-xmark" /></button>
