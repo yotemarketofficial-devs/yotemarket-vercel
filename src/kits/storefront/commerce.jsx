@@ -88,7 +88,9 @@ export function CheckoutScreen({ params }){
     let live = true;
     setQuoting(true);
     quoteDelivery({ storeId: sellStore.id, hubId: hub.id, subtotal })
-      .then((r) => { if (live) setQuote(r?.data || null); })
+      // callable() already unwraps res.data, so `r` IS the payload — unwrapping .data
+      // again yielded undefined and silently binned every quote.
+      .then((r) => { if (live) setQuote(r || null); })
       .catch(() => { if (live) setQuote(null); })
       .finally(() => { if (live) setQuoting(false); });
     return () => { live = false; };
