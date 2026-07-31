@@ -62,6 +62,43 @@ see `deploy-infra-followups`). Every extra export makes that worse. Isolation li
 registry, not the topology. `estimateProductWeight` remains as a thin alias only because the
 deployed dashboard already calls that name.
 
+## Measured, 2026-08-01 — why there is no second model
+
+Tested every free model on the account (probed live; the other 10 cloud models return
+"requires a subscription"). Free: `gpt-oss:20b`, `nemotron-3-nano:30b`, `gemma4:31b`,
+`gpt-oss:120b`, `nemotron-3-super`, `nemotron-3-ultra`, `minimax-m3`.
+
+**Routing** — 8 real YoteMarket utterances, JSON label out:
+
+| model | accuracy | median | worst |
+|---|---|---|---|
+| `gemma4:31b` | 8/8 | 910 ms | 4954 ms |
+| `nemotron-3-nano:30b` | 8/8 | 1124 ms | 1799 ms |
+| `gpt-oss:20b` | 8/8 | 1400 ms | 4070 ms |
+
+There is no cheap router. The smallest cloud model is not meaningfully faster, so a
+supervisor hop costs **~1–1.4 s before any work starts**, on every free model. Deterministic
+Tier-0 routing is free and already correct. **Supervisor rejected on evidence, not taste.**
+
+**Product knowledge** — packed weight for 6 identifiable products + 1 that must be refused:
+
+| model | sensible | median |
+|---|---|---|
+| `gemma4:31b` | 7/7 | 1241 ms |
+| `gpt-oss:20b` | 4/7 | 3136 ms |
+| `nemotron-3-nano:30b` | 2/7 | 2418 ms |
+
+The smaller models returned `null` for an HP Pavilion, a Ramtons kettle and Sony headphones —
+the refusal path behaving correctly, but useless as a specialist. They were also slower.
+**No fast-model tier: `gemma4:31b` is both the most accurate and the fastest here.**
+
+The real tail-latency win for one-shot specialists is the cache (hit ≈ one Firestore read
+vs 1.2–1.9 s), which is already built.
+
+**Plan ceiling:** Ollama Free runs **1 cloud model concurrently** (Pro 3, Max 10). Parallel
+specialist fan-out is therefore gated on a plan upgrade, not on code. The tool concurrency
+in `aiAssistant` is unaffected — those are Firestore reads.
+
 ## Deliberately not done yet, and why
 
 - **Supervisor** — nothing to route between yet; would add latency today.
