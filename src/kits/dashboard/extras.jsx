@@ -507,10 +507,22 @@ function StoreBranding({ toast }){
 }
 
 /* Set the store's pickup pin (browser geolocation) + address for the shopper map. */
+/* The store address is one persisted string (the backend takes `address` only), but a
+   merchant wants to give a shop/unit number distinctly. We keep a dedicated "Shop no."
+   field and compose it into the address as a leading "Shop X" token, then parse it back
+   out so the field round-trips. Everything else (building, street, landmark) stays in
+   the address body. */
+function parseStoreAddr(a) {
+  const s = String(a || '').trim();
+  const m = /^shop\s+([^,]+?)\s*(?:,\s*(.*))?$/i.exec(s);
+  return m ? { shopNo: m[1].trim(), body: (m[2] || '').trim() } : { shopNo: '', body: s };
+}
+
 function StorePickupLocation({ toast }){
   const shop = useShop();
   const [coords, setCoords] = useStateX(shop.location || null);
-  const [addr, setAddr] = useStateX(shop.address || '');
+  const [addr, setAddr] = useStateX(() => parseStoreAddr(shop.address).body);
+  const [shopNo, setShopNo] = useStateX(() => parseStoreAddr(shop.address).shopNo);
   const [busy, setBusy] = useStateX(false);
   const [locating, setLocating] = useStateX(false);
   const [autoAddr, setAutoAddr] = useStateX(false);  // address came from the pin, not typed
@@ -519,7 +531,9 @@ function StorePickupLocation({ toast }){
   // have been their only way out. Re-sync whenever the saved values change.
   useEffX(() => {
     setCoords(shop.location || null);
-    setAddr(shop.address || '');
+    const parsed = parseStoreAddr(shop.address);
+    setShopNo(parsed.shopNo);
+    setAddr(parsed.body);
     setAutoAddr(false);
   }, [shop.shopId, shop.location?.lat, shop.location?.lng, shop.address]);
   const locate = () => {
@@ -545,7 +559,13 @@ function StorePickupLocation({ toast }){
   const save = async () => {
     if (!coords) { toast && toast('Set the pin first — tap “Use current location”'); return; }
     setBusy(true);
-    try { await updateStoreLocation({ lat: coords.lat, lng: coords.lng, address: addr.trim() }); setAutoAddr(false); toast && toast('Pickup location saved'); }
+    try {
+      // Compose the shop/unit number back into the single stored address as a leading
+      // "Shop X" token (parseStoreAddr splits it out again on load).
+      const address = [shopNo.trim() ? `Shop ${shopNo.trim()}` : '', addr.trim()].filter(Boolean).join(', ');
+      await updateStoreLocation({ lat: coords.lat, lng: coords.lng, address });
+      setAutoAddr(false); toast && toast('Pickup location saved');
+    }
     catch (e) { toast && toast(e.message || 'Could not save location'); } finally { setBusy(false); }
   };
   return (
@@ -556,11 +576,17 @@ function StorePickupLocation({ toast }){
           <Btn kind="soft" icon={locating?'fa-circle-notch':'fa-location-crosshairs'} onClick={locate} disabled={locating}>{locating?'Locating…':coords?'Update pin':'Use current location'}</Btn>
           {coords && <span className="ym-cap"><FA i="fa-location-dot" style={{ color:'var(--m-primary)' }} /> {coords.lat}, {coords.lng}</span>}
         </div>
-        <div>
-          <label className="ym-label">Address / landmark</label>
-          <input className="ipt" value={addr} onChange={e=>{ setAddr(e.target.value); setAutoAddr(false); }} placeholder="e.g. Mpaka Rd, Westlands — shop 4" />
-          {autoAddr && <div className="ym-cap" style={{ marginTop:6, color:'var(--m-primary)' }}><FA i="fa-wand-magic-sparkles" /> Filled in from your pin — edit it if it's not exact.</div>}
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+          <div style={{ flex:'2 1 220px' }}>
+            <label className="ym-label">Building, street &amp; landmark</label>
+            <input className="ipt" value={addr} onChange={e=>{ setAddr(e.target.value); setAutoAddr(false); }} placeholder="e.g. Sarit Centre, Mpaka Rd — Westlands" />
+          </div>
+          <div style={{ flex:'1 1 120px' }}>
+            <label className="ym-label">Shop / unit no.</label>
+            <input className="ipt" value={shopNo} onChange={e=>setShopNo(e.target.value)} placeholder="e.g. B12" inputMode="text" />
+          </div>
         </div>
+        {autoAddr && <div className="ym-cap" style={{ marginTop:-2, color:'var(--m-primary)' }}><FA i="fa-wand-magic-sparkles" /> Building filled in from your pin — edit it if it's not exact.</div>}
         <Btn kind="primary" icon="fa-check" disabled={busy} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save location'}</Btn>
       </div>
     </SectionCard>
@@ -972,6 +998,11 @@ function OfferCard({ offer, myRole, active, onAccept, onCounter, onDecline }){
           <span style={{ fontSize:11, color:sub }}>{bundle ? `${its.length} items` : 'Total'}</span>
           <b style={{ fontSize:14.5, color:fg }}>{ksh(total)}</b>
         </div>
+        {offer.deliveryIncluded && (
+          <div style={{ fontSize:11.5, marginTop:6, display:'inline-flex', alignItems:'center', gap:5, fontWeight:700, color:'var(--m-mpesa)' }}>
+            <FA i="fa-truck-fast" /> Free delivery included
+          </div>
+        )}
         {offer.note && <div style={{ fontSize:11.5, color:sub, marginTop:6 }}>{offer.note}</div>}
         {active && !mine && (
           <div style={{ display:'flex', gap:7, marginTop:9 }}>
@@ -1028,6 +1059,7 @@ export function OfferComposer({ products, storeId, initialItems, initialPrice, t
   const [price, setPrice] = useStateX(initialPrice ? String(initialPrice) : '');
   const [touched, setTouched] = useStateX(!!initialPrice);
   const [note, setNote] = useStateX('');
+  const [freeDelivery, setFreeDelivery] = useStateX(false);
   const rows = sel.map((s) => { const p = list.find((x) => x.id === s.productId) || {}; return { ...s, p, line: (Number(p.price) || 0) * (Number(s.qty) || 1) }; });
   const catalogTotal = rows.reduce((a, r) => a + r.line, 0);
   useEffX(() => { if (!touched) setPrice(catalogTotal ? String(catalogTotal) : ''); }, [catalogTotal, touched]);
@@ -1041,7 +1073,7 @@ export function OfferComposer({ products, storeId, initialItems, initialPrice, t
   const submit = () => {
     if (!valid) return;
     const items = rows.map((r) => ({ productId: r.productId, productName: r.p.name || 'Product', productImage: r.p.img || null, productIcon: r.p.icon || 'fa-box', qty: Number(r.qty) || 1 }));
-    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items, price: pr, note: note.trim(), storeId: storeId || null });
+    onSend({ id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items, price: pr, note: note.trim(), storeId: storeId || null, deliveryIncluded: freeDelivery });
   };
   const inp = { width:'100%', padding:'11px 13px', borderRadius:11, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' };
   return (
@@ -1084,6 +1116,27 @@ export function OfferComposer({ products, storeId, initialItems, initialPrice, t
                 <label className="ym-cap" style={{ fontWeight:600, display:'block', marginTop:10 }}>Note (optional)
                   <input value={note} onChange={(e)=>setNote(e.target.value)} placeholder="e.g. valid today only" style={inp} />
                 </label>
+                {/* Throwing delivery in is a normal closing move in a negotiation, and
+                    it's the store's own cost to absorb — accepting this offer makes the
+                    order's delivery free to the buyer regardless of who would normally pay. */}
+                <button type="button" onClick={()=>setFreeDelivery((v)=>!v)} aria-pressed={freeDelivery}
+                  style={{ display:'flex', alignItems:'center', gap:11, width:'100%', textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+                    marginTop:12, padding:12, borderRadius:12, background:'var(--m-surface)',
+                    border: freeDelivery ? '2px solid var(--m-primary)' : '2px solid var(--m-border)' }}>
+                  <span style={{ width:34, height:34, borderRadius:10, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14,
+                    background: freeDelivery ? 'var(--m-primary)' : 'var(--m-surface-2)', color: freeDelivery ? '#fff' : 'var(--m-fg3)' }}>
+                    <FA i="fa-truck-fast" />
+                  </span>
+                  <span style={{ flex:1, minWidth:0 }}>
+                    <span className="ym-h3" style={{ display:'block', fontSize:13.5 }}>Include free delivery</span>
+                    <span className="ym-cap" style={{ display:'block', marginTop:1 }}>You cover delivery on this deal.</span>
+                  </span>
+                  <span style={{ width:40, height:23, borderRadius:9999, flexShrink:0, padding:3, transition:'background .18s',
+                    background: freeDelivery ? 'var(--m-primary)' : 'var(--m-surface-2)' }}>
+                    <span style={{ display:'block', width:17, height:17, borderRadius:9999, background:'#fff', transition:'transform .18s',
+                      transform: freeDelivery ? 'translateX(17px)' : 'translateX(0)', boxShadow:'0 1px 3px rgba(0,0,0,.3)' }} />
+                  </span>
+                </button>
               </>
             )}
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:16 }}>
@@ -1210,9 +1263,9 @@ function MerchantChatThread({ conv, user, onBack }){
   for (let i = shown.length - 1; i >= 0; i--) { if (shown[i].offer) { lastOfferIdx = i; break; } }
   const negotiationClosed = lastOfferIdx >= 0 && shown.some((m, i) => i > lastOfferIdx && m.offerClosed);
   // Merchant accepting the customer's offer re-posts it as a payable merchant offer.
-  const acceptOffer = (o) => send(`Deal agreed ✓ — ${ksh(offerTotal(o))}. You can pay now.`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items: offerItems(o), price: offerTotal(o), note: 'Agreed ✓', storeId: o.storeId || null } });
+  const acceptOffer = (o) => send(`Deal agreed ✓ — ${ksh(offerTotal(o))}. You can pay now.`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items: offerItems(o), price: offerTotal(o), note: 'Agreed ✓', storeId: o.storeId || null, deliveryIncluded: o.deliveryIncluded === true } });
   const declineOffer = () => send('Sorry, I can’t do that price on this one.', { offerClosed: true });
-  const sendCounter = (base, price, note) => { setCounterFor(null); const its = offerItems(base); send(`Counter-offer: ${ksh(price)}${its.length > 1 ? ` for the bundle (${its.length} items)` : ''}`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items: its, price: Number(price), note: note || '', storeId: base.storeId || null } }); };
+  const sendCounter = (base, price, note) => { setCounterFor(null); const its = offerItems(base); send(`Counter-offer: ${ksh(price)}${its.length > 1 ? ` for the bundle (${its.length} items)` : ''}`, { offer: { id: 'of_' + Math.random().toString(36).slice(2, 9), by: 'merchant', items: its, price: Number(price), note: note || '', storeId: base.storeId || null, deliveryIncluded: base.deliveryIncluded === true } }); };
 
   return (
     <div className="chat-thread" style={{ display:'flex', flexDirection:'column', height:'100%', minWidth:0 }}>
