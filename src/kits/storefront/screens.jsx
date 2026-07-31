@@ -763,7 +763,14 @@ export function StoreScreen({ params }){
       </div>
       <div className="wrap" style={{ marginTop:20 }}>
         <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:24 }}>
-          {[[fmtK((s.followers||0)+(following?1:0)),'Followers'],[s.products||0,'Products'],[(s.reviews>0?s.rating:'—')+' ★',`${fmtK(s.reviews||0)} reviews`],
+          {[[fmtK((s.followers||0)+(following?1:0)),'Followers'],
+            // Where the shop physically is — more use to a shopper deciding where to
+            // collect than a raw product count. Falls back to the count only when a
+            // store hasn't set any location.
+            ...((s.area || s.address)
+              ? [[<span key="loc" style={{ display:'inline-flex', alignItems:'center', gap:6, justifyContent:'center', overflowWrap:'anywhere' }}><FA i="fa-location-dot" style={{ fontSize:13, color:'var(--m-primary)' }} /> {s.area || s.address}</span>, 'Location']]
+              : [[s.products||0,'Products']]),
+            [(s.reviews>0?s.rating:'—')+' ★',`${fmtK(s.reviews||0)} reviews`],
             // Only when the merchant has actually set hours — an unset store says
             // nothing rather than implying it's shut.
             ...(openNow ? [[<span key="o" style={{ color: openNow.open ? '#16a34a' : 'var(--m-fg3)' }}>{openNow.open?'Open now':'Closed'}</span>, openNow.label.replace(/^(Open now|Closed) · /,'')||todayWindow(s.hours)]] : []),
