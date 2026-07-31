@@ -79,6 +79,10 @@ export function CheckoutScreen({ params }){
   const [quote, setQuote] = useSCm(null);      // null = not quoted yet
   const [quoting, setQuoting] = useSCm(false);
   useEffCm(() => {
+    // A deal agreed in chat can include free delivery — the store absorbs it. placeOrder
+    // enforces that server-side, so checkout must SHOW free too; without this the shopper
+    // is quoted a fee they are then not charged.
+    if (offer?.deliveryIncluded) { setQuote({ fee: 0, paidBy: 'store', offerIncluded: true }); return; }
     if (!offersDelivery || fulfillment !== 'hub' || !sellStore?.id || !hub?.id || !items.length) { setQuote(null); return; }
     if (!firebaseEnabled) { setQuote(null); return; }
     let live = true;
@@ -88,7 +92,7 @@ export function CheckoutScreen({ params }){
       .catch(() => { if (live) setQuote(null); })
       .finally(() => { if (live) setQuoting(false); });
     return () => { live = false; };
-  }, [offersDelivery, fulfillment, sellStore?.id, hub?.id, subtotal, items.length]); // eslint-disable-line
+  }, [offersDelivery, fulfillment, sellStore?.id, hub?.id, subtotal, items.length, offer?.deliveryIncluded]); // eslint-disable-line
 
   // Until the quote lands we show nothing rather than a number we'd have to correct.
   const deliveryFee = quote ? Number(quote.fee) || 0 : null;
@@ -457,6 +461,9 @@ export function CheckoutScreen({ params }){
               : <Row l="Store pickup" v="Free" />}
             {/* Why it's free (or not) — the shopper should never wonder what they're
                 being charged for. */}
+            {fulfillment==='hub' && quote?.offerIncluded && (
+              <div className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Free delivery — included in the deal you agreed.</div>
+            )}
             {fulfillment==='hub' && deliveryPaidBy === 'merchant' && (
               <div className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Delivery covered by {sellStore?.name || 'the store'}.</div>
             )}
