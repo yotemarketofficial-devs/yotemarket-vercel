@@ -49,13 +49,15 @@ let storage = null;
 if (firebaseEnabled) {
   try {
     app = initializeApp(firebaseConfig);
-    // App Check — STAGED. Activates only when VITE_FIREBASE_APPCHECK_SITE_KEY is set
-    // (Vercel env / .env.local) AND the web app is registered in the Firebase console.
-    // No key → this block is skipped entirely, so shipping it changes nothing until we
-    // deliberately enable it. It only ATTACHES an attestation token to backend requests;
-    // whether that token is REQUIRED is a separate server-side switch (console enforcement
-    // + enforceAppCheck on callables), so the client can never lock itself out.
-    const appCheckKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+    // App Check — MONITOR mode. The reCAPTCHA v3 site key is PUBLIC (it ships in the page
+    // by design), so a default is baked in and VITE_FIREBASE_APPCHECK_SITE_KEY (Vercel /
+    // .env.local) overrides it for rotation — same convention as the public Firebase
+    // apiKey. This only ATTACHES an attestation token to backend requests; whether the
+    // token is REQUIRED is a separate server-side switch (console enforcement +
+    // enforceAppCheck on callables), which is still OFF — so nothing is blocked yet and
+    // the client can't lock itself out. Enforce only after console metrics show real
+    // traffic producing valid tokens.
+    const appCheckKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY || '6LcJG28tAAAAACYv4T7wX-PRH-qo4j7tPXsttF5-';
     if (appCheckKey) {
       try {
         // Local dev has no reCAPTCHA-verified domain; a debug token (logged to the
@@ -149,6 +151,8 @@ export const aiAssistant = callable('aiAssistant', { timeout: 300000 });
  *  Clients can't write `orders` directly — the server prices every line. */
 export const placeOrder = callable('placeOrder');
 export const quoteDelivery = callable('quoteDelivery');
+/** AI packed-shipping-weight estimate for a product -> { kg, basis, confidence, units }. */
+export const estimateProductWeight = callable('estimateProductWeight', { timeout: 60000 });
 
 /** Lipa na M-Pesa STK push → { checkoutRequestId, merchantRequestId }. */
 export const mpesaStkPush = callable('mpesaStkPush');
