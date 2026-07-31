@@ -3,6 +3,7 @@
 // Storage and Analytics. Everything degrades gracefully when env config is absent so the
 // UI still runs against bundled demo data during local/preview builds.
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import {
   getAuth,
   setPersistence,
@@ -48,6 +49,26 @@ let storage = null;
 if (firebaseEnabled) {
   try {
     app = initializeApp(firebaseConfig);
+    // App Check — STAGED. Activates only when VITE_FIREBASE_APPCHECK_SITE_KEY is set
+    // (Vercel env / .env.local) AND the web app is registered in the Firebase console.
+    // No key → this block is skipped entirely, so shipping it changes nothing until we
+    // deliberately enable it. It only ATTACHES an attestation token to backend requests;
+    // whether that token is REQUIRED is a separate server-side switch (console enforcement
+    // + enforceAppCheck on callables), so the client can never lock itself out.
+    const appCheckKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+    if (appCheckKey) {
+      try {
+        // Local dev has no reCAPTCHA-verified domain; a debug token (logged to the
+        // console, then added to the console's App Check debug list) lets dev through.
+        if (import.meta.env.DEV) self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+        initializeAppCheck(app, {
+          provider: new ReCaptchaV3Provider(appCheckKey),
+          isTokenAutoRefreshEnabled: true,
+        });
+      } catch (e) {
+        console.warn('[firebase] App Check init skipped:', e?.message || e);
+      }
+    }
     auth = getAuth(app);
     db = getFirestore(app);
     functions = getFunctions(app, FUNCTIONS_REGION);
