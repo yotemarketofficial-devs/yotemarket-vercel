@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import { subscribeFeed, feedVideoUrl } from '../lib/feed.js';
+import { SOCIAL_LINKS } from '../lib/socials.js';
 
 const SHOPPER_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'The whole mall, by category', desc: 'Browse hundreds of local stores by category and subcategory — just like walking a real mall.' },
@@ -577,10 +578,9 @@ function HomePage() {
           <div className="foot-bar">
             <span className="cr">© 2026 Yote Market Limited — Shop Local. Delivered Fast.</span>
             <div className="socials">
-              <a href="#" aria-label="Facebook"><i className="fab fa-facebook-f"></i></a>
-              <a href="https://www.instagram.com/yotemarket_" target="_blank" rel="noreferrer" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
-              <a href="#" aria-label="WhatsApp"><i className="fab fa-whatsapp"></i></a>
-              <a href="#" aria-label="X"><i className="fab fa-x-twitter"></i></a>
+              {SOCIAL_LINKS.map((s) => (
+                <a key={s.label} href={s.url} target="_blank" rel="noreferrer" aria-label={s.label}><i className={`fab ${s.icon}`}></i></a>
+              ))}
             </div>
             <Link className="staff-btn" to="/staff"><i className="fas fa-lock"></i> Staff login</Link>
           </div>

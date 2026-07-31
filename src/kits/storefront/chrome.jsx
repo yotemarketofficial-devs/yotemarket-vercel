@@ -4,6 +4,7 @@ import { useYM, FA, Thumb, QtyStepper } from './ui.jsx';
 import { ymProduct, ymPrice, ymStore } from './data.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useUnreadCount } from '../../lib/chat.js';
+import { SOCIAL_LINKS } from '../../lib/socials.js';
 import { useMerchantAccess } from '../../lib/merchantAccess.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
@@ -182,12 +183,6 @@ export function Footer(){
   const { theme, setTheme, reset, nav, requireAuth, openCart } = useYM();
   const go = (screen) => reset(screen);              // public screens
   const goAuth = (screen, params) => requireAuth(() => reset(screen, params)); // account-gated
-  const SOCIAL = [
-    { i:'fa-facebook-f', url:'https://www.facebook.com/yotemarket' },
-    { i:'fa-instagram',  url:'https://www.instagram.com/yotemarket' },
-    { i:'fa-whatsapp',   url:'https://wa.me/254720730861' },
-    { i:'fa-x-twitter',  url:'https://x.com/yotemarket' },
-  ];
   return (
     <footer style={{ background:'var(--m-surface)', borderTop:'1px solid var(--m-border)', marginTop:48 }}>
       <div className="wrap ym-footer-grid" style={{ display:'grid', gridTemplateColumns:'1.6fr 1fr 1fr 1fr', gap:32, padding:'48px 24px 32px' }}>
@@ -197,8 +192,8 @@ export function Footer(){
           </button>
           <p className="ym-sub" style={{ maxWidth:300 }}>Kenya's virtual mall — shop hundreds of local stores, chat &amp; negotiate in the app messenger, pay with M-Pesa, and collect at your nearest hub.</p>
           <div style={{ display:'flex', gap:10, marginTop:16, flexWrap:'wrap', alignItems:'center' }}>
-            {SOCIAL.map(s=>(
-              <a key={s.i} href={s.url} target="_blank" rel="noreferrer" className="icon-btn" aria-label={s.i.replace('fa-','')} style={{ width:36, height:36, fontSize:14 }}><FA i={s.i} brand /></a>
+            {SOCIAL_LINKS.map(s=>(
+              <a key={s.label} href={s.url} target="_blank" rel="noreferrer" className="icon-btn" aria-label={s.label} style={{ width:36, height:36, fontSize:14 }}><FA i={s.icon} brand /></a>
             ))}
             {/* The phone header has no room for the theme button and a signed-out
                 shopper has no account menu to hold it, so the footer carries it. */}

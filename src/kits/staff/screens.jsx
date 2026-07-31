@@ -20,10 +20,12 @@ import {
 
 // Official YoteMarket socials — the accounts a referred merchant must follow.
 const YOTE_SOCIALS = {
-  tiktok: 'https://www.tiktok.com/@yotemarketofficial',
-  instagram: 'https://www.instagram.com/yotemarketofficial',
-  facebook: 'https://www.facebook.com/yotemarketofficial',
+  tiktok: 'https://www.tiktok.com/@yotemarket',
+  instagram: 'https://www.instagram.com/yotemarket_',
+  facebook: 'https://www.facebook.com/yotemarket',
   linkedin: 'https://www.linkedin.com/company/yotemarket',
+  x: 'https://x.com/yotemarket',
+  youtube: 'https://www.youtube.com/@yotemarket',
 };
 import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
 
