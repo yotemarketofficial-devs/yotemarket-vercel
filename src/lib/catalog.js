@@ -45,6 +45,7 @@ const normProduct = (d) => ({
   price: Number(d.price) || 0,
   was: d.was != null ? Number(d.was) : undefined,
   negotiable: d.negotiable === true, // merchant marked "price negotiable" → shopper tag (default fixed)
+  weightKg: Number.isFinite(Number(d.weightKg)) && Number(d.weightKg) >= 0 ? Number(d.weightKg) : null, // shipping kg → delivery units
   store: d.storeId || d.store,
   cat: d.catId || d.cat,
   sub: d.sub || d.subcat || d.subcategory || undefined, // subcategory tag → precise sub-filter

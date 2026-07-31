@@ -133,8 +133,9 @@ export function AddProductModal({ onClose, onSave, editing }){
     discount: (editing.was != null && editing.price != null) ? String(editing.price) : '',
     stock: typeof editing.stock === 'number' ? String(editing.stock) : '',
     negotiable: editing.negotiable === true,
+    weightKg: editing.weightKg != null ? String(editing.weightKg) : '',
     images: Array.isArray(editing.images) && editing.images.length ? editing.images.filter(Boolean) : (editing.img ? [editing.img] : []),
-  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', negotiable:false, images:[] });
+  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', negotiable:false, weightKg:'', images:[] });
   const [saving, setSaving] = useStateP(false);
   const [err, setErr] = useStateP('');
   const set = (k,v)=>setForm(f=>({ ...f, [k]:v }));
@@ -153,6 +154,10 @@ export function AddProductModal({ onClose, onSave, editing }){
     }
     // Regular price + optional lower sale price. A discount MUST be below the price, or
     // the storefront's "Save …" / "-x%" badge and the struck-through price go negative.
+    const wStr = String(form.weightKg).trim();
+    if (wStr !== '' && (!(Number(wStr) >= 0) || Number(wStr) > 1000)) {
+      setErr('Weight must be a number of kilograms between 0 and 1000, or empty if you don’t know it.'); setStep(2); return;
+    }
     const regular = Number(form.price) || 0;
     const sale = String(form.discount).trim() !== '' ? Number(form.discount) : null;
     if (sale != null && (!(sale > 0) || sale >= regular)) {
@@ -169,6 +174,7 @@ export function AddProductModal({ onClose, onSave, editing }){
         stock: stockStr === '' ? null : Number(stockStr), // null = untracked, distinct from 0
         catId: form.catId || null, sub: form.sub || null, desc: form.desc || form.summary || '',
         negotiable: form.negotiable === true,
+        weightKg: String(form.weightKg).trim() === '' ? null : Number(form.weightKg),
         images: form.images, img: form.images[0] || null,
       });
       onSave(form);
@@ -229,6 +235,16 @@ export function AddProductModal({ onClose, onSave, editing }){
                   transform: form.negotiable ? 'translateX(18px)' : 'translateX(0)', boxShadow:'0 1px 3px rgba(0,0,0,.3)' }} />
               </span>
             </button>
+            {/* Weight drives the DELIVERY UNIT: 1 delivery is up to 10 kg, so a heavier
+                item costs more to deliver and takes more room on a run. */}
+            <Field label="Shipping weight (kg)" hint="Per unit, packed. One delivery carries up to 10 kg — heavier items use more than one, which is what delivery is priced on. Leave empty if you don't know it yet.">
+              <input className="ipt" type="number" min={0} step="0.1" value={form.weightKg} onChange={e=>set('weightKg',e.target.value)} placeholder="e.g. 1.5" />
+            </Field>
+            {String(form.weightKg).trim() !== '' && Number(form.weightKg) > 10 && (
+              <div className="ym-cap" style={{ marginTop:-8 }}>
+                <FA i="fa-truck-fast" /> {Math.ceil(Number(form.weightKg)/10)} delivery units per item — a single delivery carries up to 10 kg.
+              </div>
+            )}
             <Field label="SKU" hint={isEdit ? 'Your store SKU (assigned on first save)' : 'Assigned automatically per store on save (e.g. WAN-0001)'}><input className="ipt" value={isEdit && editing.sku ? editing.sku : 'Auto-generated'} disabled style={{ opacity:.65 }} /></Field>
             <div style={{ display:'flex', gap:12, padding:14, borderRadius:14, background:'var(--m-surface-3)' }}><FA i="fa-circle-info" style={{ color:'var(--m-primary)', marginTop:2 }} /><div className="ym-sub" style={{ color:'var(--m-link)' }}>YoteMarket holds funds in M-Pesa escrow. Buyers can negotiate via the in-app messenger before confirming.</div></div>
           </div>}

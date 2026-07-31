@@ -64,6 +64,10 @@ export function CheckoutScreen({ params }){
   // Collection points are REAL enrolled stores — there is no invented hub network, so
   // this list can legitimately be empty (nobody nearby has enrolled yet). When it is,
   // delivery isn't offered and checkout falls back to collecting from the store.
+  // Basket weight → delivery UNITS. One delivery carries up to 10 kg (weight is supreme
+  // over parcel count), and the shopper pays the single-delivery price PER UNIT.
+  const basketKg = Math.round(items.reduce((w, x) => w + (Number(x.p?.weightKg) || 0) * x.qty, 0) * 100) / 100;
+  const basketUnits = Math.max(1, Math.ceil(basketKg / 10));
   const hubs = resolveHubs(YM_STORES);
   const hub = hubs.find(h => h.id === hubId) || hubs[0] || null;
   // Delivery is only on the table when the store offers it AND a real collection point
@@ -87,14 +91,14 @@ export function CheckoutScreen({ params }){
     if (!firebaseEnabled) { setQuote(null); return; }
     let live = true;
     setQuoting(true);
-    quoteDelivery({ storeId: sellStore.id, hubId: hub.id, subtotal })
+    quoteDelivery({ storeId: sellStore.id, hubId: hub.id, subtotal, weightKg: basketKg })
       // callable() already unwraps res.data, so `r` IS the payload — unwrapping .data
       // again yielded undefined and silently binned every quote.
       .then((r) => { if (live) setQuote(r || null); })
       .catch(() => { if (live) setQuote(null); })
       .finally(() => { if (live) setQuoting(false); });
     return () => { live = false; };
-  }, [offersDelivery, fulfillment, sellStore?.id, hub?.id, subtotal, items.length, offer?.deliveryIncluded]); // eslint-disable-line
+  }, [offersDelivery, fulfillment, sellStore?.id, hub?.id, subtotal, items.length, basketKg, offer?.deliveryIncluded]); // eslint-disable-line
 
   // Until the quote lands we show nothing rather than a number we'd have to correct.
   const deliveryFee = quote ? Number(quote.fee) || 0 : null;
@@ -468,6 +472,12 @@ export function CheckoutScreen({ params }){
             )}
             {fulfillment==='hub' && deliveryPaidBy === 'merchant' && (
               <div className="ym-cap" style={{ color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Delivery covered by {sellStore?.name || 'the store'}.</div>
+            )}
+            {fulfillment==='hub' && deliveryPaidBy === 'shopper' && fee > 0 && quote?.units > 1 && (
+              <div className="ym-cap">
+                <FA i="fa-weight-hanging" /> {basketKg} kg — one delivery carries up to 10 kg, so this is {quote.units} deliveries
+                at {ymPrice(quote.perUnit)} each.
+              </div>
             )}
             {fulfillment==='hub' && deliveryPaidBy === 'shopper' && fee > 0 && (
               <div className="ym-cap">
