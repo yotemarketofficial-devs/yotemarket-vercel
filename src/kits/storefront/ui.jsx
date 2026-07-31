@@ -1,6 +1,6 @@
 /* ui.jsx — Storefront shared primitives (web, mirrors mobile app visual language). */
 import React from 'react';
-import { ymPrice, ymStore, ymCat } from './data.js';
+import { ymPrice, ymStore, ymCat, YM_STORES } from './data.js';
 import { resolveHubs } from './hubs.js';
 import { mapboxStaticUrl, approxCenterFor, MAPBOX_TOKEN } from '../../lib/maps.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
@@ -241,8 +241,18 @@ function LiveMap({ lat, lng }){
         ]);
         if (cancelled || !ref.current) return;
         mapboxgl.accessToken = MAPBOX_TOKEN;
-        map = new mapboxgl.Map({ container: ref.current, style: 'mapbox://styles/mapbox/streets-v12', center: [lng, lat], zoom: 15 });
+        map = new mapboxgl.Map({ container: ref.current, style: 'mapbox://styles/mapbox/streets-v12', center: [lng, lat], zoom: 13 });
         map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+        // Other stores on the mall, so a shopper can see what else is around — lighter
+        // pins with a name popup on tap. Skip the place being viewed (it gets the brand pin).
+        for (const s of YM_STORES) {
+          const L = s && s.location;
+          if (!L || !Number.isFinite(L.lat) || !Number.isFinite(L.lng)) continue;
+          if (Math.abs(L.lat - lat) < 1e-6 && Math.abs(L.lng - lng) < 1e-6) continue;
+          const popup = new mapboxgl.Popup({ offset: 22, closeButton: false }).setText(s.name || 'Store');
+          new mapboxgl.Marker({ color: '#94a3b8', scale: 0.78 }).setLngLat([L.lng, L.lat]).setPopup(popup).addTo(map);
+        }
+        // The place being viewed — brand pin, added last so it sits on top.
         new mapboxgl.Marker({ color: '#4f46e5' }).setLngLat([lng, lat]).addTo(map);
       } catch { if (!cancelled) setFailed(true); }
     })();
