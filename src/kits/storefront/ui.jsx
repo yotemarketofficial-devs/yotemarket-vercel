@@ -228,9 +228,11 @@ export function HubPicker({ selected, onSelect, onClose, title='Choose a collect
    overlay. Mapbox GL JS is heavy, so it's lazy-loaded only when a shopper opens the map.
    Falls back to the keyless OSM embed if the library fails or the token is missing, so a
    map is never a blank box. */
-function LiveMap({ lat, lng }){
+function LiveMap({ lat, lng, onPickStore }){
   const ref = useRef(null);
   const [failed, setFailed] = useState(false);
+  const onPickRef = useRef(onPickStore);
+  onPickRef.current = onPickStore;   // latest callback without re-creating the map
   useEffect(() => {
     let map; let cancelled = false;
     (async () => {
@@ -243,14 +245,21 @@ function LiveMap({ lat, lng }){
         mapboxgl.accessToken = MAPBOX_TOKEN;
         map = new mapboxgl.Map({ container: ref.current, style: 'mapbox://styles/mapbox/streets-v12', center: [lng, lat], zoom: 13 });
         map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
-        // Other stores on the mall, so a shopper can see what else is around — lighter
-        // pins with a name popup on tap. Skip the place being viewed (it gets the brand pin).
+        // Other stores on the mall, so a shopper can see what else is around and jump to
+        // one. Lighter pins; hover shows the name (desktop), tap opens that store (mobile
+        // too). Skip the place being viewed (it gets the brand pin).
         for (const s of YM_STORES) {
           const L = s && s.location;
           if (!L || !Number.isFinite(L.lat) || !Number.isFinite(L.lng)) continue;
           if (Math.abs(L.lat - lat) < 1e-6 && Math.abs(L.lng - lng) < 1e-6) continue;
-          const popup = new mapboxgl.Popup({ offset: 22, closeButton: false }).setText(s.name || 'Store');
-          new mapboxgl.Marker({ color: '#94a3b8', scale: 0.78 }).setLngLat([L.lng, L.lat]).setPopup(popup).addTo(map);
+          const sid = s.id, sName = s.name || 'Store';
+          const marker = new mapboxgl.Marker({ color: '#94a3b8', scale: 0.78 }).setLngLat([L.lng, L.lat]).addTo(map);
+          const el = marker.getElement();
+          el.title = sName; el.style.cursor = 'pointer';
+          el.addEventListener('click', (ev) => { ev.stopPropagation(); if (onPickRef.current) onPickRef.current(sid); });
+          const popup = new mapboxgl.Popup({ offset: 22, closeButton: false, closeOnClick: false });
+          el.addEventListener('mouseenter', () => popup.setText(sName).setLngLat([L.lng, L.lat]).addTo(map));
+          el.addEventListener('mouseleave', () => popup.remove());
         }
         // The place being viewed — brand pin, added last so it sits on top.
         new mapboxgl.Marker({ color: '#4f46e5' }).setLngLat([lng, lat]).addTo(map);
@@ -268,6 +277,8 @@ function LiveMap({ lat, lng }){
 
 export function PlaceMap({ location, name='Location', area, address, height=180 }){
   const [zoom, setZoom] = useState(false);
+  const ym = useYM();   // null outside the storefront provider → pins just show names
+  const openStore = (sid) => { setZoom(false); if (ym && ym.nav && sid) ym.nav('store', { sid }); };
   const real = location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? location : null;
   const loc = real || approxCenterFor(area);       // always resolves → map is never grey
   const approx = !real;
@@ -319,7 +330,7 @@ export function PlaceMap({ location, name='Location', area, address, height=180 
           style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(8,10,24,.74)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div onClick={e=>e.stopPropagation()} style={{ width:'min(960px, 96vw)', height:'min(82vh, 680px)', background:'var(--m-surface)', borderRadius:16, overflow:'hidden', position:'relative', boxShadow:'var(--m-shadow-float)' }}>
             {MAPBOX_TOKEN
-              ? <LiveMap lat={loc.lat} lng={loc.lng} />
+              ? <LiveMap lat={loc.lat} lng={loc.lng} onPickStore={ym && ym.nav ? openStore : undefined} />
               : <iframe title={`${name} — zoomable map`} width="100%" height="100%" loading="lazy" style={{ border:0, display:'block' }} src={embed} />}
             <button onClick={()=>setZoom(false)} aria-label="Close map"
               style={{ position:'absolute', top:10, right:10, zIndex:2, width:38, height:38, borderRadius:9999, border:'none', background:'rgba(17,24,39,.8)', color:'#fff', cursor:'pointer', fontSize:15, display:'flex', alignItems:'center', justifyContent:'center' }}>
