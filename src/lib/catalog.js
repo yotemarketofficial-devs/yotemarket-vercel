@@ -80,6 +80,7 @@ const normStore = (d) => ({
   autoDispatch: d.delivery ? d.delivery.autoDispatch !== false : true,
   location: normLoc(d.location || d.geo || d.coords ||      // { lat, lng } for StoreMap
     (d.lat != null || d.lng != null ? { lat: d.lat, lng: d.lng } : null)),
+  pickupEnabled: !!d.pickupEnabled,                         // opted-in collection point → checkout delivery (resolveHubs)
   rating: d.rating != null ? Number(d.rating) : undefined,
   reviews: d.reviews,
   products: d.products,
