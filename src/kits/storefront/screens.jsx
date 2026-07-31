@@ -744,6 +744,9 @@ export function StoreScreen({ params }){
           : <FA i={s.icon} style={{ position:'absolute', right:-20, top:-10, fontSize:200, color:'rgba(255,255,255,.12)' }} />}
         <div className="wrap" style={{ padding:'28px 24px', position:'relative' }}>
           <div style={{ display:'flex', alignItems:'flex-end', gap:18, flexWrap:'wrap' }}>
+            {/* Back — the store page has no other exit, so a shopper who lands here (a
+                shared link, a tapped logo) could get stuck. Styled for the coloured banner. */}
+            <button onClick={back} aria-label="Back" style={{ width:44, height:44, borderRadius:9999, flexShrink:0, background:'rgba(255,255,255,.18)', color:'#fff', border:'1.5px solid rgba(255,255,255,.55)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, backdropFilter:'blur(4px)' }}><FA i="fa-arrow-left" /></button>
             <div style={{ width:88, height:88, borderRadius:22, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'var(--m-shadow-float)', flexShrink:0, position:'relative' }}>
               {s.logo
                 ? <img src={s.logo} alt={s.name} style={{ width:'100%', height:'100%', borderRadius:22, objectFit:'cover' }} />
