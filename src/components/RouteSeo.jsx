@@ -24,7 +24,7 @@ const SITE = 'https://yotemarket.co.ke';
 const DEFAULT = {
   title: 'YoteMarket — Shop Local. Delivered Fast.',
   description:
-    "YoteMarket is Kenya's virtual mall — shop local stores, chat and negotiate with sellers, pay with M-Pesa, and collect at your nearest hub.",
+    "YoteMarket is Kenya's virtual mall — shop local stores, watch and buy from YoteFeed videos, chat and negotiate with sellers, pay with M-Pesa, and collect at your nearest hub.",
 };
 
 // Written for a person searching, not for a crawler: what the page is, and why
@@ -34,12 +34,12 @@ const PAGES = {
   '/storefront': {
     title: 'Shop Kenyan stores online — YoteMarket',
     description:
-      'Browse local Kenyan stores in one place. Chat and negotiate with sellers, pay with M-Pesa, and collect at your nearest pickup hub.',
+      'Browse local Kenyan stores in one place — and shop YoteFeed videos. Chat and negotiate with sellers, pay with M-Pesa, and collect at your nearest pickup hub.',
   },
   '/about': {
     title: 'About YoteMarket — Kenya’s virtual mall',
     description:
-      'Why YoteMarket exists: one platform where Kenyan shops sell online, riders deliver, and shoppers collect at a hub near them.',
+      "What YoteMarket is: Kenya's virtual mall where local shops sell via branded storefronts and YoteFeed videos, shoppers chat and pay with M-Pesa, and riders deliver to pickup hubs.",
   },
   '/pricing': {
     title: 'Pricing & plans for sellers — YoteMarket',

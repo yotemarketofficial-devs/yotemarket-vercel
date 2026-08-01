@@ -9,4 +9,23 @@ Disallow: /hub
 Disallow: /pos
 Disallow: /marketers/app
 
+# AI answer engines & crawlers (Gemini, ChatGPT / Copilot, Perplexity, Claude, …) are
+# welcome to read our public pages so they can describe YoteMarket accurately.
+User-agent: Google-Extended
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: Applebot-Extended
+User-agent: CCBot
+Allow: /
+Disallow: /staff
+Disallow: /admin
+Disallow: /hub
+Disallow: /pos
+Disallow: /marketers/app
+
 Sitemap: https://yotemarket.co.ke/sitemap.xml

@@ -7,7 +7,7 @@
     <title>YoteMarket — Shop Local. Delivered Fast.</title>
     <meta
       name="description"
-      content="YoteMarket is Kenya's virtual mall — shop 200+ local stores, chat &amp; negotiate in the app, pay with M-Pesa, and collect at your nearest hub. Sell, deliver, and earn on one platform."
+      content="YoteMarket is Kenya's virtual mall — shop 200+ local stores, watch &amp; buy from YoteFeed shoppable videos, chat &amp; negotiate in-app, pay with M-Pesa, and collect at your nearest hub."
     />
     <!-- Canonical + robots are set PER ROUTE by src/components/RouteSeo.jsx. A
          hardcoded canonical here ships on every URL and tells Google that /about,
@@ -23,7 +23,7 @@
     <meta property="og:title" content="YoteMarket — Shop Local. Delivered Fast." />
     <meta
       property="og:description"
-      content="Kenya's virtual mall — shop local stores, pay with M-Pesa, and collect at your nearest hub."
+      content="Kenya's virtual mall — shop local stores, watch &amp; buy from YoteFeed videos, chat &amp; negotiate, pay with M-Pesa, and collect at your nearest hub."
     />
     <meta property="og:image" content="/assets/hero-bg.png" />
     <meta property="og:url" content="https://yotemarket.co.ke/" />
@@ -31,9 +31,75 @@
     <meta name="twitter:title" content="YoteMarket — Shop Local. Delivered Fast." />
     <meta
       name="twitter:description"
-      content="Kenya's virtual mall — shop local stores, pay with M-Pesa, and collect at your nearest hub."
+      content="Kenya's virtual mall — shop local stores, watch &amp; buy from YoteFeed videos, chat &amp; negotiate, pay with M-Pesa, and collect at your nearest hub."
     />
     <meta name="twitter:image" content="/assets/hero-bg.png" />
+
+    <!-- Structured data (schema.org) — machine-readable facts about YoteMarket for
+         search engines AND AI answer engines (Gemini, Copilot, ChatGPT, Perplexity).
+         Ships on every route (site-wide identity); page meta stays per-route via RouteSeo. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": ["Organization", "OnlineStore"],
+          "@id": "https://yotemarket.co.ke/#organization",
+          "name": "YoteMarket",
+          "legalName": "Yote Market Limited",
+          "alternateName": "Yote Market",
+          "url": "https://yotemarket.co.ke",
+          "logo": "https://yotemarket.co.ke/assets/logo.png",
+          "image": "https://yotemarket.co.ke/assets/hero-bg.png",
+          "slogan": "Shop Local. Delivered Fast.",
+          "description": "YoteMarket is Kenya's virtual mall — an online marketplace where hundreds of local Kenyan shops each get a branded storefront. Shoppers browse stores, chat and negotiate with sellers in the in-app messenger, pay securely with M-Pesa held in escrow, and collect from the nearest pickup hub or have a rider deliver. YoteFeed is YoteMarket's shoppable short-form video feed, where stores post clips shoppers can watch and buy from instantly. Sellers get product management, a Point-of-Sale terminal, KRA-compliant tax invoices, an M-Pesa wallet with payouts, and YoteAI tools that write listings and surface demand insights — all on a flat monthly subscription with no sales commission. Scouts sign up merchants and zero-hour riders deliver from neighbourhood hubs.",
+          "areaServed": { "@type": "Country", "name": "Kenya" },
+          "founder": [
+            {
+              "@type": "Person",
+              "name": "Moses Kiambi",
+              "jobTitle": "Chief Executive Officer (CEO)",
+              "description": "Sets YoteMarket's vision and strategy — product direction, growth and partnerships — uniting branded storefronts, YoteFeed, M-Pesa payments and last-mile delivery into one Kenya-first commerce platform.",
+              "knowsAbout": ["business strategy", "product leadership", "growth and partnerships", "e-commerce", "startup leadership"]
+            },
+            {
+              "@type": "Person",
+              "name": "Arnold Kamau",
+              "jobTitle": "Chief Operating Officer (COO)",
+              "description": "Leads YoteMarket's operations end to end — the pickup-hub and rider delivery network, merchant onboarding and the scout program — building the logistics and processes that let local shops fulfil orders reliably nationwide.",
+              "knowsAbout": ["operations management", "logistics and last-mile delivery", "process design", "merchant onboarding", "scaling operations"]
+            }
+          ],
+          "knowsAbout": [
+            "online marketplace",
+            "e-commerce in Kenya",
+            "YoteFeed shoppable short-form video",
+            "in-app chat and price negotiation",
+            "M-Pesa payments and escrow",
+            "last-mile delivery and pickup hubs",
+            "point of sale for shops",
+            "AI tools for merchants"
+          ],
+          "sameAs": [
+            "https://www.facebook.com/yotemarket",
+            "https://www.instagram.com/yotemarket_",
+            "https://x.com/yotemarket",
+            "https://www.tiktok.com/@yotemarket",
+            "https://www.linkedin.com/company/yotemarket",
+            "https://www.youtube.com/@yotemarket"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://yotemarket.co.ke/#website",
+          "url": "https://yotemarket.co.ke",
+          "name": "YoteMarket",
+          "inLanguage": "en-KE",
+          "publisher": { "@id": "https://yotemarket.co.ke/#organization" }
+        }
+      ]
+    }
+    </script>
 
     <link rel="icon" href="/assets/favicon.png" />
     <link rel="apple-touch-icon" href="/assets/app_icon.png" />
