@@ -16,6 +16,8 @@
  * a broken deploy.
  */
 import { writeFileSync } from 'node:fs';
+// Shared with prerender.mjs so both advertise the SAME set of pages.
+import { fetchCollection, str, num, productImage, storeImage, ksh } from './lib/catalog.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -44,25 +46,6 @@ const STATIC = [
   ['/privacy', 'yearly', '0.3'],
 ];
 
-const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
-
-/** Page through a public Firestore collection. Returns [{ id, fields }]. */
-async function fetchCollection(name) {
-  const out = [];
-  let pageToken = '';
-  do {
-    const url = `${BASE}/${name}?key=${API_KEY}&pageSize=300${pageToken ? `&pageToken=${pageToken}` : ''}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
-    const data = await res.json();
-    for (const d of data.documents || []) {
-      out.push({ id: d.name.split('/').pop(), fields: d.fields || {}, updateTime: d.updateTime });
-    }
-    pageToken = data.nextPageToken || '';
-  } while (pageToken && out.length < 45000); // sitemaps cap at 50k urls
-  return out;
-}
-
 // XML-escape text + attribute content. Critical for image URLs: Firebase Storage
 // links carry `?alt=media&token=…`, and a raw `&` is invalid XML that breaks the
 // whole sitemap. Also covers < > " ' in names/captions.
@@ -70,14 +53,6 @@ const xmlEsc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-// Firestore REST returns typed values ({ stringValue }, { arrayValue }, …).
-const str = (f) => (f && f.stringValue) || '';
-const num = (f) => (f && (f.integerValue != null ? Number(f.integerValue) : f.doubleValue != null ? Number(f.doubleValue) : null));
-// A product's cover photo: explicit img, else the first of the gallery.
-const productImage = (fields) => str(fields.img) || str(fields.imageUrl) || str(fields.photo) ||
-    ((fields.images?.arrayValue?.values || []).map((v) => v.stringValue).find(Boolean) || '');
-// A store's picture: logo first (it's the avatar shoppers recognise), else the banner.
-const storeImage = (fields) => str(fields.logo) || str(fields.img) || str(fields.imageUrl) || '';
 
 // One <url>, optionally carrying a Google image-sitemap entry so product photos and
 // store logos are discoverable in Google Images (SEO "more info" per URL).
@@ -93,7 +68,6 @@ const url = (loc, changefreq, priority, lastmod = today, image = null) => {
 };
 
 const day = (iso) => (iso ? String(iso).slice(0, 10) : today);
-const ksh = (n) => (n != null ? `KSh ${Number(n).toLocaleString('en-KE')}` : '');
 
 // IndexNow — ping participating search engines (Bing, Yandex, Seznam, …) with the current
 // URL set so new/changed stores & products get crawled without waiting for a sitemap

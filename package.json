@@ -10,7 +10,8 @@
     "serve": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "sitemap": "node scripts/generate-sitemap.mjs"
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "postbuild": "node scripts/prerender.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.66.0",
