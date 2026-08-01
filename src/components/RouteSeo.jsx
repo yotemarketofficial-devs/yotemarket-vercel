@@ -97,6 +97,23 @@ function meta(key, content, attr = 'name') {
 }
 
 /** Point the canonical at THIS url — not blanket-at the homepage. */
+/* A <script type="application/ld+json"> block, replaced per route.
+   Meta tags tell Google what a PAGE is about; this tells it what ENTITIES exist and
+   how they connect — the company, its founders, and the profiles that are provably
+   the same people (`sameAs`). That entity link is what lets a search for a founder's
+   name surface YoteMarket, which plain prose cannot do on its own. */
+function jsonLd(data) {
+  let el = document.head.querySelector('script[data-seo="ld"]');
+  if (!data) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.setAttribute('data-seo', 'ld');
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(data);
+}
+
 function canonical(url) {
   let el = document.head.querySelector('link[rel="canonical"]');
   if (!el) {
@@ -106,6 +123,64 @@ function canonical(url) {
   }
   el.setAttribute('href', url);
 }
+
+const ORG = {
+  '@type': 'Organization',
+  '@id': SITE + '/#organization',
+  name: 'YoteMarket',
+  url: SITE + '/',
+  logo: SITE + '/assets/logo.png',
+  description: "Kenya's virtual mall — local stores sell through branded storefronts and shoppable YoteFeed videos, shoppers pay with M-Pesa, and riders deliver to neighbourhood pickup hubs.",
+  email: 'general@yotemarket.com',
+  telephone: '+254720730861',
+  areaServed: { '@type': 'Country', name: 'Kenya' },
+  address: { '@type': 'PostalAddress', addressCountry: 'KE', addressLocality: 'Nairobi' },
+  sameAs: [
+    'https://www.facebook.com/yotemarket',
+    'https://www.instagram.com/yotemarket',
+    'https://x.com/yotemarket',
+  ],
+};
+
+/* The founders as real entities. `sameAs` points at the LinkedIn profile that proves
+   who they are; `alternateName` carries the name that profile is filed under, so the
+   two resolve to one person even where the site uses a different form. */
+const FOUNDERS = [
+  {
+    '@type': 'Person',
+    '@id': SITE + '/about#moses-kiambi',
+    name: 'Moses Kiambi',
+    jobTitle: 'Chief Executive Officer',
+    description: "Co-founder and CEO of YoteMarket, leading marketing strategy, brand and user acquisition for Kenya's virtual mall.",
+    worksFor: { '@id': SITE + '/#organization' },
+    address: { '@type': 'PostalAddress', addressCountry: 'KE', addressLocality: 'Nairobi' },
+    sameAs: ['https://www.linkedin.com/in/moses-kiambi-84043625b'],
+  },
+  {
+    '@type': 'Person',
+    '@id': SITE + '/about#arnold-kamau',
+    name: 'Arnold Kamau',
+    alternateName: 'Arnold Wanjiku',
+    jobTitle: 'Chief Operating Officer',
+    description: 'Co-founder and COO of YoteMarket, responsible for product and technology, operations and logistics, merchant systems, finance and compliance.',
+    worksFor: { '@id': SITE + '/#organization' },
+    alumniOf: { '@type': 'CollegeOrUniversity', name: 'Daystar University' },
+    address: { '@type': 'PostalAddress', addressCountry: 'KE', addressLocality: 'Nairobi' },
+    sameAs: ['https://www.linkedin.com/in/arnold-w-554439198'],
+  },
+];
+
+const SCHEMA = {
+  '/': { '@context': 'https://schema.org', '@graph': [{ ...ORG, founder: FOUNDERS.map((f) => ({ '@id': f['@id'] })) }, ...FOUNDERS] },
+  '/about': {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { ...ORG, founder: FOUNDERS.map((f) => ({ '@id': f['@id'] })) },
+      ...FOUNDERS,
+      { '@type': 'AboutPage', '@id': SITE + '/about#page', url: SITE + '/about', name: 'About YoteMarket', about: { '@id': SITE + '/#organization' } },
+    ],
+  },
+};
 
 export default function RouteSeo() {
   const { pathname } = useLocation();
@@ -135,6 +210,8 @@ export default function RouteSeo() {
 
     // Signed-in app areas are already Disallowed in robots.txt, but a crawler that
     // reaches one anyway shouldn't index a shell of someone's dashboard.
+    jsonLd(SCHEMA[path] || null);
+
     const gated = ['/dashboard', '/staff', '/admin', '/hub', '/pos', '/marketers/app'];
     meta('robots', gated.some((g) => path.startsWith(g)) ? 'noindex, nofollow' : 'index, follow');
   }, [pathname]);

@@ -54,17 +54,40 @@ function About() {
               YoteMarket was founded by <strong>Moses Kiambi</strong> and <strong>Arnold Kamau</strong>, who lead
               the company as Chief Executive Officer and Chief Operating Officer.
             </p>
-            <p>
-              <strong>Moses Kiambi — Chief Executive Officer (CEO).</strong> Moses sets the company's vision and
-              strategy, championing a Kenya-first commerce platform that puts local shops online. He drives
-              product direction, growth and strategic partnerships, and is the force behind uniting branded
-              storefronts, YoteFeed, M-Pesa payments and last-mile delivery into a single ecosystem.
+            <p id="moses-kiambi">
+              <strong>Moses Kiambi — Chief Executive Officer (CEO).</strong> Moses leads YoteMarket's
+              go-to-market. Marketing strategy, brand and user acquisition sit with him: how the mall reaches
+              shoppers across Kenya, how merchants first hear about us, and how that attention converts into
+              active stores and repeat buyers.
             </p>
             <p>
-              <strong>Arnold Kamau — Chief Operating Officer (COO).</strong> Arnold turns that vision into
-              disciplined day-to-day execution. He owns operations end to end — the pickup-hub and rider
-              delivery network, merchant onboarding and the scout program — engineering the logistics and
-              processes that let hundreds of stores fulfil orders reliably across the country.
+              His background is in e-commerce, digital media and marketing. He has run digital marketing and
+              media independently, and supports <em>Jacity Travellers &amp; Tours</em> in Nairobi with content
+              and social campaigns in the travel sector. He is certified by Google in Digital Marketing
+              Fundamentals and has studied information technology.{' '}
+              <a href="https://www.linkedin.com/in/moses-kiambi-84043625b" target="_blank" rel="noopener noreferrer me"
+                style={{ color: 'var(--purple)', fontWeight: 600 }}>Moses on LinkedIn</a>.
+            </p>
+            <p id="arnold-kamau">
+              <strong>Arnold Kamau — Chief Operating Officer (COO).</strong> Arnold carries the rest of the
+              business. Product and technology, operations and logistics, merchant systems, finance and
+              compliance all report to him — the platform itself, the pickup-hub and rider delivery network,
+              merchant onboarding and the scout program, and the processes that let hundreds of stores fulfil
+              orders reliably across the country.
+            </p>
+            <p>
+              He is a startup operator with a foot in both technology and policy. He is co-founder and COO of
+              <em> LeaseUs</em>, a blockchain-powered service-delivery platform, a director at
+              <em> Portico Agency</em> in London, and founder of the <em>Kaiserberg Independent Policy Design
+              Initiative</em>. He also founded <em>Tuelewane</em>, a thought-leadership blog and podcast on
+              geopolitics, technology and social change, and serves as Secretary General of The Patriciah
+              Foundation, which backs education, empowerment and social-justice work. He holds a bachelor's
+              degree in International Relations from Daystar University, with further study at Leiden
+              University in the political economy of institutions and development and in international
+              humanitarian law, and a specialisation in negotiation, mediation and conflict resolution from
+              ESSEC Business School.{' '}
+              <a href="https://www.linkedin.com/in/arnold-w-554439198" target="_blank" rel="noopener noreferrer me"
+                style={{ color: 'var(--purple)', fontWeight: 600 }}>Arnold on LinkedIn</a>.
             </p>
             <h3>Join us</h3>
             <p>
