@@ -54,20 +54,31 @@
           "slogan": "Shop Local. Delivered Fast.",
           "description": "YoteMarket is Kenya's virtual mall — an online marketplace where hundreds of local Kenyan shops each get a branded storefront. Shoppers browse stores, chat and negotiate with sellers in the in-app messenger, pay securely with M-Pesa held in escrow, and collect from the nearest pickup hub or have a rider deliver. YoteFeed is YoteMarket's shoppable short-form video feed, where stores post clips shoppers can watch and buy from instantly. Sellers get product management, a Point-of-Sale terminal, KRA-compliant tax invoices, an M-Pesa wallet with payouts, and YoteAI tools that write listings and surface demand insights — all on a flat monthly subscription with no sales commission. Scouts sign up merchants and zero-hour riders deliver from neighbourhood hubs.",
           "areaServed": { "@type": "Country", "name": "Kenya" },
+          "email": "general@yotemarket.com",
+          "telephone": "+254720730861",
+          "address": { "@type": "PostalAddress", "addressLocality": "Nairobi", "addressCountry": "KE" },
           "founder": [
             {
               "@type": "Person",
+              "@id": "https://yotemarket.co.ke/about#moses-kiambi",
               "name": "Moses Kiambi",
               "jobTitle": "Chief Executive Officer (CEO)",
-              "description": "Sets YoteMarket's vision and strategy — product direction, growth and partnerships — uniting branded storefronts, YoteFeed, M-Pesa payments and last-mile delivery into one Kenya-first commerce platform.",
-              "knowsAbout": ["business strategy", "product leadership", "growth and partnerships", "e-commerce", "startup leadership"]
+              "worksFor": { "@id": "https://yotemarket.co.ke/#organization" },
+              "description": "Co-founder and CEO of YoteMarket, leading go-to-market: marketing strategy, brand and user acquisition for Kenya's virtual mall.",
+              "knowsAbout": ["marketing strategy", "brand marketing", "user acquisition", "digital media", "e-commerce"],
+              "sameAs": ["https://www.linkedin.com/in/moses-kiambi-84043625b"]
             },
             {
               "@type": "Person",
+              "@id": "https://yotemarket.co.ke/about#arnold-kamau",
               "name": "Arnold Kamau",
+              "alternateName": "Arnold Wanjiku",
               "jobTitle": "Chief Operating Officer (COO)",
-              "description": "Leads YoteMarket's operations end to end — the pickup-hub and rider delivery network, merchant onboarding and the scout program — building the logistics and processes that let local shops fulfil orders reliably nationwide.",
-              "knowsAbout": ["operations management", "logistics and last-mile delivery", "process design", "merchant onboarding", "scaling operations"]
+              "worksFor": { "@id": "https://yotemarket.co.ke/#organization" },
+              "description": "Co-founder and COO of YoteMarket, responsible for product and technology, operations and logistics, merchant systems, finance and compliance.",
+              "knowsAbout": ["operations management", "logistics and last-mile delivery", "product and technology", "merchant onboarding", "finance and compliance"],
+              "alumniOf": { "@type": "CollegeOrUniversity", "name": "Daystar University" },
+              "sameAs": ["https://www.linkedin.com/in/arnold-w-554439198"]
             }
           ],
           "knowsAbout": [
@@ -146,6 +157,48 @@
         </div>
       </div>
     </div>
+    <!-- Crawler-readable body. This is a client-rendered SPA: Googlebot runs JS, but most
+         company-directory, AI and link-preview crawlers do NOT, and would otherwise see an
+         empty page. The structured data above tells them the facts; this tells them the
+         same in prose, and gives them real links to follow into the site. -->
+    <noscript>
+      <h1>YoteMarket — Kenya's virtual mall</h1>
+      <p>
+        YoteMarket is an online marketplace where hundreds of local Kenyan shops each get a branded
+        storefront. Shoppers browse stores, chat and negotiate with sellers in the in-app messenger,
+        pay with M-Pesa held in escrow, and collect from the nearest pickup hub or have a rider
+        deliver. YoteFeed is our shoppable short-form video feed: stores post clips and shoppers buy
+        from them on the spot.
+      </p>
+      <p>
+        Sellers get product management, a Point-of-Sale terminal, KRA-compliant tax invoices, an
+        M-Pesa wallet with payouts, and YoteAI tools that write listings and surface demand
+        insights — on a flat monthly subscription with no commission on sales. Scouts sign up new
+        merchants and zero-hour riders deliver batched orders from neighbourhood hubs.
+      </p>
+      <p>
+        Founded by Moses Kiambi (Chief Executive Officer), who leads marketing strategy, brand and
+        user acquisition, and Arnold Kamau (Chief Operating Officer), who is responsible for product
+        and technology, operations and logistics, merchant systems, finance and compliance.
+      </p>
+      <p>
+        Nairobi, Kenya ·
+        <a href="mailto:general@yotemarket.com">general@yotemarket.com</a> ·
+        <a href="tel:+254720730861">+254 720 730 861</a>
+      </p>
+      <ul>
+        <li><a href="/about">About YoteMarket</a></li>
+        <li><a href="/storefront">Shop the mall</a></li>
+        <li><a href="/pricing">Pricing for sellers</a></li>
+        <li><a href="/mobile">The YoteMarket app</a></li>
+        <li><a href="/rider">Become a rider</a></li>
+        <li><a href="/marketers">Marketer program</a></li>
+        <li><a href="/help">Help centre</a></li>
+        <li><a href="/contact">Contact us</a></li>
+        <li><a href="/terms">Terms of Service</a></li>
+        <li><a href="/privacy">Privacy Policy</a></li>
+      </ul>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
