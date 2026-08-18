@@ -7,6 +7,7 @@ import React from 'react';
 import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv, Modal, kes } from './ui.jsx';
 import { staffListUsers } from '../../lib/firebase.js';
 import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
@@ -96,6 +97,7 @@ function UTile({ label, value, sub, tone='pri' }){
 
 /* Per-user admin console — dossier + actions (disable/enable, role, note, credit). */
 function UserConsole({ row, onClose, onChanged }){
+  const { confirm, toast } = useDialogs();
   const uid = row.uid;
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
@@ -115,35 +117,47 @@ function UserConsole({ row, onClose, onChanged }){
 
   const toggleDisable = async () => {
     const next = !disabled;
-    if (!window.confirm(next ? `Disable ${p.email || uid}? They won't be able to sign in.` : `Re-enable ${p.email || uid}?`)) return;
+    if (!await confirm({
+      title: next ? `Disable ${p.email || uid}?` : `Re-enable ${p.email || uid}?`,
+      tone: next ? 'danger' : undefined, icon: next ? 'user-slash' : 'user-check',
+      body: next ? "They won't be able to sign in until re-enabled. Their data is untouched." : 'They can sign in again immediately.',
+      confirmLabel: next ? 'Disable' : 'Re-enable',
+    })) return;
     setBusy('disable');
     try { await setUserDisabled(uid, next); reload(); onChanged && onChanged(); }
-    catch (e) { window.alert(e.message || 'Action failed.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Action failed.' }); }
     finally { setBusy(null); }
   };
   const changeRole = async (role) => {
-    if (!p.email) { window.alert('This account has no email on record — role changes are by email.'); return; }
+    if (!p.email) { toast({ tone:'error', title: 'This account has no email on record — role changes are by email.' }); return; }
     const label = role === 'none' ? 'revoke staff access from' : `make ${p.email} a${role==='admin'?'n admin':' moderator'}`;
-    if (!window.confirm(`${role==='none'?'Revoke staff access from':'Grant'} ${p.email}${role!=='none'?` as ${role}`:''}?`)) return;
+    if (!await confirm({
+      title: role === 'none' ? `Revoke staff access from ${p.email}?` : `Grant ${p.email} ${role} access?`,
+      tone: role === 'none' ? 'danger' : undefined, icon:'user-gear',
+      body: role === 'none'
+        ? 'They lose the staff console immediately. Their user account stays.'
+        : 'Department access is set separately in People › Access & roles.',
+      confirmLabel: role === 'none' ? 'Revoke' : 'Grant access',
+    })) return;
     setBusy('role');
     try { await setStaffRole(p.email, role); reload(); onChanged && onChanged(); }
-    catch (e) { window.alert(e.message || 'Role change failed.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Role change failed.' }); }
     finally { setBusy(null); }
   };
   // Remedy for a wrong role: reset to a plain shopper (strips merchant/rider identity).
   // The backend refuses while a live store exists — close it first.
   const resetToShopper = async () => {
-    if (!window.confirm(`Reset ${p.email || uid} to a plain shopper? This removes their merchant/rider identity. Any store must already be closed.`)) return;
+    if (!await confirm({ title: `Reset ${p.email || uid} to a plain shopper? This removes their merchant/rider identity. Any store must already be closed.` })) return;
     setBusy('shopper');
     try { await setUserRole(uid, 'shopper'); reload(); onChanged && onChanged(); }
-    catch (e) { window.alert(e.message || 'Could not reset role.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not reset role.' }); }
     finally { setBusy(null); }
   };
   const addNote = async () => {
     const t = note.trim(); if (!t) return;
     setBusy('note');
     try { await addStaffNote('user', uid, t); setNote(''); reload(); }
-    catch (e) { window.alert(e.message || 'Could not add note.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not add note.' }); }
     finally { setBusy(null); }
   };
   const resetPassword = async () => {
@@ -152,26 +166,26 @@ function UserConsole({ row, onClose, onChanged }){
       const r = await sendPasswordReset(uid);
       const link = r && r.link;
       if (link && navigator.clipboard) await navigator.clipboard.writeText(link).catch(()=>{});
-      window.alert(`Password-reset link generated for ${(r && r.email) || p.email}.${link ? '\n\nIt’s been copied to your clipboard — send it to the customer.' : ''}`);
-    } catch (e) { window.alert(e.message || 'Could not generate a reset link.'); }
+      toast({ tone:'error', title: `Password-reset link generated for ${(r && r.email) || p.email}.${link ? '\n\nIt’s been copied to your clipboard — send it to the customer.' : ''}` });
+    } catch (e) { toast({ tone:'error', title: e.message || 'Could not generate a reset link.' }); }
     finally { setBusy(null); }
   };
   const forceSignOut = async () => {
-    if (!window.confirm(`Sign ${p.email || uid} out of all devices? They'll have to sign in again.`)) return;
+    if (!await confirm({ title: `Sign ${p.email || uid} out of all devices? They'll have to sign in again.` })) return;
     setBusy('revoke');
-    try { await revokeUserSessions(uid); window.alert('Done — the user has been signed out of all sessions.'); }
-    catch (e) { window.alert(e.message || 'Could not sign the user out.'); }
+    try { await revokeUserSessions(uid); toast({ tone:'error', title: 'Done — the user has been signed out of all sessions.' }); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not sign the user out.' }); }
     finally { setBusy(null); }
   };
   // Right to erasure. The server refuses if it would destroy money, an in-flight
   // order, a live store or the staff trail — each of those has its own flow.
   const eraseAccount = async () => {
     const who = p.email || uid;
-    if (!window.confirm(`Permanently DELETE ${who}?\n\nThis removes their sign-in and all personal data (profile, addresses, follows, wallet history). Their past orders stay as financial records. This cannot be undone.`)) return;
-    if (!window.confirm(`Last check — really delete ${who}?`)) return;
+    if (!await confirm({ title: `Permanently DELETE ${who}?\n\nThis removes their sign-in and all personal data (profile, addresses, follows, wallet history). Their past orders stay as financial records. This cannot be undone.` })) return;
+    if (!await confirm({ title: `Last check — really delete ${who}?` })) return;
     setBusy('delete');
-    try { await deleteUserAccount(uid); window.alert(`${who} has been deleted.`); onChanged && onChanged(); onClose(); }
-    catch (e) { window.alert(e.message || 'Could not delete the account.'); setBusy(null); }
+    try { await deleteUserAccount(uid); toast({ tone:'error', title: `${who} has been deleted.` }); onChanged && onChanged(); onClose(); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not delete the account.' }); setBusy(null); }
   };
 
   const isStaff = roles.includes('admin') || roles.includes('staff');

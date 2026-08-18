@@ -11,6 +11,7 @@ import {
 } from '../../lib/firebase.js';
 import { BreakEven } from './breakeven.jsx';
 import { BEHAVIOUR_LABEL } from '../../lib/breakeven.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useCallback } = React;
 
 const DEPARTMENTS = [
@@ -29,6 +30,7 @@ function Banner({ msg }){
 
 /* ══════════════════════════ People / HR ══════════════════════════ */
 export function People({ isAdmin }){
+  const { confirm } = useDialogs();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -55,7 +57,7 @@ export function People({ isAdmin }){
     finally { setBusy(false); }
   };
   const offboard = async (emp) => {
-    if (!window.confirm(`Offboard ${emp.name || emp.email}? This revokes their portal access immediately.`)) return;
+    if (!await confirm({ title: `Offboard ${emp.name || emp.email}? This revokes their portal access immediately.` })) return;
     setMsg(null);
     try { await offboardEmployee({ uid: emp.uid }); setMsg({ ok:true, text:`${emp.name || emp.email} offboarded.` }); load(); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Offboarding failed.' }); }
@@ -129,6 +131,7 @@ export function People({ isAdmin }){
 
 /* ══════════════════════════ Finance ══════════════════════════ */
 export function Finance({ isAdmin }){
+  const { confirm } = useDialogs();
   const [data, setData] = useState({ entries:[], revenue:0, expenses:0, net:0 });
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -152,7 +155,7 @@ export function Finance({ isAdmin }){
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not record entry.' }); }
     finally { setBusy(false); }
   };
-  const remove = async (e) => { if (!window.confirm('Delete this entry?')) return; try { await deleteFinanceEntry({ id: e.id }); load(); } catch (err) { setMsg({ ok:false, text:err.message || 'Failed.' }); } };
+  const remove = async (e) => { if (!await confirm({ title: 'Delete this entry?' })) return; try { await deleteFinanceEntry({ id: e.id }); load(); } catch (err) { setMsg({ ok:false, text:err.message || 'Failed.' }); } };
 
   const live = data.live || {};
   return (
@@ -264,6 +267,7 @@ const LEGAL_TYPES = [
 const legalMeta = k => LEGAL_TYPES.find(t => t.key === k) || LEGAL_TYPES[0];
 
 export function Legal({ isAdmin }){
+  const { confirm } = useDialogs();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -295,7 +299,7 @@ export function Legal({ isAdmin }){
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not save record.' }); }
     finally { setBusy(false); }
   };
-  const remove = async (r) => { if (!window.confirm(`Delete "${r.title}"?`)) return; try { await deleteLegalRecord({ id: r.id }); if (editingId === r.id) cancelEdit(); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
+  const remove = async (r) => { if (!await confirm({ title: `Delete "${r.title}"?` })) return; try { await deleteLegalRecord({ id: r.id }); if (editingId === r.id) cancelEdit(); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
 
   const counts = LEGAL_TYPES.map(t => ({ ...t, n: rows.filter(r => r.type === t.key).length }));
 

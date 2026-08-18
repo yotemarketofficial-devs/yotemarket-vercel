@@ -5,10 +5,12 @@ import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, kes } from './ui.jsx';
 import { grantFreeMonths, grantMerchantFreeMonths, listPromos, createPromo, setPromoActive, backfillReceipts, backfillStoreLogos, backfillPoints, backfillOrders, backfillFollowerCounts, backfillStoreTiers, staffReconcilePayouts } from '../../lib/firebase.js';
 import { DELIVERY_TIERS, PLAN_ORDER } from '../dashboard/pricing.js';
+import { useDialogs } from './dialogs.jsx';
 const SOFTWARE_PLANS = ['Entry', 'Growth', 'Pro'];
 const { useState, useEffect, useCallback } = React;
 
 export function Promotions(){
+  const { confirm } = useDialogs();
   const [promos, setPromos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null); // { ok, text }
@@ -51,7 +53,7 @@ export function Promotions(){
   const grant = async () => {
     const cap = capacity ? Number(capacity) : null;
     const who = cap ? `the first ${cap} merchant(s)` : 'ALL merchants';
-    if (!window.confirm(`Grant ${months} free month(s) to ${who}? This activates or extends their subscription.`)) return;
+    if (!await confirm({ title: `Grant ${months} free month(s) to ${who}? This activates or extends their subscription.` })) return;
     setGranting(true); setMsg(null);
     try {
       const r = await grantFreeMonths({ months: Number(months), ...(cap ? { capacity: cap } : {}) });
@@ -114,7 +116,7 @@ export function Promotions(){
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not create coupon.' }); } finally { setCreating(false); }
   };
   const toggle = async (p) => { try { await setPromoActive({ id:p.id, active:!p.active }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
-  const remove = async (p) => { if (!window.confirm(`Delete ${p.code || p.name}?`)) return; try { await setPromoActive({ id:p.id, remove:true }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
+  const remove = async (p) => { if (!await confirm({ title: `Delete ${p.code || p.name}?` })) return; try { await setPromoActive({ id:p.id, remove:true }); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
   const offer = (p) => p.type === 'percent' ? `${p.value}% off` : p.type === 'fixed' ? `${kes(p.value)} off` : `${p.value} free month${p.value > 1 ? 's' : ''}${p.plan ? ` · ${p.plan}${p.packageKind === 'software' ? ' (software)' : ''}` : ''}${p.newOnly ? ' · new only' : ''}`;
   // Usage / capacity readout: campaigns show granted/capacity, coupons show used/max.
   const usage = (p) => p.kind === 'campaign'

@@ -26,7 +26,11 @@ import { AuditLog } from './audit.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useEscape } from '../../lib/useEscape.js';
-import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes, fetchLogistics } from './service.js';
+import { useStaffClaims, RefreshCtx, TIER_LABEL, fetchReports, fetchReviewReports, fetchPayouts,
+  fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes, fetchLogistics } from './service.js';
+import { DialogProvider } from './dialogs.jsx';
+import { StaffAccess, Attendance, ClockControl } from './people.jsx';
+import { Contracts, MyContract } from './contracts.jsx';
 const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 
 /* ── Workspace model ─────────────────────────────────────────────────────────
@@ -34,53 +38,59 @@ const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
    restricts a whole workspace or a single section to admins; moderators see
    Command, Marketplace, Logistics, Trust & Safety and Growth. */
 const WORKSPACES = [
-  { key:'command', label:'Command', icon:'gauge-high', blurb:'Platform pulse', sections:[
+  { key:'command', label:'Command', icon:'gauge-high', blurb:'Platform pulse', dept:null, sections:[
     { key:'command', label:'Command center', icon:'bolt', desc:'Action queue & live pulse' },
     { key:'analytics', label:'Analytics', icon:'chart-simple', desc:'Revenue, retention & delivery cost' },
+    // Your own employment terms — not People-gated: everyone is entitled to these.
+    { key:'mycontract', label:'My contract', icon:'file-signature', desc:'Your own employment terms — review & sign' },
   ]},
-  { key:'marketplace', label:'Marketplace', icon:'store', blurb:'Merchants & billing', sections:[
+  { key:'marketplace', label:'Marketplace', icon:'store', blurb:'Merchants & billing', dept:'marketplace', sections:[
     { key:'approvals', label:'Merchants', icon:'user-check', desc:'Verify, feature, suspend & audit stores' },
     { key:'wallet', label:'Subscriptions & billing', icon:'wallet', desc:'Plans, float and payout-change approvals' },
   ]},
-  { key:'logistics', label:'Logistics', icon:'truck-fast', blurb:'Delivery ops', sections:[
+  { key:'logistics', label:'Logistics', icon:'truck-fast', blurb:'Delivery ops', dept:'logistics', sections:[
     { key:'logistics', label:'Runs & routes', icon:'route', desc:'The live engine — batching, hubs, exceptions' },
     { key:'roster', label:'Rider roster', icon:'id-card-clip', desc:'Who can claim work, and what blocks the rest' },
     { key:'riders', label:'Rider applications', icon:'motorcycle', desc:'People joining the delivery network — vet & approve' },
   ]},
-  { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', sections:[
+  { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', dept:'safety', sections:[
     { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
     { key:'reviews', label:'Review moderation', icon:'star-half-stroke', desc:'Reported reviews — remove fraud or dismiss' },
   ]},
-  { key:'support', label:'Support', icon:'headset', blurb:'Customer care', sections:[
+  { key:'support', label:'Support', icon:'headset', blurb:'Customer care', dept:'support', sections:[
     { key:'support', label:'Tickets', icon:'ticket', desc:'Help Center requests — reply, resolve & route' },
     { key:'disputes', label:'Returns & refunds', icon:'rotate-left', desc:'Buyer refund requests — review & resolve' },
   ]},
   // Talking TO people, rather than only answering them. Threads opened here land
   // in Support, so there is still exactly one inbox.
-  { key:'comms', label:'Comms', icon:'paper-plane', blurb:'Reach people', sections:[
+  { key:'comms', label:'Comms', icon:'paper-plane', blurb:'Reach people', dept:'comms', sections:[
     { key:'outreach', label:'Message someone', icon:'envelope-open-text', desc:'Start a thread with any merchant, shopper, rider or marketer' },
     { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', desc:'Announce to a whole audience — in-app & push' },
   ]},
-  { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', sections:[
+  { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', dept:'growth', sections:[
     { key:'applications', label:'Marketers', icon:'bullhorn', desc:'Activate applicants as scouts · hiring track for a permanent role' },
     { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
     { key:'promotions', label:'Promotions & offers', icon:'tags', desc:'Campaigns & coupons', adminOnly:true },
   ]},
-  { key:'finance', label:'Finance', icon:'coins', blurb:'Money', adminOnly:true, sections:[
+  { key:'finance', label:'Finance', icon:'coins', blurb:'Money', dept:'finance', sections:[
     { key:'finance', label:'Revenue & ledger', icon:'chart-line', desc:'Live platform revenue and internal ledger' },
   ]},
-  { key:'people', label:'People', icon:'users', blurb:'HR', adminOnly:true, sections:[
+  { key:'people', label:'People', icon:'users', blurb:'HR', dept:'people', sections:[
     { key:'people', label:'Directory', icon:'address-book', desc:'Employee directory, onboarding & offboarding' },
+    // Granting console access is a security boundary: staffSetRole/onboardEmployee
+    // are assertAdmin server-side, so a People lead would only meet refusals here.
+    { key:'team', label:'Access & roles', icon:'user-gear', desc:'Tiers and department access for every employee', adminOnly:true },
+    { key:'attendance', label:'Attendance', icon:'clock', desc:'Timesheets — who worked when, and for how long' },
+    { key:'contracts', label:'Contracts', icon:'file-signature', desc:'Individual employment terms, pay and renewals' },
     { key:'careers', label:'Job applications', icon:'briefcase', desc:'Candidates from the careers page — triage & hire' },
   ]},
-  { key:'intelligence', label:'Intelligence', icon:'chart-pie', blurb:'BI', adminOnly:true, sections:[
+  { key:'intelligence', label:'Intelligence', icon:'chart-pie', blurb:'BI', dept:'intelligence', sections:[
     { key:'intelligence', label:'Business intelligence', icon:'chart-pie', desc:'Cross-platform data repository + AI brief' },
   ]},
-  { key:'legal', label:'Legal', icon:'gavel', blurb:'Compliance', adminOnly:true, sections:[
+  { key:'legal', label:'Legal', icon:'gavel', blurb:'Compliance', dept:'legal', sections:[
     { key:'legal', label:'Records', icon:'scale-balanced', desc:'Contracts, policies, cases & compliance' },
   ]},
   { key:'admin', label:'Admin', icon:'user-shield', blurb:'Platform control', adminOnly:true, sections:[
-    { key:'team', label:'Team & roles', icon:'user-gear', desc:'Grant or revoke staff access' },
     { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
     { key:'audit', label:'Audit log', icon:'clock-rotate-left', desc:'Who did what, across the platform' },
     { key:'maintenance', label:'Maintenance', icon:'screwdriver-wrench', desc:'One-off data & cleanup tools' },
@@ -88,17 +98,27 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
 WORKSPACES.forEach((w) => w.sections.forEach((s) => { SECTION_INDEX[s.key] = { section: s, workspace: w }; }));
 
-const canSee = (node, isAdmin) => isAdmin || !node.adminOnly;
-function visibleWorkspaces(isAdmin) {
+/* Visibility mirrors the SERVER gates (assertDept / assertLead in functions/index.js).
+   An admin sees everything; everyone else sees Command plus the workspaces for the
+   departments they hold. Hiding a workspace is presentation only — the callables
+   behind it enforce the same rule, so a hidden section is genuinely unreachable
+   rather than just invisible. */
+const canSee = (node, isAdmin, depts) => {
+  if (isAdmin) return true;
+  if (node.adminOnly) return false;
+  if (node.dept === undefined || node.dept === null) return true;   // Command: everyone
+  return depts.includes(node.dept);
+};
+function visibleWorkspaces(isAdmin, depts = []) {
   return WORKSPACES
-    .filter((w) => canSee(w, isAdmin))
-    .map((w) => ({ ...w, sections: w.sections.filter((s) => canSee(s, isAdmin)) }))
+    .filter((w) => canSee(w, isAdmin, depts))
+    .map((w) => ({ ...w, sections: w.sections.filter((sec) => canSee({ ...sec, dept: sec.dept === undefined ? w.dept : sec.dept }, isAdmin, depts)) }))
     .filter((w) => w.sections.length > 0);
 }
 
@@ -209,11 +229,32 @@ function NotificationsBell({ go }) {
 }
 
 function App() {
-  const { user, loading, isStaff, role } = useStaffClaims();
+  const { user, loading, isStaff, isAdmin, tier, departments, profile } = useStaffClaims();
   const { signOutUser } = useAuth();
-  const isAdmin = role === 'admin';
   const [active, setActive] = useSApp('command');
   const [menu, setMenu] = useSApp(false);
+
+  /* Manual refresh. Every useStaffResource on screen re-fetches when `tick` bumps,
+     so one button refreshes whatever the operator is actually looking at. `busy`
+     is a short spin so the click visibly did something even when the data is
+     unchanged (the hook's change-guard suppresses a no-op re-render). */
+  const [tick, setTick] = useSApp(0);
+  const [refreshing, setRefreshing] = useSApp(false);
+  const refresh = React.useCallback(() => {
+    setTick((t) => t + 1);
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 700);
+  }, []);
+  useEApp(() => {
+    const h = (e) => {
+      // R refreshes, unless the operator is typing into something.
+      const tag = (e.target && e.target.tagName) || '';
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'r' || e.key === 'R') { e.preventDefault(); refresh(); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [refresh]);
 
   /* Land an operator back in the department they actually work in rather than always
      on Command — Finance opens Finance, Support opens Support. Stored per-uid so a
@@ -235,7 +276,7 @@ function App() {
   useEscape(() => setMenu(false), menu);
   const [palette, setPalette] = useSApp(false);
 
-  const wsList = useMApp(() => visibleWorkspaces(isAdmin), [isAdmin]);
+  const wsList = useMApp(() => visibleWorkspaces(isAdmin, departments), [isAdmin, departments]);
   const searchItems = useMApp(() => wsList.flatMap((w) => w.sections.map((s) => ({ ...s, wsLabel: w.label }))), [wsList]);
 
   useEApp(() => {
@@ -248,15 +289,17 @@ function App() {
   if (!user) return <StaffLogin />;
   if (!isStaff) return <StaffDenied email={user.email} onSignOut={signOutUser} />;
 
-  // Resolve the active section → its workspace; fall back to Command/Overview if
-  // the current selection isn't visible for this role.
-  const resolved = SECTION_INDEX[active] && canSee(SECTION_INDEX[active].section, isAdmin) && canSee(SECTION_INDEX[active].workspace, isAdmin)
-    ? active : 'command';
+  // Resolve the active section → its workspace; fall back to Command if the current
+  // selection isn't visible for this person's tier + departments.
+  const entry = SECTION_INDEX[active];
+  const visible = entry && canSee(entry.workspace, isAdmin, departments) &&
+    canSee({ ...entry.section, dept: entry.section.dept === undefined ? entry.workspace.dept : entry.section.dept }, isAdmin, departments);
+  const resolved = visible ? active : 'command';
   const { section: activeSection, workspace: activeWorkspace } = SECTION_INDEX[resolved];
   const Screen = SCREENS[resolved] || CommandCenter;
 
-  const staffName = user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
-  const staffRole = isAdmin ? 'Operations Admin' : 'Moderator';
+  const staffName = (profile && profile.name) || user.displayName || (user.email ? user.email.split('@')[0] : 'Staff');
+  const staffRole = (profile && profile.title) || TIER_LABEL[tier] || (isAdmin ? 'Administrator' : 'Staff');
 
   // Selecting a workspace jumps to its first section.
   const pickWorkspace = (w) => { setActive(w.sections[0].key); };
@@ -276,6 +319,7 @@ function App() {
   );
 
   return (
+    <RefreshCtx.Provider value={{ tick, refresh, busy: refreshing }}>
     <div className="min-h-screen bg-page" data-screen-label={'Staff — ' + activeSection.label}>
       <div className="flex">
         {/* desktop two-tier nav */}
@@ -310,6 +354,12 @@ function App() {
                 <kbd className="text-[11px] px-1.5 py-0.5 rounded num" style={{ background:'var(--surface)', border:'1px solid var(--line)' }}>⌘K</kbd>
               </button>
               <button onClick={() => setPalette(true)} className="md:hidden w-9 h-9 rounded-full flex items-center justify-center t2" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }} aria-label="Search"><Icon name="magnifying-glass" /></button>
+              <ClockControl />
+              <button onClick={refresh} title="Refresh this screen (R)" aria-label="Refresh"
+                className="w-9 h-9 rounded-full flex items-center justify-center t2"
+                style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}>
+                <Icon name="rotate" className={refreshing ? 'fa-spin' : ''} />
+              </button>
               <NotificationsBell go={setActive} />
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
@@ -330,9 +380,10 @@ function App() {
       </div>
       <GlobalSearch open={palette} onClose={() => setPalette(false)} sections={searchItems} go={setActive} isAdmin={isAdmin} />
     </div>
+    </RefreshCtx.Provider>
   );
 }
 
 export default function StaffApp() {
-  return <ThemeProvider><App /></ThemeProvider>;
+  return <ThemeProvider><DialogProvider><App /></DialogProvider></ThemeProvider>;
 }

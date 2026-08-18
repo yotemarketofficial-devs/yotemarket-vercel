@@ -22,6 +22,7 @@ import {
   useStaffResource, fetchUsers, fetchContactCard, messageUser,
   sendBroadcast, fetchBroadcasts, fetchSupportTickets,
 } from './service.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useMemo } = React;
 
 const ROLE_TONE = { admin:'red', staff:'red', merchant:'pri', rider:'blue', shopper:'ok', marketer:'amber' };
@@ -211,6 +212,7 @@ const SEGMENTS = {
 };
 
 export function Broadcasts(){
+  const { confirm } = useDialogs();
   const { data: history, live, error, demo, reload } = useStaffResource(fetchBroadcasts, []);
   const [audience, setAudience] = useState('merchants');
   const [filter, setFilter] = useState('all');
@@ -238,7 +240,16 @@ export function Broadcasts(){
   const doSend = async (testOnly) => {
     if (!testOnly) {
       const n = count && count.recipients;
-      const ok = window.confirm(`Send “${title.trim()}” to ${n != null ? n.toLocaleString() : 'every matching'} recipient${n === 1 ? '' : 's'}?\n\nThis notifies them immediately and can't be recalled.`);
+      const ok = await confirm({
+        title:'Send this broadcast?', tone:'danger', icon:'bullhorn',
+        body:'It notifies everyone immediately, in-app and by push. It cannot be recalled.',
+        facts:[
+          { label:'Audience', value:`${audience}${filter !== 'all' ? ` · ${filter}` : ''}` },
+          { label:'Recipients', value: n != null ? n.toLocaleString() : 'every matching account' },
+          { label:'Title', value: title.trim() },
+        ],
+        confirmPhrase:'SEND', confirmLabel:'Broadcast now', confirmIcon:'bullhorn',
+      });
       if (!ok) return;
     }
     setBusy(true); setMsg(null);

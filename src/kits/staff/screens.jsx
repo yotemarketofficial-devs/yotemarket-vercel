@@ -28,6 +28,7 @@ const YOTE_SOCIALS = {
   youtube: 'https://www.youtube.com/@yotemarket',
 };
 import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
+import { useDialogs } from './dialogs.jsx';
 
 const payoutLabelStaff = (p) => {
   if (!p) return 'Not set';
@@ -121,6 +122,7 @@ function MConsoleTile({ label, value, sub, tone='pri' }){
 }
 
 function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
+  const { toast } = useDialogs();
   const storeId = row.id;
   const [d, setD] = useSS(null);
   const [err, setErr] = useSS(null);
@@ -138,14 +140,14 @@ function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
   const act = async (action) => {
     setBusy(action);
     try { await setMerchantStatus(storeId, action); reload(); onChanged && onChanged(); }
-    catch (e) { window.alert(e.message || 'Action failed.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Action failed.' }); }
     finally { setBusy(null); }
   };
   const submitNote = async () => {
     const t = note.trim(); if (!t) return;
     setSavingNote(true);
     try { await addStaffNote('merchant', storeId, t); setNote(''); reload(); }
-    catch (e) { window.alert(e.message || 'Could not add note.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not add note.' }); }
     finally { setSavingNote(false); }
   };
 
@@ -423,6 +425,7 @@ function Mini({ label, sub, v, tone, icon }){
 
 /* ============ MERCHANT VERIFICATION & OVERSIGHT ============ */
 export function Approvals({ isAdmin }){
+  const { confirm, prompt, toast } = useDialogs();
   const { data, live, reload: reloadMerchants } = useStaffResource(()=>fetchMerchants('all'), MERCHANTS);
   const [rows,setRows] = useSS(null);
   useES(()=>{ setRows(data); }, [data]);
@@ -450,7 +453,7 @@ export function Approvals({ isAdmin }){
   // Manual "Top brand" placement (staff override) — the storefront Top-brands rail.
   // Effective topBrand = this staff toggle OR an active Enterprise subscription.
   const toggleTopBrand = async (m) => {
-    if (m.enterprise && m.topBrand) { window.alert('This store is on Enterprise, which already grants Top-brand placement. Deactivate Enterprise to remove it.'); return; }
+    if (m.enterprise && m.topBrand) { toast({ tone:'error', title: 'This store is on Enterprise, which already grants Top-brand placement. Deactivate Enterprise to remove it.' }); return; }
     const next = !m.topBrand;
     setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,topBrand:next,topBrandStaff:next,_busy:true}:r));
     try { await setMerchantStatus(m.id, next?'topbrand':'untopbrand'); }
@@ -467,11 +470,16 @@ export function Approvals({ isAdmin }){
   const { data: delReqs, reload: reloadDel } = useStaffResource(fetchDeletionRequests, []);
   const [delBusy, setDelBusy] = useSS(null);
   const resolveClosure = async (id, approve) => {
-    if (approve && !window.confirm('Approve closure? This removes the store from the marketplace, closes the merchant account and ends the subscription.')) return;
-    const note = approve ? '' : (window.prompt('Reason for declining (optional):') || '');
+    if (approve && !await confirm({ title: 'Approve closure? This removes the store from the marketplace, closes the merchant account and ends the subscription.' })) return;
+    let note = '';
+    if (!approve) {
+      note = await prompt({ title:'Decline this request?', tone:'danger', icon:'xmark', optional:true, multiline:true,
+        placeholder:'Reason (optional) — shared with the merchant', confirmLabel:'Decline' });
+      if (note === null) return;
+    }
     setDelBusy(id);
     try { await resolveDeletionRequest(id, approve, note); reloadDel(); }
-    catch (e) { window.alert(e.message || 'Could not resolve.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not resolve.' }); }
     finally { setDelBusy(null); }
   };
   const pendingClosures = (delReqs || []).filter(r=>r.status==='pending');
@@ -565,6 +573,7 @@ function Chk({ ok, label }){
    unit economics (price per package, per package per km) from the live rate card; the
    server recomputes authoritatively on activate. Staff-only surface. */
 function EnterpriseModal({ m, onClose, onDone }){
+  const { confirm } = useDialogs();
   const [card, setCard] = useSS(null);      // rate card rows (per delivery sub-tier)
   const [err, setErr] = useSS(null);
   const [subTier, setSubTier] = useSS('a05');
@@ -589,7 +598,7 @@ function EnterpriseModal({ m, onClose, onDone }){
     } catch (e) { setErr(e.message||'Activation failed'); setBusy(false); }
   };
   const deactivate = async () => {
-    if (!window.confirm(`Deactivate Enterprise for ${m.shop}? Top-brand placement is removed (unless a manual Top-brand override is set).`)) return;
+    if (!await confirm({ title: `Deactivate Enterprise for ${m.shop}? Top-brand placement is removed (unless a manual Top-brand override is set).` })) return;
     setBusy(true);
     try { await setEnterprise(m.id, false); onDone(m, { enterprise:false, topBrand: !!m.topBrandStaff, plan:'' }); onClose(); }
     catch (e) { setErr(e.message||'Could not deactivate'); setBusy(false); }
@@ -712,6 +721,7 @@ function MarketerDrawer({ m, kind, onActivate, onReject, onHire, onClose }){
 }
 
 export function Applications(){
+  const { toast } = useDialogs();
   const { data, live, reload } = useStaffResource(fetchMarketers, { applicants: APPLICANTS, scouts: [] });
   const [rows, setRows] = useSS(null);      // applicants awaiting activation
   const [track, setTrack] = useSS(null);    // active scouts, for the hiring track
@@ -729,19 +739,19 @@ export function Applications(){
       const r = await setMarketerStage(a.id, 'active');
       setHired({ name:a.name, code:(r && r.code) || a.code || '' });
       reload && reload();
-    } catch (e) { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); window.alert(e.message || 'Could not activate.'); }
+    } catch (e) { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); toast({ tone:'error', title: e.message || 'Could not activate.' }); }
   };
   const reject = async (a) => {
     setRows(rs => (rs||[]).filter(r=>r.id!==a.id));
     try { await setMarketerStage(a.id, 'rejected'); }
-    catch (e) { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); window.alert(e.message || 'Could not reject.'); }
+    catch (e) { setRows(rs => [...(rs||[]).filter(r=>r.id!==a.id), a]); toast({ tone:'error', title: e.message || 'Could not reject.' }); }
   };
   // 2. Hiring — moving an active scout toward a permanent role.
   const hire = async (s, stage) => {
     const prev = scouts;
     setTrack(ts => (ts||[]).map(x => x.id===s.id ? { ...x, hireStage:stage } : x));
     try { await setMarketerHireStage(s.id, stage); }
-    catch (e) { setTrack(prev); window.alert(e.message || 'Could not update the hiring track.'); }
+    catch (e) { setTrack(prev); toast({ tone:'error', title: e.message || 'Could not update the hiring track.' }); }
   };
 
   return (<div className="fadeup space-y-8">
@@ -839,6 +849,7 @@ const socialProfileUrl = (platform, handle) => {
 };
 
 export function Scouts({ isAdmin }){
+  const { confirm, prompt, toast } = useDialogs();
   const { data: scoutData, live } = useStaffResource(fetchMarketers, { applicants: [], scouts: SCOUTS });
   const { data: payoutData } = useStaffResource(fetchPayouts, PAYOUT_REQUESTS);
   const { data: follows, reload: reloadFollows } = useStaffResource(fetchMerchantFollows, []);
@@ -857,12 +868,17 @@ export function Scouts({ isAdmin }){
     catch { setReqs(prev); }
   };
   const resolveFollow = async (id, approve) => {
-    const reason = approve ? '' : (window.prompt('Reason for rejecting (optional):') || '');
+    let reason = '';
+    if (!approve) {
+      reason = await prompt({ title:'Reject this submission?', tone:'danger', icon:'xmark', optional:true, multiline:true,
+        placeholder:'Reason (optional) — recorded on the record', confirmLabel:'Reject' });
+      if (reason === null) return;
+    }
     try { await resolveMerchantFollow(id, approve, reason); reloadFollows(); }
-    catch (e) { window.alert(e.message || 'Could not resolve.'); }
+    catch (e) { toast({ tone:'error', title: e.message || 'Could not resolve.' }); }
   };
   const snapshot = async () => {
-    if (!window.confirm("Snapshot every active scout's current balance as a protected floor? Run once at the activation-pay cutover. Safe to re-run.")) return;
+    if (!await confirm({ title: "Snapshot every active scout's current balance as a protected floor? Run once at the activation-pay cutover. Safe to re-run." })) return;
     try { const r = await snapshotScoutFloors(); setSnapMsg(`Floors snapshotted for ${r.updated} scout(s).`); }
     catch (e) { setSnapMsg(e.message || 'Snapshot failed.'); }
   };
@@ -1146,10 +1162,11 @@ export function Team(){
 
 /* ============ MAINTENANCE (admin — one-off data/cleanup tools) ============ */
 export function Maintenance(){
+  const { confirm } = useDialogs();
   const [cleanBusy, setCleanBusy] = useSS(false);
   const [cleanDone, setCleanDone] = useSS(null);
   const runCleanup = async () => {
-    if (!window.confirm('Permanently delete the 18 seeded non-Google (@yotemarket.com) test accounts and their test stores/products? This cannot be undone. Google sign-in accounts are NOT affected.')) return;
+    if (!await confirm({ title: 'Permanently delete the 18 seeded non-Google (@yotemarket.com) test accounts and their test stores/products? This cannot be undone. Google sign-in accounts are NOT affected.' })) return;
     setCleanBusy(true);
     try { const r = await cleanupSeededTestAccounts(); setCleanDone(r?.counts || {}); }
     catch (e) { setCleanDone({ error: e.message || 'Cleanup failed' }); }
@@ -1183,10 +1200,11 @@ export function Maintenance(){
    price and the struck-through "was" were stored inverted (was < price). Swaps them.
    Idempotent — re-running finds nothing once clean. */
 function InvertedPriceFix(){
+  const { confirm } = useDialogs();
   const [busy, setBusy] = useSS(false);
   const [res, setRes] = useSS(null); // { ok, count, fixed:[{name,price,was}] } | { error }
   const run = async () => {
-    if (!window.confirm('Repair products whose discount was stored inverted (struck-through price cheaper than the current one)? This swaps the two prices so the discount reads correctly. Safe to re-run.')) return;
+    if (!await confirm({ title: 'Repair products whose discount was stored inverted (struck-through price cheaper than the current one)? This swaps the two prices so the discount reads correctly. Safe to re-run.' })) return;
     setBusy(true); setRes(null);
     try { setRes(await fixInvertedPrices()); }
     catch (e) { setRes({ error: e.message || 'Could not repair prices.' }); }
@@ -1217,10 +1235,11 @@ function InvertedPriceFix(){
    feed clips, broadcasts, team and POS terminals. Orders/settlements/receipts are kept
    (financial history). Includes TEMPORARILY suspended stores, hence the loud confirm. */
 function SuspendedStoreCleanup(){
+  const { confirm } = useDialogs();
   const [busy, setBusy] = useSS(false);
   const [res, setRes] = useSS(null); // { ok, count, purged:[{id,name}] } | { error }
   const run = async () => {
-    if (!window.confirm('Permanently DELETE every store currently suspended — including any that were only TEMPORARILY suspended by staff (not just closed ones)? Each store, its products, feed clips, broadcasts, team and POS terminals are removed. Orders and financial records are kept. This cannot be undone.')) return;
+    if (!await confirm({ title: 'Permanently DELETE every store currently suspended — including any that were only TEMPORARILY suspended by staff (not just closed ones)? Each store, its products, feed clips, broadcasts, team and POS terminals are removed. Orders and financial records are kept. This cannot be undone.' })) return;
     setBusy(true); setRes(null);
     try { setRes(await purgeSuspendedStores()); }
     catch (e) { setRes({ error: e.message || 'Could not clear suspended stores.' }); }
@@ -1251,12 +1270,13 @@ function SuspendedStoreCleanup(){
    already created is fake withdrawable money, so it must be cleared before payouts
    go live. Idempotent: reversed entries are skipped on a re-run. */
 function TestCreditCleanup(){
+  const { confirm } = useDialogs();
   const [email, setEmail] = useSS('');
   const [busy, setBusy] = useSS(false);
   const [res, setRes] = useSS(null); // { ok, merchants, removed, amount, shortfall } | { error }
   const run = async (all) => {
     const who = all ? 'EVERY merchant on the platform' : (email.trim() || '—');
-    if (!window.confirm(`Reverse sandbox test credits for ${who}? This deducts the fake amounts from their available balance. Real earnings are untouched.`)) return;
+    if (!await confirm({ title: `Reverse sandbox test credits for ${who}? This deducts the fake amounts from their available balance. Real earnings are untouched.` })) return;
     setBusy(true); setRes(null);
     try { setRes(await staffRemoveTestCredits(all ? {} : { email: email.trim() })); }
     catch (e) { setRes({ error: e.message || 'Could not reverse test credits.' }); }

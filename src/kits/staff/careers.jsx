@@ -5,6 +5,7 @@ import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
 import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening, deleteJobApplication } from './service.js';
 import { useEscape } from '../../lib/useEscape.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState } = React;
 
 const JOB_TYPES = ['full-time', 'part-time', 'contract', 'internship', 'volunteer'];
@@ -27,6 +28,7 @@ const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString('en-KE', { day: 'n
 
 /* Detail drawer — the full application + funnel controls. */
 function ApplicantDrawer({ app, onClose, onMoved }) {
+  const { confirm } = useDialogs();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
@@ -39,7 +41,7 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
   };
   // Right to erasure — a candidate can ask us to delete their data.
   const erase = async () => {
-    if (!window.confirm(`Permanently erase ${app.name}'s application (${app.ref})? This deletes their name, contact details and CV links. It can't be undone.`)) return;
+    if (!await confirm({ title: `Permanently erase ${app.name}'s application (${app.ref})? This deletes their name, contact details and CV links. It can't be undone.` })) return;
     setBusy(true); setErr('');
     try { await deleteJobApplication(app.id); onMoved && onMoved(); onClose(); }
     catch (e) { setErr(e.message || 'Could not delete.'); setBusy(false); }
@@ -113,6 +115,7 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
 /* Open positions — what the public /careers page advertises. Posting here puts a
    role live immediately (the page streams job_openings); no deploy needed. */
 function Openings() {
+  const { confirm } = useDialogs();
   const blank = { title: '', dept: 'engineering', type: 'full-time', location: 'Nairobi', summary: '' };
   const [form, setForm] = useState(blank);
   const [busy, setBusy] = useState(false);
@@ -137,7 +140,7 @@ function Openings() {
     catch (e) { setMsg({ ok: false, text: e.message || 'Failed.' }); }
   };
   const remove = async (o) => {
-    if (!window.confirm(`Delete “${o.title}”? This can't be undone.`)) return;
+    if (!await confirm({ title: `Delete “${o.title}”? This can't be undone.` })) return;
     try { await deleteJobOpening(o.id); reload(); }
     catch (e) { setMsg({ ok: false, text: e.message || 'Failed.' }); }
   };

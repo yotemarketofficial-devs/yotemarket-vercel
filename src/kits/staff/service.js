@@ -4,7 +4,7 @@
    `admin`/`moderator` custom claim. Each call degrades to the bundled demo data
    when the backend is unavailable or the function isn't deployed yet, so the
    console always renders. */
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useContext, createContext } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions, firebaseEnabled } from '../../lib/firebase.js';
 import { SCOUTS, PAYOUT_REQUESTS, APPLICANTS } from './data.js';
@@ -23,35 +23,69 @@ function call(name) {
 const OWNER_EMAILS = ['007arnogichuche@gmail.com', 'yotemarketofficial@gmail.com'];
 
 /**
- * Resolves the signed-in user's staff access. Returns
- * { user, loading, isStaff, role, refresh }.
+ * Resolves the signed-in user's staff access:
+ * { user, loading, isStaff, isAdmin, tier, departments, role, profile, refresh }.
+ *
+ * Custom claims only carry the coarse admin/moderator bit, and DEPARTMENTS live on
+ * `staff/{uid}` which no client can read (rules deny it). So the claim gets us in
+ * the door instantly, then `staffMe` fills in exactly the access the server will
+ * enforce — the console must never offer a workspace the backend would refuse.
+ * Until it answers we assume the narrowest access, so nothing flashes into view
+ * and then disappears.
  */
 export function useStaffClaims() {
-  const [state, setState] = useState({ user: null, loading: firebaseEnabled, isStaff: false, role: null });
+  const [state, setState] = useState({
+    user: null, loading: firebaseEnabled, isStaff: false, role: null,
+    tier: null, departments: [], isAdmin: false, profile: null, resolved: false,
+  });
 
   const evaluate = useCallback(async (force = false) => {
     const u = auth?.currentUser || null;
-    if (!u) { setState({ user: null, loading: false, isStaff: false, role: null }); return; }
+    if (!u) { setState({ user: null, loading: false, isStaff: false, role: null, tier: null, departments: [], isAdmin: false, profile: null, resolved: true }); return; }
     try {
       const token = await u.getIdTokenResult(force);
       const c = token.claims || {};
       const owner = u.emailVerified && OWNER_EMAILS.includes(String(u.email || '').toLowerCase());
       const isStaff = c.admin === true || c.moderator === true || owner;
-      const role = (c.admin === true || owner) ? 'admin' : (c.moderator === true ? 'moderator' : null);
-      setState({ user: u, loading: false, isStaff, role });
+      const claimAdmin = c.admin === true || owner;
+      setState((s) => ({ ...s, user: u, loading: false, isStaff,
+        role: claimAdmin ? 'admin' : (c.moderator === true ? 'moderator' : null),
+        isAdmin: claimAdmin, tier: claimAdmin ? 'admin' : s.tier, resolved: false }));
+      if (!isStaff) { setState((s) => ({ ...s, departments: [], tier: null, resolved: true })); return; }
+
+      try {
+        const me = await call('staffMe')();
+        setState((s) => ({ ...s, isAdmin: !!me.isAdmin, tier: me.tier || (me.isAdmin ? 'admin' : 'agent'),
+          departments: Array.isArray(me.departments) ? me.departments : [],
+          role: me.isAdmin ? 'admin' : 'moderator', profile: me, resolved: true }));
+      } catch {
+        // staffMe not deployed / unreachable — fall back to the claim so an admin
+        // is never locked out of their own console by a backend blip.
+        setState((s) => ({ ...s, tier: claimAdmin ? 'admin' : 'lead',
+          departments: claimAdmin ? ALL_DEPTS : LEGACY_DEPTS, resolved: true }));
+      }
     } catch {
-      setState({ user: u, loading: false, isStaff: false, role: null });
+      setState({ user: u, loading: false, isStaff: false, role: null, tier: null, departments: [], isAdmin: false, profile: null, resolved: true });
     }
   }, []);
 
   useEffect(() => {
-    if (!firebaseEnabled || !auth) { setState({ user: null, loading: false, isStaff: false, role: null }); return undefined; }
+    if (!firebaseEnabled || !auth) { setState({ user: null, loading: false, isStaff: false, role: null, tier: null, departments: [], isAdmin: false, profile: null, resolved: true }); return undefined; }
     const unsub = auth.onAuthStateChanged(() => evaluate(false));
     return () => unsub();
   }, [evaluate]);
 
   return { ...state, refresh: () => evaluate(true) };
 }
+
+// Mirrors STAFF_DEPTS / LEGACY_MOD_DEPTS in functions/index.js — keep in sync.
+export const ALL_DEPTS = ['marketplace', 'logistics', 'safety', 'support', 'growth', 'comms', 'finance', 'people', 'legal', 'intelligence'];
+export const LEGACY_DEPTS = ['marketplace', 'logistics', 'safety', 'support', 'growth', 'comms'];
+export const DEPT_LABEL = {
+  marketplace:'Marketplace', logistics:'Logistics', safety:'Trust & Safety', support:'Support',
+  growth:'Growth', comms:'Comms', finance:'Finance', people:'People', legal:'Legal', intelligence:'Intelligence',
+};
+export const TIER_LABEL = { admin:'Administrator', lead:'Department lead', agent:'Agent' };
 
 /** Same shape, no values — [] / {} / 0 / ''. Lets a failed load render each screen's
  *  real empty state instead of inventing numbers. */
@@ -65,6 +99,29 @@ function emptyLike(v) {
   if (typeof v === 'number') return 0;
   if (typeof v === 'string') return '';
   return v;
+}
+
+/* ── Manual refresh ───────────────────────────────────────────────────────────
+   Staff reads are callable-based, so a screen only updates on its own poll timer.
+   That's fine for a table you're watching, but useless the moment you've just
+   done something elsewhere (paid a merchant, released a run) and want to SEE it
+   now. The shell's refresh button bumps this counter; every useStaffResource on
+   screen re-fetches immediately, and screens that manage their own loads can
+   subscribe with useRefreshSignal(). */
+const RefreshCtx = createContext({ tick: 0, refresh: () => {}, busy: false });
+export const useRefresh = () => useContext(RefreshCtx);
+export { RefreshCtx };
+
+/** Run `fn` whenever the operator hits refresh (not on first mount). */
+export function useRefreshSignal(fn) {
+  const { tick } = useRefresh();
+  const ref = useRef(fn);
+  ref.current = fn;
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    ref.current && ref.current();
+  }, [tick]);
 }
 
 // ── Generic loader hook: fetch via `loader`, fall back to `fallback` ──────────
@@ -92,6 +149,7 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
   const loaderRef = useRef(loader);
   loaderRef.current = loader;
   const lastJson = useRef(null);
+  const { tick } = useRefresh();
 
   // Apply a fresh result, but only re-render when the payload actually changed.
   const apply = useCallback((d) => {
@@ -118,7 +176,7 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, reloadKey]);
+  }, [...deps, reloadKey, tick]);
 
   // Silent background refresh — poll while visible + refetch on focus/visibility
   // regain. Never toggles `loading`; the change-guard suppresses no-op renders.
@@ -499,3 +557,57 @@ export async function resolveDispute(args) {
 
 // Demo passthroughs (no backend domain yet) — kept here so screens import one place.
 export const demo = { SCOUTS, PAYOUT_REQUESTS, APPLICANTS };
+
+// ── Staff management & time clock ────────────────────────────────────────────
+/** Who am I, as the server sees it → { staff, tier, departments, isAdmin, ... }. */
+export async function fetchMe() { return call('staffMe')(); }
+/** Every employee with tier, departments and whether they're on shift now. */
+export async function fetchStaff() {
+  const d = await call('listStaff')();
+  if (!d || !Array.isArray(d.employees)) throw new Error('listStaff: unexpected shape');
+  return d.employees;
+}
+/** Grant or change console access. role: 'admin'|'lead'|'agent'|'none', departments: string[]. */
+export async function setStaffAccess({ email, role, departments }) {
+  return call('staffSetRole')({ email, role, departments });
+}
+/** Onboard a new employee (HR record + console access). */
+export async function onboardStaff(args) { return call('onboardEmployee')(args); }
+/** Offboard — revokes portal access immediately. */
+export async function offboardStaff(uid) { return call('offboardEmployee')({ uid }); }
+
+/** Start my shift. Idempotent — returns the open one if already clocked in. */
+export async function clockIn() { return call('staffClockIn')(); }
+/** End my shift. { note? } → { ok, minutes }. */
+export async function clockOut(note) { return call('staffClockOut')(note ? { note } : {}); }
+/** My own clock: open shift, recent history, today/this-week totals. */
+export async function fetchMyShifts() { return call('staffMyShifts')(); }
+/** Team attendance (People dept) → { shifts, onShift, byPerson }. */
+export async function fetchAttendance(days = 14) { return call('staffAttendance')({ days }); }
+/** People lead: close a shift somebody left open. */
+export async function closeShift(shiftId, minutes) {
+  return call('staffCloseShift')({ shiftId, ...(minutes ? { minutes } : {}) });
+}
+
+// ── Employment contracts ─────────────────────────────────────────────────────
+/** Every contract (People dept). { uid? } scopes to one person. */
+export async function fetchContracts(uid) {
+  const d = await call('staffListContracts')(uid ? { uid } : {});
+  if (!d || !Array.isArray(d.contracts)) throw new Error('staffListContracts: unexpected shape');
+  return d;
+}
+/** My own contract(s) — everyone may read their own terms. */
+export async function fetchMyContract() { return call('staffMyContract')(); }
+/** Issue (omit id) or amend a contract. Issuing supersedes the current active one. */
+export async function saveContract(args) { return call('staffSaveContract')(args); }
+/** Acknowledge your own contract by typing your name. */
+export async function signContract(id, name) { return call('staffSignContract')({ id, name }); }
+/** End a contract early, with a reason. */
+export async function terminateContract(id, reason, lastDay) {
+  return call('staffTerminateContract')({ id, reason, ...(lastDay ? { lastDay } : {}) });
+}
+export const CONTRACT_TYPE_LABEL = {
+  permanent:'Permanent', fixed_term:'Fixed term', probation:'Probation',
+  contractor:'Contractor', intern:'Intern', casual:'Casual',
+};
+export const PAY_PERIOD_LABEL = { monthly:'/month', daily:'/day', hourly:'/hour', per_run:'/run' };

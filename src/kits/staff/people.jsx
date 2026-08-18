@@ -1,0 +1,442 @@
+/* people.jsx — Staff management: the time clock, access control and timesheets.
+
+   Three things that were missing:
+
+   • ClockControl — a shift clock in the console header. Staff hours were not
+     recorded anywhere, so there was no answer to "was anyone on the desk when
+     this ticket sat unanswered for six hours?".
+   • StaffAccess — the old Team screen granted a binary admin/moderator role, so
+     every moderator could approve scout payouts, suspend riders and (once Comms
+     shipped) broadcast to every user on the platform. Access is now a TIER
+     (admin / department lead / agent) plus the DEPARTMENTS it applies to, and
+     the same rule is enforced server-side by assertDept/assertLead — this screen
+     only decides what to send.
+   • Attendance — timesheets built from the clock, including the forgot-to-clock-
+     out case, which a people lead closes explicitly so a corrected shift is
+     visibly corrected rather than silently counted as worked. */
+import React from 'react';
+import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Icon, DataTable, Modal, EmptyState, BackendError, exportCsv } from './ui.jsx';
+import {
+  useStaffResource, useStaffClaims, useRefreshSignal,
+  fetchStaff, setStaffAccess, onboardStaff, offboardStaff,
+  clockIn, clockOut, fetchMyShifts, fetchAttendance, closeShift,
+  ALL_DEPTS, DEPT_LABEL, TIER_LABEL,
+} from './service.js';
+import { useDialogs } from './dialogs.jsx';
+const { useState, useEffect, useCallback } = React;
+
+const TIER_TONE = { admin:'red', lead:'pri', agent:'blue' };
+const hhmm = (min) => {
+  if (min == null) return '—';
+  const h = Math.floor(min / 60); const m = Math.round(min % 60);
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+};
+const clockTime = (ms) => (ms ? new Date(ms).toLocaleTimeString('en-KE', { hour:'2-digit', minute:'2-digit' }) : '—');
+const dayLabel = (d) => {
+  if (!d) return '—';
+  const dt = new Date(`${d}T00:00:00`);
+  return dt.toLocaleDateString('en-KE', { weekday:'short', day:'numeric', month:'short' });
+};
+
+/* ══ The header clock ═════════════════════════════════════════════════════ */
+export function ClockControl() {
+  const { isStaff } = useStaffClaims();
+  const { confirm, prompt, toast } = useDialogs();
+  const [state, setState] = useState(null);   // { open, todayMinutes, weekMinutes }
+  const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [panel, setPanel] = useState(false);
+
+  const load = useCallback(() => {
+    fetchMyShifts().then(setState).catch(() => setState(null));
+  }, []);
+  useEffect(() => { if (isStaff) load(); }, [isStaff, load]);
+  useRefreshSignal(load);
+
+  // Tick only while a shift is open — no timer running for a clocked-out console.
+  const open = state && state.open;
+  useEffect(() => {
+    if (!open) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, [open]);
+
+  if (!isStaff || !state) return null;
+
+  const elapsed = open ? Math.round((now - (open.clockInAt || now)) / 60000) : 0;
+
+  const go = async () => {
+    if (busy) return;
+    if (!open) {
+      setBusy(true);
+      try { await clockIn(); toast({ tone:'ok', title:'Clocked in', body:`Shift started at ${clockTime(Date.now())}.` }); load(); }
+      catch (e) { toast({ tone:'error', title:'Could not clock in', body:e.message }); }
+      finally { setBusy(false); }
+      return;
+    }
+    const ok = await confirm({
+      title:'End your shift?', icon:'clock',
+      body:'Your hours are recorded on the team timesheet.',
+      facts:[{ label:'Started', value:clockTime(open.clockInAt) }, { label:'Elapsed', value:hhmm(elapsed) }],
+      confirmLabel:'Clock out', confirmIcon:'right-from-bracket',
+    });
+    if (!ok) return;
+    const note = await prompt({
+      title:'Anything to hand over?', optional:true, multiline:true,
+      placeholder:'Optional — what you left in progress, for whoever picks it up.',
+      confirmLabel:'Clock out', hint:'Leave blank if there is nothing outstanding.',
+    });
+    if (note === null) return;
+    setBusy(true);
+    try { const r = await clockOut(note); toast({ tone:'ok', title:'Clocked out', body:`${hhmm(r.minutes)} recorded.` }); load(); }
+    catch (e) { toast({ tone:'error', title:'Could not clock out', body:e.message }); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="relative">
+      <button onClick={() => setPanel((p) => !p)} title={open ? 'On shift' : 'Clocked out'}
+        className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-semibold"
+        style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', color: open ? 'var(--green)' : 'var(--t3)', border:'1px solid var(--line)' }}>
+        <span className="w-2 h-2 rounded-full" style={{ background: open ? 'var(--green)' : 'var(--t3)' }} />
+        <span className="num">{open ? hhmm(elapsed) : 'Off shift'}</span>
+      </button>
+      <button onClick={() => setPanel((p) => !p)} aria-label="Time clock"
+        className="sm:hidden w-9 h-9 rounded-full flex items-center justify-center"
+        style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', color: open ? 'var(--green)' : 'var(--t2)', border:'1px solid var(--line)' }}>
+        <Icon name="clock" />
+      </button>
+
+      {panel && (<>
+        <div className="fixed inset-0 z-40" onClick={() => setPanel(false)} />
+        <div className="absolute right-0 mt-2 rounded-xl overflow-hidden z-50 p-4"
+          style={{ width:250, background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
+          <div className="text-xs font-bold uppercase t3" style={{ letterSpacing:'.08em' }}>Your shift</div>
+          <div className="text-2xl font-bold t1 num mt-1">{open ? hhmm(elapsed) : 'Off shift'}</div>
+          <div className="text-xs t3">{open ? `Since ${clockTime(open.clockInAt)}` : 'Not clocked in'}</div>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div className="rounded-lg p-2" style={{ background:'var(--surface2)' }}>
+              <div className="t3">Today</div><div className="num font-bold t1">{hhmm(state.todayMinutes)}</div>
+            </div>
+            <div className="rounded-lg p-2" style={{ background:'var(--surface2)' }}>
+              <div className="t3">This week</div><div className="num font-bold t1">{hhmm(state.weekMinutes)}</div>
+            </div>
+          </div>
+          <Btn kind={open ? 'soft' : 'success'} size="sm" className="w-full mt-3"
+            icon={busy ? 'spinner' : (open ? 'right-from-bracket' : 'play')}
+            onClick={() => { go(); setPanel(false); }} disabled={busy}>
+            {open ? 'Clock out' : 'Clock in'}
+          </Btn>
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+/* ══ Access & roles ═══════════════════════════════════════════════════════ */
+export function StaffAccess() {
+  const { data, live, error, demo, reload } = useStaffResource(fetchStaff, []);
+  const { confirm, toast } = useDialogs();
+  const { user } = useStaffClaims();
+  const [editing, setEditing] = useState(null);   // employee row
+  const [adding, setAdding] = useState(false);
+
+  const rows = Array.isArray(data) ? data : [];
+  const active = rows.filter((r) => r.status === 'active');
+
+  const offboard = async (emp) => {
+    const ok = await confirm({
+      title:`Offboard ${emp.name || emp.email}?`, tone:'danger', icon:'user-slash',
+      body:'Their console access is revoked immediately. The HR record and their timesheets are kept.',
+      facts:[{ label:'Access', value:`${TIER_LABEL[emp.tier] || emp.tier}${emp.departments.length ? ` · ${emp.departments.length} dept` : ''}` }],
+      confirmLabel:'Offboard', confirmIcon:'user-slash',
+    });
+    if (!ok) return;
+    try { await offboardStaff(emp.uid); toast({ tone:'ok', title:`${emp.name || emp.email} offboarded.` }); reload(); }
+    catch (e) { toast({ tone:'error', title:'Could not offboard', body:e.message }); }
+  };
+
+  return (<div className="fadeup space-y-6">
+    <SectionHead icon="user-gear" title="Access &amp; roles"
+      sub={demo ? 'No backend configured' : (live ? 'What each person can open, and what they can do there' : 'Loading the team…')}
+      action={<Btn kind="primary" size="md" icon="user-plus" onClick={() => setAdding(true)}>Add someone</Btn>} />
+    <BackendError error={error} onRetry={reload} />
+
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <Stat label="Active staff" value={active.length} sub={`${rows.length - active.length} offboarded`} icon="users" tone="pri" />
+      <Stat label="Administrators" value={active.filter((r) => r.tier === 'admin').length} sub="platform-wide access" icon="user-shield" tone="red" />
+      <Stat label="Department leads" value={active.filter((r) => r.tier === 'lead').length} icon="user-tie" tone="blue" />
+      <Stat label="On shift now" value={active.filter((r) => r.onShiftSince).length} icon="clock" tone="green" />
+    </div>
+
+    {/* Anyone still on the pre-department model is enforced under a fallback, so
+        say so plainly rather than showing access nobody actually chose. */}
+    {active.some((r) => !r.migrated && r.tier !== 'admin') && (
+      <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background:'var(--amber-bg)', color:'var(--amber)' }}>
+        <Icon name="circle-info" className="mt-0.5" />
+        <div className="text-sm">
+          <b>{active.filter((r) => !r.migrated && r.tier !== 'admin').length} account(s) haven't been assigned departments yet.</b>
+          <div className="text-xs mt-0.5" style={{ opacity:.9 }}>They're running on the default — lead of every operational department. Open each one and narrow it to what they actually do.</div>
+        </div>
+      </div>
+    )}
+
+    <Card className="p-0 overflow-hidden">
+      <DataTable minWidth={820} rows={rows} keyField="uid" pageSize={15} onRowClick={(r) => setEditing(r)}
+        empty={<EmptyState icon="users" title="No staff yet." sub="Add your first team member to grant console access." />}
+        columns={[
+          { key:'name', header:'Person', sort:true, render:(r) => (
+            <span className="flex items-center gap-2.5">
+              <Avatar name={r.name || r.email} size={30} />
+              <span className="min-w-0">
+                <span className="block font-semibold t1 truncate">{r.name || r.email}{r.uid === (user && user.uid) ? <span className="t3 font-normal"> · you</span> : ''}</span>
+                <span className="block text-xs t3 truncate">{r.title ? `${r.title} · ` : ''}{r.email}</span>
+              </span>
+            </span>) },
+          { key:'tier', header:'Tier', sort:true, render:(r) => <Pill tone={TIER_TONE[r.tier] || 'blue'}>{TIER_LABEL[r.tier] || r.tier}</Pill> },
+          { key:'departments', header:'Departments', render:(r) => (r.tier === 'admin'
+            ? <span className="text-xs t3">All departments</span>
+            : <span className="flex flex-wrap gap-1">{(r.departments || []).slice(0, 4).map((d) => (
+              <span key={d} className="px-1.5 py-0.5 rounded text-[11px] font-semibold" style={{ background:'var(--surface2)', color:'var(--t2)' }}>{DEPT_LABEL[d] || d}</span>
+            ))}{(r.departments || []).length > 4 && <span className="text-[11px] t3">+{r.departments.length - 4}</span>}</span>) },
+          { key:'onShiftSince', header:'Shift', align:'center', render:(r) => (r.onShiftSince
+            ? <Pill tone="ok">On since {clockTime(r.onShiftSince)}</Pill>
+            : <span className="text-xs t3">—</span>) },
+          { key:'status', header:'Status', render:(r) => (r.status === 'active'
+            ? <Pill tone="ok">Active</Pill> : <Pill tone="red">Offboarded</Pill>) },
+          { key:'act', header:'', csv:false, align:'right', render:(r) => (
+            <span className="flex items-center gap-1.5 justify-end">
+              <Btn kind="soft" size="sm" icon="pen" onClick={(e) => { e.stopPropagation(); setEditing(r); }}>Access</Btn>
+              {r.status === 'active' && r.uid !== (user && user.uid) &&
+                <Btn kind="ghost" size="sm" icon="user-slash" onClick={(e) => { e.stopPropagation(); offboard(r); }} title="Revoke access" />}
+            </span>) },
+        ]} />
+    </Card>
+
+    {editing && <AccessDrawer emp={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} isSelf={editing.uid === (user && user.uid)} />}
+    {adding && <AddStaffDrawer onClose={() => setAdding(false)} onSaved={() => { setAdding(false); reload(); }} />}
+  </div>);
+}
+
+/* Tier + departments for one person. Deliberately shows what each tier can DO,
+   because "lead vs agent" means nothing without the consequence next to it. */
+function AccessDrawer({ emp, onClose, onSaved, isSelf }) {
+  const { toast } = useDialogs();
+  const [tier, setTier] = useState(emp.tier === 'admin' ? 'admin' : emp.tier || 'agent');
+  const [depts, setDepts] = useState(emp.departments || []);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const toggle = (d) => setDepts((xs) => (xs.includes(d) ? xs.filter((x) => x !== d) : [...xs, d]));
+  const ok = tier === 'admin' || depts.length > 0;
+
+  const save = async () => {
+    setBusy(true); setErr('');
+    try {
+      await setStaffAccess({ email: emp.email, role: tier, departments: tier === 'admin' ? ALL_DEPTS : depts });
+      toast({ tone:'ok', title:'Access updated', body:`${emp.name || emp.email} is now ${TIER_LABEL[tier]}${tier !== 'admin' ? ` for ${depts.length} department${depts.length === 1 ? '' : 's'}` : ''}.` });
+      onSaved();
+    } catch (e) { setErr(e.message || 'Could not update access.'); setBusy(false); }
+  };
+
+  return (
+    <Modal title={emp.name || emp.email} subtitle={emp.email} icon="user-gear" onClose={onClose} maxWidth={560}
+      footer={<>
+        <Btn kind="ghost" size="sm" onClick={onClose}>Cancel</Btn>
+        <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'check'} onClick={save} disabled={busy || !ok}>Save access</Btn>
+      </>}>
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs font-semibold t3 uppercase" style={{ letterSpacing:'.06em' }}>Tier</label>
+          <div className="space-y-2 mt-2">
+            {[
+              ['admin', 'Everything, everywhere — plus managing this screen. Not department-scoped.'],
+              ['lead', 'Every action inside their departments, including approving payouts, suspending riders, resolving disputes and broadcasting.'],
+              ['agent', 'Day-to-day work inside their departments. Blocked from the destructive and outward-facing actions above.'],
+            ].map(([k, desc]) => (
+              <button key={k} onClick={() => setTier(k)} className="w-full text-left rounded-xl p-3 transition-colors"
+                style={tier === k ? { background:'var(--pri-soft)', border:'1px solid var(--pri)' } : { background:'var(--surface2)', border:'1px solid var(--line)' }}>
+                <div className="flex items-center gap-2">
+                  <Icon name={tier === k ? 'circle-dot' : 'circle'} style={{ color: tier === k ? 'var(--pri)' : 'var(--t3)' }} />
+                  <span className="font-semibold text-sm" style={{ color: tier === k ? 'var(--pri)' : 'var(--t1)' }}>{TIER_LABEL[k]}</span>
+                </div>
+                <div className="text-[11px] t3 leading-snug mt-1 ml-6">{desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {tier !== 'admin' && (
+          <div>
+            <label className="text-xs font-semibold t3 uppercase" style={{ letterSpacing:'.06em' }}>Departments</label>
+            <p className="text-[11px] t3 mt-0.5 mb-2">Which consoles they can open. Everyone always gets Command.</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {ALL_DEPTS.map((d) => {
+                const on = depts.includes(d);
+                return (
+                  <button key={d} onClick={() => toggle(d)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm"
+                    style={on ? { background:'var(--pri-soft)', color:'var(--pri)', border:'1px solid var(--pri)' } : { background:'var(--surface2)', color:'var(--t2)', border:'1px solid var(--line)' }}>
+                    <Icon name={on ? 'square-check' : 'square'} className="text-xs" />{DEPT_LABEL[d]}
+                  </button>
+                );
+              })}
+            </div>
+            {!depts.length && <div className="text-xs mt-2" style={{ color:'var(--amber)' }}>Pick at least one — with none they can sign in but see an empty console.</div>}
+          </div>
+        )}
+
+        {isSelf && tier !== 'admin' && (
+          <div className="rounded-xl px-3 py-2.5 text-xs flex items-start gap-2" style={{ background:'var(--red-bg)', color:'var(--red)' }}>
+            <Icon name="triangle-exclamation" className="mt-0.5" />
+            <span>This is your own account. The server refuses to let you drop your own admin access, so this change will be rejected.</span>
+          </div>
+        )}
+        {err && <div className="text-sm flex items-center gap-2" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" />{err}</div>}
+      </div>
+    </Modal>
+  );
+}
+
+function AddStaffDrawer({ onClose, onSaved }) {
+  const { toast } = useDialogs();
+  const [f, setF] = useState({ email:'', name:'', title:'', department:'support', role:'agent' });
+  const [depts, setDepts] = useState(['support']);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
+  const toggle = (d) => setDepts((xs) => (xs.includes(d) ? xs.filter((x) => x !== d) : [...xs, d]));
+
+  const save = async () => {
+    setBusy(true); setErr('');
+    try {
+      await onboardStaff({ ...f, departments: f.role === 'admin' ? ALL_DEPTS : depts });
+      toast({ tone:'ok', title:'Onboarded', body:`${f.name || f.email} now has console access.` });
+      onSaved();
+    } catch (e) { setErr(e.message || 'Could not onboard.'); setBusy(false); }
+  };
+
+  return (
+    <Modal title="Add someone to the team" subtitle="They must have signed in to YoteMarket at least once" icon="user-plus" onClose={onClose} maxWidth={560}
+      footer={<>
+        <Btn kind="ghost" size="sm" onClick={onClose}>Cancel</Btn>
+        <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'user-plus'} onClick={save}
+          disabled={busy || !f.email.trim() || (f.role !== 'admin' && !depts.length)}>Grant access</Btn>
+      </>}>
+      <div className="space-y-3">
+        <input value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="Work email *" className="ym-input" style={{ width:'100%' }} />
+        <div className="grid grid-cols-2 gap-3">
+          <input value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Full name" className="ym-input" />
+          <input value={f.title} onChange={(e) => set('title', e.target.value)} placeholder="Job title" className="ym-input" />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs t3 font-semibold">Tier</span>
+          <Seg value={f.role} onChange={(v) => set('role', v)} options={['agent', 'lead', 'admin']} fmt={(o) => TIER_LABEL[o]} />
+        </div>
+        {f.role !== 'admin' && (
+          <div>
+            <div className="text-xs t3 font-semibold mb-1.5">Departments</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {ALL_DEPTS.map((d) => {
+                const on = depts.includes(d);
+                return (
+                  <button key={d} onClick={() => toggle(d)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm"
+                    style={on ? { background:'var(--pri-soft)', color:'var(--pri)', border:'1px solid var(--pri)' } : { background:'var(--surface2)', color:'var(--t2)', border:'1px solid var(--line)' }}>
+                    <Icon name={on ? 'square-check' : 'square'} className="text-xs" />{DEPT_LABEL[d]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {err && <div className="text-sm flex items-center gap-2" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" />{err}</div>}
+      </div>
+    </Modal>
+  );
+}
+
+/* ══ Attendance / timesheets ══════════════════════════════════════════════ */
+const RANGES = [7, 14, 30];
+
+export function Attendance() {
+  const [days, setDays] = useState(14);
+  const { data, live, error, demo, reload } = useStaffResource(() => fetchAttendance(days), { shifts:[], onShift:[], byPerson:[] }, [days], { pollMs:60000 });
+  const { confirm, toast } = useDialogs();
+
+  const shifts = data.shifts || [];
+  const people = data.byPerson || [];
+  const onShift = data.onShift || [];
+  const totalMin = people.reduce((a, p) => a + (p.minutes || 0), 0);
+
+  const close = async (row) => {
+    const ok = await confirm({
+      title:'Close this open shift?', icon:'clock', tone:'danger',
+      body:`${row.name} never clocked out. Closing it records the hours as they stand and marks the shift as corrected by staff.`,
+      facts:[
+        { label:'Started', value:`${dayLabel(row.date)} ${clockTime(row.clockInAt)}` },
+        { label:'Open for', value:hhmm(Math.round((Date.now() - row.clockInAt) / 60000)) },
+      ],
+      confirmLabel:'Close shift', confirmIcon:'check',
+    });
+    if (!ok) return;
+    try { await closeShift(row.id); toast({ tone:'ok', title:'Shift closed.' }); reload(); }
+    catch (e) { toast({ tone:'error', title:'Could not close it', body:e.message }); }
+  };
+
+  return (<div className="fadeup space-y-6">
+    <SectionHead icon="clock" title="Attendance"
+      sub={demo ? 'No backend configured' : (live ? `Timesheets from the console clock · last ${days} days` : 'Loading timesheets…')}
+      action={<div className="flex items-center gap-2">
+        <Seg value={days} onChange={setDays} options={RANGES} fmt={(o) => `${o}d`} />
+        <Btn kind="ghost" size="md" icon="file-arrow-down" disabled={!shifts.length}
+          onClick={() => exportCsv(`attendance-${new Date().toISOString().slice(0, 10)}`, [
+            { header:'Date', key:'date' }, { header:'Name', key:'name' }, { header:'Email', key:'email' },
+            { header:'In', csvValue:(r) => clockTime(r.clockInAt) }, { header:'Out', csvValue:(r) => (r.clockOutAt ? clockTime(r.clockOutAt) : 'still open') },
+            { header:'Minutes', csvValue:(r) => (r.minutes != null ? r.minutes : '') }, { header:'Note', key:'note' },
+          ], shifts)}>Export</Btn>
+      </div>} />
+    <BackendError error={error} onRetry={reload} />
+
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <Stat label="On shift now" value={onShift.length} sub={onShift.map((o) => o.name).slice(0, 2).join(', ') || 'nobody clocked in'} icon="user-clock" tone={onShift.length ? 'green' : 'blue'} />
+      <Stat label="Hours logged" value={hhmm(totalMin)} sub={`across ${days} days`} icon="hourglass-half" tone="pri" />
+      <Stat label="People worked" value={people.length} icon="users" tone="blue" />
+      <Stat label="Avg shift" value={hhmm(shifts.length ? Math.round(totalMin / shifts.length) : null)} sub={`${shifts.length} shifts`} icon="chart-simple" tone="amber" />
+    </div>
+
+    <div className="grid lg:grid-cols-2 gap-6">
+      <Card className="p-0 overflow-hidden">
+        <div className="p-5 pb-3"><h3 className="font-bold t1">By person</h3><p className="text-xs t3">Total hours over the selected window</p></div>
+        <DataTable minWidth={420} rows={people} keyField="uid"
+          empty={<EmptyState icon="clock" title="No hours logged." sub="Shifts appear once people start using the clock." />}
+          columns={[
+            { key:'name', header:'Person', sort:true, render:(p) => (
+              <span><span className="font-semibold t1 flex items-center gap-1.5">{p.name}{p.onShift && <span className="w-1.5 h-1.5 rounded-full" style={{ background:'var(--green)' }} title="On shift" />}</span>
+                <span className="block text-xs t3">{p.department || p.email}</span></span>) },
+            { key:'days', header:'Days', align:'right', sort:true, render:(p) => <span className="num t2">{p.days}</span> },
+            { key:'shifts', header:'Shifts', align:'right', sort:true, render:(p) => <span className="num t2">{p.shifts}</span> },
+            { key:'minutes', header:'Total', align:'right', sortValue:(p) => p.minutes, render:(p) => <span className="num font-semibold t1">{hhmm(p.minutes)}</span> },
+          ]} />
+      </Card>
+
+      <Card className="p-0 overflow-hidden">
+        <div className="p-5 pb-3"><h3 className="font-bold t1">Shifts</h3><p className="text-xs t3">Newest first — an open shift keeps counting until it's closed</p></div>
+        <DataTable minWidth={480} rows={shifts} pageSize={12}
+          empty={<EmptyState icon="clock" title="No shifts recorded." />}
+          columns={[
+            { key:'name', header:'Person', render:(r) => (
+              <span><span className="font-semibold t1 text-sm">{r.name}</span>
+                <span className="block text-xs t3">{dayLabel(r.date)}</span></span>) },
+            { key:'clockInAt', header:'In', align:'right', render:(r) => <span className="num text-xs t2">{clockTime(r.clockInAt)}</span> },
+            { key:'clockOutAt', header:'Out', align:'right', render:(r) => (r.clockOutAt
+              ? <span className="num text-xs t2">{clockTime(r.clockOutAt)}</span>
+              : <Pill tone="ok">open</Pill>) },
+            { key:'minutes', header:'Worked', align:'right', sortValue:(r) => r.minutes || 0, render:(r) => (
+              <span className="num font-semibold t1 text-sm">{r.minutes != null ? hhmm(r.minutes) : hhmm(Math.round((Date.now() - r.clockInAt) / 60000))}</span>) },
+            { key:'act', header:'', csv:false, align:'right', render:(r) => (!r.clockOutAt
+              ? <Btn kind="soft" size="sm" icon="check" onClick={() => close(r)} title="They forgot to clock out">Close</Btn>
+              : (r.note ? <Icon name="note-sticky" className="t3" title={r.note} /> : null)) },
+          ]} />
+      </Card>
+    </div>
+  </div>);
+}

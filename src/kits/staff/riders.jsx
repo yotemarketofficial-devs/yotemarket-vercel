@@ -5,6 +5,7 @@ import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
 import { useStaffResource, fetchRiderApplications, setRiderApplicationStage, deleteRiderApplication } from './service.js';
 import { useEscape } from '../../lib/useEscape.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState } = React;
 
 const STAGES = [
@@ -19,6 +20,7 @@ const VEHICLE_LABEL = { motorbike: 'Motorbike', bicycle: 'Bicycle', tuktuk: 'Tuk
 const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
 function RiderDrawer({ app, onClose, onMoved }) {
+  const { confirm } = useDialogs();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
@@ -31,7 +33,7 @@ function RiderDrawer({ app, onClose, onMoved }) {
   };
   // Right to erasure — this record holds their phone, licence and plate.
   const erase = async () => {
-    if (!window.confirm(`Permanently erase ${app.name}'s application (${app.ref})? This deletes their phone, licence and plate. It can't be undone.`)) return;
+    if (!await confirm({ title: `Permanently erase ${app.name}'s application (${app.ref})? This deletes their phone, licence and plate. It can't be undone.` })) return;
     setBusy(true); setErr('');
     try { await deleteRiderApplication(app.id); onMoved && onMoved(); onClose(); }
     catch (e) { setErr(e.message || 'Could not delete.'); setBusy(false); }

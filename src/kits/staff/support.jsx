@@ -5,6 +5,7 @@
 import React from 'react';
 import { Card, SectionHead, Seg, Btn, Pill, Icon, Stat, EmptyState, Modal } from './ui.jsx';
 import { useStaffResource, fetchSupportTickets, replySupportTicket, deleteSupportTicket } from './service.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect } = React;
 
 const CAT_LABEL = { order:'Order', payment:'Payment', delivery:'Delivery', account:'Account', selling:'Selling', feed:'YoteFeed', refund:'Refund', other:'Other' };
@@ -107,6 +108,7 @@ export function Support({ isAdmin }){ // eslint-disable-line no-unused-vars
 }
 
 function TicketThread({ t, onClose, reload, live }){
+  const { confirm } = useDialogs();
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -125,7 +127,12 @@ function TicketThread({ t, onClose, reload, live }){
 
   // Erase — for spam, or when a customer asks us to delete what they sent.
   const erase = async () => {
-    if (!window.confirm(`Permanently delete ticket ${t.ref}? This erases the customer's message and every reply. It can't be undone.`)) return;
+    if (!await confirm({
+      title:`Delete ticket ${t.ref}?`, tone:'danger', icon:'trash',
+      body:"This erases the customer's message and every reply. It cannot be undone.",
+      facts:[{ label:'From', value:t.name || t.email }, { label:'Subject', value:t.subject }],
+      confirmPhrase:'DELETE', confirmLabel:'Delete permanently',
+    })) return;
     setBusy(true); setErr('');
     try { await deleteSupportTicket(t.id); reload(); onClose(); }
     catch (e) { setErr(e.message || 'Could not delete the ticket.'); setBusy(false); }

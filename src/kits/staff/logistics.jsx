@@ -24,6 +24,7 @@ import {
   useStaffResource, fetchLogistics, fetchRunDetail, resolveRun, optimizeRuns,
   fetchRiderRoster, setRiderStatus,
 } from './service.js';
+import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect } = React;
 
 const STAGE_TONE = { forming:'amber', open:'blue', accepted:'ok', completed:'ok', cancelled:'red' };
@@ -244,6 +245,7 @@ export function Logistics(){
 /* One run in full: custody chain per order, the optimized stop order, and the
    payout maths — so "why was I paid this?" is answerable without reading code. */
 function RunDrawer({ runId, onClose, reload, live }){
+  const { prompt, toast } = useDialogs();
   const [d, setD] = useState(null);
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -258,11 +260,25 @@ function RunDrawer({ runId, onClose, reload, live }){
   }, [runId, live]);
 
   const act = async (action) => {
-    const verb = action === 'release' ? 'return this run to the open board' : 'cancel this run and send its orders back for re-batching';
-    const reason = window.prompt(`Why ${verb}? (recorded in the audit log)`);
+    const release = action === 'release';
+    const reason = await prompt({
+      title: release ? 'Return this run to the board?' : 'Cancel this run?',
+      tone: release ? undefined : 'danger', icon: release ? 'rotate-left' : 'ban', multiline: true,
+      body: release
+        ? 'The run stays intact and goes back on the open board for another rider to claim.'
+        : 'The run is abandoned and its orders are re-batched into new runs. Refused if any parcel has already been collected.',
+      facts: [
+        { label:'Run', value: run.code },
+        { label:'Orders', value: `${run.orders} · ${run.drops} drop${run.drops === 1 ? '' : 's'}` },
+        run.riderName ? { label:'Rider', value: run.riderName } : null,
+      ],
+      placeholder: 'Reason — recorded in the audit log',
+      confirmLabel: release ? 'Return to board' : 'Cancel run',
+      confirmIcon: release ? 'rotate-left' : 'ban',
+    });
     if (reason === null) return;
     setBusy(true); setErr(null);
-    try { await resolveRun(runId, action, reason); reload(); onClose(); }
+    try { await resolveRun(runId, action, reason); toast({ tone:'ok', title: release ? 'Run returned to the board.' : 'Run cancelled — orders re-batched.' }); reload(); onClose(); }
     catch (e) { setErr(e.message || 'Action failed.'); setBusy(false); }
   };
 
@@ -366,6 +382,7 @@ const RIDER_FILTER_LABEL = { all:'All', available:'Available', onRun:'On a run',
 const BLOCK_LABEL = { profile:'Suspended', badge:'Badge lapsed', rating:'Below rating floor' };
 
 export function RiderRoster(){
+  const { prompt, toast } = useDialogs();
   const { data, live, error, demo, reload } = useStaffResource(fetchRiderRoster, { riders:[], counts:{} }, [], { pollMs: 60000 });
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');
@@ -382,11 +399,26 @@ export function RiderRoster(){
     .filter((r) => !ql || [r.name, r.email, r.phone, r.county].some((x) => (x || '').toLowerCase().includes(ql)));
 
   const toggle = async (r) => {
-    const next = r.status === 'active' ? 'suspended' : 'active';
-    const reason = window.prompt(`${next === 'suspended' ? 'Suspend' : 'Reinstate'} ${r.name}. Reason (recorded in the audit log and sent to the rider):`);
+    const suspending = r.status === 'active';
+    const next = suspending ? 'suspended' : 'active';
+    const reason = await prompt({
+      title: suspending ? `Suspend ${r.name}?` : `Reinstate ${r.name}?`,
+      tone: suspending ? 'danger' : undefined, icon: suspending ? 'ban' : 'circle-check', multiline: true,
+      body: suspending
+        ? 'They stop being offered runs immediately. Any run already in their hands is untouched — move that from the run board.'
+        : 'They can claim runs again, subject to their badge and rating.',
+      facts: [
+        { label:'Rating', value: r.rating == null ? 'unrated' : r.rating.toFixed(2) },
+        { label:'Runs completed', value: String(r.runsCompleted) },
+        r.onRun ? { label:'Currently on', value: r.onRun } : null,
+      ],
+      placeholder: 'Reason — audit-logged and sent to the rider',
+      confirmLabel: suspending ? 'Suspend rider' : 'Reinstate',
+      confirmIcon: suspending ? 'ban' : 'circle-check',
+    });
     if (reason === null) return;
     setBusy(r.uid); setMsg(null);
-    try { await setRiderStatus(r.uid, next, reason); setMsg({ ok:true, text:`${r.name} ${next === 'suspended' ? 'suspended' : 'reinstated'}.` }); reload(); }
+    try { await setRiderStatus(r.uid, next, reason); toast({ tone:'ok', title:`${r.name} ${suspending ? 'suspended' : 'reinstated'}.` }); reload(); }
     catch (e) { setMsg({ ok:false, text: e.message || 'Could not update the rider.' }); }
     finally { setBusy(null); }
   };
