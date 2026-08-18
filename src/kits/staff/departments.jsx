@@ -164,12 +164,17 @@ export function Finance({ isAdmin }){
         ], data.entries)}>Export ledger</Btn>} />
       <Banner msg={msg} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Stat label="Platform revenue (live)" value={kes(live.subscriptionRevenue || 0)} sub={`${live.paidSubscriptions || 0} paid subscriptions`} icon="sack-dollar" tone="green" />
-        <Stat label="This month" value={kes(live.subscriptionRevenueMonth || 0)} sub="Subscription income" icon="calendar-day" tone="pri" />
-        <Stat label="Active subscribers" value={live.activeSubscriptions || 0} sub="Merchants on a live plan" icon="id-card" tone="blue" />
+      {/* Subscriptions are the only revenue stream, so the recurring book leads:
+          MRR is what's committed monthly, ARR its annualised run-rate. Cash
+          collected sits alongside them because it swings with renewal dates —
+          it answers a different question and shouldn't be read as growth. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat label="MRR" value={kes(live.mrr || 0)} sub={`${live.activeSubscriptions || 0} active plan${live.activeSubscriptions === 1 ? '' : 's'} · ${kes(live.arpu || 0)} each`} icon="repeat" tone="pri" />
+        <Stat label="ARR" value={kes(live.arr || 0)} sub="Run-rate at today's MRR" icon="chart-line" tone="green" />
+        <Stat label="Collected this month" value={kes(live.subscriptionRevenueMonth || 0)} sub="Subscription payments received" icon="calendar-day" tone="blue" />
+        <Stat label="Collected all-time" value={kes(live.subscriptionRevenue || 0)} sub={`${live.paidSubscriptions || 0} paid subscriptions`} icon="sack-dollar" tone="amber" />
       </div>
-      <p className="text-xs t3 -mt-2 flex items-center gap-1.5"><Icon name="circle-info" />Platform revenue is subscription-based — merchants keep order value via escrow &amp; release. Figures are live from settled M-Pesa payments.</p>
+      <p className="text-xs t3 -mt-2 flex items-center gap-1.5"><Icon name="circle-info" />Subscriptions are the platform's only revenue stream — merchants keep order value via escrow &amp; release. MRR/ARR are the live plan book; collections are settled M-Pesa payments.</p>
 
       {/* Break-even reads the SAME payload the ledger below renders, so the two
           can never disagree about what was recorded. */}

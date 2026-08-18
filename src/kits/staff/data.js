@@ -10,9 +10,9 @@ export const STAFF = { name: 'Aisha Kamau', role: 'Operations Admin', photo: AV(
    line is MRR; the cost line is rider payouts for serving the plans' delivery
    allotment. Sample figures — the live console reads staffOverview. */
 export const KPIS = [
-  { label:'Recurring revenue', value:'KSh 1.4M', sub:'MRR · 428 active plans', icon:'repeat', tone:'pri' },
-  { label:'Collected this month', value:'KSh 1.2M', sub:'Subscription payments received', icon:'money-bill-wave', tone:'green' },
-  { label:'Paying merchants', value:'428', sub:'of 1,284 stores on the platform', icon:'store', tone:'blue' },
+  { label:'MRR', value:'KSh 1.4M', sub:'428 active plans · KSh 3,271 each', icon:'repeat', tone:'pri' },
+  { label:'ARR', value:'KSh 16.8M', sub:"Run-rate at today's MRR", icon:'chart-line', tone:'green' },
+  { label:'Collected this month', value:'KSh 1.2M', sub:'428 of 1,284 stores paying', icon:'money-bill-wave', tone:'blue' },
   { label:'Margin this month', value:'KSh 812K', sub:'after KSh 388K rider payouts', icon:'scale-balanced', tone:'amber' },
 ];
 /* monthly subscription revenue collected (KSh) — the trend that is actually ours */

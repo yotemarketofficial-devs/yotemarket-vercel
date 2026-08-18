@@ -56,9 +56,9 @@ export function Intelligence(){
       <div>
         <h3 className="text-sm font-bold t1 mb-2 flex items-center gap-2"><Icon name="crown" style={{ color:'var(--pri)' }} />Our revenue</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Stat label="Recurring revenue" value={kes(d.mrr)} sub={`MRR · ${num(d.activeSubscriptions)} active plans`} icon="repeat" tone="pri" />
-          <Stat label="Collected this month" value={kes(d.subscriptionRevenueMonth)} sub={`${kes(d.subscriptionRevenue)} all-time`} icon="money-bill-wave" tone="green" />
-          <Stat label="Revenue per merchant" value={kes(d.arpu)} sub="ARPU / month" icon="user-tag" tone="blue" />
+          <Stat label="MRR" value={kes(d.mrr)} sub={`${num(d.activeSubscriptions)} active plans · ${kes(d.arpu)} ARPU`} icon="repeat" tone="pri" />
+          <Stat label="ARR" value={kes(d.arr)} sub="Run-rate at today's MRR" icon="chart-line" tone="green" />
+          <Stat label="Collected this month" value={kes(d.subscriptionRevenueMonth)} sub={`${kes(d.subscriptionRevenue)} all-time`} icon="money-bill-wave" tone="blue" />
           <Stat label="Gross margin (month)" value={kes(d.grossMarginMonth)} sub={`after ${kes(d.riderCostMonth)} rider payouts`} icon="scale-balanced" tone={Number(d.grossMarginMonth) < 0 ? 'red' : 'amber'} />
         </div>
       </div>
