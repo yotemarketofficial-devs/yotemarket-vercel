@@ -86,6 +86,7 @@ export function Support({ isAdmin }){ // eslint-disable-line no-unused-vars
                   <div className="min-w-0 flex-1">
                     <div className="font-bold t1 flex items-center gap-2 flex-wrap">
                       {t.subject}
+                      {t.source === 'staff' && <Pill tone="pri">Outreach</Pill>}
                       <Pill tone={STATUS_TONE[t.status] || 'blue'}>{STATUS_LABEL[t.status] || t.status}</Pill>
                       {t.priority && t.priority !== 'normal' && <Pill tone={PRIORITY_TONE[t.priority] || 'blue'}>{t.priority}</Pill>}
                       {waiting && <Pill tone={slaTone(t.updatedAt || t.createdAt)}>Waiting {fmtAgo(t.updatedAt || t.createdAt)}</Pill>}
@@ -130,8 +131,12 @@ function TicketThread({ t, onClose, reload, live }){
     catch (e) { setErr(e.message || 'Could not delete the ticket.'); setBusy(false); }
   };
 
+  // A staff-initiated thread (Comms → Message someone) opens with OUR message, not
+  // the customer's, so the opening bubble has to be attributed by direction or it
+  // reads as something the customer said.
+  const outbound = t.direction === 'outbound' || t.source === 'staff';
   const thread = [
-    { author:'customer', text:t.message, at:t.createdAt },
+    { author: outbound ? 'staff' : 'customer', agentEmail: outbound ? (t.openedByEmail || t.assignedEmail) : undefined, text:t.message, at:t.createdAt },
     ...(t.replies || []),
   ];
   const waiting = t.lastActor === 'customer' && !['resolved','closed'].includes(t.status);

@@ -9,7 +9,9 @@ import './staff.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
-import { Analytics, Approvals, Applications, Scouts, Logistics, Wallet, Moderation, ReviewModeration, Team, Maintenance } from './screens.jsx';
+import { Analytics, Approvals, Applications, Scouts, Wallet, Moderation, ReviewModeration, Team, Maintenance } from './screens.jsx';
+import { Logistics, RiderRoster } from './logistics.jsx';
+import { Outreach, Broadcasts } from './comms.jsx';
 import { CommandCenter } from './command.jsx';
 import { Support } from './support.jsx';
 import { Disputes } from './disputes.jsx';
@@ -24,7 +26,7 @@ import { AuditLog } from './audit.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useEscape } from '../../lib/useEscape.js';
-import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes } from './service.js';
+import { useStaffClaims, fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes, fetchLogistics } from './service.js';
 const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 
 /* ── Workspace model ─────────────────────────────────────────────────────────
@@ -34,14 +36,15 @@ const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 const WORKSPACES = [
   { key:'command', label:'Command', icon:'gauge-high', blurb:'Platform pulse', sections:[
     { key:'command', label:'Command center', icon:'bolt', desc:'Action queue & live pulse' },
-    { key:'analytics', label:'Analytics', icon:'chart-simple', desc:'GMV, funnel & deep charts' },
+    { key:'analytics', label:'Analytics', icon:'chart-simple', desc:'Revenue, retention & delivery cost' },
   ]},
   { key:'marketplace', label:'Marketplace', icon:'store', blurb:'Merchants & billing', sections:[
     { key:'approvals', label:'Merchants', icon:'user-check', desc:'Verify, feature, suspend & audit stores' },
     { key:'wallet', label:'Subscriptions & billing', icon:'wallet', desc:'Plans, float and payout-change approvals' },
   ]},
   { key:'logistics', label:'Logistics', icon:'truck-fast', blurb:'Delivery ops', sections:[
-    { key:'logistics', label:'Runs & routes', icon:'route', desc:'Batched-run operations across all bands' },
+    { key:'logistics', label:'Runs & routes', icon:'route', desc:'The live engine — batching, hubs, exceptions' },
+    { key:'roster', label:'Rider roster', icon:'id-card-clip', desc:'Who can claim work, and what blocks the rest' },
     { key:'riders', label:'Rider applications', icon:'motorcycle', desc:'People joining the delivery network — vet & approve' },
   ]},
   { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', sections:[
@@ -51,6 +54,12 @@ const WORKSPACES = [
   { key:'support', label:'Support', icon:'headset', blurb:'Customer care', sections:[
     { key:'support', label:'Tickets', icon:'ticket', desc:'Help Center requests — reply, resolve & route' },
     { key:'disputes', label:'Returns & refunds', icon:'rotate-left', desc:'Buyer refund requests — review & resolve' },
+  ]},
+  // Talking TO people, rather than only answering them. Threads opened here land
+  // in Support, so there is still exactly one inbox.
+  { key:'comms', label:'Comms', icon:'paper-plane', blurb:'Reach people', sections:[
+    { key:'outreach', label:'Message someone', icon:'envelope-open-text', desc:'Start a thread with any merchant, shopper, rider or marketer' },
+    { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', desc:'Announce to a whole audience — in-app & push' },
   ]},
   { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', sections:[
     { key:'applications', label:'Marketers', icon:'bullhorn', desc:'Activate applicants as scouts · hiring track for a permanent role' },
@@ -79,7 +88,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:Team, audit:AuditLog, maintenance:Maintenance, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
@@ -153,14 +162,16 @@ function NotificationsBell({ go }) {
   const [open, setOpen] = useSApp(false);
   useEApp(() => {
     let alive = true;
-    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests(), fetchSupportTickets('open'), fetchDisputes('open')]).then((res) => {
+    Promise.allSettled([fetchReports(), fetchReviewReports(), fetchPayouts(), fetchMerchantFollows(), fetchDeletionRequests(), fetchSupportTickets('open'), fetchDisputes('open'), fetchLogistics()]).then((res) => {
       if (!alive) return;
       const arr = (i) => (res[i].status === 'fulfilled' && Array.isArray(res[i].value)) ? res[i].value : [];
       const reports = arr(0), reviews = arr(1), payouts = arr(2), follows = arr(3);
       const pendingClosures = arr(4).filter((c) => c.status === 'pending');
       const support = (res[5].status === 'fulfilled' && res[5].value && Array.isArray(res[5].value.tickets)) ? res[5].value.tickets : [];
       const disputes = (res[6].status === 'fulfilled' && res[6].value && Array.isArray(res[6].value.disputes)) ? res[6].value.disputes : [];
+      const logiEx = (res[7].status === 'fulfilled' && res[7].value && Array.isArray(res[7].value.exceptions)) ? res[7].value.exceptions : [];
       setItems([
+        logiEx.length && { key:'logistics', icon:'triangle-exclamation', label:'Logistics exceptions', count:logiEx.length },
         support.length && { key:'support', icon:'headset', label:'Support tickets', count:support.length },
         disputes.length && { key:'disputes', icon:'rotate-left', label:'Refund requests', count:disputes.length },
         reports.length && { key:'moderation', icon:'comment-slash', label:'Chat reports', count:reports.length },

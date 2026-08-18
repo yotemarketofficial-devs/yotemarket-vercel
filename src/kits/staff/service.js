@@ -173,6 +173,64 @@ export async function fetchRuns() {
   return d;
 }
 
+// ── Logistics engine ─────────────────────────────────────────────────────────
+// The engine's own state, not a flattened view of it: runs at every stage
+// (forming → open → accepted → completed), hub load, fleet availability by band
+// and the exception queue. `staffListRuns` above is the older, lossy read kept
+// only so an un-deployed backend still renders something.
+/** Full ops snapshot → { summary, runs, hubs, fleet, exceptions }. */
+export async function fetchLogistics(args = {}) {
+  const d = await call('staffLogistics')(args);
+  if (!d || !Array.isArray(d.runs)) throw new Error('staffLogistics: unexpected shape');
+  return d;
+}
+/** One run: orders with their chain-of-custody legs, stop sequence, payout maths. */
+export async function fetchRunDetail(runId) {
+  return call('staffRunDetail')({ runId });
+}
+/** Ops recovery on a stuck run. action: 'release' (back to the board) | 'cancel'. */
+export async function resolveRun(runId, action, reason = '') {
+  return call('staffResolveRun')({ runId, action, ...(reason ? { reason } : {}) });
+}
+/** Rider roster — who can claim work right now, and what blocks the rest. */
+export async function fetchRiderRoster() {
+  const d = await call('staffRiderRoster')();
+  if (!d || !Array.isArray(d.riders)) throw new Error('staffRiderRoster: unexpected shape');
+  return d;
+}
+/** Suspend or reinstate a rider. status: 'active' | 'suspended'. */
+export async function setRiderStatus(uid, status, reason = '') {
+  return call('staffSetRiderStatus')({ uid, status, ...(reason ? { reason } : {}) });
+}
+
+// ── Staff → people communications ────────────────────────────────────────────
+/** Open a thread WITH someone (merchant/shopper/rider/marketer). They get it in
+ *  Help Center → My requests and can reply; we answer it in Support. */
+export async function messageUser(args) {
+  return call('staffMessageUser')(args);
+}
+/** Announce to a whole audience. Pass { dryRun:true } for the recipient count
+ *  only, or { testOnly:true } to send it to yourself first. */
+export async function sendBroadcast(args) {
+  return call('staffBroadcast')(args);
+}
+/** Broadcast history, newest first. */
+export async function fetchBroadcasts() {
+  const d = await call('staffListBroadcasts')();
+  if (!d || !Array.isArray(d.broadcasts)) throw new Error('staffListBroadcasts: unexpected shape');
+  return d.broadcasts;
+}
+/** Every way we can legitimately reach one person, with each number's provenance. */
+export async function fetchContactCard(uid) {
+  return call('staffContactCard')({ uid });
+}
+/** The account directory, used as the recipient picker for outreach. */
+export async function fetchUsers() {
+  const d = await call('staffListUsers')();
+  if (!d || !Array.isArray(d.users)) throw new Error('staffListUsers: unexpected shape');
+  return d;
+}
+
 /** Staff/hub: recompute optimized routes (nearest-neighbour + ETA/payout) for open
  *  runs, optionally scoped to a hub → { runs, updated }. */
 export async function optimizeRuns(hubId) {

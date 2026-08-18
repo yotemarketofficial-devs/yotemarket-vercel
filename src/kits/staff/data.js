@@ -3,15 +3,21 @@
 const AV = (n) => `/assets/avatars/avatar-${n}.png`;
 export const STAFF = { name: 'Aisha Kamau', role: 'Operations Admin', photo: AV(1) };
 
-/* ---- platform KPIs (this month) ---- */
+/* ---- platform KPIs (this month) ----
+   YoteMarket earns from MERCHANT SUBSCRIPTIONS, not from trade: merchants keep
+   every shilling of order value, so gross merchandise value is not our revenue
+   and is deliberately absent here and everywhere else in the console. The top
+   line is MRR; the cost line is rider payouts for serving the plans' delivery
+   allotment. Sample figures — the live console reads staffOverview. */
 export const KPIS = [
-  { label:'Active merchants', value:'1,284', delta:'8.2%', up:true, icon:'store', tone:'pri' },
-  { label:'GMV this month',   value:'KSh 4.8M', delta:'12.4%', up:true, icon:'sack-dollar', tone:'green' },
-  { label:'Runs completed',   value:'9,640', delta:'5.1%', up:true, icon:'motorcycle', tone:'blue' },
-  { label:'On-time rate',     value:'94.6%', delta:'1.3%', up:false, icon:'clock', tone:'amber' },
+  { label:'Recurring revenue', value:'KSh 1.4M', sub:'MRR · 428 active plans', icon:'repeat', tone:'pri' },
+  { label:'Collected this month', value:'KSh 1.2M', sub:'Subscription payments received', icon:'money-bill-wave', tone:'green' },
+  { label:'Paying merchants', value:'428', sub:'of 1,284 stores on the platform', icon:'store', tone:'blue' },
+  { label:'Margin this month', value:'KSh 812K', sub:'after KSh 388K rider payouts', icon:'scale-balanced', tone:'amber' },
 ];
-/* monthly GMV trend (KSh '000) for sparkline/bars */
-export const GMV_TREND = [2.9,3.1,3.4,3.3,3.8,4.1,4.0,4.4,4.6,4.5,4.7,4.8].map((v,i)=>({ m:['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i], v }));
+/* monthly subscription revenue collected (KSh) — the trend that is actually ours */
+export const REVENUE_TREND = [820,860,910,945,1010,1075,1120,1180,1215,1260,1305,1360]
+  .map((v,i)=>({ m:['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i], v: v*1000 }));
 /* subscription mix */
 export const SUB_MIX = [
   { plan:'Starter', count:712, pct:55, color:'var(--blue)' },
@@ -60,20 +66,9 @@ export const PAYOUT_REQUESTS = [
   { id:'pr3', scout:'Esther Cherop', amount:500, phone:'0733 ••• 119', method:'M-Pesa', date:'19 Jun', status:'pending', photo:AV(3) },
 ];
 
-/* ---- orders & logistics ops ---- */
-export const RUNS = [
-  { id:'YM-9241', band:'A', vehicle:'Motorbike', rider:'Collins O.', drops:5, county:'Kisumu', dist:'4 km', eta:'12 min', status:'in_transit' },
-  { id:'YM-9238', band:'B', vehicle:'Van', rider:'Mary W.', drops:9, county:'Nakuru', dist:'42 km', eta:'48 min', status:'in_transit' },
-  { id:'YM-9235', band:'A', vehicle:'Motorbike', rider:'Tom K.', drops:4, county:'Nairobi', dist:'6 km', eta:'—', status:'delivered' },
-  { id:'YM-9230', band:'C', vehicle:'Lorry', rider:'Peter M.', drops:18, county:'Mombasa', dist:'78 km', eta:'2h 10m', status:'in_transit' },
-  { id:'YM-9228', band:'A', vehicle:'Motorbike', rider:'Janet A.', drops:3, county:'Kisumu', dist:'5 km', eta:'—', status:'delayed' },
-  { id:'YM-9224', band:'B', vehicle:'Probox', rider:'Eric N.', drops:10, county:'Eldoret', dist:'50 km', eta:'—', status:'delivered' },
-];
-export const FLEET = [
-  { band:'A', label:'Urban · Motorbike', active:64, idle:12 },
-  { band:'B', label:'Regional · Van', active:28, idle:6 },
-  { band:'C', label:'Long Haul · Lorry', active:9, idle:3 },
-];
+/* Logistics demo data lives in ./logistics.jsx (LOGI_DEMO) — it has to match the
+   engine's own run shape (forming/open/accepted stages, fill, weight, routing
+   source, payout), so it's kept next to the screen that renders it. */
 
 /* ---- subscriptions & wallet oversight ---- */
 export const WALLET = { float:'KSh 1.92M', pendingPayouts:'KSh 38,400', badgeFund:'KSh 214,000', mpesaToday:'KSh 312,500' };

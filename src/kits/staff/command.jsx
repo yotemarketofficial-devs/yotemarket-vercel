@@ -9,7 +9,7 @@ import { Card, SectionHead, Stat, Btn, Pill, Icon, BackendError } from './ui.jsx
 import {
   useStaffResource, useStaffClaims, fetchOverview,
   fetchReports, fetchReviewReports, fetchPayouts, fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes,
-  fetchJobApplications, fetchRiderApplications,
+  fetchJobApplications, fetchRiderApplications, fetchLogistics,
 } from './service.js';
 import { staffListPayoutChanges } from '../../lib/firebase.js';
 const { useState, useEffect } = React;
@@ -17,6 +17,9 @@ const { useState, useEffect } = React;
 /* Every actionable queue, in priority order. Each resolves to a count + the
    section a click should jump to. */
 const QUEUES = [
+  // Logistics first: a run nobody has claimed is a paid order going nowhere, and
+  // unlike every other queue here the clock on it is already running.
+  { key:'logistics',  icon:'triangle-exclamation', label:'Logistics exceptions', desc:'Unclaimed, stalled or mis-routed runs', tone:'red', load: async () => (await fetchLogistics()).exceptions },
   { key:'support',    icon:'headset',       label:'Support tickets',        desc:'Open Help Center requests to answer',      tone:'red',   load: async () => (await fetchSupportTickets('open')).tickets },
   { key:'disputes',   icon:'rotate-left',   label:'Refund requests',        desc:'Buyer returns/refunds to review',          tone:'red',   load: async () => (await fetchDisputes('open')).disputes },
   { key:'moderation', icon:'comment-slash', label:'Chat reports',          desc:'Reported conversations awaiting review',   tone:'red',   load:fetchReports },
@@ -124,7 +127,10 @@ function Health({ funnel }) {
 }
 
 export function CommandCenter({ go = () => {} }) {
-  const { data, live, error, demo, reload } = useStaffResource(fetchOverview, { kpis: KPIS });
+  // staffOverview scans stores/orders/subscriptions/runs/payments to build the
+  // figures, so it's polled slowly: month-to-date revenue does not move second to
+  // second, and a 20s poll of five collections is real money in Firestore reads.
+  const { data, live, error, demo, reload } = useStaffResource(fetchOverview, { kpis: KPIS }, [], { pollMs: 60000 });
   const kpis = data.kpis || []; // never `|| KPIS` — blank beats invented platform figures
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';

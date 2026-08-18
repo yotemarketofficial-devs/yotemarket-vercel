@@ -207,7 +207,7 @@ function UserConsole({ row, onClose, onChanged }){
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <UTile label="Orders" value={st.orders||0} sub={`${st.paidOrders||0} paid`} tone="blue" />
-            <UTile label="Spend" value={kes(st.gmv||0)} tone="green" />
+            <UTile label="Spend" value={kes(st.spend||0)} tone="green" />
             <UTile label="Wallet" value={kes((d.wallet&&d.wallet.balance)||0)} tone="pri" />
             <UTile label="Points" value={p.points||0} tone="amber" />
           </div>

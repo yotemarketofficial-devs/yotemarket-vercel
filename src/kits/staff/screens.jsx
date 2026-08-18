@@ -2,13 +2,13 @@
    Each screen reads live data through ./service.js (staff-gated Cloud Functions)
    and falls back to the bundled demo data when the backend isn't reachable. */
 import React from 'react';
-import { KPIS, GMV_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, RUNS, FLEET, WALLET, SUBSCRIPTIONS } from './data.js';
+import { KPIS, REVENUE_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, WALLET, SUBSCRIPTIONS } from './data.js';
 import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState, BackendError } from './ui.jsx';
 import { useEscape } from '../../lib/useEscape.js';
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   enterpriseQuote, setEnterprise,
-  fetchRuns, optimizeRuns, fetchSubscriptions, fetchReports, fetchTranscript,
+  fetchSubscriptions, fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, setMarketerHireStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
@@ -199,7 +199,8 @@ function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <MConsoleTile label="Products" value={st.products || 0} sub={`${st.inStock || 0} in stock`} tone="pri" />
             <MConsoleTile label="Orders" value={st.orders || 0} sub={`${st.paidOrders || 0} paid`} tone="blue" />
-            <MConsoleTile label="GMV" value={kes(st.gmv || 0)} sub="paid + delivered" tone="green" />
+            {/* The merchant's money, not ours — labelled so nobody reads it as revenue. */}
+            <MConsoleTile label="Their sales" value={kes(st.sales || 0)} sub="merchant's own takings" tone="green" />
             <MConsoleTile label="Followers" value={st.followers || 0} tone="amber" />
           </div>
 
@@ -302,32 +303,50 @@ function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
   );
 }
 
-/* ============ ANALYTICS OVERVIEW ============ */
-const OVERVIEW_FALLBACK = { kpis:KPIS, gmvTrend:GMV_TREND, subMix:SUB_MIX, funnel:FUNNEL };
+/* ============ ANALYTICS OVERVIEW ============
+   Reports the SUBSCRIPTION business. YoteMarket takes no cut of order value —
+   merchants keep it — so gross merchandise value is not company revenue and has
+   no place in these KPIs. The top line is MRR and the cash collected against it;
+   the cost line is rider payouts for serving the delivery allotment plans buy. */
+const OVERVIEW_FALLBACK = { kpis:KPIS, revenueTrend:REVENUE_TREND, subMix:SUB_MIX, funnel:FUNNEL, health:{} };
+/** Pick one unit for a whole series so the bars stay comparable and readable. */
+function moneyScale(values){
+  const max = Math.max(...values, 0);
+  if (max >= 1e6) return { div:1e6, unit:'KSh millions', dp:2 };
+  if (max >= 1e3) return { div:1e3, unit:'KSh thousands', dp:0 };
+  return { div:1, unit:'KSh', dp:0 };
+}
 export function Analytics(){
-  const { data, live, error, demo, reload } = useStaffResource(fetchOverview, OVERVIEW_FALLBACK);
+  // Slow poll — see command.jsx: these are whole-collection aggregates, and the
+  // numbers they produce are monthly, not live.
+  const { data, live, error, demo, reload } = useStaffResource(fetchOverview, OVERVIEW_FALLBACK, [], { pollMs: 60000 });
   // NEVER `|| DEMO` here — a live response missing a field would silently render a
   // fabricated chart. Blank is the honest answer; useStaffResource owns demo mode.
   const kpis = data.kpis || [];
-  const gmv = data.gmvTrend || [];
+  const revenue = data.revenueTrend || [];
   const subMix = data.subMix || [];
   const funnel = data.funnel || [];
-  const max = Math.max(...gmv.map(d=>d.v), 1);
+  const health = data.health || {};
+  const max = Math.max(...revenue.map(d=>d.v), 1);
+  const scale = moneyScale(revenue.map(d=>d.v));
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="gauge-high" title="Platform overview" sub={demo ? 'Sample KPIs — no backend configured' : (live ? 'Live KPIs across the YoteMarket ecosystem' : 'Loading live KPIs…')} />
+    <SectionHead icon="gauge-high" title="Platform overview" sub={demo ? 'Sample KPIs — no backend configured' : (live ? 'Live subscription revenue, retention and delivery cost' : 'Loading live KPIs…')} />
     <BackendError error={error} onRetry={reload} />
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {kpis.map(k=><Stat key={k.label} {...k} delta={k.delta} deltaUp={k.up} />)}
     </div>
     <div className="grid lg:grid-cols-3 gap-6">
       <Card className="p-6 lg:col-span-2">
-        <div className="flex items-center justify-between mb-5"><h3 className="font-bold t1">GMV trend</h3><span className="text-xs t3">KSh millions · last 12 months</span></div>
-        {!gmv.length ? <EmptyState icon="chart-simple" title="No GMV data" sub="Nothing to chart yet." /> : (
+        <div className="flex items-center justify-between mb-5">
+          <div><h3 className="font-bold t1">Subscription revenue</h3><p className="text-xs t3">Money we actually collected — merchant plans only</p></div>
+          <span className="text-xs t3">{scale.unit} · last 12 months</span>
+        </div>
+        {!revenue.length ? <EmptyState icon="chart-simple" title="No revenue data" sub="No subscription payments to chart yet." /> : (
         <div className="flex items-end gap-2 h-44">
-          {gmv.map((d,i)=>(
-            <div key={i} className="flex-1 h-full flex flex-col items-center gap-2">
+          {revenue.map((d,i)=>(
+            <div key={i} className="flex-1 h-full flex flex-col items-center gap-2" title={`${d.m}: ${kes(d.v)}`}>
               <div className="flex-1 w-full flex items-end">
-                <div className="w-full rounded-t-md transition-all" style={{height:`${(d.v/max)*100}%`, background: i===gmv.length-1?'var(--pri)':'var(--pri-soft)', minHeight:6}} />
+                <div className="w-full rounded-t-md transition-all" style={{height:`${(d.v/max)*100}%`, background: i===revenue.length-1?'var(--pri)':'var(--pri-soft)', minHeight:6}} />
               </div>
               <span className="text-[10px] t3">{d.m}</span>
             </div>
@@ -357,24 +376,49 @@ export function Analytics(){
             <Bar pct={pct} color={`color-mix(in srgb, var(--pri) ${100-i*16}%, var(--green))`} />
           </div>); })}</div>
       </Card>
+      {/* These four were hardcoded percentages that looked plausible and were
+          entirely invented (96.2% route completion, 91% retention…). They now
+          read from staffOverview.health, and show an em-dash when there's
+          nothing to measure rather than a comforting number. */}
       <Card className="p-6">
-        <h3 className="font-bold t1 mb-4">Operational health</h3>
+        <h3 className="font-bold t1 mb-1">Retention &amp; cost</h3>
+        <p className="text-xs t3 mb-4">The two things that decide whether the model works</p>
         <div className="grid grid-cols-2 gap-4">
-          <Mini label="Route completion" v="96.2%" tone="green" icon="route" />
-          <Mini label="Avg drops / run" v="6.4" tone="pri" icon="layer-group" />
-          <Mini label="Merchant retention" v="91%" tone="blue" icon="repeat" />
-          <Mini label="Insurance claims" v="0.4%" tone="amber" icon="shield-halved" />
+          <Mini label="Revenue per merchant" sub="ARPU / month" v={health.arpu ? kes(health.arpu) : '—'} tone="pri" icon="user-tag" />
+          <Mini label="Churned (30 days)" sub={`${health.lapsed30 ?? 0} plan${health.lapsed30 === 1 ? '' : 's'} lapsed`} v={health.churnPct != null ? `${health.churnPct}%` : '—'} tone={health.churnPct > 10 ? 'red' : 'blue'} icon="user-slash" />
+          <Mini label="Renewals due" sub="next 7 days" v={health.renewalsDue7 != null ? String(health.renewalsDue7) : '—'} tone="amber" icon="calendar-day" />
+          <Mini label="Gross margin" sub="collections − rider payouts" v={health.collectedMonth ? `${health.marginPct}%` : '—'} tone={health.marginPct < 0 ? 'red' : 'green'} icon="scale-balanced" />
         </div>
       </Card>
     </div>
+
+    {/* The delivery allotment is the obligation subscriptions create — how much of
+        the capacity merchants pay for they actually use is the single number that
+        moves gross margin. */}
+    <Card className="p-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+        <div><h3 className="font-bold t1">Delivery allotment</h3><p className="text-xs t3">Deliveries merchants have paid for, versus what they've used this cycle</p></div>
+        <div className="text-right"><div className="text-2xl font-bold t1 num">{health.allotIncluded ? `${health.allotPct}%` : '—'}</div><div className="text-xs t3">used</div></div>
+      </div>
+      {!health.allotIncluded ? <EmptyState icon="box-open" title="No allotment yet" sub="No active plan includes bundled deliveries." /> : (<>
+        <Bar pct={Math.min(100, health.allotPct)} color={health.allotPct > 90 ? 'var(--red)' : health.allotPct > 70 ? 'var(--amber)' : 'var(--green)'} />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-sm">
+          <div><div className="t3 text-xs">Included</div><div className="num font-bold t1">{health.allotIncluded.toLocaleString()}</div></div>
+          <div><div className="t3 text-xs">Used / reserved</div><div className="num font-bold t1">{(health.allotUsed || 0).toLocaleString()}</div></div>
+          <div><div className="t3 text-xs">Runs this month</div><div className="num font-bold t1">{(health.runsCompletedMonth || 0).toLocaleString()}</div></div>
+          <div><div className="t3 text-xs">Cost per run</div><div className="num font-bold t1">{health.costPerRun ? kes(health.costPerRun) : '—'}</div></div>
+        </div>
+      </>)}
+    </Card>
   </div>);
 }
-function Mini({ label, v, tone, icon }){
-  const tones={green:['var(--green-bg)','var(--green)'],pri:['var(--pri-soft)','var(--pri)'],blue:['var(--blue-bg)','var(--blue)'],amber:['var(--amber-bg)','var(--amber)']};
-  const c=tones[tone];
+function Mini({ label, sub, v, tone, icon }){
+  const tones={green:['var(--green-bg)','var(--green)'],pri:['var(--pri-soft)','var(--pri)'],blue:['var(--blue-bg)','var(--blue)'],amber:['var(--amber-bg)','var(--amber)'],red:['var(--red-bg)','var(--red)']};
+  const c=tones[tone]||tones.pri;
   return (<div className="rounded-xl p-4" style={{background:'var(--surface2)'}}>
     <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{background:c[0],color:c[1]}}><Icon name={icon}/></div>
-    <div className="text-xl font-bold t1 num">{v}</div><div className="text-xs t3">{label}</div></div>);
+    <div className="text-xl font-bold t1 num">{v}</div><div className="text-xs t1 font-semibold">{label}</div>
+    {sub && <div className="text-[11px] t3">{sub}</div>}</div>);
 }
 
 /* ============ MERCHANT VERIFICATION & OVERSIGHT ============ */
@@ -884,58 +928,6 @@ export function Scouts({ isAdmin }){
       ]} />
     </Card>
     {auditS && <RecordAudit title={auditS.name} subtitle={auditS.county} record={auditS} onClose={()=>setAuditS(null)} />}
-  </div>);
-}
-
-/* ============ ORDERS & LOGISTICS ============ */
-export function Logistics(){
-  const { useState } = React;
-  const { data, live, error, demo, reload } = useStaffResource(fetchRuns, { runs:RUNS, fleet:FLEET });
-  const runs = data.runs || [];   // never `|| RUNS` — blank beats invented runs
-  const fleet = data.fleet || [];
-  const tone = { in_transit:'blue', delivered:'ok', delayed:'red' };
-  const label = { in_transit:'In transit', delivered:'Delivered', delayed:'Delayed' };
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const optimize = async () => {
-    setBusy(true); setMsg(null);
-    try { const r = await optimizeRuns(); setMsg({ ok:true, text:`Re-optimized ${r.updated} of ${r.runs} open run(s).` }); reload(); }
-    catch (e) { setMsg({ ok:false, text:e.message || 'Optimize failed.' }); }
-    finally { setBusy(false); }
-  };
-  return (<div className="fadeup space-y-6">
-    <SectionHead icon="truck-fast" title="Orders & logistics" sub={live ? 'Live batched-run operations across all bands' : 'Sample runs — connect the backend for live operations'}
-      action={<Btn kind="primary" size="sm" icon={busy?'spinner':'route'} onClick={optimize} disabled={busy}>{busy?'Optimizing…':'Optimize routes'}</Btn>} />
-    {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <Stat label="Runs in transit" value={runs.filter(r=>r.status==='in_transit').length} icon="motorcycle" tone="blue" />
-      <Stat label="Delivered today" value={runs.filter(r=>r.status==='delivered').length} icon="box-open" tone="green" />
-      <Stat label="Delayed" value={runs.filter(r=>r.status==='delayed').length} icon="triangle-exclamation" tone="red" />
-      <Stat label="Active fleet" value={fleet.reduce((a,f)=>a+f.active,0)} icon="truck" tone="pri" />
-    </div>
-    <div className="grid lg:grid-cols-3 gap-6">
-      <Card className="p-0 overflow-hidden lg:col-span-2">
-        <h3 className="font-bold t1 p-5 pb-3">Active runs</h3>
-        <DataTable minWidth={620} rows={runs} empty={<EmptyState icon="route" title="No active runs." />} columns={[
-          { key:'id', header:'Run', render:r=><span className="num font-semibold t1">{r.id}</span> },
-          { key:'band', header:'Band', render:r=><span className="pill pill-blue">{r.band}</span> },
-          { key:'rider', header:'Rider', render:r=><span className="t2">{r.rider}<div className="text-xs t3">{r.vehicle}</div></span> },
-          { key:'drops', header:'Drops', render:r=><span className="num t1">{r.drops}</span> },
-          { key:'dist', header:'Distance', render:r=><span className="num t2">{r.dist}</span> },
-          { key:'eta', header:'ETA', render:r=><span className="num t2">{r.eta}</span> },
-          { key:'status', header:'Status', render:r=><Pill tone={tone[r.status]}>{label[r.status]}</Pill> },
-        ]} />
-      </Card>
-      <Card className="p-6">
-        <h3 className="font-bold t1 mb-4">Fleet by band</h3>
-        <div className="space-y-4">{fleet.map(f=>{ const total=f.active+f.idle; return (
-          <div key={f.band}>
-            <div className="flex justify-between text-sm mb-1.5"><span className="font-semibold t1">Band {f.band} · {f.label.split('·')[1]}</span><span className="num t3">{f.active}/{total}</span></div>
-            <Bar pct={(f.active/total)*100} color="var(--green)" />
-            <div className="text-xs t3 mt-1">{f.active} active · {f.idle} idle</div>
-          </div>); })}</div>
-      </Card>
-    </div>
   </div>);
 }
 

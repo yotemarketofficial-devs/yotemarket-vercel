@@ -1,6 +1,11 @@
 /* intelligence.jsx — Staff portal: Business Intelligence. A live cross-platform
-   commercial data repository (GMV, subscription revenue, merchants, top stores,
-   categories) plus an AI-generated executive brief built from that same data. */
+   commercial data repository plus an AI-generated executive brief built from the
+   same figures.
+
+   The headline block is OUR business: recurring subscription revenue, what it
+   costs to serve the delivery allotment those plans buy, and retention. Merchant
+   sales appear only in a separate, explicitly-labelled block — the platform takes
+   no cut of trade, so that money is never ours and must never be read as growth. */
 import React from 'react';
 import { Card, SectionHead, Btn, Icon, Stat, Bar, kes } from './ui.jsx';
 import Markdown from '../../components/Markdown.jsx';
@@ -47,18 +52,39 @@ export function Intelligence(){
         action={<Btn kind="soft" size="md" icon={loading ? 'spinner' : 'rotate'} onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</Btn>} />
       {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
 
-      {/* headline commercial KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat label="GMV (all-time)" value={kes(d.gmv)} sub={`${num(d.paidOrders)} paid orders`} icon="sack-dollar" tone="green" />
-        <Stat label="GMV this month" value={kes(d.gmvMonth)} icon="arrow-trend-up" tone="pri" />
-        <Stat label="Platform revenue" value={kes(d.subscriptionRevenue)} sub="Subscriptions (all-time)" icon="crown" tone="amber" />
-        <Stat label="Revenue this month" value={kes(d.subscriptionRevenueMonth)} sub="Subscription income" icon="calendar-day" tone="blue" />
+      {/* ── Platform revenue: the money YoteMarket actually earns ─────────────── */}
+      <div>
+        <h3 className="text-sm font-bold t1 mb-2 flex items-center gap-2"><Icon name="crown" style={{ color:'var(--pri)' }} />Our revenue</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Stat label="Recurring revenue" value={kes(d.mrr)} sub={`MRR · ${num(d.activeSubscriptions)} active plans`} icon="repeat" tone="pri" />
+          <Stat label="Collected this month" value={kes(d.subscriptionRevenueMonth)} sub={`${kes(d.subscriptionRevenue)} all-time`} icon="money-bill-wave" tone="green" />
+          <Stat label="Revenue per merchant" value={kes(d.arpu)} sub="ARPU / month" icon="user-tag" tone="blue" />
+          <Stat label="Gross margin (month)" value={kes(d.grossMarginMonth)} sub={`after ${kes(d.riderCostMonth)} rider payouts`} icon="scale-balanced" tone={Number(d.grossMarginMonth) < 0 ? 'red' : 'amber'} />
+        </div>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat label="Active merchants" value={num(d.activeSubscriptions)} sub={`${num(d.merchants)} registered`} icon="store" tone="pri" />
-        <Stat label="Live stores" value={num(d.verifiedStores)} sub={`${num(d.totalStores)} total · ${num(d.suspendedStores)} suspended`} icon="shop" tone="blue" />
-        <Stat label="Orders" value={num(d.orders)} sub={`${num(d.delivered)} delivered · ${num(d.pending)} open`} icon="bag-shopping" tone="amber" />
-        <Stat label="Avg order value" value={kes(d.avgOrderValue)} sub={`${num(d.activeShoppers)} shoppers · ${num(d.scouts)} scouts`} icon="receipt" tone="green" />
+
+      {/* ── Retention + the delivery obligation plans create ──────────────────── */}
+      <div>
+        <h3 className="text-sm font-bold t1 mb-2 flex items-center gap-2"><Icon name="heart-pulse" style={{ color:'var(--pri)' }} />Retention &amp; capacity</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Stat label="Renewals due" value={num(d.renewalsDue7)} sub="within 7 days" icon="calendar-day" tone="amber" />
+          <Stat label="Churn (30 days)" value={`${Number(d.churnPct) || 0}%`} sub={`${num(d.lapsed30)} plans lapsed`} icon="user-slash" tone={Number(d.churnPct) > 10 ? 'red' : 'blue'} />
+          <Stat label="Allotment used" value={d.allotIncluded ? `${Number(d.allotPct) || 0}%` : '—'} sub={`${num(d.allotUsed)} of ${num(d.allotIncluded)} deliveries`} icon="box-open" tone="pri" />
+          <Stat label="Runs completed" value={num(d.runsCompleted)} sub={`${num(d.runsCompletedMonth)} this month`} icon="motorcycle" tone="green" />
+        </div>
+      </div>
+
+      {/* ── Marketplace scale. Merchant sales are the MERCHANTS' money: we take no
+             commission, so this is a health/retention signal, never our income. ── */}
+      <div>
+        <h3 className="text-sm font-bold t1 mb-1 flex items-center gap-2"><Icon name="store" style={{ color:'var(--pri)' }} />Marketplace activity</h3>
+        <p className="text-xs t3 mb-2">Merchant trade volume — their money, not platform revenue. Tracked because a store that stops selling stops renewing.</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Stat label="Live stores" value={num(d.verifiedStores)} sub={`${num(d.totalStores)} total · ${num(d.suspendedStores)} suspended`} icon="shop" tone="blue" />
+          <Stat label="Orders" value={num(d.orders)} sub={`${num(d.delivered)} delivered · ${num(d.pending)} open`} icon="bag-shopping" tone="amber" />
+          <Stat label="Merchant sales" value={kes(d.merchantSales)} sub={`${num(d.paidOrders)} paid orders · ${kes(d.merchantSalesMonth)} this month`} icon="cart-shopping" tone="green" />
+          <Stat label="Avg order value" value={kes(d.avgOrderValue)} sub={`${num(d.activeShoppers)} shoppers · ${num(d.scouts)} scouts`} icon="receipt" tone="pri" />
+        </div>
       </div>
 
       {/* AI brief */}
@@ -95,7 +121,8 @@ export function Intelligence(){
       {/* data repository detail */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card className="p-6">
-          <h3 className="font-bold t1 mb-3">Top stores by revenue</h3>
+          <h3 className="font-bold t1 mb-1">Top stores by sales</h3>
+          <p className="text-xs t3 mb-3">Their takings — our best predictor of who renews</p>
           {topStores.length === 0 ? <div className="text-sm t3 py-6 text-center">No sales yet.</div> : (
             <div className="space-y-2">
               {topStores.map((s, i) => (

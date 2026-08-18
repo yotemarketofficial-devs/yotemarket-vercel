@@ -196,6 +196,8 @@ export const staffListUsers = callable('staffListUsers');
 export const createSupportTicket = callable('createSupportTicket');
 /** The signed-in user's own tickets (newest first) → { tickets }. */
 export const listMySupportTickets = callable('listMySupportTickets');
+/** Reply to your own request → { ok }. { id, message }. Reopens a resolved thread. */
+export const replyMySupportTicket = callable('replyMySupportTicket');
 /** Staff: list support tickets → { tickets, counts }. { status?, limit? }. */
 export const staffListSupportTickets = callable('staffListSupportTickets');
 /** Staff: reply to / triage a ticket → { ok }. { id, message?, status?, priority?, assignToMe? }. */

@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FAQS, FAQ_CATEGORIES, TICKET_CATEGORIES } from '../lib/faqs.js';
-import { createSupportTicket, listMySupportTickets } from '../lib/firebase.js';
+import { createSupportTicket, listMySupportTickets, replyMySupportTicket } from '../lib/firebase.js';
 import { useAuth } from '../lib/useAuth.jsx';
 
 const SUPPORT_EMAIL = 'support@yotemarket.com';
@@ -232,22 +232,67 @@ function MyRequests({ user }) {
       {state.loaded && (state.tickets.length === 0
         ? <p className="help-mine-empty">You haven’t opened any requests yet.</p>
         : <ul className="help-mine-list">
-            {state.tickets.map((t) => {
-              const m = STATUS_META[t.status] || STATUS_META.open;
-              const lastReply = (t.replies || []).filter((r) => r.author === 'staff').slice(-1)[0];
-              return (
-                <li key={t.id}>
-                  <div className="help-mine-top">
-                    <span className="help-mine-subj">{t.subject}</span>
-                    <span className="help-mine-status" style={{ color: m.color, background: `color-mix(in srgb, ${m.color} 14%, transparent)` }}>{m.label}</span>
-                  </div>
-                  <div className="help-mine-ref">{t.ref}</div>
-                  {lastReply && <div className="help-mine-reply"><b>Support:</b> {lastReply.text}</div>}
-                </li>
-              );
-            })}
+            {state.tickets.map((t) => <MyRequest key={t.id} t={t} onReplied={load} />)}
           </ul>)}
     </div>
+  );
+}
+
+/* One request, as a conversation.
+   Two things made this necessary. Support could reply but the customer had no way
+   to answer, so every clarifying question dead-ended into a second ticket. And
+   staff can now START a thread (Comms → Message someone), where the FIRST message
+   is ours — rendering only "the last staff reply" would have shown that thread
+   with no body at all. So: show the whole exchange, attributed by direction. */
+function MyRequest({ t, onReplied }) {
+  const [open, setOpen] = useState(false);
+  const [reply, setReply] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const m = STATUS_META[t.status] || STATUS_META.open;
+  const outbound = t.direction === 'outbound' || t.source === 'staff';
+  const thread = [{ author: outbound ? 'staff' : 'you', text: t.message, at: t.createdAt }, ...(t.replies || [])];
+  const last = thread[thread.length - 1];
+  const closed = t.status === 'closed';
+
+  const send = async () => {
+    setBusy(true); setErr('');
+    try { await replyMySupportTicket({ id: t.id, message: reply.trim() }); setReply(''); onReplied(); }
+    catch (e) { setErr(e?.message || 'Could not send your reply.'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <li>
+      <button className="help-mine-open" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <span className="help-mine-top">
+          <span className="help-mine-subj">{t.subject}</span>
+          <span className="help-mine-status" style={{ color: m.color, background: `color-mix(in srgb, ${m.color} 14%, transparent)` }}>{m.label}</span>
+        </span>
+        <span className="help-mine-ref">{t.ref} · {thread.length} message{thread.length === 1 ? '' : 's'}</span>
+        {!open && last && <span className="help-mine-reply"><b>{last.author === 'staff' ? 'Support:' : 'You:'}</b> {last.text}</span>}
+      </button>
+      {open && (
+        <div className="help-thread">
+          {thread.map((msg, i) => (
+            <div key={i} className={`help-msg ${msg.author === 'staff' ? 'is-staff' : 'is-me'}`}>
+              <div className="help-msg-who">{msg.author === 'staff' ? 'Support' : 'You'}</div>
+              <div className="help-msg-text">{msg.text}</div>
+            </div>
+          ))}
+          {closed
+            ? <p className="help-mine-empty">This request is closed. Open a new one above if you still need help.</p>
+            : (<>
+              <textarea className="help-reply" rows={3} value={reply} onChange={(e) => setReply(e.target.value)}
+                placeholder="Write a reply…" maxLength={4000} />
+              {err && <div className="help-err"><i className="fas fa-circle-exclamation" /> {err}</div>}
+              <button className="btn btn-primary" onClick={send} disabled={busy || reply.trim().length < 2}>
+                {busy ? <><i className="fas fa-circle-notch fa-spin" /> Sending…</> : <><i className="fas fa-paper-plane" /> Send reply</>}
+              </button>
+            </>)}
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -327,7 +372,17 @@ function HelpStyles() {
       .help-mine-subj{ font-weight:600; color:var(--t1); font-size:14px; }
       .help-mine-status{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
       .help-mine-ref{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--t3); margin-top:4px; }
-      .help-mine-reply{ font-size:13px; color:var(--t2); margin-top:8px; line-height:1.55; }
+      .help-mine-reply{ font-size:13px; color:var(--t2); margin-top:8px; line-height:1.55; display:block; }
+      .help-mine-open{ display:block; width:100%; text-align:left; background:none; border:none; padding:0; font-family:inherit; cursor:pointer; }
+      .help-thread{ margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+      .help-msg{ border-radius:12px; padding:10px 12px; font-size:13.5px; line-height:1.55; }
+      .help-msg.is-staff{ background:color-mix(in srgb,var(--purple) 10%, transparent); margin-right:22px; }
+      .help-msg.is-me{ background:var(--surface2); margin-left:22px; }
+      .help-msg-who{ font-size:11px; font-weight:700; color:var(--t3); margin-bottom:3px; }
+      .help-msg-text{ color:var(--t1); white-space:pre-wrap; }
+      .help-reply{ width:100%; margin-top:4px; padding:11px 13px; border-radius:12px; border:1px solid var(--line2);
+        background:var(--surface); color:var(--t1); font-family:inherit; font-size:14px; resize:vertical; outline:none; }
+      .help-reply:focus{ border-color:var(--purple); }
       .help-contact-card a{ display:flex; align-items:center; gap:10px; color:var(--t2); font-size:14.5px; margin-top:12px; font-weight:500; }
       .help-contact-card a:hover{ color:var(--purple); }
       .help-hours{ font-size:13px; color:var(--t3); margin:14px 0 0; }
