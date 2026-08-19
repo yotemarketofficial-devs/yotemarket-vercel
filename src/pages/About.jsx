@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom';
+// One source of truth for the founders' profile urls — these must match the Person
+// `sameAs` in index.html, or the entity splits. See lib/socials.js.
+import { FOUNDERS } from '../lib/socials.js';
 
 function About() {
   return (
@@ -65,7 +68,7 @@ function About() {
               media independently, and supports <em>Jacity Travellers &amp; Tours</em> in Nairobi with content
               and social campaigns in the travel sector. He is certified by Google in Digital Marketing
               Fundamentals and has studied information technology.{' '}
-              <a href="https://www.linkedin.com/in/moses-kiambi-84043625b" target="_blank" rel="noopener noreferrer me"
+              <a href={FOUNDERS.find((f) => f.id === 'moses-kiambi').links[0].url} target="_blank" rel="noopener noreferrer me"
                 style={{ color: 'var(--purple)', fontWeight: 600 }}>Moses on LinkedIn</a>.
             </p>
             <p id="arnold-kamau">
@@ -86,7 +89,7 @@ function About() {
               University in the political economy of institutions and development and in international
               humanitarian law, and a specialisation in negotiation, mediation and conflict resolution from
               ESSEC Business School.{' '}
-              <a href="https://www.linkedin.com/in/arnold-w-554439198" target="_blank" rel="noopener noreferrer me"
+              <a href={FOUNDERS.find((f) => f.id === 'arnold-kamau').links[0].url} target="_blank" rel="noopener noreferrer me"
                 style={{ color: 'var(--purple)', fontWeight: 600 }}>Arnold on LinkedIn</a>.
             </p>
             <h3>Join us</h3>
