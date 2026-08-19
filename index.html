@@ -119,7 +119,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+    <!-- Font Awesome is icons only — nothing on the page needs it to lay out, but as a
+         plain stylesheet it BLOCKED first paint on a third-party origin. Loaded as a
+         preload that promotes itself to a stylesheet once fetched, so paint no longer
+         waits on cdnjs. The <noscript> copy keeps icons for scripting-disabled clients. -->
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+          onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+    </noscript>
     <link
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
       rel="stylesheet"
@@ -135,7 +143,6 @@
         font-family:'Poppins',system-ui,sans-serif;z-index:9999;}
       #ym-boot .s{display:flex;flex-direction:column;align-items:center;gap:26px;}
       #ym-boot .lg{width:190px;max-width:56vw;height:auto;display:block;animation:ymb-rise .7s cubic-bezier(.22,.7,.2,1) both;}
-      #ym-boot .lg-dark{display:none;}
       #ym-boot .bar{position:relative;width:150px;height:4px;border-radius:999px;overflow:hidden;background:rgba(124,43,212,.14);}
       #ym-boot .bar>i{position:absolute;top:0;bottom:0;width:45%;border-radius:999px;
         background:linear-gradient(90deg,transparent,#7C2BD4,transparent);animation:ymb-prog 1.25s cubic-bezier(.65,.05,.36,1) infinite;}
@@ -143,16 +150,18 @@
       @keyframes ymb-prog{0%{transform:translateX(-140%)}100%{transform:translateX(320%)}}
       @media (prefers-color-scheme:dark){
         #ym-boot{background:radial-gradient(60% 55% at 50% 40%,rgba(124,43,212,.26),transparent 70%),#0E0620;}
-        #ym-boot .lg-light{display:none;}
-        #ym-boot .lg-dark{display:block;}
       }
       @media (prefers-reduced-motion:reduce){ #ym-boot .bar>i{animation:none;} }
     </style>
     <div id="root">
       <div id="ym-boot">
         <div class="s">
-          <img class="lg lg-light" src="/assets/logo.png" alt="YoteMarket" />
-          <img class="lg lg-dark" src="/assets/logo-white.png" alt="YoteMarket" />
+          <!-- <picture> so the browser fetches ONE logo. Two <img>s toggled by CSS
+               downloaded both (46 KB) on every load to show 22 KB of it. -->
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="/assets/logo-white.png" />
+            <img class="lg" src="/assets/logo.png" alt="YoteMarket" />
+          </picture>
           <div class="bar"><i></i></div>
         </div>
       </div>
