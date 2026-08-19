@@ -82,6 +82,10 @@ const PAGES = {
     title: 'Privacy Policy — YoteMarket',
     description: 'What data YoteMarket collects, why, and the choices you have.',
   },
+  '/delete-account': {
+    title: 'Delete your account or data — YoteMarket',
+    description: 'How to permanently close your YoteMarket account, or ask us to erase your data.',
+  },
 };
 
 /** Set (or create) a <meta> tag. */

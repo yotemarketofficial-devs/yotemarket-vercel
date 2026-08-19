@@ -12,6 +12,7 @@ import Pricing from './pages/Pricing.jsx';
 import Careers from './pages/Careers.jsx';
 import Terms from './pages/Terms.jsx';
 import Privacy from './pages/Privacy.jsx';
+import DeleteAccount from './pages/DeleteAccount.jsx';
 import HelpCenter from './pages/HelpCenter.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
@@ -57,6 +58,8 @@ function App() {
           <Route path="careers" element={<Careers />} />
           <Route path="terms" element={<Terms />} />
           <Route path="privacy" element={<Privacy />} />
+          {/* Public account/data deletion page — required by Google Play for both apps. */}
+          <Route path="delete-account" element={<DeleteAccount />} />
           <Route path="help" element={<HelpCenter />} />
           <Route path="*" element={<NotFound />} />
         </Route>
