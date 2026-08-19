@@ -23,12 +23,19 @@ const SCREENS = { home:HomeScreen, search:SearchScreen, product:ProductScreen, s
 
 const initialsFrom = (s) => (s || 'A').split(/[ @._-]/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
-/** The screen a real URL points at: /store/:sid or /product/:pid → null otherwise. */
+/** The screen a real URL points at: /store/:sid, /product/:pid or /feed[/:vid]
+ *  → null otherwise. */
 export function screenFromPath(pathname) {
   let m = /^\/store\/([^/?#]+)/.exec(pathname || '');
   if (m) return { screen: 'store', params: { sid: decodeURIComponent(m[1]) } };
   m = /^\/product\/([^/?#]+)/.exec(pathname || '');
   if (m) return { screen: 'product', params: { pid: decodeURIComponent(m[1]) } };
+  // YoteFeed. /feed opens the feed; /feed/:vid opens ON that clip (startId is what
+  // FeedScreen already uses to jump). Before this the feed had no address at all,
+  // so no clip could be shared, prerendered or indexed.
+  m = /^\/feed\/([^/?#]+)/.exec(pathname || '');
+  if (m) return { screen: 'feed', params: { startId: decodeURIComponent(m[1]) } };
+  if (/^\/feed\/?$/.test(pathname || '')) return { screen: 'feed', params: {} };
   return null;
 }
 
@@ -37,6 +44,7 @@ export function screenFromPath(pathname) {
 function pathForScreen(screen, params) {
   if (screen === 'store' && params?.sid) return `/store/${encodeURIComponent(params.sid)}`;
   if (screen === 'product' && params?.pid) return `/product/${encodeURIComponent(params.pid)}`;
+  if (screen === 'feed') return params?.startId ? `/feed/${encodeURIComponent(params.startId)}` : '/feed';
   return null;
 }
 

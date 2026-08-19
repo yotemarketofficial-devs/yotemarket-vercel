@@ -1,85 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
   <url>
-    <loc>https://yotemarket.co.ke/</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/storefront</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/storefront</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/pricing</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/feed</loc>
+    <lastmod>2026-08-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/pricing</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/about</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/about</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/mobile</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/mobile</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/rider</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/rider</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/marketers</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/marketers</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/careers</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/careers</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/help</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/help</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/contact</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/contact</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/terms</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/terms</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/privacy</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/privacy</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/2c8np79trTvWNz62augN</loc>
-    <lastmod>2026-07-23</lastmod>
+    <loc>https://www.yotemarket.co.ke/store/2c8np79trTvWNz62augN</loc>
+    <lastmod>2026-08-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2F2c8np79trTvWNz62augN%2Flogo_1785828045415_8r5kj.jpg?alt=media&amp;token=4f191da8-024e-4a35-8ccd-e1f25c9a2475</image:loc>
+      <image:title>Digiden Technologies</image:title>
+      <image:caption>We sell and service all types of electronics from Computers, Phones, Earphones etc.</image:caption>
+    </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/4AwDYrNz75xosEoIpA4R</loc>
+    <loc>https://www.yotemarket.co.ke/store/4AwDYrNz75xosEoIpA4R</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -90,14 +101,20 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/Cow7Jo7OzNsYGSa3sGbp</loc>
-    <lastmod>2026-07-22</lastmod>
+    <loc>https://www.yotemarket.co.ke/store/4XEA56ts1hED2KjY2ITY</loc>
+    <lastmod>2026-08-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/D1BGQRwmbraVmuYga9br</loc>
-    <lastmod>2026-08-01</lastmod>
+    <loc>https://www.yotemarket.co.ke/store/Cow7Jo7OzNsYGSa3sGbp</loc>
+    <lastmod>2026-08-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/store/D1BGQRwmbraVmuYga9br</loc>
+    <lastmod>2026-08-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -107,14 +124,14 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/aXAp9cy8Tyu6e6CP0m3f</loc>
-    <lastmod>2026-07-22</lastmod>
+    <loc>https://www.yotemarket.co.ke/store/aXAp9cy8Tyu6e6CP0m3f</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/dOZ76XDeLP19kFlSTUxl</loc>
-    <lastmod>2026-07-30</lastmod>
+    <loc>https://www.yotemarket.co.ke/store/dOZ76XDeLP19kFlSTUxl</loc>
+    <lastmod>2026-08-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -124,8 +141,8 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/oqqr9npqZVIBDjUYUfSg</loc>
-    <lastmod>2026-07-23</lastmod>
+    <loc>https://www.yotemarket.co.ke/store/oqqr9npqZVIBDjUYUfSg</loc>
+    <lastmod>2026-08-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -135,7 +152,13 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/store/xfnCa4qfIGaCzoF4wSWa</loc>
+    <loc>https://www.yotemarket.co.ke/store/rFnolq6Yv2GzaGiteI2t</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/store/xfnCa4qfIGaCzoF4wSWa</loc>
     <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -146,7 +169,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/0bo4JGAetW8ahGHeBhB0</loc>
+    <loc>https://www.yotemarket.co.ke/product/0bo4JGAetW8ahGHeBhB0</loc>
     <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -157,7 +180,18 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/1e8Ese5O4AJ7FJm5Uu3Q</loc>
+    <loc>https://www.yotemarket.co.ke/product/1UPDWr5DSDbPPFurizOB</loc>
+    <lastmod>2026-08-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785926955765_0dns3.jpg?alt=media&amp;token=753580d0-81f5-4bd3-9680-7411287657ad</image:loc>
+      <image:title>High quality Die cast (anti scratch) chapati pan</image:title>
+      <image:caption>High quality Die cast (anti scratch) chapati pan · KSh 1,800</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/product/1e8Ese5O4AJ7FJm5Uu3Q</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -168,7 +202,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/2H0MFrT7E9NtB5GYmXKe</loc>
+    <loc>https://www.yotemarket.co.ke/product/2H0MFrT7E9NtB5GYmXKe</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -179,7 +213,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/7UnNF67eAl5hyUKTHzI9</loc>
+    <loc>https://www.yotemarket.co.ke/product/7UnNF67eAl5hyUKTHzI9</loc>
     <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -190,7 +224,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/9gwEh1BvrWR1QWkc8kHg</loc>
+    <loc>https://www.yotemarket.co.ke/product/9gwEh1BvrWR1QWkc8kHg</loc>
     <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -201,7 +235,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/A5AUqW3laZWKYAUmlXZY</loc>
+    <loc>https://www.yotemarket.co.ke/product/A5AUqW3laZWKYAUmlXZY</loc>
     <lastmod>2026-07-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -212,7 +246,18 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/ArzZto44kZA0Am6qIibC</loc>
+    <loc>https://www.yotemarket.co.ke/product/AfCHp7NScB2dhfkywMxb</loc>
+    <lastmod>2026-08-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785946934802_ugxd6.jpg?alt=media&amp;token=d3a1897d-3dda-40cf-b61c-6e450c2506da</image:loc>
+      <image:title>Dinner set</image:title>
+      <image:caption>Dinner set · KSh 9,000</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/product/ArzZto44kZA0Am6qIibC</loc>
     <lastmod>2026-07-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -223,7 +268,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/BcEcY9oHmxwDtJdHEnT1</loc>
+    <loc>https://www.yotemarket.co.ke/product/BcEcY9oHmxwDtJdHEnT1</loc>
     <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -234,7 +279,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/Q6icaP33mGoLiK7ELOjh</loc>
+    <loc>https://www.yotemarket.co.ke/product/Q6icaP33mGoLiK7ELOjh</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -245,7 +290,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/VNX7mI1zWw7DgGkJPnKa</loc>
+    <loc>https://www.yotemarket.co.ke/product/VNX7mI1zWw7DgGkJPnKa</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -256,7 +301,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/Y4FwOzS5IBteiyXXee1C</loc>
+    <loc>https://www.yotemarket.co.ke/product/Y4FwOzS5IBteiyXXee1C</loc>
     <lastmod>2026-07-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -267,7 +312,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/YzpGhdZ6mzCvcdmQTCvi</loc>
+    <loc>https://www.yotemarket.co.ke/product/YzpGhdZ6mzCvcdmQTCvi</loc>
     <lastmod>2026-07-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -278,7 +323,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/ZN8uD55ijASb2FGvtf0B</loc>
+    <loc>https://www.yotemarket.co.ke/product/ZN8uD55ijASb2FGvtf0B</loc>
     <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -289,7 +334,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/aDN9BnqqJubyulYmqxc0</loc>
+    <loc>https://www.yotemarket.co.ke/product/aDN9BnqqJubyulYmqxc0</loc>
     <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -300,7 +345,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/cGK5aUlvpfkyYfOnQT2v</loc>
+    <loc>https://www.yotemarket.co.ke/product/cGK5aUlvpfkyYfOnQT2v</loc>
     <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -311,7 +356,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/cPWYxjMwk7S8jntFkRRd</loc>
+    <loc>https://www.yotemarket.co.ke/product/cPWYxjMwk7S8jntFkRRd</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -322,7 +367,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/eXD2Y9AIk6AeexydWya5</loc>
+    <loc>https://www.yotemarket.co.ke/product/eXD2Y9AIk6AeexydWya5</loc>
     <lastmod>2026-07-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -333,7 +378,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/kQCHAh1XbDELKqgx49WR</loc>
+    <loc>https://www.yotemarket.co.ke/product/kQCHAh1XbDELKqgx49WR</loc>
     <lastmod>2026-07-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -344,7 +389,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/nrEAfr0jnISQi2fSZjAU</loc>
+    <loc>https://www.yotemarket.co.ke/product/nrEAfr0jnISQi2fSZjAU</loc>
     <lastmod>2026-07-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -355,7 +400,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/r1N6ZZhv6lVuMioCujwR</loc>
+    <loc>https://www.yotemarket.co.ke/product/r1N6ZZhv6lVuMioCujwR</loc>
     <lastmod>2026-08-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -366,7 +411,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/sEKZKBhRgsCGCDQV0dO0</loc>
+    <loc>https://www.yotemarket.co.ke/product/sEKZKBhRgsCGCDQV0dO0</loc>
     <lastmod>2026-07-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -377,7 +422,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/vEYcBqGxGslBDgV5QeUG</loc>
+    <loc>https://www.yotemarket.co.ke/product/vEYcBqGxGslBDgV5QeUG</loc>
     <lastmod>2026-07-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -388,7 +433,18 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/yOAozgSnxSUVWugzdT7g</loc>
+    <loc>https://www.yotemarket.co.ke/product/wKGLAHTuGGQEwVsRUS6z</loc>
+    <lastmod>2026-08-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785866344957_byf7s.jpg?alt=media&amp;token=c79af3e0-a3aa-4f96-a612-718a7fdb2423</image:loc>
+      <image:title>3in1 bamboo wooden try</image:title>
+      <image:caption>3in1 bamboo wooden try · KSh 2,500</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/product/yOAozgSnxSUVWugzdT7g</loc>
     <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -399,7 +455,7 @@
     </image:image>
   </url>
   <url>
-    <loc>https://yotemarket.co.ke/product/ztmidVvk3gy09Lq3DJuX</loc>
+    <loc>https://www.yotemarket.co.ke/product/ztmidVvk3gy09Lq3DJuX</loc>
     <lastmod>2026-07-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -408,5 +464,179 @@
       <image:title>Jeep sling bags</image:title>
       <image:caption>Jeep sling bags · KSh 1,250</image:caption>
     </image:image>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/84fpp4Ku4UeaR6nWT3jD</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785516580506_5s82p.jpg?alt=media&amp;token=c2a4b366-91d7-4f76-a664-c44b21ddac03</image:loc>
+      <image:title>Un breakable stainless steel Gift pack thermocup 500ml +130ml cups &amp;gift set Available in 6…</image:title>
+      <image:caption>*Un breakable stainless steel Gift pack thermocup 500ml +130ml cups &amp;gift set
+*Available in 6 colours black,  grey, beige-silver, blue, emerald green, peach*
+@ksh 1200</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785516580506_5s82p.jpg?alt=media&amp;token=c2a4b366-91d7-4f76-a664-c44b21ddac03</video:thumbnail_loc>
+      <video:title>Un breakable stainless steel Gift pack thermocup 500ml +130ml cups &amp;gift set Available in 6…</video:title>
+      <video:description>*Un breakable stainless steel Gift pack thermocup 500ml +130ml cups &amp;gift set
+*Available in 6 colours black,  grey, beige-silver, blue, emerald green, peach*
+@ksh 1200</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FD1BGQRwmbraVmuYga9br%2F1785516727329_9vih2.mp4?alt=media&amp;token=b675aca3-0564-4807-91c6-2191e49a9867</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/DouS9hx2yhDwxqg9Zibm</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1784964085358_17xyl.jpg?alt=media&amp;token=5ad308a2-6baa-40cb-b0a3-c03d56e60658</image:loc>
+      <image:title>OPPO A6 4G New Model 120Hz LCD Display 50MP camera 7000mah battery 😱😱</image:title>
+      <image:caption>OPPO A6 4G New Model 120Hz LCD Display 50MP camera 7000mah battery 😱😱</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1784964085358_17xyl.jpg?alt=media&amp;token=5ad308a2-6baa-40cb-b0a3-c03d56e60658</video:thumbnail_loc>
+      <video:title>OPPO A6 4G New Model 120Hz LCD Display 50MP camera 7000mah battery 😱😱</video:title>
+      <video:description>OPPO A6 4G New Model 120Hz LCD Display 50MP camera 7000mah battery 😱😱</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FxfnCa4qfIGaCzoF4wSWa%2F1784966250195_y6dyu.mp4?alt=media&amp;token=babfd0ec-d68b-46b1-8e23-2193a32a092a</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/QQvsdHZHLD8xlxL8kqLW</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1782737442885_u1h8f.jpg?alt=media&amp;token=3b8b80b8-17f6-4fc6-baf8-5d9a27fd827f</image:loc>
+      <image:title>The moto g05 is designed for those who create as much as they consume. Switch between filming,…</image:title>
+      <image:caption>The moto g05 is designed for those who create as much as they consume. Switch between filming, scrolling, and tapping to pay with NFC, all powered by RAM Boost for ultra-efficient performance. And with a 5200mAh battery, you can keep going without missing a beat.</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1782737442885_u1h8f.jpg?alt=media&amp;token=3b8b80b8-17f6-4fc6-baf8-5d9a27fd827f</video:thumbnail_loc>
+      <video:title>The moto g05 is designed for those who create as much as they consume. Switch between filming,…</video:title>
+      <video:description>The moto g05 is designed for those who create as much as they consume. Switch between filming, scrolling, and tapping to pay with NFC, all powered by RAM Boost for ultra-efficient performance. And with a 5200mAh battery, you can keep going without missing a beat.</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FxfnCa4qfIGaCzoF4wSWa%2F1783783418869_c1ust.mp4?alt=media&amp;token=0f4c29ce-fd1a-449c-8453-d5ca5d7f8ea7</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/TrVCFSmnX5z0WTOlTdb7</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2Flogo_1784913303103_qvzlv.jpg?alt=media&amp;token=a6aa5dca-58d4-43b0-bf6a-e4b27693d3f4</image:loc>
+      <image:title>🎯Foldable 5 layer metallic trolley rack size 71x34x162cm @Ksh 6500</image:title>
+      <image:caption>*🎯Foldable 5 layer metallic trolley rack size 71x34x162cm
+@Ksh 6500</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2Flogo_1784913303103_qvzlv.jpg?alt=media&amp;token=a6aa5dca-58d4-43b0-bf6a-e4b27693d3f4</video:thumbnail_loc>
+      <video:title>🎯Foldable 5 layer metallic trolley rack size 71x34x162cm @Ksh 6500</video:title>
+      <video:description>*🎯Foldable 5 layer metallic trolley rack size 71x34x162cm
+@Ksh 6500</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FD1BGQRwmbraVmuYga9br%2F1785516072299_bb9sa.mp4?alt=media&amp;token=9c9f49d0-6ff5-4096-bd8a-c86783d6a009</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/V0z3nVCfELaVsnS9nnol</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785517346538_c51i3.jpg?alt=media&amp;token=fea40de5-bfe2-4c3e-b45e-c49f0ee1635e</image:loc>
+      <image:title>L acrylic fridge bottle with tight duo lid @ksh 599</image:title>
+      <image:caption>L acrylic fridge bottle with tight duo lid @ksh 599</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785517346538_c51i3.jpg?alt=media&amp;token=fea40de5-bfe2-4c3e-b45e-c49f0ee1635e</video:thumbnail_loc>
+      <video:title>L acrylic fridge bottle with tight duo lid @ksh 599</video:title>
+      <video:description>L acrylic fridge bottle with tight duo lid @ksh 599</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FD1BGQRwmbraVmuYga9br%2F1785517438436_a0v5q.mp4?alt=media&amp;token=9579d4ce-b46b-4530-be37-b374b7348e72</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/YvMOiwGy3rTMI3evR8ir</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1785320383275_47oij.jpg?alt=media&amp;token=90bbb950-b27d-4d5f-817d-699055b60419</image:loc>
+      <image:title>Redmi Pad 2: Compact &amp; Stylish 9.7 Inch Tablet Introducing the Redmi Pad 2, a new 9.7-inch tablet…</image:title>
+      <image:caption>Redmi Pad 2: Compact &amp; Stylish 9.7 Inch Tablet
+Introducing the Redmi Pad 2, a new 9.7-inch tablet that combines a compact design with a stylish aesthetic. Manufactured by Xiaomi, this Android device is a compelling option for those seeking a versatile and portable gadget. Its 9.7-inch display offers</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FxfnCa4qfIGaCzoF4wSWa%2F1785320383275_47oij.jpg?alt=media&amp;token=90bbb950-b27d-4d5f-817d-699055b60419</video:thumbnail_loc>
+      <video:title>Redmi Pad 2: Compact &amp; Stylish 9.7 Inch Tablet Introducing the Redmi Pad 2, a new 9.7-inch tablet…</video:title>
+      <video:description>Redmi Pad 2: Compact &amp; Stylish 9.7 Inch Tablet
+Introducing the Redmi Pad 2, a new 9.7-inch tablet that combines a compact design with a stylish aesthetic. Manufactured by Xiaomi, this Android device is a compelling option for those seeking a versatile and portable gadget. Its 9.7-inch display offers</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FxfnCa4qfIGaCzoF4wSWa%2F1785320962327_rlw25.mp4?alt=media&amp;token=acf514ff-3757-49ab-8aee-e4d72fa0fc5c</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/jyVFBuIf7uy9nsZ6yedV</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785345141227_3ttc2.jpg?alt=media&amp;token=552303aa-9d08-492e-ade1-b121f2d63021</image:loc>
+      <image:title>🎈Foldable 4in1 under garment organizer Colours gray and black @ksh 1200</image:title>
+      <image:caption>*🎈Foldable 4in1 under garment organizer 
+*Colours gray  and black*
+@ksh 1200</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785345141227_3ttc2.jpg?alt=media&amp;token=552303aa-9d08-492e-ade1-b121f2d63021</video:thumbnail_loc>
+      <video:title>🎈Foldable 4in1 under garment organizer Colours gray and black @ksh 1200</video:title>
+      <video:description>*🎈Foldable 4in1 under garment organizer 
+*Colours gray  and black*
+@ksh 1200</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FD1BGQRwmbraVmuYga9br%2F1785517012863_sdz6b.mp4?alt=media&amp;token=89e3adf7-3cd0-41be-ac8b-b5670dbfac9c</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
+  </url>
+  <url>
+    <loc>https://www.yotemarket.co.ke/feed/yIRZiuA8grk13RH41gpl</loc>
+    <lastmod>2026-08-18</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785582392769_0tb2n.jpg?alt=media&amp;token=b47dd72f-6754-4e19-a2bc-8147e8be1d99</image:loc>
+      <image:title>2in1 whisk Rechargable coffee frother @Ksh 750</image:title>
+      <image:caption>2in1 whisk Rechargable coffee frother
+@Ksh 750</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/product_images%2FD1BGQRwmbraVmuYga9br%2F1785582392769_0tb2n.jpg?alt=media&amp;token=b47dd72f-6754-4e19-a2bc-8147e8be1d99</video:thumbnail_loc>
+      <video:title>2in1 whisk Rechargable coffee frother @Ksh 750</video:title>
+      <video:description>2in1 whisk Rechargable coffee frother
+@Ksh 750</video:description>
+      <video:content_loc>https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/feed%2FD1BGQRwmbraVmuYga9br%2F1785582570623_dwanz.mp4?alt=media&amp;token=c86ba73e-45cb-4f31-a59c-d95aa52dc05c</video:content_loc>
+      <video:publication_date>2026-08-18T11:34:05.184100Z</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+      <video:live>no</video:live>
+    </video:video>
   </url>
 </urlset>

@@ -17,11 +17,10 @@
  */
 import { writeFileSync } from 'node:fs';
 // Shared with prerender.mjs so both advertise the SAME set of pages.
-import { fetchCollection, str, num, productImage, storeImage, ksh } from './lib/catalog.mjs';
+import { SITE, fetchListable, str, num, productImage, storeImage, ksh } from './lib/catalog.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const SITE = 'https://yotemarket.co.ke';
 const PROJECT = process.env.VITE_FIREBASE_PROJECT_ID || 'yotemarket-app';
 // Public web config — already ships in every client bundle (see lib/firebase.js).
 const API_KEY = process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDXt0Rpw_Cll8RQ_BO0riSKb8q7oZWvgYY';
@@ -34,6 +33,7 @@ const today = new Date().toISOString().slice(0, 10);
 const STATIC = [
   ['/', 'daily', '1.0'],
   ['/storefront', 'daily', '0.9'],
+  ['/feed', 'daily', '0.8'],
   ['/pricing', 'monthly', '0.8'],
   ['/about', 'monthly', '0.7'],
   ['/mobile', 'monthly', '0.7'],
@@ -56,15 +56,27 @@ const xmlEsc = (s) => String(s == null ? '' : s)
 
 // One <url>, optionally carrying a Google image-sitemap entry so product photos and
 // store logos are discoverable in Google Images (SEO "more info" per URL).
-const url = (loc, changefreq, priority, lastmod = today, image = null) => {
+const url = (loc, changefreq, priority, lastmod = today, image = null, video = null) => {
   const imgXml = image && image.loc && /^https?:\/\//.test(image.loc)
     ? `\n    <image:image>\n      <image:loc>${xmlEsc(image.loc)}</image:loc>` +
       (image.title ? `\n      <image:title>${xmlEsc(image.title)}</image:title>` : '') +
       (image.caption ? `\n      <image:caption>${xmlEsc(image.caption)}</image:caption>` : '') +
       `\n    </image:image>`
     : '';
+  // Google needs thumbnail_loc + title + description + a content/player loc on a video
+  // entry and drops the whole entry if any is missing — so only emit one when we really
+  // have a thumbnail and a playable file.
+  const vidXml = video && video.thumb && video.content && /^https?:\/\//.test(video.thumb)
+    ? `\n    <video:video>\n      <video:thumbnail_loc>${xmlEsc(video.thumb)}</video:thumbnail_loc>` +
+      `\n      <video:title>${xmlEsc(video.title)}</video:title>` +
+      `\n      <video:description>${xmlEsc(video.description)}</video:description>` +
+      `\n      <video:content_loc>${xmlEsc(video.content)}</video:content_loc>` +
+      (video.publication ? `\n      <video:publication_date>${xmlEsc(video.publication)}</video:publication_date>` : '') +
+      `\n      <video:family_friendly>yes</video:family_friendly>\n      <video:live>no</video:live>` +
+      `\n    </video:video>`
+    : '';
   return `  <url>\n    <loc>${SITE}${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n` +
-    `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>${imgXml}\n  </url>`;
+    `    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>${imgXml}${vidXml}\n  </url>`;
 };
 
 const day = (iso) => (iso ? String(iso).slice(0, 10) : today);
@@ -99,22 +111,15 @@ async function main() {
   let note = 'marketing pages only';
 
   try {
-    const [stores, products] = await Promise.all([fetchCollection('stores'), fetchCollection('products')]);
-
-    // A suspended store is off the storefront — don't ask Google to index it.
-    const live = stores.filter((s) => s.fields.suspended?.booleanValue !== true);
-    const liveIds = new Set(live.map((s) => s.id));
+    // ONE listable rule, shared with prerender.mjs — a URL the sitemap advertises but
+    // the prerender skips (or vice versa) is a crawl error either way.
+    const { stores: live, products: listable, feed, storeById, totalProducts, totalFeed } = await fetchListable();
     for (const s of live) {
       urls.push(url(`/store/${encodeURIComponent(s.id)}`, 'weekly', '0.8', day(s.updateTime),
           { loc: storeImage(s.fields), title: str(s.fields.name), caption: str(s.fields.tagline) || str(s.fields.area) }));
       locs.push(`${SITE}/store/${encodeURIComponent(s.id)}`);
     }
 
-    // Skip products whose store is suspended or missing — those pages render empty.
-    const listable = products.filter((p) => {
-      const sid = p.fields.storeId?.stringValue || p.fields.store?.stringValue;
-      return sid && liveIds.has(sid);
-    });
     for (const p of listable) {
       const price = num(p.fields.price);
       urls.push(url(`/product/${encodeURIComponent(p.id)}`, 'weekly', '0.7', day(p.updateTime),
@@ -122,14 +127,40 @@ async function main() {
       locs.push(`${SITE}/product/${encodeURIComponent(p.id)}`);
     }
 
-    note = `${live.length} stores + ${listable.length} products`;
-    if (products.length !== listable.length) note += ` (skipped ${products.length - listable.length} on suspended/unknown stores)`;
+    // YoteFeed clips. Each is a real page (/feed/:vid) carrying a video entry, so a clip
+    // is eligible for Google video results instead of being invisible — the feed had no
+    // URL at all before, so nothing in it could be crawled, shared or ranked.
+    for (const c of feed) {
+      const f = c.fields;
+      const caption = str(f.caption);
+      const seller = str(f.storeName) || 'a YoteMarket store';
+      // Captions are merchant-written marketing copy (asterisks, emoji, line breaks).
+      // A video title shows in search results, so flatten it and cut on a word boundary
+      // rather than mid-word at exactly 100 chars.
+      const flat = (caption || '').replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim();
+      const title = (flat ? (flat.length > 100 ? `${flat.slice(0, 99).replace(/\s+\S*$/, '')}…` : flat)
+        : `${seller} on YoteFeed`);
+      // No clip carries a poster frame today (nothing generates one on upload), so fall
+      // back to the tagged product's photo — it's what the clip is actually selling —
+      // then the store's logo. Google drops a video entry that has no thumbnail at all.
+      const thumb = str(f.posterUrl) || productImage(f.product?.mapValue?.fields || {}) ||
+        str(f.storeLogo) || storeImage(storeById.get(str(f.storeId))?.fields || {});
+      const desc = (caption || `A short video from ${seller} on YoteMarket — watch it and buy what is in it.`).slice(0, 2048);
+      urls.push(url(`/feed/${encodeURIComponent(c.id)}`, 'weekly', '0.6', day(c.updateTime),
+          thumb ? { loc: thumb, title, caption: desc } : null,
+          { thumb, content: str(f.videoUrl), title, description: desc, publication: c.updateTime || null }));
+      locs.push(`${SITE}/feed/${encodeURIComponent(c.id)}`);
+    }
+
+    note = `${live.length} stores + ${listable.length} products + ${feed.length} feed clips`;
+    if (totalProducts !== listable.length) note += ` (skipped ${totalProducts - listable.length} on suspended/unknown stores)`;
+    if (totalFeed !== feed.length) note += ` (skipped ${totalFeed - feed.length} non-live clips)`;
   } catch (err) {
     // Never break a deploy over a sitemap.
     console.warn(`[sitemap] could not read the catalogue (${err.message}) — writing static pages only.`);
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join('\n')}\n</urlset>\n`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${urls.join('\n')}\n</urlset>\n`;
   writeFileSync(OUT, xml);
   console.log(`[sitemap] ${urls.length} urls → public/sitemap.xml (${note})`);
   await submitIndexNow(locs);

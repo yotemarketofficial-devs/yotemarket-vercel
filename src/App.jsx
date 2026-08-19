@@ -65,12 +65,14 @@ function App() {
         </Route>
 
         {/* Full-bleed product experiences (imported kits) */}
-        {/* The mall answers on three paths. /store/:sid and /product/:pid are REAL
-            addresses for the catalogue — without them nothing in the shop could be
-            linked, shared or indexed, because browsing never left /storefront.
-            All three render the same element instance, so moving between them
+        {/* The mall answers on five paths. /store/:sid, /product/:pid and
+            /feed/:vid are REAL addresses — without them nothing in the shop could
+            be linked, shared or indexed, because browsing never left /storefront.
+            YoteFeed had no address at all, so every clip was invisible to search
+            and unshareable; /feed/:vid opens that clip directly.
+            All of them render the same element instance, so moving between them
             never remounts the shell (the cart and in-app stack survive). */}
-        {['/storefront', '/store/:sid', '/product/:pid'].map((path) => (
+        {['/storefront', '/store/:sid', '/product/:pid', '/feed', '/feed/:vid'].map((path) => (
           <Route
             key={path}
             path={path}

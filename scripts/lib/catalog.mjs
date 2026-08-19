@@ -6,7 +6,8 @@
  * apply the "is this listable?" rule through ONE implementation: a page that the sitemap
  * advertises but the prerender skips (or vice versa) is a crawl error either way.
  */
-export const SITE = 'https://yotemarket.co.ke';
+// Canonical origin lives with the page map so the browser and the build agree.
+export { SITE } from '../../src/lib/seo-pages.mjs';
 const PROJECT = process.env.VITE_FIREBASE_PROJECT_ID || 'yotemarket-app';
 const API_KEY = process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDXt0Rpw_Cll8RQ_BO0riSKb8q7oZWvgYY';
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
@@ -38,16 +39,28 @@ export const productImage = (fields) => str(fields.img) || str(fields.imageUrl) 
 export const storeImage = (fields) => str(fields.logo) || str(fields.img) || str(fields.imageUrl) || '';
 export const ksh = (n) => (n != null ? `KSh ${Number(n).toLocaleString('en-KE')}` : '');
 
-/** The catalogue as it should be exposed to crawlers: live stores, and the products
- *  belonging to them. A suspended store is off the storefront, and a product whose store
+/** The catalogue as it should be exposed to crawlers: live stores, the products
+ *  belonging to them, and the YoteFeed clips they posted. A suspended store is off the storefront, and a product whose store
  *  is suspended or missing renders an empty page — neither should be advertised. */
 export async function fetchListable() {
-  const [stores, products] = await Promise.all([fetchCollection('stores'), fetchCollection('products')]);
+  const [stores, products, feed] = await Promise.all([
+    fetchCollection('stores'), fetchCollection('products'), fetchCollection('feed_posts'),
+  ]);
   const live = stores.filter((s) => s.fields.suspended?.booleanValue !== true);
   const byId = new Map(live.map((s) => [s.id, s]));
   const listable = products.filter((p) => {
     const sid = str(p.fields.storeId) || str(p.fields.store);
     return sid && byId.has(sid);
   });
-  return { stores: live, products: listable, storeById: byId, totalProducts: products.length };
+  // YoteFeed clips. Same rule as the UI (lib/feed.js): status 'live' and a real
+  // video, plus the store still being live. `feed_posts` is world-readable, so the
+  // build reads it with the public key exactly like stores and products.
+  const clips = feed.filter((c) => {
+    const status = str(c.fields.status) || 'live';
+    return status === 'live' && str(c.fields.videoUrl) && byId.has(str(c.fields.storeId));
+  });
+  return {
+    stores: live, products: listable, feed: clips,
+    storeById: byId, totalProducts: products.length, totalFeed: feed.length,
+  };
 }

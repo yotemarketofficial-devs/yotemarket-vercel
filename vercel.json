@@ -9,11 +9,11 @@
       }
     }
   ],
-  "routes": [
-    { "handle": "filesystem" },
+  "cleanUrls": true,
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

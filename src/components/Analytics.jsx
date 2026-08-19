@@ -20,6 +20,7 @@ import { analyticsAllowed } from '../lib/consent.js';
 const DYNAMIC = [
   [/^\/store\/[^/]+$/, '/store/:sid'],
   [/^\/product\/[^/]+$/, '/product/:pid'],
+  [/^\/feed\/[^/]+$/, '/feed/:vid'],
 ];
 
 export default function Analytics() {
