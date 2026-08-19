@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useEscape } from './lib/useEscape.js';
 
 const navItems = [
@@ -89,7 +89,11 @@ function Layout() {
       </header>
       {/* Skip-link target. A plain wrapper — each page renders its own <main>. */}
       <div id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
-        <Outlet />
+        {/* Lazy marketing pages (rider, careers, help) suspend here rather than at the
+            app root, so the header and footer stay painted while one loads. */}
+        <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
+          <Outlet />
+        </Suspense>
       </div>
 
       <style>{`

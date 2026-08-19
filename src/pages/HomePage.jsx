@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
-import { subscribeFeed, feedVideoUrl } from '../lib/feed.js';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 
 const SHOPPER_FEATURES = [
@@ -48,7 +47,7 @@ const FALLBACK_CLIPS = [
   { tint: 'linear-gradient(160deg,#0d9488,#064e46)' },
 ];
 
-function FeedDemo({ clips }) {
+function FeedDemo({ clips, videoUrl }) {
   const ksh = (n) => 'Ksh ' + Number(n || 0).toLocaleString('en-KE');
   if (!clips.length) {
     return (
@@ -70,7 +69,7 @@ function FeedDemo({ clips }) {
           <Link key={p.id} to="/storefront" className={`feed-clip c${i + 1}`}
             aria-label={`Watch ${(p.product && p.product.name) || p.storeName || 'this clip'} on YoteFeed`}>
             <video
-              src={feedVideoUrl(p) + (lead ? '' : '#t=0.1')}
+              src={videoUrl(p) + (lead ? '' : '#t=0.1')}
               poster={p.posterUrl || undefined}
               muted playsInline
               autoPlay={lead} loop={lead}
@@ -91,7 +90,21 @@ function HomePage() {
   // Real YoteFeed clips for the landing demo (was three blank gradient mockups).
   // Only the newest few; egress is the real cost on KE mobile data — see FeedDemo.
   const [clips, setClips] = useState([]);
-  useEffect(() => subscribeFeed((rows) => setClips(rows.slice(0, 3)), 12), []);
+  // lib/feed.js reaches Firestore, so importing it at the top of this page put the whole
+  // 199 KB Firebase SDK on the homepage's critical path — for a decorative band far below
+  // the fold. Loaded after mount instead; FeedDemo shows FALLBACK_CLIPS until it arrives,
+  // which is the same thing it already did before any merchant had posted.
+  const [feedMod, setFeedMod] = useState(null);
+  useEffect(() => {
+    let off = null;
+    let cancelled = false;
+    import('../lib/feed.js').then((m) => {
+      if (cancelled) return;
+      setFeedMod(m);
+      off = m.subscribeFeed((rows) => setClips(rows.slice(0, 3)), 12);
+    }).catch(() => { /* band keeps its placeholders */ });
+    return () => { cancelled = true; if (off) off(); };
+  }, []);
 
   // Reveal-on-scroll: elements tagged `.reveal` fade/slide in as they enter view
   // (and immediately for anything already on-screen, e.g. the hero). CSS handles
@@ -307,7 +320,7 @@ function HomePage() {
                   <Link className="btn btn-gold btn-lg" to="/storefront">Open YoteFeed <i className="fas fa-arrow-right"></i></Link>
                 </div>
               </div>
-              <FeedDemo clips={clips} />
+              <FeedDemo clips={feedMod ? clips : []} videoUrl={feedMod?.feedVideoUrl} />
             </div>
           </div>
         </div>

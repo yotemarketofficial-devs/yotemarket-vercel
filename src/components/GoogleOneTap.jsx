@@ -9,7 +9,8 @@
    and the normal sign-in buttons still work. */
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../lib/useAuth.jsx';
-import { firebaseEnabled, GOOGLE_OAUTH_CLIENT_ID } from '../lib/firebase.js';
+// Constants only — importing firebase.js here would pull the whole SDK into the entry chunk.
+import { firebaseEnabled, GOOGLE_OAUTH_CLIENT_ID } from '../lib/firebase-config.js';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 // Consoles + role apps run their own dedicated sign-in — don't nudge One Tap there.

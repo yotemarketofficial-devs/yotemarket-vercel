@@ -5,15 +5,12 @@ import RouteSeo from './components/RouteSeo.jsx';
 import AppManifest from './components/AppManifest.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
-import RiderPage from './pages/RiderPage.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 import Pricing from './pages/Pricing.jsx';
-import Careers from './pages/Careers.jsx';
 import Terms from './pages/Terms.jsx';
 import Privacy from './pages/Privacy.jsx';
 import DeleteAccount from './pages/DeleteAccount.jsx';
-import HelpCenter from './pages/HelpCenter.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
@@ -23,6 +20,13 @@ import CookieConsent from './components/CookieConsent.jsx';
 
 // Imported design kits are full-bleed apps with their own chrome — code-split so the
 // marketing landing stays lean and each kit's scoped CSS only loads on its route.
+// These three reach the backend (rider applications, job applications, support tickets),
+// so importing them here dragged the 199 KB Firebase SDK into the entry chunk that every
+// page — including the homepage — waits on. Lazy, so only their own route pays.
+const RiderPage = lazy(() => import('./pages/RiderPage.jsx'));
+const Careers = lazy(() => import('./pages/Careers.jsx'));
+const HelpCenter = lazy(() => import('./pages/HelpCenter.jsx'));
+
 const StorefrontApp = lazy(() => import('./kits/storefront/index.jsx'));
 const DashboardApp = lazy(() => import('./kits/dashboard/gated.jsx'));
 const MarketersApp = lazy(() => import('./kits/marketers/index.jsx'));

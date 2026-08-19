@@ -3,22 +3,29 @@
 // configured it runs a local "guest" mode so the prototypes stay fully interactive.
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { setMonitoringUser } from './monitoring.js';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  signInWithCredential,
-  GoogleAuthProvider,
-  signOut,
-  updateProfile,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, googleProvider, firebaseEnabled, db } from './firebase.js';
+// Firebase is 199 KB over the wire, and the marketing pages (/, /about, /pricing …)
+// never touch auth or Firestore — yet importing the SDK here put all of it in the entry
+// chunk, so the homepage paid for it before it could paint. The SDK is now fetched on
+// demand. `loading` starts true and only clears once the SDK has loaded AND the first
+// auth callback has fired, so a signed-in user never flashes as signed out; screens
+// already wait on that flag.
+import { firebaseEnabled } from './firebase-config.js';
+
+let sdkPromise = null;
+/** Load (once) the Firebase SDK plus our initialised instances. */
+function sdk() {
+  if (!sdkPromise) {
+    sdkPromise = Promise.all([
+      import('./firebase.js'),
+      import('firebase/auth'),
+      import('firebase/firestore'),
+    ]).then(([core, fbAuth, fbStore]) => ({
+      ...fbAuth, ...fbStore,
+      auth: core.auth, db: core.db, googleProvider: core.googleProvider,
+    }));
+  }
+  return sdkPromise;
+}
 
 const AuthContext = createContext(null);
 
@@ -80,8 +87,10 @@ function shouldFallbackToRedirect(err) {
 // (profile screen, chat display name, order/customer name). Field names match the rest
 // of the app: account.js + profile.jsx read `photoUrl` (lowercase).
 async function ensureUserProfile(user) {
-  if (!db || !user || !user.uid || user.isGuest || user.uid === 'guest') return;
+  if (!firebaseEnabled || !user || !user.uid || user.isGuest || user.uid === 'guest') return;
   try {
+    const { db, doc, getDoc, setDoc, serverTimestamp } = await sdk();
+    if (!db) return;
     const ref = doc(db, 'users', user.uid);
     const snap = await getDoc(ref).catch(() => null);
     const data = (snap && snap.exists() && snap.data()) || null;
@@ -110,28 +119,36 @@ export function AuthProvider({ children }) {
   const [redirectError, setRedirectError] = useState('');
 
   useEffect(() => {
-    if (!firebaseEnabled || !auth) {
+    if (!firebaseEnabled) {
       setLoading(false);
       return undefined;
     }
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-      // Tag crash reports with the uid — "which account hit this" is the first
-      // question. Cleared on sign-out.
-      setMonitoringUser(u);
-      // Backfill/complete the profile doc for every signed-in account — covers session
-      // restore and legacy Google users created before provisioning existed.
-      if (u) ensureUserProfile(u);
-    });
+    let off = null;
+    let cancelled = false;
+    sdk().then(({ auth, onAuthStateChanged }) => {
+      if (cancelled) return;
+      if (!auth) { setLoading(false); return; }
+      off = onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        setLoading(false);
+        // Tag crash reports with the uid — "which account hit this" is the first
+        // question. Cleared on sign-out.
+        setMonitoringUser(u);
+        // Backfill/complete the profile doc for every signed-in account — covers session
+        // restore and legacy Google users created before provisioning existed.
+        if (u) ensureUserProfile(u);
+      });
+    }).catch(() => setLoading(false));
+    return () => { cancelled = true; if (off) off(); };
   }, []);
 
   // Complete a Google sign-in that used the full-page redirect flow: provision the
   // profile and honour any stashed cross-app destination. Runs once on load; resolves
   // to null (no-op) when there's no redirect pending.
   useEffect(() => {
-    if (!firebaseEnabled || !auth) return;
-    getRedirectResult(auth)
+    if (!firebaseEnabled) return;
+    sdk()
+      .then(({ auth, getRedirectResult }) => (auth ? getRedirectResult(auth) : null))
       .then((res) => {
         if (!res?.user) return;
         ensureUserProfile(res.user);
@@ -148,6 +165,7 @@ export function AuthProvider({ children }) {
   const signInEmail = useCallback(async (email, password) => {
     if (!firebaseEnabled) return guestSignIn(setUser, { email });
     try {
+      const { auth, signInWithEmailAndPassword } = await sdk();
       const cred = await signInWithEmailAndPassword(auth, email, password);
       return cred.user;
     } catch (err) {
@@ -158,6 +176,8 @@ export function AuthProvider({ children }) {
   const registerEmail = useCallback(async (name, email, password, phone) => {
     if (!firebaseEnabled) return guestSignIn(setUser, { email, displayName: name });
     try {
+      const { auth, db, createUserWithEmailAndPassword, updateProfile, sendEmailVerification,
+        doc, setDoc, serverTimestamp } = await sdk();
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       if (name) await updateProfile(cred.user, { displayName: name });
       sendEmailVerification(cred.user).catch(() => {});
@@ -188,6 +208,7 @@ export function AuthProvider({ children }) {
       try {
         if (redirectTo) sessionStorage.setItem(REDIRECT_DEST_KEY, redirectTo);
       } catch { /* private mode — non-fatal */ }
+      const { auth, googleProvider, signInWithRedirect } = await sdk();
       await signInWithRedirect(auth, googleProvider);
       // Page navigates away; getRedirectResult finishes the flow on return.
       return null;
@@ -196,6 +217,7 @@ export function AuthProvider({ children }) {
     if (popupUnreliable()) return startRedirect();
 
     try {
+      const { auth, googleProvider, signInWithPopup } = await sdk();
       const cred = await signInWithPopup(auth, googleProvider);
       ensureUserProfile(cred.user);
       return cred.user;
@@ -208,7 +230,9 @@ export function AuthProvider({ children }) {
   // Complete a Google One Tap / GIS sign-in: exchange the Google ID token for a Firebase
   // session, then provision the profile (so One Tap is a real sign-in AND sign-up).
   const signInWithGoogleCredential = useCallback(async (idToken) => {
-    if (!firebaseEnabled || !auth || !idToken) return null;
+    if (!firebaseEnabled || !idToken) return null;
+    const { auth, GoogleAuthProvider, signInWithCredential } = await sdk();
+    if (!auth) return null;
     const cred = GoogleAuthProvider.credential(idToken);
     const res = await signInWithCredential(auth, cred);
     ensureUserProfile(res.user);
@@ -221,19 +245,26 @@ export function AuthProvider({ children }) {
     // Stop Google One Tap from instantly re-selecting the account we just left,
     // otherwise "sign out" appears to do nothing.
     try { window.google?.accounts?.id?.disableAutoSelect(); } catch { /* GIS not loaded */ }
-    if (firebaseEnabled && auth) await signOut(auth);
+    if (firebaseEnabled) {
+      const { auth, signOut } = await sdk();
+      if (auth) await signOut(auth);
+    }
     setUser(null);
   }, []);
 
   const resendVerification = useCallback(async () => {
-    if (firebaseEnabled && auth?.currentUser) await sendEmailVerification(auth.currentUser);
+    if (!firebaseEnabled) return;
+    const { auth, sendEmailVerification } = await sdk();
+    if (auth?.currentUser) await sendEmailVerification(auth.currentUser);
   }, []);
 
   const resetPassword = useCallback(async (email) => {
     const addr = String(email || '').trim();
     if (!addr) throw new Error('Enter your email first, then tap “Forgot password”.');
-    if (!firebaseEnabled || !auth) return; // guest/demo mode — nothing to reset
+    if (!firebaseEnabled) return; // guest/demo mode — nothing to reset
     try {
+      const { auth, sendPasswordResetEmail } = await sdk();
+      if (!auth) return;
       await sendPasswordResetEmail(auth, addr);
     } catch (err) {
       throw new Error(friendlyError(err));
