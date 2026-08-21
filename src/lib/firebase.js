@@ -308,6 +308,13 @@ export const markNotificationsRead = callable('markNotificationsRead');
 export const deleteNotification = callable('deleteNotification');
 /** Store owner: request closure of your store → staff review → { ok, status }. { reason? }. */
 export const requestAccountDeletion = callable('requestAccountDeletion');
+
+// Branded auth email (Resend). These replace Firebase's own noreply@<project>.firebaseapp
+// .com messages; the client falls back to the SDK's built-in send if they fail, so a mail
+// outage can never block a signup. See functions/email.js.
+export const sendVerificationEmail = callable('sendVerificationEmail');
+export const sendBrandedPasswordReset = callable('sendPasswordResetEmail');
+
 /** Staff: list store-closure requests → { requests }. */
 export const staffListDeletionRequests = callable('staffListDeletionRequests');
 /** Staff/admin: approve or reject a store-closure request → { ok, status }. { id, approve, note? }. */

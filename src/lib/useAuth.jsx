@@ -22,6 +22,10 @@ function sdk() {
     ]).then(([core, fbAuth, fbStore]) => ({
       ...fbAuth, ...fbStore,
       auth: core.auth, db: core.db, googleProvider: core.googleProvider,
+      // Named distinctly: firebase/auth also exports sendPasswordResetEmail, and these
+      // are our branded callables, not the SDK's built-in senders.
+      brandedVerify: core.sendVerificationEmail,
+      brandedReset: core.sendBrandedPasswordReset,
     }));
   }
   return sdkPromise;
@@ -177,10 +181,12 @@ export function AuthProvider({ children }) {
     if (!firebaseEnabled) return guestSignIn(setUser, { email, displayName: name });
     try {
       const { auth, db, createUserWithEmailAndPassword, updateProfile, sendEmailVerification,
-        doc, setDoc, serverTimestamp } = await sdk();
+        brandedVerify, doc, setDoc, serverTimestamp } = await sdk();
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       if (name) await updateProfile(cred.user, { displayName: name });
-      sendEmailVerification(cred.user).catch(() => {});
+      // Branded "confirm your email"; fall back to Firebase's own send if it fails, so a
+      // mail-provider outage cannot block a registration that already succeeded.
+      brandedVerify().catch(() => sendEmailVerification(cred.user).catch(() => {}));
       // Persist a base profile so the name + M-Pesa phone are saved for BOTH
       // shoppers and merchants (previously the phone was collected then dropped).
       if (db) {
@@ -254,8 +260,13 @@ export function AuthProvider({ children }) {
 
   const resendVerification = useCallback(async () => {
     if (!firebaseEnabled) return;
-    const { auth, sendEmailVerification } = await sdk();
-    if (auth?.currentUser) await sendEmailVerification(auth.currentUser);
+    const { auth, sendEmailVerification, brandedVerify } = await sdk();
+    if (!auth?.currentUser) return;
+    try {
+      await brandedVerify();
+    } catch {
+      await sendEmailVerification(auth.currentUser); // branded send failed — still verify
+    }
   }, []);
 
   const resetPassword = useCallback(async (email) => {
@@ -263,9 +274,13 @@ export function AuthProvider({ children }) {
     if (!addr) throw new Error('Enter your email first, then tap “Forgot password”.');
     if (!firebaseEnabled) return; // guest/demo mode — nothing to reset
     try {
-      const { auth, sendPasswordResetEmail } = await sdk();
+      const { auth, sendPasswordResetEmail, brandedReset } = await sdk();
       if (!auth) return;
-      await sendPasswordResetEmail(auth, addr);
+      try {
+        await brandedReset({ email: addr });
+      } catch {
+        await sendPasswordResetEmail(auth, addr); // branded send failed — still reset
+      }
     } catch (err) {
       throw new Error(friendlyError(err));
     }
