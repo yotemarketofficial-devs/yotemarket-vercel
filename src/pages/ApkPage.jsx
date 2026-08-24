@@ -93,6 +93,11 @@ function AppCard({ app }) {
             <i className="fab fa-google-play"></i> Google Play
           </a>
         )}
+        {app.uptodownUrl && (
+          <a className="btn btn-outline btn-lg" href={app.uptodownUrl} target="_blank" rel="noreferrer">
+            <i className="fas fa-circle-down"></i> Uptodown
+          </a>
+        )}
       </div>
     </article>
   );

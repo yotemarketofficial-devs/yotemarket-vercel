@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
+import UptodownBadge from '../components/UptodownBadge.jsx';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 
 const SHOPPER_FEATURES = [
@@ -431,6 +432,7 @@ function HomePage() {
                     <i className="fab fa-apple"></i>
                     <span className="st"><small>Download on the</small><b>App Store</b></span>
                   </Link>
+                  <UptodownBadge />
                 </div>
               </div>
               <div className="phone-wrap">

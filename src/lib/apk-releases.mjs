@@ -38,6 +38,9 @@ export const APPS = [
     minAndroid: '6.0',
     abi: 'universal (arm64-v8a, armeabi-v7a, x86_64)',
     playUrl: '',
+    // The Uptodown listing, once they publish it. Set it and the badge on the
+    // marketing pages flips from "Download the Android APK" to "Get it on Uptodown".
+    uptodownUrl: '',
     release: {
       version: '',
       versionCode: null,
@@ -58,6 +61,7 @@ export const APPS = [
     minAndroid: '6.0',
     abi: 'universal (arm64-v8a, armeabi-v7a, x86_64)',
     playUrl: '',
+    uptodownUrl: '',
     release: {
       version: '',
       versionCode: null,
