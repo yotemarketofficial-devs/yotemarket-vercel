@@ -49,6 +49,11 @@ export const PAGES = {
     description:
       'Shop local Kenyan stores from your phone: chat to sellers, pay with M-Pesa, track delivery and collect at a hub.',
   },
+  '/apk': {
+    title: 'Download the YoteMarket Android apps (APK)',
+    description:
+      'Official signed APKs for the YoteMarket shopper and rider apps — version, size and SHA-256 to verify each build, straight from the developer.',
+  },
   '/rider': {
     title: 'Earn as a YoteMarket rider',
     description:

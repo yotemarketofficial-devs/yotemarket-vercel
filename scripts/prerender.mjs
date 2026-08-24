@@ -55,7 +55,15 @@ function render(tpl, { title, description, url, image, schema, body, ogType = 'w
   h = h.replace(/<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${esc(url)}" />`);
   // Keep the site-wide Organization/WebSite graph AND add this page's entity.
   if (schema) h = h.replace('</head>', `  <script type="application/ld+json">${jsonLd(schema)}</script>\n  </head>`);
-  h = h.replace(/<noscript>[\s\S]*?<\/noscript>/, `<noscript>${body}</noscript>`);
+  // Swap the LAST noscript — the crawler body at the end of <body>. Not the first:
+  // a comment in <head> mentions "<noscript>" in prose, so a first-match replace
+  // started there and ran to the Font Awesome fallback's closing tag, eating the
+  // comment's own `-->` on the way. The comment then stayed open across the
+  // vite-injected <script type="module">, so every prerendered page shipped an SPA
+  // that never booted — a boot splash and nothing else.
+  const blocks = [...h.matchAll(/<noscript>[\s\S]*?<\/noscript>/g)];
+  const last = blocks[blocks.length - 1];
+  if (last) h = h.slice(0, last.index) + `<noscript>${body}</noscript>` + h.slice(last.index + last[0].length);
   return h;
 }
 
