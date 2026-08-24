@@ -52,6 +52,25 @@ export function uploadVideo(path, file, onProgress) {
   });
 }
 
+/**
+ * Upload any File/Blob to `path` with an explicit content type, resolving with its
+ * public download URL. Used for the Android APKs published from the staff console
+ * (see lib/app-releases.js) — same mechanics as the image/video helpers, but the
+ * caller decides the type because an .apk is neither.
+ */
+export function uploadFile(path, file, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    if (!storageReady()) { reject(new Error('Storage is not configured.')); return; }
+    const task = uploadBytesResumable(ref(storage, path), file, { contentType: contentType || file?.type || 'application/octet-stream' });
+    task.on(
+      'state_changed',
+      (snap) => { if (onProgress && snap.totalBytes) onProgress(snap.bytesTransferred / snap.totalBytes); },
+      (err) => reject(new Error(friendly(err))),
+      () => getDownloadURL(task.snapshot.ref).then(resolve).catch((e) => reject(new Error(friendly(e)))),
+    );
+  });
+}
+
 function friendly(err) {
   const code = err?.code || '';
   if (code === 'storage/unauthorized') return 'You don’t have permission to upload here.';

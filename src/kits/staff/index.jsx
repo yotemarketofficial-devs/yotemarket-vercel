@@ -23,6 +23,7 @@ import { RiderApplications } from './riders.jsx';
 import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
+import { AppReleases } from './releases.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useEscape } from '../../lib/useEscape.js';
@@ -94,11 +95,12 @@ const WORKSPACES = [
     { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
     { key:'audit', label:'Audit log', icon:'clock-rotate-left', desc:'Who did what, across the platform' },
     { key:'maintenance', label:'Maintenance', icon:'screwdriver-wrench', desc:'One-off data & cleanup tools' },
+    { key:'releases', label:'App releases', icon:'cloud-arrow-up', desc:'Publish the Android APKs that /apk and the app mirrors serve' },
     { key:'economics', label:'Pricing & economics', icon:'scale-balanced', desc:'Unit-economics reference (read-only)', lock:true },
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
