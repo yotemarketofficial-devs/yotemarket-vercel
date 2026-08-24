@@ -5,6 +5,7 @@ import RouteSeo from './components/RouteSeo.jsx';
 import AppManifest from './components/AppManifest.jsx';
 import HomePage from './pages/HomePage.jsx';
 import MobilePage from './pages/MobilePage.jsx';
+import ApkPage from './pages/ApkPage.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 import Pricing from './pages/Pricing.jsx';
@@ -55,6 +56,9 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="mobile" element={<MobilePage />} />
+          {/* Direct APK downloads — the URL app mirrors (Uptodown & co.) list us from. */}
+          <Route path="apk" element={<ApkPage />} />
+          <Route path="download" element={<Navigate to="/apk" replace />} />
           <Route path="rider" element={<RiderPage />} />
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />

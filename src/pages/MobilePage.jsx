@@ -29,6 +29,9 @@ function MobilePage() {
               <span className="st"><small>Download on the</small><b>App Store</b></span>
             </a>
           </div>
+          <p className="apk-link">
+            No Play Store on your phone? <Link to="/apk">Download the APK directly</Link>.
+          </p>
           <div className="trust">
             <span>Free to download</span><span className="dot"></span>
             <span>4.7★ rating</span><span className="dot"></span>
@@ -77,6 +80,11 @@ function MobilePage() {
           </div>
         </div>
       </section>
+
+      <style>{`
+      .apk-link{font-size:14px; color:var(--t3); margin:14px 0 0;}
+      .apk-link a{color:var(--purple); font-weight:600;}
+      `}</style>
     </main>
   );
 }

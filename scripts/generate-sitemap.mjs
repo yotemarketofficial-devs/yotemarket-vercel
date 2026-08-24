@@ -37,6 +37,7 @@ const STATIC = [
   ['/pricing', 'monthly', '0.8'],
   ['/about', 'monthly', '0.7'],
   ['/mobile', 'monthly', '0.7'],
+  ['/apk', 'weekly', '0.7'],
   ['/rider', 'monthly', '0.7'],
   ['/marketers', 'monthly', '0.7'],
   ['/careers', 'weekly', '0.6'],

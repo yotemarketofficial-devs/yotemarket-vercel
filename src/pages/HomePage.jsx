@@ -584,6 +584,7 @@ function HomePage() {
               <ul>
                 <li><Link to="/mobile"><i className="fab fa-google-play" style={{ marginRight: '7px' }}></i>Google Play</Link></li>
                 <li><Link to="/mobile"><i className="fab fa-apple" style={{ marginRight: '7px' }}></i>App Store</Link></li>
+                <li><Link to="/apk"><i className="fab fa-android" style={{ marginRight: '7px' }}></i>Download APK</Link></li>
                 <li><Link to="/rider"><i className="fas fa-motorcycle" style={{ marginRight: '7px' }}></i>Ride with us</Link></li>
               </ul>
             </div>
