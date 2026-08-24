@@ -11,12 +11,10 @@
  * Both are world-readable, so the page fetches the index with a plain GET and no
  * Firebase SDK — the marketing bundle stays SDK-free. Writing needs the admin claim.
  *
- * THE RULE THIS NEEDS (deploy once, in the Firebase project's storage.rules):
- *
- *   match /app_releases/{allPaths=**} {
- *     allow read: if true;
- *     allow write: if request.auth != null && request.auth.token.admin == true;
- *   }
+ * THE RULE THIS NEEDS: the app_releases/ block in firebase/storage.rules over in the
+ * yotemarket-flutter repo — public read, admin-claim (or verified founding-owner)
+ * write, 300 MB cap, APK/JSON content types. It has to be DEPLOYED, which GitHub
+ * does not do: `cd firebase && firebase deploy --only storage`.
  *
  * Until that rule is live, uploading fails with "You don't have permission to upload
  * here" and /apk simply falls back to the static entries in apk-releases.mjs.
