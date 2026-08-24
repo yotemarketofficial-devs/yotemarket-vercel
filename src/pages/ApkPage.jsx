@@ -1,17 +1,24 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { APPS, PUBLISHER, isPublished } from '../lib/apk-releases.mjs';
+import { fetchReleases, mergeReleases } from '../lib/app-releases.js';
 
 /* /apk — the public download page for our signed Android APKs.
  *
  * The audience is two-sided: a shopper on a phone with no Play Store, and an app
  * mirror (Uptodown, APKPure, Aptoide) whose listing process needs a permanent URL
  * for the developer's own build plus the metadata to verify it. Both get the same
- * facts — package name, version, size, SHA-256 — from src/lib/apk-releases.mjs.
+ * facts — package name, version, size, SHA-256.
+ *
+ * Where those facts come from: whatever the staff console last published (a plain
+ * JSON fetch, no Firebase SDK — see lib/app-releases.js), falling back to the
+ * static entries in apk-releases.mjs when nothing is published or the fetch fails.
+ * That's what lets a new build go live without redeploying this site.
  */
 
-const schema = {
+const schema = (apps) => ({
   '@context': 'https://schema.org',
-  '@graph': APPS.map((app) => ({
+  '@graph': apps.map((app) => ({
     '@type': 'MobileApplication',
     name: app.name,
     description: app.description,
@@ -24,7 +31,7 @@ const schema = {
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'KES' },
     publisher: { '@type': 'Organization', name: PUBLISHER.legalName, url: PUBLISHER.website },
   })),
-};
+});
 
 const fmtDate = (iso) => {
   if (!iso) return null;
@@ -104,9 +111,18 @@ function AppCard({ app }) {
 }
 
 function ApkPage() {
+  // Start with what shipped in the bundle so the page is complete on first paint,
+  // then swap in whatever the staff console has published since.
+  const [apps, setApps] = useState(APPS);
+  useEffect(() => {
+    let live = true;
+    fetchReleases().then((published) => { if (live) setApps(mergeReleases(published)); });
+    return () => { live = false; };
+  }, []);
+
   return (
     <main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema(apps)) }} />
 
       <section className="pad">
         <div className="wrap">
@@ -121,7 +137,7 @@ function ApkPage() {
           </div>
 
           <div className="apk-grid">
-            {APPS.map((app) => <AppCard key={app.slug} app={app} />)}
+            {apps.map((app) => <AppCard key={app.slug} app={app} />)}
           </div>
         </div>
       </section>
