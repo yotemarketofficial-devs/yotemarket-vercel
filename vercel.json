@@ -5,6 +5,10 @@
   "cleanUrls": true,
   "rewrites": [
     {
+      "source": "/app-releases.json",
+      "destination": "https://firebasestorage.googleapis.com/v0/b/yotemarket-app.firebasestorage.app/o/app_releases%2Findex.json?alt=media"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }

@@ -11,6 +11,18 @@
  * Both are world-readable, so the page fetches the index with a plain GET and no
  * Firebase SDK — the marketing bundle stays SDK-free. Writing needs the admin claim.
  *
+ * CORS, THE TRAP THAT MADE ALL OF THIS LOOK BROKEN: Storage's two endpoints do not
+ * behave the same way. The DOWNLOAD endpoint (`?alt=media`) answers a browser fetch
+ * with no Access-Control-Allow-Origin at all, so a cross-origin read of index.json
+ * is rejected before the page ever sees the 200 — and every caller here swallows the
+ * failure and falls back, which is exactly what /apk showing "not published yet" over
+ * a live build looked like. The METADATA endpoint (same URL, no `?alt=media`) does
+ * send `Access-Control-Allow-Origin: *`. Hence: existence checks go to metadata, and
+ * the index is read through INDEX_URL — a same-origin path that vercel.json rewrites
+ * onto the download URL, so the browser never makes a cross-origin request for it.
+ * (Setting a CORS policy on the bucket would also work, but needs gsutil and
+ * credentials on someone's machine; a rewrite ships with the site.)
+ *
  * THE RULE THIS NEEDS: the app_releases/ block in firebase/storage.rules over in the
  * yotemarket-flutter repo — public read, admin-claim (or verified founding-owner)
  * write, 300 MB cap, APK/JSON content types. It has to be DEPLOYED, which GitHub
@@ -24,9 +36,16 @@ import { APPS } from './apk-releases.mjs';
 
 export const INDEX_PATH = 'app_releases/index.json';
 
+/** Same-origin path for the index — vercel.json rewrites it onto publicUrl(INDEX_PATH). */
+export const INDEX_URL = '/app-releases.json';
+
 /** Public download URL for a world-readable Storage object (no token needed). */
 export const publicUrl = (path) =>
   `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${encodeURIComponent(path)}?alt=media`;
+
+/** Metadata URL for the same object: the one of the two endpoints that allows CORS. */
+export const metadataUrl = (path) =>
+  `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${encodeURIComponent(path)}`;
 
 /**
  * Where a given build is stored — one URL per BUILD, never reused.
@@ -48,10 +67,16 @@ export const apkPath = (slug, version, versionCode) =>
   `app_releases/${slug}/yotemarket-${slug}-${String(version || 'latest').replace(/[^\w.-]/g, '')}` +
   `-${String(versionCode).replace(/[^\w]/g, '')}.apk`;
 
-/** True if something is already stored at `path` — a published build we must not replace. */
+/**
+ * True if something is already stored at `path` — a published build we must not replace.
+ * Asks the metadata endpoint, not the download one: a HEAD on `?alt=media` is refused by
+ * CORS in every browser, so this guard answered "no, nothing there" for every path it was
+ * ever given, including live builds.
+ */
 export async function objectExists(path) {
   try {
-    const res = await fetch(publicUrl(path), { method: 'HEAD', cache: 'no-store' });
+    const res = await fetch(metadataUrl(path), { cache: 'no-store' });
+    if (res.status === 404) return false;
     return res.ok;
   } catch {
     return false; // offline or blocked: fall through and let the upload itself decide
@@ -74,7 +99,10 @@ export const toMb = (bytes) => Math.round((Number(bytes) || 0) / 1048576 * 10) /
  */
 export async function fetchReleases() {
   try {
-    const res = await fetch(publicUrl(INDEX_PATH), { cache: 'no-store' });
+    // Same-origin (see the CORS note at the top). In `vite dev` there is no rewrite,
+    // so this resolves to index.html, res.json() throws, and the static entries show —
+    // which is the same fallback as every other failure.
+    const res = await fetch(INDEX_URL, { cache: 'no-store' });
     if (!res.ok) return {};
     const data = await res.json();
     return data && typeof data === 'object' ? data : {};
