@@ -45,14 +45,31 @@ function AppRelease({ app, published, onPublished }) {
       return;
     }
     setFile(f);
-    // Most build filenames carry the version — offer it rather than making them retype it.
-    const guess = f.name.match(/(\d+\.\d+(?:\.\d+)?)/);
-    if (guess && !version) setVersion(guess[1]);
+    // Most build filenames carry both numbers — Flutter names them "…-1.0.0+4.apk", the
+    // same version+buildNumber form as pubspec. Offer both rather than making them retype
+    // a version code that now decides the download URL, since a typo there either takes a
+    // published build's URL or invents a version nobody can match to a build.
+    const guess = f.name.match(/(\d+\.\d+(?:\.\d+)?)(?:\+(\d+))?/);
+    if (guess) {
+      if (!version) setVersion(guess[1]);
+      if (!versionCode && guess[2]) setVersionCode(guess[2]);
+    }
   };
 
   const publish = async () => {
-    if (!file) { setMsg({ ok: false, text: 'Choose the signed .apk first.' }); return; }
+    // This means NO FILE IS SELECTED — it is not a signature check, and nothing here
+    // verifies one. The old wording ("Choose the signed .apk first") read as a
+    // complaint about the build being unsigned, which sent at least one release
+    // hunting for a signing problem that did not exist. Say what is actually wrong.
+    if (!file) { setMsg({ ok: false, text: 'No file chosen — pick the .apk with the file picker above.' }); return; }
     if (!version.trim()) { setMsg({ ok: false, text: 'Enter the version, e.g. 1.4.2.' }); return; }
+    // Required, because it is what separates one build's download URL from the next.
+    // Two builds can share a version ("1.0.0+4" and "1.0.0+5" are both 1.0.0), so
+    // without it the second upload would overwrite the first at the same URL.
+    if (!String(versionCode).trim()) {
+      setMsg({ ok: false, text: 'Enter the version code (the number after the + in 1.0.0+4) — each build needs its own URL.' });
+      return;
+    }
     setProgress(0); setMsg(null);
     try {
       const rel = await publishRelease(
@@ -105,7 +122,7 @@ function AppRelease({ app, published, onPublished }) {
         <input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="Version (1.4.2)"
           className="ym-input" style={{ width: 150 }} disabled={busy} />
         <input value={versionCode} onChange={(e) => setVersionCode(e.target.value.replace(/[^0-9]/g, ''))}
-          inputMode="numeric" placeholder="Version code" className="ym-input" style={{ width: 140 }} disabled={busy} />
+          inputMode="numeric" placeholder="Version code (4)" className="ym-input" style={{ width: 160 }} disabled={busy} />
       </div>
       <input value={uptodownUrl} onChange={(e) => setUptodownUrl(e.target.value)}
         placeholder="Uptodown listing URL (optional)" className="ym-input" disabled={busy} />

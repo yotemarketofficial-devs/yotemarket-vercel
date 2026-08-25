@@ -28,9 +28,35 @@ export const INDEX_PATH = 'app_releases/index.json';
 export const publicUrl = (path) =>
   `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${encodeURIComponent(path)}?alt=media`;
 
-/** Where a given build is stored. Versioned, so an old link never changes under anyone. */
-export const apkPath = (slug, version) =>
-  `app_releases/${slug}/yotemarket-${slug}-${String(version || 'latest').replace(/[^\w.-]/g, '')}.apk`;
+/**
+ * Where a given build is stored — one URL per BUILD, never reused.
+ *
+ * The version alone is not enough to identify a build. `1.0.0+4` and `1.0.0+5` are
+ * different releases that both carry version "1.0.0" (the UI even auto-fills it by
+ * pulling the first number out of the filename), so keying on version alone sent the
+ * second upload to the first one's path and silently replaced a published build.
+ *
+ * That is worse than it sounds: index.json publishes a SHA-256 and mirrors verify the
+ * file at this URL against it, so replacing the bytes under a live URL looks exactly
+ * like tampering to anyone who cached the old checksum — and anyone mid-download gets
+ * a corrupt file.
+ *
+ * versionCode is what Android itself uses to tell two builds apart, so it belongs in
+ * the path. It is required; see assertPublishable.
+ */
+export const apkPath = (slug, version, versionCode) =>
+  `app_releases/${slug}/yotemarket-${slug}-${String(version || 'latest').replace(/[^\w.-]/g, '')}` +
+  `-${String(versionCode).replace(/[^\w]/g, '')}.apk`;
+
+/** True if something is already stored at `path` — a published build we must not replace. */
+export async function objectExists(path) {
+  try {
+    const res = await fetch(publicUrl(path), { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false; // offline or blocked: fall through and let the upload itself decide
+  }
+}
 
 /** SHA-256 of a File/Blob, lower-case hex — the checksum a mirror verifies against. */
 export async function sha256(file) {
@@ -81,9 +107,25 @@ export function mergeReleases(published = {}) {
  */
 export async function publishRelease({ slug, file, version, versionCode, uptodownUrl, releasedOn }, onProgress) {
   const { uploadFile } = await import('./storage.js');
+
+  // Guaranteeing a distinct URL takes both halves: putting versionCode in the path, and
+  // refusing to write where a build already sits. The path alone is only a convention —
+  // re-entering the same version code (a typo, or a rebuild of the same number) would
+  // still land on a published file, and Storage overwrites without complaint.
+  if (versionCode === '' || versionCode == null || !Number.isFinite(Number(versionCode))) {
+    throw new Error('Version code is required — it is what gives each build its own download URL.');
+  }
+  const path = apkPath(slug, version, versionCode);
+  if (await objectExists(path)) {
+    throw new Error(
+      `Version code ${versionCode} is already published for this app. Bump the version code ` +
+      'and rebuild — replacing a live build would break the checksum mirrors have on file.',
+    );
+  }
+
   const [checksum, url] = await Promise.all([
     sha256(file),
-    uploadFile(apkPath(slug, version), file, 'application/vnd.android.package-archive', onProgress),
+    uploadFile(path, file, 'application/vnd.android.package-archive', onProgress),
   ]);
 
   const release = {
