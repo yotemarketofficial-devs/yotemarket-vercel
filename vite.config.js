@@ -1,9 +1,25 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// The Storage download endpoint sends no Access-Control-Allow-Origin, so /apk reads the
+// release index from a same-origin path (lib/app-releases.js). vercel.json rewrites it in
+// production; this is the dev-server equivalent, so `npm run dev` shows published builds
+// rather than silently falling back to the bundled entries.
+const STORAGE_HOST = 'https://firebasestorage.googleapis.com';
+const RELEASE_INDEX_PATH = '/v0/b/yotemarket-app.firebasestorage.app/o/app_releases%2Findex.json?alt=media';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/app-releases.json': {
+        target: STORAGE_HOST,
+        changeOrigin: true,
+        rewrite: () => RELEASE_INDEX_PATH,
+      },
+    },
+  },
   build: {
     // Keep the Firebase SDK in its own long-cacheable vendor chunk so route code
     // and the marketing landing stay small.
