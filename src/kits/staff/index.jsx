@@ -24,6 +24,8 @@ import { Intelligence } from './intelligence.jsx';
 import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
 import { AppReleases } from './releases.jsx';
+import { Payroll } from './payroll.jsx';
+import { Boards } from './boards.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useEscape } from '../../lib/useEscape.js';
@@ -44,6 +46,9 @@ const WORKSPACES = [
     { key:'analytics', label:'Analytics', icon:'chart-simple', desc:'Revenue, retention & delivery cost' },
     // Your own employment terms — not People-gated: everyone is entitled to these.
     { key:'mycontract', label:'My contract', icon:'file-signature', desc:'Your own employment terms — review & sign' },
+    // Not dept-gated: every staffer has a board, and the screen scopes itself to the
+    // departments they are actually in.
+    { key:'boards', label:'Work board', icon:'clipboard-list', desc:'Who in your department is on what' },
   ]},
   { key:'marketplace', label:'Marketplace', icon:'store', blurb:'Merchants & billing', dept:'marketplace', sections:[
     { key:'approvals', label:'Merchants', icon:'user-check', desc:'Verify, feature, suspend & audit stores' },
@@ -75,6 +80,10 @@ const WORKSPACES = [
   ]},
   { key:'finance', label:'Finance', icon:'coins', blurb:'Money', dept:'finance', sections:[
     { key:'finance', label:'Revenue & ledger', icon:'chart-line', desc:'Live platform revenue and internal ledger' },
+    // Finance rather than People on purpose: a payroll run posts a cost to the ledger and
+    // exposes every salary in one screen, so it sits behind the finance gate the callables
+    // enforce (assertLead 'finance'), not the HR one.
+    { key:'payroll', label:'Payroll', icon:'money-check-dollar', desc:'Monthly pay, PAYE & statutory deductions' },
   ]},
   { key:'people', label:'People', icon:'users', blurb:'HR', dept:'people', sections:[
     { key:'people', label:'Directory', icon:'address-book', desc:'Employee directory, onboarding & offboarding' },
@@ -100,7 +109,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, boards:Boards, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

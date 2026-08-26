@@ -18,26 +18,21 @@ build — both degrade to "site ships unchanged" if Firestore is unreachable.
 
 ---
 
-## OPEN ACTION — deploy the Storage rule (do this in VS Code)
+## DONE — the Storage rule is deployed (2026-08-25)
 
-`Admin → App releases` in the staff portal uploads APKs to `app_releases/` in
-Firebase Storage. The rule permitting that is **merged but not deployed** — Firebase
-deploys don't happen from GitHub, and the remote session that wrote it had no
-Firebase credentials.
+`Admin → App releases` uploads APKs to `app_releases/` in Firebase Storage. That rule
+is now **live in production** (`firebase deploy --only storage`, project
+`yotemarket-app`), so publishing works. It was written in the yotemarket-flutter repo
+by a session with no Firebase credentials, which is why it sat merged-but-inert.
 
-```
-cd ../yotemarket-flutter/firebase     # wherever that repo is checked out
-firebase login                        # once per machine
-firebase deploy --only storage
-```
+Verified after release: both `app_releases/` paths answer 404 to an anonymous GET
+(readable, nothing published yet) while an unmatched path answers 403 — so read is
+open where it should be and the bucket was not widened. The emulator suite in
+`firebase/tests/storage.rules.test.js` covers it too (public read, admin write,
+owner-email write, unverified/moderator/anonymous denied, non-APK denied).
 
-Until it runs, the upload screen renders and accepts a file but publishing fails
-with *"You don't have permission to upload here"*, and `/apk` shows the static
-entries from `src/lib/apk-releases.mjs`. Nothing breaks; the feature is just inert.
-
-Verify afterwards: publish a build from the staff portal, then load
-`https://www.yotemarket.co.ke/apk` and check the version, size and SHA-256 shown
-are the ones you just uploaded.
+Still worth doing once a build is up: load `https://www.yotemarket.co.ke/apk` and
+check the version, size and SHA-256 are the ones you uploaded.
 
 ---
 
@@ -66,11 +61,20 @@ deliberate: the page must never 500 for a mirror.
 
 ```
 app_releases/index.json             ← version, versionCode, sizeMb, sha256, url, releasedOn
-app_releases/<slug>/yotemarket-<slug>-<version>.apk
+app_releases/<slug>/yotemarket-<slug>-<version>-<versionCode>.apk
 ```
 
-Filenames are versioned, so a link a mirror already published never changes under
-them. Old builds are left in place on purpose.
+**`versionCode` is in the filename, and it is required.** The version alone does not
+identify a build — `1.0.0+4` and `1.0.0+5` are both "1.0.0", and the picker auto-fills
+that field from the filename — so keying on version alone sent the second upload to the
+first one's path and silently replaced a published build. `publishRelease` also refuses
+to write where an object already exists, because the path convention alone doesn't stop
+someone re-entering a version code.
+
+This matters more than a clobbered file: `index.json` publishes a SHA-256 that mirrors
+verify against the URL, so changing the bytes under a live URL reads as tampering to
+anyone holding the old checksum, and corrupts any download in flight. Old builds are
+left in place on purpose.
 
 **The badge has two states**, driven by `uptodownUrl` (settable from the staff
 screen, or in `apk-releases.mjs`): set → "GET IT ON Uptodown" pointing at the

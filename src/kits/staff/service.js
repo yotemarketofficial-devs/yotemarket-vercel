@@ -207,6 +207,69 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
 // These throw on backend failure (function not deployed / not staff / offline);
 // useStaffResource then keeps the demo fallback and reports live=false. A real
 // success with an empty list is a valid live result.
+// ── Departmental work boards ─────────────────────────────────────────────────
+// One board per department so a team can see who is on what. The backend scopes every
+// read to the caller's own departments, so there is nothing to filter here.
+
+export async function fetchTasks(department) {
+  const d = await call('staffListTasks')(department ? { department } : {});
+  if (!d || !Array.isArray(d.tasks)) throw new Error('staffListTasks: unexpected shape');
+  return d;
+}
+
+export async function saveTask(task) {
+  return call('staffSaveTask')(task);
+}
+
+export async function setTaskStatus(id, status) {
+  return call('staffSetTaskStatus')({ id, status });
+}
+
+export async function deleteTask(id) {
+  return call('staffDeleteTask')({ id });
+}
+
+// ── Payroll ──────────────────────────────────────────────────────────────────
+// A run is computed from staff_contracts + staff_shifts, carries real Kenyan statutory
+// deductions, and posts its cost to finance. It does NOT move money — salaries are paid
+// through the bank. No demo fallback on any of these: inventing payroll figures would be
+// worse than an empty screen, because they look exactly like real ones.
+
+export async function previewPayroll(period) {
+  const d = await call('staffPayrollPreview')({ period });
+  if (!d || !Array.isArray(d.lines)) throw new Error('staffPayrollPreview: unexpected shape');
+  return d;
+}
+
+export async function createPayrollRun(period) {
+  return call('staffCreatePayrollRun')({ period });
+}
+
+export async function fetchPayrollRuns() {
+  const d = await call('staffListPayrollRuns')();
+  if (!d || !Array.isArray(d.runs)) throw new Error('staffListPayrollRuns: unexpected shape');
+  return d;
+}
+
+export async function fetchPayrollRun(id) {
+  const d = await call('staffPayrollRun')({ id });
+  if (!d || !d.run) throw new Error('staffPayrollRun: unexpected shape');
+  return d;
+}
+
+export async function approvePayrollRun(id) {
+  return call('staffApprovePayrollRun')({ id });
+}
+
+export async function voidPayrollRun(id, reason) {
+  return call('staffVoidPayrollRun')({ id, reason });
+}
+
+export async function fetchMyPayslips() {
+  const d = await call('staffMyPayslips')();
+  return Array.isArray(d?.payslips) ? d.payslips : [];
+}
+
 export async function fetchOverview() {
   const d = await call('staffOverview')();
   if (!d || !d.kpis) throw new Error('staffOverview: unexpected shape');
