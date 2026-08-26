@@ -297,10 +297,23 @@ function AccessDrawer({ emp, onClose, onSaved, isSelf }) {
   );
 }
 
-function AddStaffDrawer({ onClose, onSaved }) {
+/**
+ * `prefill` carries a candidate straight from Job applications — name, email, the role
+ * they applied for and the team they applied to. Retyping those is how an onboarding ends
+ * up under a misspelt address that never matches the account they actually signed in with,
+ * and the email is the join key here: onboardStaff looks the person up by it.
+ *
+ * Exported so careers.jsx can hire without duplicating this form (and, more importantly,
+ * without duplicating the tier/department rules that go with it).
+ */
+export function AddStaffDrawer({ onClose, onSaved, prefill }) {
   const { toast } = useDialogs();
-  const [f, setF] = useState({ email:'', name:'', title:'', department:'support', role:'agent' });
-  const [depts, setDepts] = useState(['support']);
+  const startDept = ALL_DEPTS.includes(prefill?.department) ? prefill.department : 'support';
+  const [f, setF] = useState({
+    email: prefill?.email || '', name: prefill?.name || '', title: prefill?.title || '',
+    department: startDept, role: 'agent',
+  });
+  const [depts, setDepts] = useState([startDept]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));

@@ -84,6 +84,30 @@ listing; empty → "DOWNLOAD THE Android APK" pointing at `/apk`.
 bundles and installs them itself; a person or a mirror cannot install one. Shorebird
 handles OTA patches to a release, and does not replace publishing the APK here.
 
+## The signing check
+
+`src/lib/apk-signature.js` reads the signing certificate out of the chosen APK in the
+browser and the staff screen **refuses to publish a build signed with anything but the
+upload key**. Fingerprints are pinned per app as `signingSha256` in `apk-releases.mjs`.
+
+Why pinned rather than "is it signed at all": Android ties update eligibility to the
+signing certificate, so a build signed with a different key **cannot install over an
+existing one** — the user gets a bare "App not installed" and must uninstall, losing
+their data. Publish one wrong build to a mirror and everyone who took it is stranded.
+There is also no fixed debug certificate to blacklist instead: the Android debug key is
+generated per machine, so its fingerprint differs on every laptop.
+
+An APK is a ZIP with an "APK Signing Block" between the entries and the central
+directory; v2/v3 signatures live there, which is why `keytool -printcert -jarfile` reads
+nothing from a modern APK. Use `apksigner verify --print-certs` to check by hand — the
+screen prints the full fingerprint even on success so it can be compared by eye.
+
+The parser was verified against the real 91 MB rider 1.0.0+4 APK: it reports scheme v3
+and `8f:fc:3b:1a:…`, matching both `apksigner` and `keytool -list -v` on the keystore.
+
+**If the upload key is ever rotated**, `signingSha256` must be updated in the same change
+or every publish is refused.
+
 ---
 
 ## Still open

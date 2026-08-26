@@ -24,6 +24,7 @@ import {
   CONTRACT_TYPE_LABEL, PAY_PERIOD_LABEL, DEPT_LABEL,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
+import { aiTask } from '../../lib/firebase.js';
 const { useState, useEffect } = React;
 
 const STATUS_TONE = { active:'ok', draft:'blue', expired:'amber', terminated:'red', superseded:'blue' };
@@ -168,6 +169,8 @@ function ContractDrawer({ contract, staff, onClose, onSaved }) {
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [draftNote, setDraftNote] = useState(null);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
 
   // Anything but a permanent or contractor engagement is time-boxed by definition.
@@ -184,6 +187,41 @@ function ContractDrawer({ contract, staff, onClose, onSaved }) {
   };
 
   const person = staff.find((s) => s.uid === f.uid);
+
+  /* Draft the terms from the engagement already on screen. The People lead still owns
+     every word — this only removes the blank page, which is why it refuses to overwrite
+     terms that have already been written and appends a checklist of what the model was
+     not told rather than inventing it. */
+  const draftTerms = async () => {
+    if (!f.title.trim()) { setErr('Set the job title first — the draft is written around it.'); return; }
+    setDrafting(true); setErr('');
+    try {
+      const res = await aiTask({
+        task: 'contractTerms',
+        input: {
+          type: f.type, title: f.title, department: person?.department || '',
+          payAmount: Number(f.payAmount) || 0, payPeriod: f.payPeriod,
+          hoursPerWeek: Number(f.hoursPerWeek) || undefined,
+          startDate: f.startDate, endDate: f.endDate, notes: f.terms.trim() || undefined,
+        },
+      });
+      const notes = (res?.notes || []).length ? `\n\n---\nBefore issuing, confirm:\n${res.notes.map((n) => `• ${n}`).join('\n')}` : '';
+      set('terms', `${res.terms}${notes}`);
+      setDraftNote(res?.review || null);
+    } catch (e) {
+      setErr(e.message || 'Could not draft the terms.');
+    } finally { setDrafting(false); }
+  };
+
+  // Choosing an employee fills in the job title we already hold for them. The screen was
+  // already SHOWING person.title directly under the picker and then asking for it again a
+  // field later, which is how a contract ends up titled differently from the directory.
+  // Only fills a blank — never overwrites a title the issuer has deliberately typed,
+  // since a contract is often the thing that CHANGES someone's title.
+  useEffect(() => {
+    if (!isNew || !person) return;
+    setF((x) => (x.title.trim() ? x : { ...x, title: person.title || '' }));
+  }, [isNew, person]);
 
   return (
     <Modal title={isNew ? 'Issue a contract' : `Amend ${contract.name}'s contract`}
@@ -247,10 +285,27 @@ function ContractDrawer({ contract, staff, onClose, onSaved }) {
         </div>
 
         <div>
-          <label className="text-xs font-semibold t3">Terms &amp; conditions</label>
-          <textarea rows={5} value={f.terms} onChange={(e) => set('terms', e.target.value)} maxLength={8000}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <label className="text-xs font-semibold t3">Terms &amp; conditions</label>
+            <Btn kind="ghost" size="sm" icon={drafting ? 'spinner' : 'wand-magic-sparkles'}
+              onClick={draftTerms} disabled={drafting || busy || !f.title.trim()}>
+              {drafting ? 'Drafting…' : f.terms.trim() ? 'Redraft from these details' : 'Draft with AI'}
+            </Btn>
+          </div>
+          <textarea rows={5} value={f.terms} onChange={(e) => { set('terms', e.target.value); setDraftNote(null); }} maxLength={8000}
             placeholder="Duties, notice period, leave entitlement, confidentiality — whatever this engagement is actually on."
             className="ym-input mt-1" style={{ width:'100%', resize:'vertical' }} />
+          {draftNote && (
+            <div className="text-[11px] mt-1 flex items-start gap-1.5" style={{ color:'var(--amber)' }}>
+              <Icon name="triangle-exclamation" />
+              <span>{draftNote}</span>
+            </div>
+          )}
+          {!f.terms.trim() && !drafting && (
+            <div className="text-[11px] t3 mt-1">
+              A draft is written from the type, title, dates and pay above — it is a starting point, not legal advice.
+            </div>
+          )}
         </div>
 
         {isNew && <div className="text-xs t3 flex items-start gap-2"><Icon name="circle-info" className="mt-0.5" />Issuing supersedes their current active contract (kept in history) and notifies them to review and sign it.</div>}

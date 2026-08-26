@@ -6,6 +6,7 @@ import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
 import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening, deleteJobApplication } from './service.js';
 import { useEscape } from '../../lib/useEscape.js';
 import { useDialogs } from './dialogs.jsx';
+import { AddStaffDrawer } from './people.jsx';
 const { useState } = React;
 
 const JOB_TYPES = ['full-time', 'part-time', 'contract', 'internship', 'volunteer'];
@@ -31,6 +32,7 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
   const { confirm } = useDialogs();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [onboarding, setOnboarding] = useState(false);
   const [err, setErr] = useState('');
   useEscape(onClose, !busy); // Esc closes, unless a stage move is in flight
   const move = async (stage) => {
@@ -101,6 +103,30 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
             ))}
           </div>
         </div>
+
+        {/* Hiring used to end here: the funnel said "Hired" and somebody then retyped the
+            candidate's details into Access & roles. The email is the join key — onboardStaff
+            finds the person by it — so a typo there onboards nobody and fails silently later.
+            This carries the application straight into the same form, prefilled. */}
+        {app.stage === 'hired' && (
+          <div className="pt-4" style={{ borderTop: '1px solid var(--line)' }}>
+            <div className="text-xs font-semibold t2 mb-1">Onboard</div>
+            <div className="text-xs t3 mb-2">
+              Grant console access using this application — name, email, role and team are carried over.
+            </div>
+            <Btn kind="primary" size="sm" icon="user-plus" disabled={busy} onClick={() => setOnboarding(true)}>
+              Add {app.name?.split(' ')[0] || 'them'} to the team
+            </Btn>
+          </div>
+        )}
+
+        {onboarding && (
+          <AddStaffDrawer
+            prefill={{ email: app.email, name: app.name, title: app.role, department: app.dept }}
+            onClose={() => setOnboarding(false)}
+            onSaved={() => { setOnboarding(false); onMoved && onMoved(); }}
+          />
+        )}
 
         <div className="pt-4" style={{ borderTop:'1px solid var(--line)' }}>
           <div className="text-xs font-semibold t2 mb-1">Erase</div>

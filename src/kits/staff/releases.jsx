@@ -8,6 +8,7 @@ import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, Bar } from './ui.jsx';
 import { APPS } from '../../lib/apk-releases.mjs';
 import { fetchReleases, publishRelease, toMb } from '../../lib/app-releases.js';
+import { readApkCertificate, formatFingerprint } from '../../lib/apk-signature.js';
 
 const { useState, useEffect, useCallback } = React;
 
@@ -24,15 +25,18 @@ function AppRelease({ app, published, onPublished }) {
   const [uptodownUrl, setUptodownUrl] = useState('');
   const [progress, setProgress] = useState(null); // 0..1 while uploading
   const [msg, setMsg] = useState(null);           // { ok, text }
+  const [cert, setCert] = useState(null);         // { sha256, scheme, ok } | { error }
+  const [checking, setChecking] = useState(false);
 
   const live = published?.release || null;
   useEffect(() => {
     setUptodownUrl(published?.uptodownUrl || app.uptodownUrl || '');
   }, [published, app.uptodownUrl]);
 
-  const pick = (e) => {
+  const pick = async (e) => {
     const f = e.target.files?.[0] || null;
     setMsg(null);
+    setCert(null);
     if (!f) { setFile(null); return; }
     if (/\.aab$/i.test(f.name)) {
       setFile(null);
@@ -54,6 +58,19 @@ function AppRelease({ app, published, onPublished }) {
       if (!version) setVersion(guess[1]);
       if (!versionCode && guess[2]) setVersionCode(guess[2]);
     }
+
+    // Read the signing certificate NOW rather than at publish time: finding out a build
+    // is signed with the wrong key after a 90 MB upload wastes several minutes, and the
+    // answer takes about a second.
+    setChecking(true);
+    try {
+      const found = await readApkCertificate(f);
+      setCert({ ...found, ok: !app.signingSha256 || found.sha256 === app.signingSha256 });
+    } catch (err) {
+      setCert({ error: err.message || 'Could not read the signature.' });
+    } finally {
+      setChecking(false);
+    }
   };
 
   const publish = async () => {
@@ -68,6 +85,22 @@ function AppRelease({ app, published, onPublished }) {
     // without it the second upload would overwrite the first at the same URL.
     if (!String(versionCode).trim()) {
       setMsg({ ok: false, text: 'Enter the version code (the number after the + in 1.0.0+4) — each build needs its own URL.' });
+      return;
+    }
+    // Refuse rather than warn. Publishing a build signed with the wrong key strands every
+    // person who installs it: Android ties update eligibility to the certificate, so the
+    // next correctly-signed release cannot install over it.
+    if (!cert || cert.error) {
+      setMsg({ ok: false, text: cert?.error || 'The signing certificate has not been read yet — wait a moment and try again.' });
+      return;
+    }
+    if (!cert.ok) {
+      setMsg({
+        ok: false,
+        text: `This build is signed with the WRONG key. Expected ${formatFingerprint(app.signingSha256)}, `
+          + `got ${formatFingerprint(cert.sha256)}. Publishing it would mean nobody who installs it can `
+          + 'ever update. Rebuild with the upload keystore.',
+      });
       return;
     }
     setProgress(0); setMsg(null);
@@ -118,6 +151,43 @@ function AppRelease({ app, published, onPublished }) {
       />
       {file && <div className="text-xs t3">{file.name} · {toMb(file.size)} MB</div>}
 
+      {/* The signing certificate, shown before upload rather than after. The fingerprint is
+          printed in full even when it matches, so it can be compared by eye against
+          `apksigner verify --print-certs` — a check nobody can audit is not much of a check. */}
+      {checking && <div className="text-xs t3"><Icon name="spinner" /> Reading the signing certificate…</div>}
+      {cert && (
+        <div
+          className="text-xs p-2.5 rounded-lg"
+          style={{
+            background: 'var(--surface2)',
+            border: `1px solid ${cert.error || !cert.ok ? 'var(--red)' : 'var(--green)'}`,
+            color: cert.error || !cert.ok ? 'var(--red)' : 'var(--t2)',
+          }}
+        >
+          {cert.error ? (
+            <><Icon name="circle-exclamation" /> {cert.error}</>
+          ) : cert.ok ? (
+            <>
+              <Icon name="shield-halved" /> Signed with the upload key ({cert.scheme}).
+              <div className="mt-1" style={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                {formatFingerprint(cert.sha256)}
+              </div>
+            </>
+          ) : (
+            <>
+              <Icon name="triangle-exclamation" /> <b>Wrong signing key — this cannot be published.</b>
+              <div className="mt-1" style={{ wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                expected {formatFingerprint(app.signingSha256)}<br />
+                found&nbsp;&nbsp;&nbsp;&nbsp;{formatFingerprint(cert.sha256)}
+              </div>
+              <div className="mt-1">
+                Anyone who installed a build signed with the expected key could never update to this one.
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 flex-wrap">
         <input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="Version (1.4.2)"
           className="ym-input" style={{ width: 150 }} disabled={busy} />
@@ -129,7 +199,8 @@ function AppRelease({ app, published, onPublished }) {
 
       {busy && <Bar pct={Math.round(progress * 100)} />}
 
-      <Btn kind="primary" size="md" icon={busy ? 'spinner' : 'cloud-arrow-up'} onClick={publish} disabled={busy}>
+      <Btn kind="primary" size="md" icon={busy ? 'spinner' : 'cloud-arrow-up'} onClick={publish}
+        disabled={busy || checking || !!(cert && (cert.error || !cert.ok))}>
         {busy ? `Uploading… ${Math.round(progress * 100)}%` : 'Publish this build'}
       </Btn>
 
