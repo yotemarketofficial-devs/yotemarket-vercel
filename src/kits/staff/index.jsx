@@ -356,7 +356,6 @@ function App() {
                 <span className="t1 truncate">{activeSection.label}</span>
               </nav>
               <span className="sm:hidden font-bold t1 truncate">{activeSection.label}</span>
-              <span className="hidden xl:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold" style={{ background:'var(--surface2)', color:'var(--t3)' }} title="Internal staff & admins only — not visible to merchants, riders, marketers or shoppers."><Icon name="lock" className="text-[10px]" /> Confidential · Internal</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <button onClick={() => setPalette(true)} className="hidden md:flex items-center gap-2 px-3 h-9 rounded-lg text-sm t3" style={{ background:'var(--surface2)', border:'1px solid var(--line)', width:250 }} aria-label="Search">

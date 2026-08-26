@@ -136,7 +136,7 @@ export function Finance({ isAdmin }){
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ type:'expense', category:'', amount:'', note:'', date:'', behaviour:'' });
+  const [form, setForm] = useState({ type:'expense', category:'', amount:'', note:'', date:'', behaviour:'', recurring:false });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const load = useCallback(async () => {
@@ -150,8 +150,8 @@ export function Finance({ isAdmin }){
   const add = async () => {
     setBusy(true); setMsg(null);
     try {
-      await addFinanceEntry({ type: form.type, category: form.category || undefined, amount: Number(form.amount), note: form.note || undefined, date: form.date || undefined, behaviour: form.type === 'expense' && form.behaviour ? form.behaviour : undefined });
-      setForm({ type:'expense', category:'', amount:'', note:'', date:'', behaviour:'' }); setMsg({ ok:true, text:'Entry recorded.' }); load();
+      await addFinanceEntry({ type: form.type, category: form.category || undefined, amount: Number(form.amount), note: form.note || undefined, date: form.date || undefined, behaviour: form.type === 'expense' && form.behaviour ? form.behaviour : undefined, recurring: form.type === 'expense' ? form.recurring : undefined });
+      setForm({ type:'expense', category:'', amount:'', note:'', date:'', behaviour:'', recurring:false }); setMsg({ ok:true, text:'Entry recorded.' }); load();
     } catch (e) { setMsg({ ok:false, text:e.message || 'Could not record entry.' }); }
     finally { setBusy(false); }
   };
@@ -215,8 +215,60 @@ export function Finance({ isAdmin }){
         {form.type === 'expense' && !form.behaviour && (
           <p className="text-xs t3 flex items-center gap-1.5"><Icon name="circle-info" />Without a cost type this entry is excluded from break-even.</p>
         )}
+        {/* The ledger is scoped to one month, so a subscription recorded once vanished
+            from it the following month and had to be retyped twelve times a year.
+            Marking it recurring projects it into every month instead. */}
+        {form.type === 'expense' && (
+          <label className="text-xs t2 flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.recurring} onChange={e => set('recurring', e.target.checked)} />
+            <span>
+              <b>Repeats every month</b> — for subscriptions and retainers (Google Cloud, Claude, hosting).
+              Record it once and it counts in every month until you end it.
+            </span>
+          </label>
+        )}
         <Btn kind="primary" icon={busy ? 'spinner' : 'plus'} onClick={add} disabled={busy || !form.amount}>{busy ? 'Saving…' : 'Record entry'}</Btn>
       </Card>
+
+      {/* Costs the company already knows about, recomputed from source rather than copied
+          into the ledger — a copy goes stale the moment a contract is amended or a
+          subscription cancelled. Shown apart from the ledger because the ledger total has
+          to stay the sum of what was actually recorded, for anyone reconciling to a bank
+          statement. */}
+      {!!(data.derived || []).length && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+            <h3 className="font-bold t1">Already known — {data.month}</h3>
+            <span className="text-sm t2">{kes(data.derivedExpenses || 0)}/mo</span>
+          </div>
+          <p className="text-xs t3 mb-3">
+            Not ledger entries. These come from records the platform already holds, so they need no typing
+            and cannot drift out of date.
+          </p>
+          <div className="space-y-2">
+            {data.derived.map(e => (
+              <div key={e.id} className="flex items-center gap-3 p-3 rounded-lg"
+                style={{ border:'1px dashed var(--line)', background:'var(--surface2)' }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background:'var(--surface)', color:'var(--t3)' }}>
+                  <Icon name={e.source === 'contracts' ? 'users' : 'rotate'} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold t1 text-sm flex items-center gap-2 flex-wrap">
+                    {e.category}
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{ background:'var(--surface)', color:'var(--t3)' }}>
+                      {e.source === 'contracts' ? 'From contracts' : 'Repeats monthly'}
+                    </span>
+                  </div>
+                  <div className="text-xs t3">{e.why}</div>
+                </div>
+                <div className="text-sm font-semibold t1">{kes(e.amount)}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <h3 className="font-bold t1 mb-3">Ledger</h3>
@@ -269,6 +321,8 @@ const legalMeta = k => LEGAL_TYPES.find(t => t.key === k) || LEGAL_TYPES[0];
 export function Legal({ isAdmin }){
   const { confirm } = useDialogs();
   const [rows, setRows] = useState([]);
+  // Employment contracts People have already issued, derived not copied — see listLegalRecords.
+  const [derived, setDerived] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -279,7 +333,7 @@ export function Legal({ isAdmin }){
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await listLegalRecords(); setRows(r.records || []); }
+    try { const r = await listLegalRecords(); setRows(r.records || []); setDerived(r.derived || []); }
     catch (e) { setMsg({ ok:false, text:e.message || 'Could not load legal records.' }); }
     finally { setLoading(false); }
   }, []);
@@ -330,6 +384,46 @@ export function Legal({ isAdmin }){
         </div>
         <Btn kind="primary" icon={busy ? 'spinner' : (editingId ? 'check' : 'plus')} onClick={save} disabled={busy || !form.title}>{busy ? 'Saving…' : (editingId ? 'Update record' : 'Add record')}</Btn>
       </Card>
+
+      {/* Employment contracts already issued by People. Legal read as "no contracts" while
+          these existed, because they live in staff_contracts and nothing carried them
+          across. Derived rather than copied — a copy would still read "active" after a
+          contract was amended or terminated, and a register that is confidently wrong is
+          worse than an empty one. Read-only here: People own the record.
+          Pay is deliberately excluded; Legal needs to know a contract exists and whether
+          it is signed, not what someone earns. */}
+      {!!derived.length && (
+        <Card className="p-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+            <h3 className="font-bold t1">Employment contracts</h3>
+            <Pill tone={derived.some(r => !r.signed) ? 'amber' : 'ok'}>
+              {derived.filter(r => r.signed).length}/{derived.length} signed
+            </Pill>
+          </div>
+          <p className="text-xs t3 mb-3">
+            Issued in People → Contracts and shown here automatically. Edit them there, not here.
+          </p>
+          <div className="space-y-2">
+            {derived.map(r => (
+              <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg"
+                style={{ border:'1px dashed var(--line)', background:'var(--surface2)' }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background:'var(--surface)', color:'var(--t3)' }}>
+                  <Icon name="file-signature" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold t1 text-sm truncate">{r.title}</div>
+                  <div className="text-xs t3 truncate">{r.note}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!r.signed && <Pill tone="amber">Unsigned</Pill>}
+                  <Pill tone={r.status === 'active' ? 'ok' : 'red'}>{r.status}</Pill>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <h3 className="font-bold t1 mb-3">Records</h3>
