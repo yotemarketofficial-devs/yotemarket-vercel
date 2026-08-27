@@ -6,7 +6,7 @@ import React from 'react';
 import { FA, Card, Btn, SectionCard } from './primitives.jsx';
 import { useMerchant } from './merchant.jsx';
 import { ksh } from './data.js';
-import { setStoreDelivery } from '../../lib/firebase.js';
+import { setStoreDelivery, fulfilmentStatus } from '../../lib/firebase.js';
 import { ScreenCoach } from './ScreenCoach.jsx';
 const { useState, useEffect } = React;
 
@@ -44,6 +44,11 @@ export function DeliverySettings({ toast }){
   const [autoDispatch, setAutoDispatch] = useState(true);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  // Same source as checkout, so the merchant and the shopper are never told different
+  // things about the same hold.
+  const [status, setStatus] = useState(null);
+  useEffect(() => { fulfilmentStatus().then(setStatus).catch(() => setStatus(null)); }, []);
+  const paused = status ? status.riderDelivery === false : false;
 
   // Hydrate from the store's saved rules once they load.
   useEffect(() => {
@@ -69,6 +74,25 @@ export function DeliverySettings({ toast }){
         <h1 className="ym-h1" style={{ marginBottom:6 }}>Delivery rules</h1>
         <p className="ym-sub">How shoppers get their orders — this drives your checkout and how new orders are handled.</p>
       </div>
+
+      {/* Told here as well as at checkout, because a merchant setting a delivery fee this
+          morning would otherwise have no idea the option is not being shown to shoppers.
+          Settings stay EDITABLE on purpose: the hold is temporary, and what is saved here
+          is what resumes when it lifts — locking the form would mean rebuilding these
+          rules from memory later. */}
+      {paused && (
+        <Card style={{ padding:16, display:'flex', gap:12, alignItems:'flex-start', borderColor:'var(--m-primary)' }}>
+          <FA i="fa-circle-info" style={{ fontSize:18, color:'var(--m-primary)', marginTop:2 }} />
+          <div>
+            <div className="ym-h3" style={{ fontSize:14 }}>Delivery is temporarily unavailable</div>
+            <div className="ym-cap" style={{ marginTop:4 }}>{status?.notice}</div>
+            <div className="ym-cap" style={{ marginTop:6 }}>
+              Your rules below are saved and will apply again automatically when delivery resumes.
+              Until then, shoppers collect from your store.
+            </div>
+          </div>
+        </Card>
+      )}
 
       <SectionCard title="Delivery" sub="Shown to shoppers at checkout for your store." data-coach="delivery-rules">
         <div style={{ padding:'0 16px 8px' }}>

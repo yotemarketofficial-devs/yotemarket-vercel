@@ -26,6 +26,32 @@ function Terms() {
               platform. Continued use constitutes acceptance of these Terms and any updates to them.
             </div>
 
+            {/* A current-status notice, not a variation of the Terms. Placed before
+                clause 1 because a reader must not work through provisions about delivery
+                and only afterwards discover the service is suspended. It is written as
+                TEMPORARY throughout: this suspends a service, it does not withdraw it,
+                and the Terms below continue to describe delivery as an offered service
+                for when it resumes. */}
+            <div className="ym-terms-notice" style={{ border:'1px solid var(--m-primary, #7C2BD4)', borderRadius:12, padding:'14px 16px', margin:'18px 0' }}>
+              <strong>Temporary suspension of delivery services</strong>
+              <p style={{ marginTop:6 }}>
+                Delivery is <strong>temporarily unavailable</strong> while we restructure this service to comply
+                with new regulations. During this period we do not carry parcels: orders are placed on the
+                Platform and <strong>collected by the customer from the merchant</strong>, and no delivery fee is
+                charged or payable.
+              </p>
+              <p style={{ marginTop:6 }}>
+                This is a temporary suspension of one optional service. It does not vary these Terms, which
+                continue to describe delivery as an offered service, and it does not affect the marketplace,
+                payments, or any other part of the Platform. Delivery provisions in these Terms apply again in
+                full when the service resumes, and this notice will be removed at that time.
+              </p>
+              <p style={{ marginTop:6 }}>
+                Orders placed while delivery is suspended are collection orders. Nothing in this notice affects
+                rights or obligations arising from orders placed before it took effect.
+              </p>
+            </div>
+
             <h3>1. About YoteMarket &amp; these Terms</h3>
             <p>
               Yote Market Limited (&ldquo;YoteMarket&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
