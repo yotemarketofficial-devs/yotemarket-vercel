@@ -12,9 +12,11 @@ import { PAGES, GATED, robotsFor, isKnownRoute, normalisePath, SITE } from './se
  * PAGES: a test that imports the same data it checks would pass even if a route
  * were dropped. */
 
+// Pages we want FOUND. /delete-account is deliberately not among them any more — see
+// the utility-page test below.
 const PUBLIC_PAGES = [
   '/', '/storefront', '/feed', '/about', '/pricing', '/mobile', '/rider',
-  '/marketers', '/careers', '/help', '/contact', '/terms', '/privacy', '/delete-account',
+  '/marketers', '/careers', '/help', '/contact', '/terms', '/privacy',
 ];
 
 describe('robotsFor', () => {
@@ -40,6 +42,15 @@ describe('robotsFor', () => {
     expect(robotsFor('/product')).toBe('noindex, nofollow');
     expect(robotsFor('/store/')).toBe('noindex, nofollow');
     expect(robotsFor('/feed/abc/extra')).toBe('noindex, nofollow');
+  });
+
+  it('keeps utility pages reachable but out of the index', () => {
+    // /delete-account is public because Google Play requires a reachable
+    // account-deletion URL. Reachable, not ranked: indexed it competed with the pages
+    // meant to be found, and was surfacing ahead of the marketers programme.
+    // FOLLOW rather than nofollow — it must stay crawlable for Play's own check.
+    expect(robotsFor('/delete-account')).toBe('noindex, follow');
+    expect(isKnownRoute('/delete-account')).toBe(true);   // still a real page, not a 404
   });
 
   it('does not confuse the public /marketers page with the gated /marketers/app', () => {

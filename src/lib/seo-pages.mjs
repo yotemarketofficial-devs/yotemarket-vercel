@@ -60,9 +60,14 @@ export const PAGES = {
       'Deliver for YoteMarket and get paid per run. Pick up batched orders and drop at neighbourhood hubs.',
   },
   '/marketers': {
-    title: 'Earn as a YoteMarket scout',
+    // "Scout" is what we call them internally; "marketer" is what the programme is
+    // called, what the URL says, and what somebody actually searches for. Leading with
+    // the internal word meant the page ranked poorly for its own name — badly enough
+    // that /delete-account was surfacing ahead of it.
+    title: 'YoteMarket Marketers Programme — earn as a scout',
     description:
-      'Sign up local businesses and earn for every verified merchant you bring to YoteMarket. Paid by M-Pesa.',
+      'Join the YoteMarket marketers programme: sign up local businesses as a scout and earn '
+      + 'for every verified merchant you bring on. Paid by M-Pesa.',
   },
   '/careers': {
     title: 'Careers at YoteMarket',
@@ -109,16 +114,27 @@ export function isKnownRoute(pathname) {
   return WITH_ID.test(path) || Object.prototype.hasOwnProperty.call(PAGES, path);
 }
 
+// Utility pages: public and linked on purpose, but with nothing to gain from ranking.
+// /delete-account exists because Google Play requires a reachable account-deletion URL —
+// reachable, NOT indexed. Left indexable it competes with the pages that are meant to be
+// found, and it was surfacing ahead of the marketers programme.
+//
+// "noindex, FOLLOW", not nofollow: the page must still be crawlable so Play's own check
+// and any link equity pass through. Dropping it from the index does not make it any
+// harder to reach.
+export const UTILITY = ['/delete-account'];
+
 /** The robots directive for a path.
  *
- *  Two things earn a noindex. The gated app areas, obviously. And any path matching
- *  NO route — those render <NotFound/>, which says "404 Page not found" while the
- *  server still answers 200, because a static SPA serves index.html for everything.
- *  A "not found" page returning 200 is exactly what Google calls a SOFT 404, and it
- *  is reported as a defect for as long as the URL is crawled. noindex makes it drop
- *  out cleanly instead. */
+ *  Three things earn a noindex. The gated app areas, obviously. Utility pages that are
+ *  public but not search destinations (above). And any path matching NO route — those
+ *  render <NotFound/>, which says "404 Page not found" while the server still answers
+ *  200, because a static SPA serves index.html for everything. A "not found" page
+ *  returning 200 is exactly what Google calls a SOFT 404, and it is reported as a defect
+ *  for as long as the URL is crawled. noindex makes it drop out cleanly instead. */
 export function robotsFor(pathname) {
   const path = normalisePath(pathname);
   if (GATED.some((g) => path.startsWith(g))) return 'noindex, nofollow';
+  if (UTILITY.includes(path)) return 'noindex, follow';
   return isKnownRoute(path) ? 'index, follow' : 'noindex, nofollow';
 }
