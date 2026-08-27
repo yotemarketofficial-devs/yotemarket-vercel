@@ -140,13 +140,6 @@ function visibleWorkspaces(isAdmin, depts = []) {
 function WorkspaceRail({ workspaces, activeWs, onPick }) {
   return (
     <div className="flex flex-col items-center gap-1 py-4 h-full overflow-y-auto no-bar">
-      {/* Clocking in is the first thing done on a shift and the last thing before
-          leaving, so it sits above the workspaces rather than across the header among
-          the search and profile controls. `rail` opens its panel rightward — anchored
-          right it would run off the left edge of a rail this narrow. */}
-      <div className="w-full flex justify-center pb-2 mb-1" style={{ borderBottom:'1px solid var(--line)' }}>
-        <ClockControl rail />
-      </div>
       {workspaces.map((w) => {
         const on = w.key === activeWs;
         return (
@@ -188,7 +181,11 @@ function SectionNav({ workspace, active, go, onClose }) {
           );
         })}
       </nav>
-      <div className="p-3" style={{ borderTop:'1px solid var(--line)' }}>
+      {/* Clocking in is the first thing done on a shift and the last before leaving, so it
+          sits with Home at the foot of the nav rather than among the header's search and
+          profile controls. Full width here, so the wide button is the right one. */}
+      <div className="p-3 flex flex-col gap-2" style={{ borderTop:'1px solid var(--line)' }}>
+        <ClockControl wide />
         <a href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold t2" style={{ background:'var(--surface2)' }}>
           <Icon name="house" className="w-5 text-center t3" /> Home
         </a>

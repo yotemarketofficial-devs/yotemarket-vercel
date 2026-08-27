@@ -220,6 +220,35 @@ export async function resolveStaffLogin(staffId) {
   return d;
 }
 
+// ── The employee record ──────────────────────────────────────────────────────
+// Everything about one person on one page, for an admin, a People lead, or the lead of
+// the department they work in. The server decides who may look and WHAT they get back —
+// pay and statutory numbers are withheld from a department lead, complaints about the
+// caller are never returned at all, and an anonymous complainant is not sent. None of
+// that is enforced here; this layer only carries it.
+
+export async function fetchEmployeeRecord(uid) {
+  const d = await call('staffEmployeeRecord')({ uid });
+  if (!d || !d.record) throw new Error('staffEmployeeRecord: unexpected shape');
+  return d;
+}
+
+export async function setEmployeeDetails(args) {
+  return call('staffSetEmployeeDetails')(args);
+}
+
+export async function saveEmployeeReview(args) {
+  return call('staffSaveEmployeeReview')(args);
+}
+
+export async function fileComplaint(args) {
+  return call('staffFileComplaint')(args);
+}
+
+export async function resolveComplaint(id, status, resolution) {
+  return call('staffResolveComplaint')({ id, status, resolution });
+}
+
 /**
  * A person's display name and job title. Settable by themselves or a People lead.
  * This is what actually PUTS a name on the record — everything else only propagated one.

@@ -12,6 +12,7 @@ import {
 import { BreakEven } from './breakeven.jsx';
 import { BEHAVIOUR_LABEL } from '../../lib/breakeven.js';
 import { useDialogs } from './dialogs.jsx';
+import { EmployeeRecord } from './employee.jsx';
 const { useState, useEffect, useCallback } = React;
 
 const DEPARTMENTS = [
@@ -31,6 +32,9 @@ function Banner({ msg }){
 /* ══════════════════════════ People / HR ══════════════════════════ */
 export function People({ isAdmin }){
   const { confirm } = useDialogs();
+  // The full record for one person. Opened from a directory row rather than as its own
+  // nav section — you arrive at an employee by looking for them, not from a menu.
+  const [openUid, setOpenUid] = useState(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -65,6 +69,8 @@ export function People({ isAdmin }){
 
   const active = rows.filter(r => r.status === 'active');
   const byDept = DEPARTMENTS.map(d => ({ ...d, n: active.filter(r => r.department === d.key).length })).filter(d => d.n > 0);
+
+  if (openUid) return <EmployeeRecord uid={openUid} onBack={() => { setOpenUid(null); load(); }} />;
 
   return (
     <div className="fadeup space-y-6">
@@ -106,8 +112,10 @@ export function People({ isAdmin }){
             : (
               <div className="space-y-2">
                 {rows.map(emp => (
-                  <div key={emp.uid} className="flex items-center gap-3 p-3 rounded-lg" style={{ border:'1px solid var(--line)', opacity: emp.status === 'active' ? 1 : 0.6 }}>
-                    <Avatar name={emp.name || emp.email} size={40} />
+                  <div key={emp.uid} onClick={() => setOpenUid(emp.uid)} role="button" tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setOpenUid(emp.uid); }}
+                    className="flex items-center gap-3 p-3 rounded-lg" style={{ border:'1px solid var(--line)', opacity: emp.status === 'active' ? 1 : 0.6, cursor:'pointer' }}>
+                    <Avatar src={emp.photoUrl} name={emp.name || emp.email} size={40} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold t1 text-sm">{emp.name || emp.email.split('@')[0]}</span>
@@ -118,7 +126,7 @@ export function People({ isAdmin }){
                     </div>
                     <div className="text-xs t3 hidden sm:block text-right">Since<br/>{fmtDate(emp.startedAt)}</div>
                     {isAdmin && emp.status === 'active' && (
-                      <button onClick={() => offboard(emp)} className="text-xs font-semibold" style={{ color:'var(--red)' }}>Offboard</button>
+                      <button onClick={(e) => { e.stopPropagation(); offboard(emp); }} className="text-xs font-semibold" style={{ color:'var(--red)' }}>Offboard</button>
                     )}
                   </div>
                 ))}

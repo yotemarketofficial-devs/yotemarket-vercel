@@ -39,7 +39,12 @@ const dayLabel = (d) => {
 };
 
 /* ══ The header clock ═════════════════════════════════════════════════════ */
-export function ClockControl({ rail = false }) {
+/**
+ * `wide` renders the nav-footer form: full width, matching the Home button it sits above,
+ * with its panel opening UPWARD — at the foot of the nav a downward panel would open off
+ * the bottom of the screen.
+ */
+export function ClockControl({ rail = false, wide = false }) {
   const { isStaff } = useStaffClaims();
   const { confirm, prompt, toast } = useDialogs();
   const [state, setState] = useState(null);   // { open, todayMinutes, weekMinutes }
@@ -98,7 +103,19 @@ export function ClockControl({ rail = false }) {
       {/* In the rail there is no room for the wide pill, so the compact button is the only
           one rendered at any width — and it carries the elapsed time underneath, since the
           rail is where somebody now looks to see whether they are on shift. */}
-      {rail ? (
+      {wide ? (
+        // Shaped like the Home button beneath it, so the two read as one pair of controls.
+        <button onClick={() => setPanel((p) => !p)} title={open ? 'On shift' : 'Clocked out'}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold"
+          style={{
+            background: open ? 'var(--green-bg)' : 'var(--surface2)',
+            color: open ? 'var(--green)' : 'var(--t2)',
+          }}>
+          <Icon name="clock" className="w-5 text-center" style={{ color: open ? 'var(--green)' : 'var(--t3)' }} />
+          <span className="flex-1 text-left">{open ? 'On shift' : 'Clock in'}</span>
+          {open && <span className="num text-xs">{hhmm(elapsed)}</span>}
+        </button>
+      ) : rail ? (
         <button onClick={() => setPanel((p) => !p)} title={open ? 'On shift' : 'Clocked out'}
           className="flex flex-col items-center gap-1 w-full py-2 px-1 rounded-xl transition-colors"
           style={{ color: open ? 'var(--green)' : 'var(--t3)' }}>
@@ -124,7 +141,10 @@ export function ClockControl({ rail = false }) {
 
       {panel && (<>
         <div className="fixed inset-0 z-40" onClick={() => setPanel(false)} />
-        <div className={`absolute mt-2 rounded-xl overflow-hidden z-50 p-4 ${rail ? 'left-0' : 'right-0'}`}
+        <div className={`absolute rounded-xl overflow-hidden z-50 p-4 ${
+          // At the foot of the nav a downward panel opens off the bottom of the screen,
+          // so the wide form opens upward instead.
+          wide ? 'bottom-full mb-2 left-0' : rail ? 'mt-2 left-0' : 'mt-2 right-0'}`}
           style={{ width:250, background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
           <div className="text-xs font-bold uppercase t3" style={{ letterSpacing:'.08em' }}>Your shift</div>
           <div className="text-2xl font-bold t1 num mt-1">{open ? hhmm(elapsed) : 'Off shift'}</div>
