@@ -221,6 +221,13 @@ export async function resolveStaffLogin(staffId) {
 }
 
 /**
+ * A person's display name and job title. Settable by themselves or a People lead.
+ * This is what actually PUTS a name on the record — everything else only propagated one.
+ */
+export async function setStaffProfile({ uid, name, title }) {
+  return call('staffSetProfile')({ uid, name, title });
+}
+/**
  * An employee's statutory identifiers: KRA PIN, NSSF and SHIF numbers.
  * Settable by the person themselves or a People lead — the employee is the source of
  * truth for their own numbers, People need to fill gaps before a filing deadline.

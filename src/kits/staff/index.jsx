@@ -140,6 +140,13 @@ function visibleWorkspaces(isAdmin, depts = []) {
 function WorkspaceRail({ workspaces, activeWs, onPick }) {
   return (
     <div className="flex flex-col items-center gap-1 py-4 h-full overflow-y-auto no-bar">
+      {/* Clocking in is the first thing done on a shift and the last thing before
+          leaving, so it sits above the workspaces rather than across the header among
+          the search and profile controls. `rail` opens its panel rightward — anchored
+          right it would run off the left edge of a rail this narrow. */}
+      <div className="w-full flex justify-center pb-2 mb-1" style={{ borderBottom:'1px solid var(--line)' }}>
+        <ClockControl rail />
+      </div>
       {workspaces.map((w) => {
         const on = w.key === activeWs;
         return (
@@ -349,7 +356,10 @@ function App() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
+        {/* A column at least a screen tall, so `main` can absorb the slack. Without this
+            the footer sat immediately under short content — halfway up the viewport on an
+            empty screen, reading as a broken layout rather than the end of the page. */}
+        <div className="flex-1 min-w-0 flex flex-col min-h-screen">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-7 h-16" style={{ background:'var(--surface)', borderBottom:'1px solid var(--line)' }}>
             <div className="flex items-center gap-3 min-w-0">
               <button onClick={() => setMenu(true)} className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center t2" style={{ background:'var(--surface2)' }} aria-label="Menu"><Icon name="bars" /></button>
@@ -367,7 +377,6 @@ function App() {
                 <kbd className="text-[11px] px-1.5 py-0.5 rounded num" style={{ background:'var(--surface)', border:'1px solid var(--line)' }}>⌘K</kbd>
               </button>
               <button onClick={() => setPalette(true)} className="md:hidden w-9 h-9 rounded-full flex items-center justify-center t2" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }} aria-label="Search"><Icon name="magnifying-glass" /></button>
-              <ClockControl />
               <button onClick={refresh} title="Refresh this screen (R)" aria-label="Refresh"
                 className="w-9 h-9 rounded-full flex items-center justify-center t2"
                 style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}>
@@ -383,9 +392,11 @@ function App() {
             </div>
           </header>
 
-          <main className="p-4 sm:p-7 max-w-[1240px] mx-auto"><Screen isAdmin={isAdmin} go={setActive} /></main>
+          {/* flex-1: takes the leftover height so the footer is pushed to the bottom.
+              w-full is needed alongside max-w — a flex child does not stretch on its own. */}
+          <main className="p-4 sm:p-7 max-w-[1240px] w-full mx-auto flex-1"><Screen isAdmin={isAdmin} go={setActive} /></main>
 
-          <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1240px] mx-auto">
+          <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1240px] w-full mx-auto">
             <span>© 2026 Yote Market Limited — Internal Operations Console</span>
             <span>Confidential · staff.yotemarket.com</span>
           </footer>

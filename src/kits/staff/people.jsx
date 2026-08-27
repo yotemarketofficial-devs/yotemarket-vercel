@@ -20,7 +20,7 @@ import {
   useStaffResource, useStaffClaims, useRefreshSignal,
   fetchStaff, setStaffAccess, onboardStaff, offboardStaff,
   clockIn, clockOut, fetchMyShifts, fetchAttendance, closeShift,
-  ALL_DEPTS, DEPT_LABEL, TIER_LABEL, setStatutoryIds,
+  ALL_DEPTS, DEPT_LABEL, TIER_LABEL, setStatutoryIds, setStaffProfile,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useCallback } = React;
@@ -39,7 +39,7 @@ const dayLabel = (d) => {
 };
 
 /* ══ The header clock ═════════════════════════════════════════════════════ */
-export function ClockControl() {
+export function ClockControl({ rail = false }) {
   const { isStaff } = useStaffClaims();
   const { confirm, prompt, toast } = useDialogs();
   const [state, setState] = useState(null);   // { open, todayMinutes, weekMinutes }
@@ -95,21 +95,36 @@ export function ClockControl() {
 
   return (
     <div className="relative">
-      <button onClick={() => setPanel((p) => !p)} title={open ? 'On shift' : 'Clocked out'}
-        className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-semibold"
-        style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', color: open ? 'var(--green)' : 'var(--t3)', border:'1px solid var(--line)' }}>
-        <span className="w-2 h-2 rounded-full" style={{ background: open ? 'var(--green)' : 'var(--t3)' }} />
-        <span className="num">{open ? hhmm(elapsed) : 'Off shift'}</span>
-      </button>
-      <button onClick={() => setPanel((p) => !p)} aria-label="Time clock"
-        className="sm:hidden w-9 h-9 rounded-full flex items-center justify-center"
-        style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', color: open ? 'var(--green)' : 'var(--t2)', border:'1px solid var(--line)' }}>
-        <Icon name="clock" />
-      </button>
+      {/* In the rail there is no room for the wide pill, so the compact button is the only
+          one rendered at any width — and it carries the elapsed time underneath, since the
+          rail is where somebody now looks to see whether they are on shift. */}
+      {rail ? (
+        <button onClick={() => setPanel((p) => !p)} title={open ? 'On shift' : 'Clocked out'}
+          className="flex flex-col items-center gap-1 w-full py-2 px-1 rounded-xl transition-colors"
+          style={{ color: open ? 'var(--green)' : 'var(--t3)' }}>
+          <span className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', border:'1px solid var(--line)' }}>
+            <Icon name="clock" className="text-lg" />
+          </span>
+          <span className="text-[10px] font-semibold leading-none num">{open ? hhmm(elapsed) : 'Clock in'}</span>
+        </button>
+      ) : (<>
+        <button onClick={() => setPanel((p) => !p)} title={open ? 'On shift' : 'Clocked out'}
+          className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-semibold"
+          style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', color: open ? 'var(--green)' : 'var(--t3)', border:'1px solid var(--line)' }}>
+          <span className="w-2 h-2 rounded-full" style={{ background: open ? 'var(--green)' : 'var(--t3)' }} />
+          <span className="num">{open ? hhmm(elapsed) : 'Off shift'}</span>
+        </button>
+        <button onClick={() => setPanel((p) => !p)} aria-label="Time clock"
+          className="sm:hidden w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: open ? 'var(--green-bg)' : 'var(--surface2)', color: open ? 'var(--green)' : 'var(--t2)', border:'1px solid var(--line)' }}>
+          <Icon name="clock" />
+        </button>
+      </>)}
 
       {panel && (<>
         <div className="fixed inset-0 z-40" onClick={() => setPanel(false)} />
-        <div className="absolute right-0 mt-2 rounded-xl overflow-hidden z-50 p-4"
+        <div className={`absolute mt-2 rounded-xl overflow-hidden z-50 p-4 ${rail ? 'left-0' : 'right-0'}`}
           style={{ width:250, background:'var(--surface)', border:'1px solid var(--line)', boxShadow:'0 12px 30px -10px rgba(0,0,0,.35)' }}>
           <div className="text-xs font-bold uppercase t3" style={{ letterSpacing:'.08em' }}>Your shift</div>
           <div className="text-2xl font-bold t1 num mt-1">{open ? hhmm(elapsed) : 'Off shift'}</div>
@@ -476,14 +491,17 @@ export function StatutoryIds() {
   const rows = (Array.isArray(data) ? data : []).filter((r) => r.status === 'active');
   const canEditAnyone = isAdmin || (tier === 'lead' && departments.includes('people'));
 
-  const open = (r) => { setErr(''); setEdit({ uid:r.uid, name:r.name || r.email, kraPin:r.kraPin || '', nssfNo:r.nssfNo || '', shifNo:r.shifNo || '' }); };
+  const open = (r) => { setErr(''); setEdit({ uid:r.uid, email:r.email, name:r.name || '', title:r.title || '', kraPin:r.kraPin || '', nssfNo:r.nssfNo || '', shifNo:r.shifNo || '' }); };
   const set = (k, v) => setEdit((e) => ({ ...e, [k]: v }));
 
   const save = async () => {
     setBusy(true); setErr('');
     try {
+      // Name first: if it fails the statutory write should not land either, since the
+      // row would then show new numbers against the old placeholder name.
+      if (edit.name.trim()) await setStaffProfile({ uid: edit.uid, name: edit.name, title: edit.title });
       await setStatutoryIds({ uid: edit.uid, kraPin: edit.kraPin, nssfNo: edit.nssfNo, shifNo: edit.shifNo });
-      toast({ tone:'ok', title:'Saved', body:`Statutory numbers updated for ${edit.name}.` });
+      toast({ tone:'ok', title:'Saved', body:`Record updated for ${edit.name || edit.email}.` });
       setEdit(null); reload();
     } catch (e) { setErr(e.message || 'Could not save.'); }
     finally { setBusy(false); }
@@ -496,8 +514,8 @@ export function StatutoryIds() {
       <span className="flex items-center gap-2.5">
         <Avatar name={r.name || r.email} size={30} />
         <span className="min-w-0">
-          <span className="block font-semibold t1 truncate">{r.name || r.email}</span>
-          <span className="block text-xs t3 truncate">{r.title || DEPT_LABEL[r.department] || r.department}</span>
+          <span className="block font-semibold t1 truncate">{r.name || <span className="t3" style={{ fontWeight:400 }}>Name not set</span>}</span>
+          <span className="block text-xs t3 truncate">{r.title || r.email}</span>
         </span>
       </span>) },
     { key:'staffId', header:'Staff ID', csvValue:(r) => r.staffId || '',
@@ -554,12 +572,30 @@ export function StatutoryIds() {
       </Card>
 
       {edit && (
-        <Modal title={`Statutory numbers — ${edit.name}`} icon="id-card" onClose={() => setEdit(null)} maxWidth={480}
+        <Modal title={edit.name || edit.email || 'Employee record'} subtitle="Name, title and statutory numbers"
+          icon="id-card" onClose={() => setEdit(null)} maxWidth={480}
           footer={<>
             <Btn kind="ghost" size="sm" onClick={() => setEdit(null)} disabled={busy}>Cancel</Btn>
             <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'check'} onClick={save} disabled={busy}>Save</Btn>
           </>}>
           <div className="space-y-3">
+            {/* The field that was missing everywhere. Nothing ever collected a name, so
+                every screen fell back to the email's local-part and showed "general"
+                where a person should be. */}
+            <label className="block text-xs font-semibold t3">
+              Full name
+              <input value={edit.name} onChange={(e) => set('name', e.target.value)}
+                placeholder="e.g. Arnold Gichuche" className="ym-input mt-1" style={{ width:'100%' }} />
+              <span className="block text-[11px] t3 mt-1 font-normal">
+                Shown across the console, on contracts and in the audit log.
+              </span>
+            </label>
+            <label className="block text-xs font-semibold t3">
+              Job title
+              <input value={edit.title} onChange={(e) => set('title', e.target.value)}
+                placeholder="e.g. Finance Lead" className="ym-input mt-1" style={{ width:'100%' }} />
+            </label>
+            <div style={{ borderTop:'1px solid var(--line)', margin:'4px 0' }} />
             <label className="block text-xs font-semibold t3">
               KRA PIN
               <input value={edit.kraPin} onChange={(e) => set('kraPin', e.target.value.toUpperCase())}
