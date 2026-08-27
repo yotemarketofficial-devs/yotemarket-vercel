@@ -31,7 +31,10 @@ const monthLabel = (p) => {
     .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 };
 
-const STATUS_TONE = { draft: 'warn', approved: 'ok', void: 'off' };
+// Pill's vocabulary is ok|amber|blue|red (see .pill-* in the theme). It is NOT Stat's
+// (pri|green|amber|blue|red) — mixing the two renders an unstyled pill, and on Stat it
+// throws outright, because Stat indexes its tone map and reads .bg off the result.
+const STATUS_TONE = { draft: 'amber', approved: 'ok', void: 'red' };
 
 /* ── One payslip, expanded ────────────────────────────────────────────────── */
 function PayslipModal({ item, period, onClose }) {
@@ -112,10 +115,10 @@ function Preview({ period, onCreated }) {
     setBusy(true);
     try {
       const res = await createPayrollRun(period);
-      dialogs.toast?.({ text: `Draft run created for ${monthLabel(period)}.` });
+      dialogs.toast?.({ title: `Draft run created for ${monthLabel(period)}.` });
       onCreated?.(res?.id);
     } catch (e) {
-      dialogs.toast?.({ text: e.message || 'Could not create the run.', tone: 'bad' });
+      dialogs.toast?.({ title: e.message || 'Could not create the run.', tone: 'error' });
     } finally { setBusy(false); }
   };
 
@@ -148,7 +151,7 @@ function Preview({ period, onCreated }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Staff on this run" value={t.headcount || 0} icon="users" />
         <Stat label="Gross pay" value={kes(t.gross || 0)} icon="money-bill" />
-        <Stat label="Net to staff" value={kes(t.net || 0)} icon="hand-holding-dollar" tone="ok" />
+        <Stat label="Net to staff" value={kes(t.net || 0)} icon="hand-holding-dollar" tone="green" />
         <Stat label="Total employment cost" value={kes(t.employerCost || 0)} icon="building" sub="Gross + employer NSSF & levy" />
       </div>
 
@@ -242,8 +245,8 @@ function RunDetail({ id, onBack, onChanged }) {
     });
     if (!ok) return;
     setBusy(true);
-    try { await approvePayrollRun(id); await load(); onChanged?.(); dialogs.toast?.({ text: 'Payroll approved and posted to finance.' }); }
-    catch (e) { dialogs.toast?.({ text: e.message || 'Could not approve.', tone: 'bad' }); }
+    try { await approvePayrollRun(id); await load(); onChanged?.(); dialogs.toast?.({ title: 'Payroll approved and posted to finance.' }); }
+    catch (e) { dialogs.toast?.({ title: e.message || 'Could not approve.', tone: 'error' }); }
     finally { setBusy(false); }
   };
 
@@ -258,7 +261,7 @@ function RunDetail({ id, onBack, onChanged }) {
     if (!reason) return;
     setBusy(true);
     try { await voidPayrollRun(id, reason); await load(); onChanged?.(); }
-    catch (e) { dialogs.toast?.({ text: e.message || 'Could not void.', tone: 'bad' }); }
+    catch (e) { dialogs.toast?.({ title: e.message || 'Could not void.', tone: 'error' }); }
     finally { setBusy(false); }
   };
 
@@ -278,13 +281,13 @@ function RunDetail({ id, onBack, onChanged }) {
       <div className="flex items-center gap-3 flex-wrap">
         <Btn kind="ghost" size="sm" icon="arrow-left" onClick={onBack}>All runs</Btn>
         <div className="font-bold t1 text-lg">{monthLabel(run.period)}</div>
-        <Pill tone={STATUS_TONE[run.status] || 'off'}>{run.status}</Pill>
+        <Pill tone={STATUS_TONE[run.status] || 'blue'}>{run.status}</Pill>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Staff paid" value={t.headcount || 0} icon="users" />
         <Stat label="Gross" value={kes(t.gross || 0)} icon="money-bill" />
-        <Stat label="Net to staff" value={kes(t.net || 0)} icon="hand-holding-dollar" tone="ok" />
+        <Stat label="Net to staff" value={kes(t.net || 0)} icon="hand-holding-dollar" tone="green" />
         <Stat label="Employment cost" value={kes(t.employerCost || 0)} icon="building" />
       </div>
 
@@ -399,7 +402,7 @@ export function Payroll() {
                   initialSort={{ key: 'period', dir: 'desc' }}
                   columns={[
                     { key: 'period', header: 'Month', sort: true, render: (r) => <b className="t1">{monthLabel(r.period)}</b> },
-                    { key: 'status', header: 'Status', sort: true, render: (r) => <Pill tone={STATUS_TONE[r.status] || 'off'}>{r.status}</Pill> },
+                    { key: 'status', header: 'Status', sort: true, render: (r) => <Pill tone={STATUS_TONE[r.status] || 'blue'}>{r.status}</Pill> },
                     { key: 'headcount', header: 'Staff', sortValue: (r) => (r.totals || {}).headcount || 0,
                       render: (r) => (r.totals || {}).headcount || 0 },
                     { key: 'gross', header: 'Gross', sortValue: (r) => (r.totals || {}).gross || 0,

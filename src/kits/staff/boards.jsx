@@ -16,22 +16,23 @@ import { fetchTasks, saveTask, setTaskStatus, deleteTask, useStaffClaims, DEPT_L
 const { useState, useEffect, useCallback, useMemo } = React;
 
 const STATUS_META = {
-  todo: { label: 'To do', tone: 'off', icon: 'circle' },
-  in_progress: { label: 'In progress', tone: 'warn', icon: 'spinner' },
-  blocked: { label: 'Blocked', tone: 'bad', icon: 'circle-exclamation' },
+  todo: { label: 'To do', tone: 'blue', icon: 'circle' },
+  in_progress: { label: 'In progress', tone: 'amber', icon: 'spinner' },
+  blocked: { label: 'Blocked', tone: 'red', icon: 'circle-exclamation' },
   done: { label: 'Done', tone: 'ok', icon: 'circle-check' },
 };
 const STATUS_ORDER = ['todo', 'in_progress', 'blocked', 'done'];
-const PRIORITY_TONE = { urgent: 'bad', high: 'warn', normal: 'ok', low: 'off' };
+// Pill tones only: ok|amber|blue|red. Not interchangeable with Stat's set.
+const PRIORITY_TONE = { urgent: 'red', high: 'amber', normal: 'ok', low: 'blue' };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 const dueMeta = (d) => {
   if (!d) return null;
   const t = today();
-  if (d < t) return { text: `Overdue — ${d}`, tone: 'bad' };
-  if (d === t) return { text: 'Due today', tone: 'warn' };
-  return { text: `Due ${d}`, tone: 'off' };
+  if (d < t) return { text: `Overdue — ${d}`, tone: 'red' };
+  if (d === t) return { text: 'Due today', tone: 'amber' };
+  return { text: `Due ${d}`, tone: 'blue' };
 };
 
 /* ── Add / edit ───────────────────────────────────────────────────────────── */
@@ -142,7 +143,7 @@ function TaskRow({ t, onEdit, onMove, onDelete, canDelete, showAssignee }) {
         </div>
         {t.detail && <div className="text-xs t3" style={{ whiteSpace: 'pre-wrap' }}>{t.detail}</div>}
         <div className="flex items-center gap-2 flex-wrap mt-1">
-          <Pill tone={STATUS_META[t.status]?.tone || 'off'}>{STATUS_META[t.status]?.label || t.status}</Pill>
+          <Pill tone={STATUS_META[t.status]?.tone || 'blue'}>{STATUS_META[t.status]?.label || t.status}</Pill>
           {t.priority !== 'normal' && <Pill tone={PRIORITY_TONE[t.priority]}>{t.priority}</Pill>}
           {due && <Pill tone={due.tone}>{due.text}</Pill>}
           {showAssignee && (
@@ -212,7 +213,7 @@ export function Boards() {
   const move = async (t, status) => {
     // Optimistic: the click should feel instant, and a failure reloads the truth.
     setData((d) => ({ ...d, tasks: d.tasks.map((x) => (x.id === t.id ? { ...x, status } : x)) }));
-    try { await setTaskStatus(t.id, status); } catch (e) { dialogs.toast?.({ text: e.message, tone: 'bad' }); }
+    try { await setTaskStatus(t.id, status); } catch (e) { dialogs.toast?.({ title: e.message, tone: 'error' }); }
     load();
   };
 
@@ -223,7 +224,7 @@ export function Boards() {
       confirmLabel: 'Delete',
     });
     if (!ok) return;
-    try { await deleteTask(t.id); load(); } catch (e) { dialogs.toast?.({ text: e.message, tone: 'bad' }); }
+    try { await deleteTask(t.id); load(); } catch (e) { dialogs.toast?.({ title: e.message, tone: 'error' }); }
   };
 
   const openTasks = tasks.filter((t) => t.status !== 'done');
@@ -250,8 +251,8 @@ export function Boards() {
       {!!openTasks.length && (
         <div className="flex items-center gap-2 flex-wrap text-sm">
           <Pill tone="ok">{openTasks.length} open</Pill>
-          {!!overdue.length && <Pill tone="bad">{overdue.length} overdue</Pill>}
-          {!!unassigned.length && <Pill tone="warn">{unassigned.length} unassigned</Pill>}
+          {!!overdue.length && <Pill tone="red">{overdue.length} overdue</Pill>}
+          {!!unassigned.length && <Pill tone="amber">{unassigned.length} unassigned</Pill>}
         </div>
       )}
 
@@ -280,7 +281,7 @@ export function Boards() {
                   ? <Icon name="circle-question" />
                   : <Avatar name={g.name} size={30} />}
                 <div className="font-bold t1">{g.name}</div>
-                <Pill tone={g.tasks.length ? 'ok' : 'off'}>{g.tasks.length} open</Pill>
+                <Pill tone={g.tasks.length ? 'ok' : 'blue'}>{g.tasks.length} open</Pill>
               </div>
               {g.tasks.length
                 ? g.tasks.map((t) => (
