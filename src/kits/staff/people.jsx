@@ -20,7 +20,7 @@ import {
   useStaffResource, useStaffClaims, useRefreshSignal,
   fetchStaff, setStaffAccess, onboardStaff, offboardStaff,
   clockIn, clockOut, fetchMyShifts, fetchAttendance, closeShift,
-  ALL_DEPTS, DEPT_LABEL, TIER_LABEL,
+  ALL_DEPTS, DEPT_LABEL, TIER_LABEL, setStatutoryIds,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useCallback } = React;
@@ -452,4 +452,136 @@ export function Attendance() {
       </Card>
     </div>
   </div>);
+}
+
+/* ══ Statutory identifiers ════════════════════════════════════════════════
+   KRA PIN, NSSF and SHIF numbers, per employee.
+
+   Payroll computes correctly without them and cannot be FILED without them: the PAYE
+   return, the P9 and the NSSF/SHIF schedules are all keyed on these numbers. Missing
+   ones surface here and on a payroll run, so they are found now rather than at a
+   deadline.
+
+   Anyone can fill in their OWN numbers; a People lead can fill in anybody's. The
+   employee is the source of truth for their own, and HR should not be a bottleneck
+   for a number the person is holding in their hand. */
+export function StatutoryIds() {
+  const { data, error, reload } = useStaffResource(fetchStaff, []);
+  const { toast } = useDialogs();
+  const { user, isAdmin, tier, departments = [], profile } = useStaffClaims();
+  const [edit, setEdit] = useState(null);   // { uid, kraPin, nssfNo, shifNo }
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const rows = (Array.isArray(data) ? data : []).filter((r) => r.status === 'active');
+  const canEditAnyone = isAdmin || (tier === 'lead' && departments.includes('people'));
+
+  const open = (r) => { setErr(''); setEdit({ uid:r.uid, name:r.name || r.email, kraPin:r.kraPin || '', nssfNo:r.nssfNo || '', shifNo:r.shifNo || '' }); };
+  const set = (k, v) => setEdit((e) => ({ ...e, [k]: v }));
+
+  const save = async () => {
+    setBusy(true); setErr('');
+    try {
+      await setStatutoryIds({ uid: edit.uid, kraPin: edit.kraPin, nssfNo: edit.nssfNo, shifNo: edit.shifNo });
+      toast({ tone:'ok', title:'Saved', body:`Statutory numbers updated for ${edit.name}.` });
+      setEdit(null); reload();
+    } catch (e) { setErr(e.message || 'Could not save.'); }
+    finally { setBusy(false); }
+  };
+
+  const missing = rows.filter((r) => !r.kraPin || !r.nssfNo || !r.shifNo);
+
+  const columns = [
+    { key:'name', header:'Employee', sort:true, csvValue:(r) => r.name || r.email, render:(r) => (
+      <span className="flex items-center gap-2.5">
+        <Avatar name={r.name || r.email} size={30} />
+        <span className="min-w-0">
+          <span className="block font-semibold t1 truncate">{r.name || r.email}</span>
+          <span className="block text-xs t3 truncate">{r.title || DEPT_LABEL[r.department] || r.department}</span>
+        </span>
+      </span>) },
+    { key:'staffId', header:'Staff ID', csvValue:(r) => r.staffId || '',
+      render:(r) => r.staffId ? <span className="num text-xs t3">{r.staffId}</span> : <span className="text-xs t3">—</span> },
+    { key:'kraPin', header:'KRA PIN', csvValue:(r) => r.kraPin || '',
+      render:(r) => r.kraPin ? <span className="num text-sm t2">{r.kraPin}</span> : <Pill tone="amber">Missing</Pill> },
+    { key:'nssfNo', header:'NSSF', csvValue:(r) => r.nssfNo || '',
+      render:(r) => r.nssfNo ? <span className="num text-sm t2">{r.nssfNo}</span> : <Pill tone="amber">Missing</Pill> },
+    { key:'shifNo', header:'SHIF', csvValue:(r) => r.shifNo || '',
+      render:(r) => r.shifNo ? <span className="num text-sm t2">{r.shifNo}</span> : <Pill tone="amber">Missing</Pill> },
+    { key:'act', header:'', csv:false, render:(r) => (
+      (canEditAnyone || r.uid === (user && user.uid))
+        ? <Btn kind="ghost" size="sm" icon="pen" onClick={() => open(r)}>Edit</Btn>
+        : <span className="text-xs t3">—</span>) },
+  ];
+
+  if (error) return <BackendError error={error} onRetry={reload} />;
+
+  return (
+    <div className="fadeup space-y-6">
+      <SectionHead icon="id-card" title="Statutory numbers"
+        sub="KRA PIN, NSSF and SHIF — what PAYE returns and the P9 are filed against"
+        action={rows.length ? <Btn kind="ghost" size="md" icon="file-arrow-down"
+          onClick={() => exportCsv(`statutory-ids-${new Date().toISOString().slice(0,10)}`, columns, rows)}>Export</Btn> : null} />
+
+      <Card className="p-5 text-sm t3 space-y-1">
+        <div>
+          <b className="t1">Payroll runs without these; it cannot be filed without them.</b> A missing number is
+          found here rather than at a KRA deadline.
+        </div>
+        <div>You can always fill in your own. A People lead can fill in anyone's.</div>
+      </Card>
+
+      {/* Somebody signing in by badge needs to be able to find the badge. */}
+      {profile?.staffId && (
+        <Card className="p-5 flex items-center gap-3 flex-wrap">
+          <Icon name="id-badge" />
+          <div>
+            <div className="text-xs t3">Your staff ID — you can sign in with this instead of your email</div>
+            <div className="num font-bold t1 text-lg">{profile.staffId}</div>
+          </div>
+        </Card>
+      )}
+
+      {!!missing.length && (
+        <Card className="p-4 text-sm" style={{ borderColor:'var(--amber)' }}>
+          <Icon name="triangle-exclamation" /> {missing.length} of {rows.length} active staff are missing at least one number.
+        </Card>
+      )}
+
+      <Card className="p-5">
+        <DataTable columns={columns} rows={rows} keyField="uid" minWidth={720}
+          empty="No active staff on record." />
+      </Card>
+
+      {edit && (
+        <Modal title={`Statutory numbers — ${edit.name}`} icon="id-card" onClose={() => setEdit(null)} maxWidth={480}
+          footer={<>
+            <Btn kind="ghost" size="sm" onClick={() => setEdit(null)} disabled={busy}>Cancel</Btn>
+            <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'check'} onClick={save} disabled={busy}>Save</Btn>
+          </>}>
+          <div className="space-y-3">
+            <label className="block text-xs font-semibold t3">
+              KRA PIN
+              <input value={edit.kraPin} onChange={(e) => set('kraPin', e.target.value.toUpperCase())}
+                placeholder="A123456789Z" maxLength={11} className="ym-input mt-1" style={{ width:'100%' }} />
+              <span className="block text-[11px] t3 mt-1 font-normal">One letter, nine digits, one letter.</span>
+            </label>
+            <label className="block text-xs font-semibold t3">
+              NSSF number
+              <input value={edit.nssfNo} onChange={(e) => set('nssfNo', e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric" className="ym-input mt-1" style={{ width:'100%' }} />
+            </label>
+            <label className="block text-xs font-semibold t3">
+              SHIF number
+              <input value={edit.shifNo} onChange={(e) => set('shifNo', e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric" className="ym-input mt-1" style={{ width:'100%' }} />
+              <span className="block text-[11px] t3 mt-1 font-normal">Your SHA/SHIF membership number (formerly NHIF).</span>
+            </label>
+            <div className="text-xs t3">Leave a field blank if you do not have it yet — blanks are reported, never guessed.</div>
+            {err && <div className="text-sm flex items-center gap-2" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" />{err}</div>}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
 }

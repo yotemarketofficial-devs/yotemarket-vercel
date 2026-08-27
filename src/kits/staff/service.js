@@ -207,6 +207,29 @@ export function useStaffResource(loader, fallback, deps = [], { pollMs = 20000 }
 // These throw on backend failure (function not deployed / not staff / offline);
 // useStaffResource then keeps the demo fallback and reports live=false. A real
 // success with an empty list is a valid live result.
+/**
+ * Staff ID -> the email to sign in with. PUBLIC and unauthenticated by necessity: a
+ * person signing in has no session yet. Throttled server-side per ID.
+ *
+ * Sign-in still runs through Firebase's signInWithEmailAndPassword afterwards, so the
+ * password never reaches our backend — the badge only saves typing an address.
+ */
+export async function resolveStaffLogin(staffId) {
+  const d = await call('resolveStaffLogin')({ staffId });
+  if (!d || !d.email) throw new Error('No active staff member has that ID.');
+  return d;
+}
+
+/**
+ * An employee's statutory identifiers: KRA PIN, NSSF and SHIF numbers.
+ * Settable by the person themselves or a People lead — the employee is the source of
+ * truth for their own numbers, People need to fill gaps before a filing deadline.
+ * Omit `uid` to set your own.
+ */
+export async function setStatutoryIds({ uid, kraPin, nssfNo, shifNo }) {
+  return call('staffSetStatutoryIds')({ uid, kraPin, nssfNo, shifNo });
+}
+
 // ── Departmental work boards ─────────────────────────────────────────────────
 // One board per department so a team can see who is on what. The backend scopes every
 // read to the caller's own departments, so there is nothing to filter here.

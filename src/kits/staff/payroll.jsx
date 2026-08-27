@@ -155,6 +155,22 @@ function Preview({ period, onCreated }) {
         <Stat label="Total employment cost" value={kes(t.employerCost || 0)} icon="building" sub="Gross + employer NSSF & levy" />
       </div>
 
+      {/* A run computes fine without these and cannot be FILED without them. Flagged at
+          preview so they are chased now rather than at a KRA deadline. */}
+      {!!data.lines.filter((l) => (l.missingIds || []).length).length && (
+        <Card className="p-4 text-sm" style={{ borderColor: 'var(--amber)' }}>
+          <Icon name="triangle-exclamation" />{' '}
+          {data.lines.filter((l) => (l.missingIds || []).length).length} of {data.lines.length} payslips are missing a
+          statutory number. Payroll still runs; the PAYE return and P9 cannot be filed without them.
+          <div className="text-xs t3 mt-1">
+            {data.lines.filter((l) => (l.missingIds || []).length).slice(0, 6)
+              .map((l) => `${l.name} (${l.missingIds.join(', ')})`).join(' · ')}
+            {data.lines.filter((l) => (l.missingIds || []).length).length > 6 ? ' …' : ''}
+          </div>
+          <div className="text-xs t3 mt-1">Fill them in under People → Statutory numbers.</div>
+        </Card>
+      )}
+
       {data.existingRun && (
         <Card className="p-4 text-sm" style={{ borderColor: 'var(--amber)' }}>
           <Icon name="circle-info" /> A payroll run for {monthLabel(period)} already exists ({data.existingRun.status}).
@@ -188,6 +204,11 @@ function Preview({ period, onCreated }) {
               onClick={() => exportCsv(`payroll-${period}.csv`, [
                 { key: 'name', header: 'Employee', csvValue: (r) => r.name },
                 { key: 'department', header: 'Department', csvValue: (r) => r.department || '' },
+                // The filing keys. A PAYE return, a P9 and the NSSF/SHIF schedules are all
+                // keyed on these, so the export is useless to an accountant without them.
+                { key: 'kraPin', header: 'KRA PIN', csvValue: (r) => r.kraPin || '' },
+                { key: 'nssfNo', header: 'NSSF No', csvValue: (r) => r.nssfNo || '' },
+                { key: 'shifNo', header: 'SHIF No', csvValue: (r) => r.shifNo || '' },
                 { key: 'payPeriod', header: 'Basis', csvValue: (r) => r.payPeriod || '' },
                 { key: 'gross', header: 'Gross', csvValue: (r) => r.gross },
                 { key: 'nssf', header: 'NSSF', csvValue: (r) => (r.deductions || {}).nssf || 0 },
@@ -293,9 +314,11 @@ function RunDetail({ id, onBack, onChanged }) {
 
       <Card className="p-5 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* People, not addresses. The name is resolved from the staff directory server
+              side, so it is right for runs created before names were stored. */}
           <div className="text-sm t3">
-            Created {run.createdByEmail || '—'}
-            {run.approvedAt ? ` · approved by ${run.approvedByEmail || '—'}` : ''}
+            Created by {run.createdByName || run.createdByEmail || '—'}
+            {run.approvedAt ? ` · approved by ${run.approvedByName || run.approvedByEmail || '—'}` : ''}
             {run.financeEntryId ? ' · posted to finance' : ''}
           </div>
           <div className="flex gap-2">

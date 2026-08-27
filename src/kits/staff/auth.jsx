@@ -18,13 +18,30 @@ export function StaffLogin(){
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
+  // 'email' or 'id' — one field holds both, so switching keeps what was typed.
+  const [mode, setMode] = useState('email');
 
+  /**
+   * Staff ID sign-in.
+   *
+   * The badge is resolved to an address server-side, then Firebase's own
+   * signInWithEmailAndPassword runs exactly as before — SO THE PASSWORD NEVER REACHES OUR
+   * BACKEND. Verifying it server-side would mean handling (and possibly logging) staff
+   * passwords and would buy nothing: the badge saves typing, it is not a credential.
+   */
   const submit = async (e) => {
     e?.preventDefault?.();
-    if (!email || !password || busy) return;
+    const id = email.trim();
+    if (!id || !password || busy) return;
     setBusy(true); setErr(''); setNotice('');
     try {
-      await signInEmail(email, password);
+      let address = id;
+      if (mode === 'id') {
+        const { resolveStaffLogin } = await import('./service.js');
+        const r = await resolveStaffLogin(id.toUpperCase());
+        address = r.email;
+      }
+      await signInEmail(address, password);
       // The claims hook (onAuthStateChanged) re-evaluates and routes to the console.
     } catch (ex) {
       setErr(ex.message || 'Sign-in failed.');
@@ -37,6 +54,9 @@ export function StaffLogin(){
   // delivers to a registered inbox, so this reveals nothing about who is staff.
   const forgot = async () => {
     setErr(''); setNotice('');
+    // A reset link can only be delivered to an address, so this needs the email even when
+    // signing in by badge — saying so beats sending a reset that silently goes nowhere.
+    if (mode === 'id') { setErr('Switch to Email to reset a password — a reset link can only go to an address.'); return; }
     if (!email.trim()) { setErr('Enter your staff email first, then choose “Forgot password?”.'); return; }
     try {
       await resetPassword(email.trim());
@@ -74,9 +94,27 @@ export function StaffLogin(){
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold t3 uppercase tracking-wide mb-1.5" htmlFor="staff-email">Staff email</label>
-              <input id="staff-email" className="ym-input" type="email" inputMode="email" autoComplete="username"
-                value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@yotemarket.com" />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold t3 uppercase tracking-wide" htmlFor="staff-email">
+                  {mode === 'id' ? 'Staff ID' : 'Staff email'}
+                </label>
+                {/* The typed value survives the switch — an address is still an address. */}
+                <button type="button" onClick={() => { setMode(m => (m === 'id' ? 'email' : 'id')); setErr(''); }}
+                  className="text-xs font-semibold"
+                  style={{ border:'none', background:'none', cursor:'pointer', padding:0, color:'var(--pri)' }}>
+                  {mode === 'id' ? 'Use email instead' : 'Use staff ID instead'}
+                </button>
+              </div>
+              <input id="staff-email" className="ym-input"
+                type={mode === 'id' ? 'text' : 'email'}
+                inputMode={mode === 'id' ? 'text' : 'email'}
+                autoComplete="username"
+                autoCapitalize={mode === 'id' ? 'characters' : 'off'}
+                value={email} onChange={e=>setEmail(e.target.value)}
+                placeholder={mode === 'id' ? 'EMP-7F3K9Q' : 'you@yotemarket.com'} />
+              {mode === 'id' && (
+                <p className="text-[11px] t3 mt-1">Your badge number — shown on your own profile in the console.</p>
+              )}
             </div>
             <div>
               <div className="flex items-baseline justify-between gap-2 mb-1.5">

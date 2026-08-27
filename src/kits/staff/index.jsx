@@ -32,7 +32,7 @@ import { useEscape } from '../../lib/useEscape.js';
 import { useStaffClaims, RefreshCtx, TIER_LABEL, fetchReports, fetchReviewReports, fetchPayouts,
   fetchMerchantFollows, fetchDeletionRequests, fetchSupportTickets, fetchDisputes, fetchLogistics } from './service.js';
 import { DialogProvider } from './dialogs.jsx';
-import { StaffAccess, Attendance, ClockControl } from './people.jsx';
+import { StaffAccess, Attendance, ClockControl, StatutoryIds } from './people.jsx';
 import { Contracts, MyContract } from './contracts.jsx';
 const { useState: useSApp, useEffect: useEApp, useMemo: useMApp } = React;
 
@@ -91,6 +91,9 @@ const WORKSPACES = [
     // are assertAdmin server-side, so a People lead would only meet refusals here.
     { key:'team', label:'Access & roles', icon:'user-gear', desc:'Tiers and department access for every employee', adminOnly:true },
     { key:'attendance', label:'Attendance', icon:'clock', desc:'Timesheets — who worked when, and for how long' },
+    // Not adminOnly: anyone may fill in their OWN numbers, and the callable enforces
+    // that a People lead is needed to edit somebody else's.
+    { key:'statutory', label:'Statutory numbers', icon:'id-card', desc:'KRA PIN, NSSF & SHIF — what PAYE returns are filed against' },
     { key:'contracts', label:'Contracts', icon:'file-signature', desc:'Individual employment terms, pay and renewals' },
     { key:'careers', label:'Job applications', icon:'briefcase', desc:'Candidates from the careers page — triage & hire' },
   ]},
@@ -109,7 +112,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, boards:Boards, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, boards:Boards, statutory:StatutoryIds, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

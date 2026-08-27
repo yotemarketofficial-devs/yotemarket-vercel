@@ -85,7 +85,10 @@ export function AuditLog() {
           <div>
             {rows.map((e, i) => {
               const c = catOf(e.action || '');
-              const actor = e.actorEmail ? e.actorEmail.split('@')[0] : (e.actorUid ? e.actorUid.slice(0, 6) : 'system');
+              // A colleague's name, not the local-part of their address — "general" told nobody who
+  // did anything. Resolved server-side from the staff directory (see staffNameMap), with
+  // the old email-derived label kept as the fallback for rows it cannot resolve.
+  const actor = e.actorName || (e.actorEmail ? e.actorEmail.split('@')[0] : (e.actorUid ? e.actorUid.slice(0, 6) : 'system'));
               const metaBits = Object.entries(e.meta || {}).map(([k, v]) => `${k}: ${v}`).join(' · ');
               return (
                 <div key={e.id || i} className="flex items-center gap-3 px-5 py-3.5" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
