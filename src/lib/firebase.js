@@ -114,6 +114,10 @@ export const aiAssistant = callable('aiAssistant', { timeout: 300000 });
  *  Clients can't write `orders` directly — the server prices every line. */
 export const placeOrder = callable('placeOrder');
 export const quoteDelivery = callable('quoteDelivery');
+// Public: what fulfilment is available, and the notice explaining why not, if not.
+// One source for checkout, merchant settings and the terms page, so a hold on delivery
+// cannot be described three different ways.
+export const fulfilmentStatus = callable('fulfilmentStatus');
 /** One door for every specialist AI task -> see web_app/docs/ai-architecture.md.
  *  { task, input } -> the task's result, stamped with _source/_cached/_model. */
 export const aiTask = callable('aiTask', { timeout: 60000 });

@@ -5,7 +5,7 @@ import { useYM, FA, Thumb, GuestGate, HubPicker, StoreMap, HubMap, Modal } from 
 import { ymProduct, ymStore, ymPrice, YM_STORES } from './data.js';
 import { findHub, nearestHub, resolveHubs } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { placeOrder, quoteDelivery, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
+import { placeOrder, quoteDelivery, fulfilmentStatus, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
 import { normalizeHours, minutesOf } from '../../lib/hours.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
@@ -71,8 +71,16 @@ export function CheckoutScreen({ params }){
   const hubs = resolveHubs(YM_STORES);
   const hub = hubs.find(h => h.id === hubId) || hubs[0] || null;
   // Delivery is only on the table when the store offers it AND a real collection point
-  // exists to route to.
-  const offersDelivery = storeOffersDelivery && hubs.length > 0;
+  // exists to route to — and, since the service was put on hold to be restructured for
+  // new regulations, only when the platform is actually carrying parcels.
+  //
+  // The server refuses carriage regardless of what this screen shows (quoteDelivery,
+  // setOrderDeliveryDecision and claimRun all check). This is here so a shopper is told
+  // plainly rather than meeting a refusal after choosing.
+  const [fulfilStatus, setFulfilStatus] = useSCm(null);
+  useEffCm(() => { fulfilmentStatus().then(setFulfilStatus).catch(() => setFulfilStatus(null)); }, []);
+  const carriagePaused = fulfilStatus ? fulfilStatus.riderDelivery === false : false;
+  const offersDelivery = storeOffersDelivery && hubs.length > 0 && !carriagePaused;
 
   // THE delivery price comes from the server, not from a constant here. The rule is
   // "the store's plan pays, or the shopper pays their own" — and only the server knows
@@ -383,7 +391,7 @@ export function CheckoutScreen({ params }){
                   : deliveryFee > 0 ? `To the point nearest you · ${ymPrice(deliveryFee)}`
                   : 'To the point nearest you · Free']] : []),
                 ['store_pickup','fa-store','Pick up from store',`Collect from ${sellStore?.name || 'the store'} · Free`],
-              ].map(([id,ic,t,sub])=>(
+              ].filter(Boolean).map(([id,ic,t,sub])=>(
                 <button key={id} onClick={()=>setFulfillment(id)} style={{ flex:1, textAlign:'left', padding:14, borderRadius:14, cursor:'pointer', fontFamily:'inherit', background:'var(--m-surface)', border: fulfillment===id?'2px solid var(--m-primary)':'2px solid var(--m-border)' }}>
                   <FA i={ic} style={{ fontSize:18, color: fulfillment===id?'var(--m-primary)':'var(--m-fg3)' }} />
                   <div className="ym-h3" style={{ fontSize:14, marginTop:8 }}>{t}</div>
@@ -391,6 +399,20 @@ export function CheckoutScreen({ params }){
                 </button>
               ))}
             </div>
+
+            {/* Said where the delivery option used to sit, so it reads as an explanation
+                rather than as the option having quietly disappeared. Wording comes from
+                the server (compliance.js) so checkout, the merchant settings and the
+                terms page cannot drift apart while the hold is on. */}
+            {carriagePaused && (
+              <div style={{ marginTop:12, padding:14, borderRadius:14, background:'var(--m-surface)', border:'1px solid var(--m-border)', display:'flex', gap:10, alignItems:'flex-start' }}>
+                <FA i="fa-circle-info" style={{ fontSize:16, color:'var(--m-primary)', marginTop:2 }} />
+                <div>
+                  <div className="ym-h3" style={{ fontSize:14 }}>Delivery is temporarily unavailable</div>
+                  <div className="ym-cap" style={{ marginTop:4 }}>{fulfilStatus?.notice}</div>
+                </div>
+              </div>
+            )}
             {offersDelivery && freeOver>0 && subtotal<freeOver && <div className="ym-cap" style={{ margin:'-6px 0 14px', color:'var(--m-primary)' }}><FA i="fa-truck-fast" /> Add {ymPrice(freeOver-subtotal)} more for free delivery.</div>}
             {offersDelivery && deliv?.note && <div className="ym-cap" style={{ margin:'-6px 0 14px' }}><FA i="fa-circle-info" /> {deliv.note}</div>}
             {fulfillment==='hub' && hub ? (
