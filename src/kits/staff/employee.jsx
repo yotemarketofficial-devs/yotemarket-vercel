@@ -21,6 +21,7 @@ import { useDialogs } from './dialogs.jsx';
 import {
   fetchEmployeeRecord, saveEmployeeReview, fileComplaint, resolveComplaint,
   setEmployeeDetails, setStaffProfile, DEPT_LABEL, TIER_LABEL, useStaffClaims,
+  setLinkedIn, importLinkedInResume, parseResumeText, saveResume,
 } from './service.js';
 
 const { useState, useEffect, useCallback } = React;
@@ -45,6 +46,313 @@ function Stars({ n }) {
   );
 }
 
+/* ── LinkedIn and the resume ──────────────────────────────────────────────────
+   Somebody gives us their profile URL and we fetch that page to pull their work history
+   out of it.
+
+   WHAT THIS SCREEN HAS TO HANDLE: LinkedIn shows logged-out visitors a sign-in wall and
+   blocks server address ranges, so that fetch often comes back walled. That is a normal
+   outcome with a next step, not a fault — so the import resolves with a reason and an
+   `advice` line, and the screen offers the paste path rather than showing an error.
+
+   NOTHING SAVES UNTIL SOMEBODY CONFIRMS IT. Both paths produce a draft that is shown for
+   review first. An extractor is making a suggestion, and an employment record is not a
+   thing to let a parser write unreviewed. */
+
+const yearsLabel = (a, b, current) => {
+  if (!a && !b) return '';
+  if (current || (a && !b)) return `${a || '?'} — present`;
+  return a === b ? String(a) : `${a || '?'} — ${b || '?'}`;
+};
+
+/* The draft, before it becomes a record. Read-only on purpose: this is a review step,
+   and an editable form here would blur the line between what was extracted and what a
+   person vouched for. Corrections go through "Edit details" after saving. */
+function ResumeDraftModal({ draft, source, notice, onClose, onSave, busy }) {
+  return (
+    <Modal
+      title="Check this before it is saved"
+      subtitle={source === 'linkedin' ? 'Extracted from the LinkedIn profile' : 'Extracted from the text supplied'}
+      icon="file-lines"
+      onClose={onClose}
+      maxWidth={620}
+      footer={
+        <>
+          <Btn kind="ghost" onClick={onClose}>Discard</Btn>
+          <Btn icon="check" onClick={onSave} disabled={busy}>{busy ? 'Saving…' : 'Looks right — save'}</Btn>
+        </>
+      }
+    >
+      <div className="space-y-4 text-sm">
+        {notice && (
+          <div className="text-xs t3 p-3 rounded-lg" style={{ background:'var(--surface2)' }}>
+            <Icon name="circle-info" /> {notice}
+          </div>
+        )}
+
+        {draft.headline && <div className="font-semibold t1">{draft.headline}</div>}
+        {draft.location && <div className="text-xs t3">{draft.location}</div>}
+        {draft.summary && <div className="t2" style={{ whiteSpace:'pre-wrap' }}>{draft.summary}</div>}
+
+        {draft.positions?.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold t3 mb-1" style={{ textTransform:'uppercase', letterSpacing:'.04em' }}>Experience</div>
+            {draft.positions.map((p, i) => (
+              <div key={i} className="py-1.5" style={i ? { borderTop:'1px solid var(--line)' } : undefined}>
+                <div className="t1 font-semibold">{p.title || '—'}</div>
+                <div className="text-xs t3">{[p.company, p.location, yearsLabel(p.startYear, p.endYear, p.current)].filter(Boolean).join(' · ')}</div>
+                {p.summary && <div className="text-xs t2 mt-1" style={{ whiteSpace:'pre-wrap' }}>{p.summary}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {draft.education?.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold t3 mb-1" style={{ textTransform:'uppercase', letterSpacing:'.04em' }}>Education</div>
+            {draft.education.map((e, i) => (
+              <div key={i} className="py-1">
+                <div className="t1">{e.school}</div>
+                <div className="text-xs t3">{[e.qualification, e.field, yearsLabel(e.startYear, e.endYear)].filter(Boolean).join(' · ')}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {draft.skills?.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold t3 mb-1" style={{ textTransform:'uppercase', letterSpacing:'.04em' }}>Skills</div>
+            <div className="flex flex-wrap gap-1">
+              {draft.skills.map((s) => <Pill key={s} tone="blue">{s}</Pill>)}
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+/* The paste path. Not a lesser fallback — on most days it is the one that returns data,
+   because the fetch is walled far more often than it succeeds. */
+function PasteResumeModal({ uid, onClose, onParsed }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const go = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const r = await parseResumeText({ uid, text });
+      onParsed(r);
+      onClose();
+    } catch (e) {
+      setErr(e.message || 'Could not read that.');
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal
+      title="Paste the profile or CV"
+      subtitle="Their LinkedIn profile text, or the contents of their CV"
+      icon="paste"
+      onClose={onClose}
+      maxWidth={620}
+      footer={
+        <>
+          <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn icon="wand-magic-sparkles" onClick={go} disabled={busy || text.trim().length < 60}>
+            {busy ? 'Reading…' : 'Extract'}
+          </Btn>
+        </>
+      }
+    >
+      <div className="space-y-3 text-sm">
+        <div className="text-xs t3">
+          Ask them to open their profile, select the page and paste it here — or paste their CV.
+          Nothing is saved until you have read what comes back.
+        </div>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={14}
+          placeholder="Paste the profile or CV text…"
+          style={{ width:'100%', padding:'10px', border:'1px solid var(--line)', borderRadius:8,
+            background:'var(--bg)', color:'var(--t1)', fontFamily:'inherit', fontSize:'.875rem', resize:'vertical' }}
+        />
+        {err && <div className="text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</div>}
+      </div>
+    </Modal>
+  );
+}
+
+function ResumeCard({ rec, canEdit, onChanged }) {
+  const [url, setUrl] = useState(rec.linkedinUrl || '');
+  const [editingUrl, setEditingUrl] = useState(false);
+  const [busy, setBusy] = useState(null);      // 'url' | 'import' | 'save'
+  const [msg, setMsg] = useState(null);        // { ok, text, advice }
+  const [pasting, setPasting] = useState(false);
+  const [draft, setDraft] = useState(null);    // { draft, source, notice }
+
+  const resume = rec.resume;
+
+  const saveUrl = async () => {
+    setBusy('url'); setMsg(null);
+    try {
+      await setLinkedIn({ uid: rec.uid, linkedinUrl: url });
+      setEditingUrl(false);
+      onChanged();
+    } catch (e) {
+      setMsg({ ok:false, text: e.message || 'Could not save that link.' });
+    } finally { setBusy(null); }
+  };
+
+  const importFromLinkedIn = async () => {
+    setBusy('import'); setMsg(null);
+    try {
+      const r = await importLinkedInResume({ uid: rec.uid });
+      if (r.ok) { setDraft(r); return; }
+      // A wall is an expected answer with a next step, so it is reported as guidance
+      // rather than as a failure — and the paste path is offered in the same breath.
+      setMsg({ ok:false, text: r.detail || 'LinkedIn did not return the profile.', advice: r.advice, offerPaste: r.canPasteInstead });
+    } catch (e) {
+      setMsg({ ok:false, text: e.message || 'Could not import that profile.' });
+    } finally { setBusy(null); }
+  };
+
+  const saveDraft = async () => {
+    setBusy('save');
+    try {
+      await saveResume({ uid: rec.uid, resume: draft.draft, source: draft.source });
+      setDraft(null);
+      setMsg({ ok:true, text:'Resume saved.' });
+      onChanged();
+    } catch (e) {
+      setMsg({ ok:false, text: e.message || 'Could not save that resume.' });
+    } finally { setBusy(null); }
+  };
+
+  const field = { flex:1, minWidth:220, padding:'6px 10px', border:'1px solid var(--line)', borderRadius:8, background:'var(--bg)', color:'var(--t1)' };
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <h3 className="font-bold t1"><Icon name="linkedin" brand /> Profile &amp; resume</h3>
+        {resume?.completeness && (
+          <Pill tone={resume.completeness.percent >= 80 ? 'ok' : 'amber'}>{resume.completeness.percent}% complete</Pill>
+        )}
+      </div>
+
+      {/* The link */}
+      {editingUrl ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input style={field} value={url} onChange={(e) => setUrl(e.target.value)}
+            placeholder="linkedin.com/in/their-name" />
+          <Btn size="sm" icon="check" onClick={saveUrl} disabled={busy === 'url'}>Save</Btn>
+          <Btn kind="ghost" size="sm" onClick={() => { setUrl(rec.linkedinUrl || ''); setEditingUrl(false); }}>Cancel</Btn>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap text-sm">
+          {rec.linkedinUrl
+            ? <a href={rec.linkedinUrl} target="_blank" rel="noreferrer noopener" style={{ color:'var(--pri)' }}>{rec.linkedinUrl}</a>
+            : <span className="t3">No LinkedIn profile on file.</span>}
+          {canEdit && <Btn kind="ghost" size="sm" icon="pen" onClick={() => setEditingUrl(true)}>{rec.linkedinUrl ? 'Change' : 'Add'}</Btn>}
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Btn kind="ghost" size="sm" icon="cloud-arrow-down" onClick={importFromLinkedIn}
+            disabled={!rec.linkedinUrl || busy === 'import'}>
+            {busy === 'import' ? 'Fetching…' : 'Fetch from LinkedIn'}
+          </Btn>
+          <Btn kind="ghost" size="sm" icon="paste" onClick={() => setPasting(true)}>Paste profile or CV</Btn>
+        </div>
+      )}
+
+      {msg && (
+        <div className="text-sm p-3 rounded-lg" style={{ background:'var(--surface2)', color: msg.ok ? 'var(--t2)' : 'var(--red)' }}>
+          <Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} /> {msg.text}
+          {msg.advice && <div className="text-xs t3 mt-1">{msg.advice}</div>}
+          {msg.offerPaste && (
+            <div className="mt-2">
+              <Btn size="sm" icon="paste" onClick={() => { setMsg(null); setPasting(true); }}>Paste it instead</Btn>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* The saved resume */}
+      {resume ? (
+        <div className="space-y-3 text-sm" style={{ borderTop:'1px solid var(--line)', paddingTop:12 }}>
+          {resume.headline && <div className="font-semibold t1">{resume.headline}</div>}
+          {resume.summary && <div className="t2" style={{ whiteSpace:'pre-wrap' }}>{resume.summary}</div>}
+
+          {resume.positions?.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold t3 mb-1" style={{ textTransform:'uppercase', letterSpacing:'.04em' }}>Experience</div>
+              {resume.positions.map((p, i) => (
+                <div key={i} className="py-1.5" style={i ? { borderTop:'1px solid var(--line)' } : undefined}>
+                  <div className="t1 font-semibold">{p.title || '—'}</div>
+                  <div className="text-xs t3">{[p.company, yearsLabel(p.startYear, p.endYear, p.current)].filter(Boolean).join(' · ')}</div>
+                  {p.summary && <div className="text-xs t2 mt-1" style={{ whiteSpace:'pre-wrap' }}>{p.summary}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {resume.education?.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold t3 mb-1" style={{ textTransform:'uppercase', letterSpacing:'.04em' }}>Education</div>
+              {resume.education.map((e, i) => (
+                <div key={i} className="py-1">
+                  <div className="t1">{e.school}</div>
+                  <div className="text-xs t3">{[e.qualification, e.field, yearsLabel(e.startYear, e.endYear)].filter(Boolean).join(' · ')}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {resume.skills?.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {resume.skills.map((s) => <Pill key={s} tone="blue">{s}</Pill>)}
+            </div>
+          )}
+
+          {/* Who vouched for it, not who extracted it — that is the question that
+              matters later, and an unattributed resume is just a claim. */}
+          <div className="text-xs t3" style={{ borderTop:'1px solid var(--line)', paddingTop:8 }}>
+            {resume.source === 'linkedin' ? 'Imported from LinkedIn' : resume.source === 'text' ? 'Extracted from supplied text' : 'Entered by hand'}
+            {resume.confirmedAt ? ` · confirmed ${fmtDate(resume.confirmedAt)}` : ''}
+            {resume.confirmedByEmail ? ` by ${resume.confirmedByEmail}` : ''}
+            {resume.completeness?.missing?.length
+              ? ` · still missing: ${resume.completeness.missing.join(', ')}`
+              : ''}
+          </div>
+        </div>
+      ) : (
+        <div className="text-xs t3">
+          No resume on file.
+          {canEdit ? ' Fetch it from their LinkedIn profile, or paste their CV.' : ''}
+        </div>
+      )}
+
+      {pasting && (
+        <PasteResumeModal uid={rec.uid} onClose={() => setPasting(false)} onParsed={setDraft} />
+      )}
+      {draft && (
+        <ResumeDraftModal
+          draft={draft.draft}
+          source={draft.source}
+          notice={draft.notice}
+          busy={busy === 'save'}
+          onClose={() => setDraft(null)}
+          onSave={saveDraft}
+        />
+      )}
+    </Card>
+  );
+}
+
 /* ── Screen ───────────────────────────────────────────────────────────────── */
 export function EmployeeRecord({ uid, onBack }) {
   const [rec, setRec] = useState(null);
@@ -54,8 +362,11 @@ export function EmployeeRecord({ uid, onBack }) {
   const [reviewing, setReviewing] = useState(false);
   const [complaining, setComplaining] = useState(false);
   const dialogs = useDialogs();
-  const { isAdmin, tier, departments = [] } = useStaffClaims();
+  const { isAdmin, tier, departments = [], user } = useStaffClaims();
   const isPeople = isAdmin || (tier === 'lead' && departments.includes('people'));
+  // Your own resume is yours to maintain — the server says the same, so this only
+  // decides whether the buttons are drawn.
+  const isSelf = !!user && user.uid === uid;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +432,9 @@ export function EmployeeRecord({ uid, onBack }) {
           ? <div className="text-sm t3 mt-1" style={{ whiteSpace:'pre-wrap' }}>{rec.education}</div>
           : <div className="text-xs t3 mt-1">No detail recorded — add it with “Edit details”.</div>}
       </Card>
+
+      {/* Profile & resume */}
+      <ResumeCard rec={rec} canEdit={isPeople || isSelf} onChanged={load} />
 
       {/* Employment */}
       <Card className="p-5">

@@ -4,19 +4,24 @@
    each person is owed, staff_shifts for what the hourly and daily people actually worked
    — with real Kenyan statutory deductions (PAYE, SHIF, NSSF, Housing Levy).
 
-   IT DOES NOT MOVE MONEY. Salaries are paid through the bank; a run is a computation and
-   a record, and the screen says so rather than letting anyone assume otherwise.
+   IT NOW MOVES MONEY, which it did not before. Disbursement was held back while the Daraja
+   initiator credential was unavailable; that is resolved, so an approved run can be paid
+   from this screen.
 
-   The flow is deliberately two-step. Preview computes nothing permanent and can be run as
-   often as you like. Creating a run freezes the figures; approving one posts the cost to
-   finance and releases payslips to staff. Approval is the irreversible half, so it is the
-   one that asks. */
+   THREE STEPS, AND THE SEPARATION IS THE POINT. Preview computes nothing permanent and can
+   be run as often as you like. Creating a run freezes the figures. Approving posts the cost
+   to finance and releases payslips. Paying is its own act, after approval, because approving
+   is a judgement about whether the figures are right and paying is the irreversible one —
+   collapsing them would make a mistaken approval a mistaken payment.
+
+   Both of the last two ask before they act, and Pay asks harder. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, Stat, DataTable, EmptyState, Modal, kes, exportCsv } from './ui.jsx';
 import { useDialogs } from './dialogs.jsx';
 import {
   previewPayroll, createPayrollRun, fetchPayrollRuns, fetchPayrollRun,
   approvePayrollRun, voidPayrollRun,
+  payPayrollRun, retryPayrollPayments, fetchPayrollPayments, fetchPayrollBankFile, markPayrollPaid,
 } from './service.js';
 
 const { useState, useEffect, useCallback } = React;
@@ -238,6 +243,195 @@ function Preview({ period, onCreated }) {
   );
 }
 
+/* ── Paying an approved run ───────────────────────────────────────────────────
+   Approve and Pay are two buttons on purpose. Approving is a finance judgement about
+   whether the figures are right; paying is the irreversible act. One button for both
+   would make a mistaken approval a mistaken payment.
+
+   TWO RAILS, because neither reaches everybody. M-Pesa staff are paid over Daraja B2C
+   and confirmed by its result webhook — nothing on this screen can declare one of those
+   paid, and the server refuses if you try. Bank staff, including everyone above the B2C
+   per-transaction ceiling, come out in a file finance uploads and then marks off here.
+
+   "Sent" is shown as its own state and never counted as settled. Money that has left
+   without a confirmation is exactly the case where reporting it as paid produces a
+   person who was told they were paid and was not. */
+
+const PAY_TONE = {
+  paid: 'ok', sent: 'blue', pending: 'blue',
+  awaiting_bank: 'amber', failed: 'red', unpayable: 'red',
+};
+const PAY_LABEL = {
+  paid: 'Paid', sent: 'Sent — awaiting confirmation', pending: 'Starting',
+  awaiting_bank: 'On the bank file', failed: 'Failed', unpayable: 'Cannot pay',
+};
+
+/** Browser-side download of the bank instruction file. The server returns the CSV rather
+ *  than a link, so nothing lands in Storage that would then need its own access rule. */
+function downloadCsv(filename, csv) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function PaymentsPanel({ runId, run, onChanged }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(null);   // 'pay' | 'retry' | 'bank' | uid
+  const dialogs = useDialogs();
+
+  const load = useCallback(async () => {
+    try { setData(await fetchPayrollPayments(runId)); setErr(null); }
+    catch (e) { setErr(e.message || 'Could not load payments.'); }
+  }, [runId]);
+  useEffect(() => { load(); }, [load]);
+
+  const r = data?.rollup;
+  const started = !!(data?.payments || []).length;
+
+  const pay = async () => {
+    const t = run.totals || {};
+    const ok = await dialogs.confirm({
+      title: `Pay ${monthLabel(run.period)}?`,
+      body: `This sends ${kes(t.net || 0)} to ${t.headcount || 0} people. Anyone on M-Pesa is paid immediately `
+        + 'and cannot be recalled; anyone on bank transfer goes onto a file for you to upload. '
+        + 'Each payslip is paid at most once, so a repeat of this action is safe.',
+      confirmLabel: 'Pay salaries',
+      confirmPhrase: 'PAY',
+    });
+    if (!ok) return;
+    setBusy('pay');
+    try {
+      const res = await payPayrollRun(runId);
+      await load(); onChanged?.();
+      const f = (res.rollup || {});
+      dialogs.toast?.({
+        title: `${f.sent || 0} sent, ${f.awaitingBank || 0} on the bank file`
+          + (f.failed || f.unpayable ? `, ${(f.failed || 0) + (f.unpayable || 0)} need attention` : ''),
+      });
+    } catch (e) {
+      dialogs.toast?.({ title: e.message || 'Could not start the payment run.', tone: 'error' });
+    } finally { setBusy(null); }
+  };
+
+  const retry = async (uid) => {
+    setBusy(uid || 'retry');
+    try { await retryPayrollPayments(runId, uid); await load(); onChanged?.(); }
+    catch (e) { dialogs.toast?.({ title: e.message || 'Could not retry.', tone: 'error' }); }
+    finally { setBusy(null); }
+  };
+
+  const bankFile = async () => {
+    setBusy('bank');
+    try {
+      const f = await fetchPayrollBankFile(runId);
+      if (!f.count) { dialogs.toast?.({ title: 'Nobody on this run is paid by bank transfer.' }); return; }
+      downloadCsv(f.filename, f.csv);
+    } catch (e) {
+      dialogs.toast?.({ title: e.message || 'Could not build the bank file.', tone: 'error' });
+    } finally { setBusy(null); }
+  };
+
+  const confirmBank = async (row) => {
+    const reference = await dialogs.prompt({
+      title: `Confirm ${row.name || 'this transfer'} was paid`,
+      body: `Enter the bank's reference for the ${kes(row.amount)} transfer. It is required — "paid" `
+        + 'with nothing to point at is a claim rather than a record, and it is the line an auditor asks about.',
+      confirmLabel: 'Mark paid',
+    });
+    if (!reference) return;
+    setBusy(row.uid);
+    try { await markPayrollPaid({ id: runId, uid: row.uid, reference }); await load(); onChanged?.(); }
+    catch (e) { dialogs.toast?.({ title: e.message || 'Could not mark that paid.', tone: 'error' }); }
+    finally { setBusy(null); }
+  };
+
+  if (run.status !== 'approved') return null;
+
+  const columns = [
+    { key: 'name', header: 'Employee', sort: true, render: (row) => (
+      <div>
+        <div className="font-semibold t1">{row.name || row.uid}</div>
+        <div className="text-xs t3">{row.destinationLabel || 'No destination'}</div>
+      </div>
+    ) },
+    { key: 'amount', header: 'Net pay', sort: true, render: (row) => kes(row.amount) },
+    { key: 'status', header: 'Status', render: (row) => (
+      <div>
+        <Pill tone={PAY_TONE[row.status] || 'blue'}>{PAY_LABEL[row.status] || row.status}</Pill>
+        {row.reason && <div className="text-xs t3 mt-1" style={{ maxWidth: 320 }}>{row.reason}</div>}
+      </div>
+    ) },
+    { key: 'receipt', header: 'Reference', render: (row) => (
+      <span className="num text-xs t3">{row.receipt || '—'}</span>
+    ) },
+    { key: 'act', header: '', render: (row) => (
+      <div className="flex gap-1 justify-end">
+        {row.status === 'awaiting_bank' && (
+          <Btn kind="ghost" size="sm" icon="check" disabled={busy === row.uid} onClick={() => confirmBank(row)}>Mark paid</Btn>
+        )}
+        {['failed', 'unpayable'].includes(row.status) && (
+          <Btn kind="ghost" size="sm" icon="rotate-right" disabled={busy === row.uid} onClick={() => retry(row.uid)}>Retry</Btn>
+        )}
+      </div>
+    ) },
+  ];
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="font-bold t1"><Icon name="money-bill-transfer" /> Payment</div>
+          <div className="text-xs t3">
+            {started
+              ? 'M-Pesa is confirmed by Safaricom; bank transfers are confirmed here once you have uploaded the file.'
+              : 'Nothing has been sent yet for this run.'}
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Btn kind="ghost" size="sm" icon="file-csv" onClick={bankFile} disabled={busy === 'bank'}>Bank file</Btn>
+          {!!r?.failed && (
+            <Btn kind="ghost" size="sm" icon="rotate-right" onClick={() => retry()} disabled={busy === 'retry'}>
+              Retry {r.failed} failed
+            </Btn>
+          )}
+          <Btn kind="primary" size="sm" icon="paper-plane" onClick={pay} disabled={busy === 'pay' || r?.complete}>
+            {busy === 'pay' ? 'Paying…' : started ? 'Pay the rest' : 'Pay salaries'}
+          </Btn>
+        </div>
+      </div>
+
+      {err && <div className="text-sm" style={{ color: 'var(--red)' }}><Icon name="circle-exclamation" /> {err}</div>}
+
+      {r && started && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Stat label="Settled" value={kes(r.settledAmount)} icon="circle-check" tone="green"
+            sub={`${r.paid} of ${r.total} confirmed`} />
+          {/* Its own tile, never folded into settled. */}
+          <Stat label="In flight" value={kes(r.inFlightAmount)} icon="paper-plane" tone="blue"
+            sub={`${r.sent} sent, awaiting M-Pesa`} />
+          <Stat label="On the bank file" value={r.awaitingBank} icon="building-columns"
+            tone={r.awaitingBank ? 'amber' : 'pri'} sub="Upload, then mark paid" />
+          <Stat label="Need attention" value={r.needsAttention} icon="triangle-exclamation"
+            tone={r.needsAttention ? 'red' : 'green'} sub={`${r.failed} failed, ${r.unpayable} unpayable`} />
+        </div>
+      )}
+
+      {started
+        ? <DataTable columns={columns} rows={data.payments} keyField="uid" minWidth={680} />
+        : (
+          <div className="text-xs t3">
+            Paying sends each person their net pay. Staff with an M-Pesa number are paid over Daraja;
+            anyone on bank transfer — including any salary above the M-Pesa per-transaction ceiling —
+            appears in the bank file instead.
+          </div>
+        )}
+    </Card>
+  );
+}
+
 /* ── An existing run ──────────────────────────────────────────────────────── */
 function RunDetail({ id, onBack, onChanged }) {
   const [data, setData] = useState(null);
@@ -261,7 +455,7 @@ function RunDetail({ id, onBack, onChanged }) {
     const ok = await dialogs.confirm({
       title: `Approve payroll for ${monthLabel(run.period)}?`,
       body: `This posts ${kes(t.employerCost || 0)} to finance as a fixed cost and makes ${t.headcount || 0} payslips visible to staff. `
-        + 'The figures freeze at that point. It does not pay anyone — salaries still go out through the bank.',
+        + 'The figures freeze at that point. It does NOT pay anyone — paying is a separate step once the run is approved.',
       confirmLabel: 'Approve run',
     });
     if (!ok) return;
@@ -340,6 +534,8 @@ function RunDetail({ id, onBack, onChanged }) {
         <DataTable columns={columns} rows={items} keyField="uid" onRowClick={setSlip} minWidth={640} />
       </Card>
 
+      <PaymentsPanel runId={id} run={run} onChanged={() => { load(); onChanged?.(); }} />
+
       {!!(run.blocked || []).length && (
         <Card className="p-5 space-y-2">
           <div className="font-bold t1">{run.blocked.length} were not on this run</div>
@@ -382,8 +578,9 @@ export function Payroll() {
 
       <Card className="p-5 text-sm t3 space-y-1">
         <div>
-          <b className="t1">This does not pay anyone.</b> A run computes what each person is owed, records the
-          payslips, and posts the cost to Finance. Salaries still go out through the bank.
+          <b className="t1">Computing, approving and paying are three separate steps.</b> A run works out what each
+          person is owed and posts the cost to Finance; nobody is paid until you open an approved run and pay it.
+          Staff on M-Pesa are paid over Daraja; anyone on bank transfer comes out in a file you upload.
         </div>
         <div>
           Monthly staff are paid their salary in full. Hourly and daily staff are paid from <b>closed</b> shifts

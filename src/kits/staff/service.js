@@ -266,6 +266,74 @@ export async function setStatutoryIds({ uid, kraPin, nssfNo, shifNo }) {
   return call('staffSetStatutoryIds')({ uid, kraPin, nssfNo, shifNo });
 }
 
+// ── LinkedIn and resumes ─────────────────────────────────────────────────────
+// Somebody gives us their profile URL and we fetch that page to pull their work history
+// out of it. LinkedIn shows logged-out visitors a sign-in wall and blocks server address
+// ranges, so that fetch OFTEN comes back walled — which is a normal outcome with a next
+// step, not a fault. `importLinkedInResume` therefore resolves with `ok:false` and an
+// `advice` string rather than throwing, and the screen offers the paste path instead.
+//
+// Neither path writes anything. Both return a DRAFT for a human to check and correct;
+// `saveResume` is the only call that touches the record.
+
+export async function setLinkedIn({ uid, linkedinUrl }) {
+  return call('staffSetLinkedIn')({ uid, linkedinUrl });
+}
+
+export async function importLinkedInResume({ uid, url }) {
+  return call('staffImportLinkedInResume')({ uid, url });
+}
+
+export async function parseResumeText({ uid, text }) {
+  return call('staffParseResumeText')({ uid, text });
+}
+
+export async function saveResume({ uid, resume, source }) {
+  return call('staffSaveResume')({ uid, resume, source });
+}
+
+// ── Compliance ───────────────────────────────────────────────────────────────
+// Two registers that share a screen and nothing else: what the COMPANY must hold to
+// trade and employ people, and what must be on file for each EMPLOYEE. Expiry dates and
+// statuses are computed server-side from statutory.js — never re-derive a deadline here,
+// or two parts of the console will disagree about when a licence lapses.
+
+export async function fetchCompanyCompliance() {
+  const d = await call('staffCompanyCompliance')();
+  if (!d || !d.compliance) throw new Error('staffCompanyCompliance: unexpected shape');
+  return d;
+}
+
+export async function setCompanyObligation(args) {
+  return call('staffSetCompanyObligation')(args);
+}
+
+export async function fetchEmployeeCompliance(uid) {
+  const d = await call('staffEmployeeCompliance')(uid ? { uid } : {});
+  if (!d || !d.compliance) throw new Error('staffEmployeeCompliance: unexpected shape');
+  return d;
+}
+
+export async function setEmployeeDocument(args) {
+  return call('staffSetEmployeeDocument')(args);
+}
+
+export async function setComplianceFlags(args) {
+  return call('staffSetComplianceFlags')(args);
+}
+
+export async function fetchComplianceOverview() {
+  const d = await call('staffComplianceOverview')();
+  if (!d || !Array.isArray(d.rows)) throw new Error('staffComplianceOverview: unexpected shape');
+  return d;
+}
+
+export async function fetchStatutoryFilings(period) {
+  const d = await call('staffStatutoryFilings')({ period });
+  if (!d || !Array.isArray(d.filings)) throw new Error('staffStatutoryFilings: unexpected shape');
+  return d;
+}
+
 // ── Departmental work boards ─────────────────────────────────────────────────
 // One board per department so a team can see who is on what. The backend scopes every
 // read to the caller's own departments, so there is nothing to filter here.
@@ -290,9 +358,17 @@ export async function deleteTask(id) {
 
 // ── Payroll ──────────────────────────────────────────────────────────────────
 // A run is computed from staff_contracts + staff_shifts, carries real Kenyan statutory
-// deductions, and posts its cost to finance. It does NOT move money — salaries are paid
-// through the bank. No demo fallback on any of these: inventing payroll figures would be
-// worse than an empty screen, because they look exactly like real ones.
+// deductions, and posts its cost to finance.
+//
+// IT NOW MOVES MONEY. Three separate steps, and they are separate on purpose: compute
+// (nothing is written), approve (figures freeze, cost posts), pay (money leaves, once).
+// Staff on M-Pesa are paid over Daraja B2C; anyone on bank transfer — including every
+// salary above the B2C ceiling — comes out in the bank file for finance to upload and
+// then mark off. `payPayrollRun` is idempotent per payslip on the server, so a
+// double-click cannot pay anyone twice, but do not rely on that as the only guard.
+//
+// No demo fallback on any of these: inventing payroll figures would be worse than an
+// empty screen, because they look exactly like real ones.
 
 export async function previewPayroll(period) {
   const d = await call('staffPayrollPreview')({ period });
@@ -322,6 +398,32 @@ export async function approvePayrollRun(id) {
 
 export async function voidPayrollRun(id, reason) {
   return call('staffVoidPayrollRun')({ id, reason });
+}
+
+export async function payPayrollRun(id) {
+  return call('staffPayPayrollRun')({ id });
+}
+
+export async function retryPayrollPayments(id, uid) {
+  return call('staffRetryPayrollPayments')(uid ? { id, uid } : { id });
+}
+
+export async function fetchPayrollPayments(id) {
+  const d = await call('staffPayrollPayments')({ id });
+  if (!d || !Array.isArray(d.payments)) throw new Error('staffPayrollPayments: unexpected shape');
+  return d;
+}
+
+export async function fetchPayrollBankFile(id) {
+  const d = await call('staffPayrollBankFile')({ id });
+  if (!d || typeof d.csv !== 'string') throw new Error('staffPayrollBankFile: unexpected shape');
+  return d;
+}
+
+/** Confirm a bank transfer landed. Only bank lines — M-Pesa is confirmed by the payout
+ *  webhook, and the server refuses to let a person declare one paid by hand. */
+export async function markPayrollPaid({ id, uid, reference }) {
+  return call('staffMarkPayrollPaid')({ id, uid, reference });
 }
 
 export async function fetchMyPayslips() {

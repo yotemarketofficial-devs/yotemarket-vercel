@@ -25,6 +25,7 @@ import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
 import { AppReleases } from './releases.jsx';
 import { Payroll } from './payroll.jsx';
+import { Compliance } from './compliance.jsx';
 import { Boards } from './boards.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -103,6 +104,14 @@ const WORKSPACES = [
   { key:'legal', label:'Legal', icon:'gavel', blurb:'Compliance', dept:'legal', sections:[
     { key:'legal', label:'Records', icon:'scale-balanced', desc:'Contracts, policies, cases & compliance' },
   ]},
+  /* Its own workspace rather than a section of Legal, because it genuinely belongs to
+     three departments at once: Legal renews the licences, Finance files the returns,
+     People chase the employee documents. `anyDept` mirrors the server, which admits all
+     three, and the screen's own tabs show each of them only their half. */
+  { key:'compliance', label:'Compliance', icon:'file-shield', blurb:'Licences & documents',
+    anyDept:['legal', 'finance', 'people'], sections:[
+      { key:'compliance', label:'Compliance register', icon:'file-shield', desc:'Licences, employee documents & statutory filing deadlines' },
+    ]},
   { key:'admin', label:'Admin', icon:'user-shield', blurb:'Platform control', adminOnly:true, sections:[
     { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
     { key:'audit', label:'Audit log', icon:'clock-rotate-left', desc:'Who did what, across the platform' },
@@ -112,7 +121,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, boards:Boards, statutory:StatutoryIds, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, boards:Boards, statutory:StatutoryIds, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
@@ -126,13 +135,20 @@ WORKSPACES.forEach((w) => w.sections.forEach((s) => { SECTION_INDEX[s.key] = { s
 const canSee = (node, isAdmin, depts) => {
   if (isAdmin) return true;
   if (node.adminOnly) return false;
+  // Some things belong to more than one department — the compliance register is owned by
+  // Legal, filed by Finance and chased by People, and the server admits all three.
+  if (Array.isArray(node.anyDept)) return node.anyDept.some((d) => depts.includes(d));
   if (node.dept === undefined || node.dept === null) return true;   // Command: everyone
   return depts.includes(node.dept);
 };
 function visibleWorkspaces(isAdmin, depts = []) {
   return WORKSPACES
     .filter((w) => canSee(w, isAdmin, depts))
-    .map((w) => ({ ...w, sections: w.sections.filter((sec) => canSee({ ...sec, dept: sec.dept === undefined ? w.dept : sec.dept }, isAdmin, depts)) }))
+    .map((w) => ({ ...w, sections: w.sections.filter((sec) => canSee({
+      ...sec,
+      dept: sec.dept === undefined ? w.dept : sec.dept,
+      anyDept: sec.anyDept === undefined ? w.anyDept : sec.anyDept,
+    }, isAdmin, depts)) }))
     .filter((w) => w.sections.length > 0);
 }
 
