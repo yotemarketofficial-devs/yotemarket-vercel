@@ -379,6 +379,38 @@ export async function fetchStatutoryFilings(period) {
   return d;
 }
 
+// ── Marketers: territory and coverage ────────────────────────────────────────
+// County is canonical (the 47 are fixed by the Constitution); sub-county and town are
+// normalised server-side but never validated against a list, because no complete list of
+// Kenyan sub-counties or villages exists to validate against.
+
+/** The 47, for the county picker. Mirrors KE_COUNTIES in functions/geography.js —
+ *  a picker rather than a text box is what stops one place becoming four spellings. */
+export const KE_COUNTY_NAMES = [
+  'Mombasa', 'Kwale', 'Kilifi', 'Tana River', 'Lamu', 'Taita Taveta', 'Garissa', 'Wajir',
+  'Mandera', 'Marsabit', 'Isiolo', 'Meru', 'Tharaka-Nithi', 'Embu', 'Kitui', 'Machakos',
+  'Makueni', 'Nyandarua', 'Nyeri', 'Kirinyaga', "Murang'a", 'Kiambu', 'Turkana',
+  'West Pokot', 'Samburu', 'Trans Nzoia', 'Uasin Gishu', 'Elgeyo-Marakwet', 'Nandi',
+  'Baringo', 'Laikipia', 'Nakuru', 'Narok', 'Kajiado', 'Kericho', 'Bomet', 'Kakamega',
+  'Vihiga', 'Bungoma', 'Busia', 'Siaya', 'Kisumu', 'Homa Bay', 'Migori', 'Kisii',
+  'Nyamira', 'Nairobi',
+];
+
+export async function fetchMarketerDetail(uid) {
+  const d = await call('staffMarketerDetail')({ uid });
+  if (!d || !d.marketer) throw new Error('staffMarketerDetail: unexpected shape');
+  return d;
+}
+
+export async function setMarketerTerritory(args) {
+  return call('staffSetMarketerTerritory')(args);
+}
+
+export async function fetchMarketerCoverage(level) {
+  const d = await call('staffMarketerCoverage')({ level });
+  if (!d || !Array.isArray(d.rollup)) throw new Error('staffMarketerCoverage: unexpected shape');
+  return d;
+}
 // ── Departmental work boards ─────────────────────────────────────────────────
 // One board per department so a team can see who is on what. The backend scopes every
 // read to the caller's own departments, so there is nothing to filter here.

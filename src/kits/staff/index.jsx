@@ -27,6 +27,7 @@ import { AppReleases } from './releases.jsx';
 import { Payroll } from './payroll.jsx';
 import { Compliance } from './compliance.jsx';
 import { Boards } from './boards.jsx';
+import { Territories } from './marketer.jsx';
 import GlobalSearch from './search.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useEscape } from '../../lib/useEscape.js';
@@ -77,6 +78,9 @@ const WORKSPACES = [
   { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', dept:'growth', sections:[
     { key:'applications', label:'Marketers', icon:'bullhorn', desc:'Activate applicants as scouts · hiring track for a permanent role' },
     { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
+    // Territory rather than payouts: where marketers are, where nobody is, and what each
+    // one is actually working. The Scouts screen next door stays the money workspace.
+    { key:'territories', label:'Territories & coverage', icon:'map-location-dot', desc:'County, sub-county and town — coverage and gaps' },
     { key:'promotions', label:'Promotions & offers', icon:'tags', desc:'Campaigns & coupons', adminOnly:true },
   ]},
   { key:'finance', label:'Finance', icon:'coins', blurb:'Money', dept:'finance', sections:[
@@ -121,7 +125,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, boards:Boards, statutory:StatutoryIds, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
