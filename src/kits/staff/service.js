@@ -292,6 +292,51 @@ export async function saveResume({ uid, resume, source }) {
   return call('staffSaveResume')({ uid, resume, source });
 }
 
+// ── Resume claims & verification ─────────────────────────────────────────────
+// Two accounts of one career are stored SEPARATELY and compared, never merged. A LinkedIn
+// profile is self-declared too — positions are typed in by the same person who wrote the
+// CV — so neither verifies anything alone. What two of them give you is DISAGREEMENT,
+// which is the only thing a single document can never show.
+//
+// The comparison FLAGS, it does not adjudicate: a profile nobody updated looks exactly
+// like an overstated CV from here. Never render `corroborated` as `verified`.
+
+export async function saveResumeClaim({ uid, resume, source, via }) {
+  return call('staffSaveResumeClaim')({ uid, resume, source, via });
+}
+
+export async function fetchResumeComparison(uid) {
+  const d = await call('staffResumeComparison')(uid ? { uid } : {});
+  if (!d || !d.comparison) throw new Error('staffResumeComparison: unexpected shape');
+  return d;
+}
+
+export async function deleteResumeClaim({ uid, source }) {
+  return call('staffDeleteResumeClaim')({ uid, source });
+}
+
+// Verification against the bodies that ISSUED a credential — the half of "OSINT" that
+// proves anything. The plan generates one-click searches; a NAMED HUMAN runs them and
+// records what they found. Nothing here fetches a person's name off the open web: a name
+// match is not an identity match, and an automated dossier on an employee is what s.35 of
+// the Data Protection Act lets them object to.
+
+export async function fetchVerificationPlan(uid) {
+  const d = await call('staffVerificationPlan')({ uid });
+  if (!d || !Array.isArray(d.claims)) throw new Error('staffVerificationPlan: unexpected shape');
+  return d;
+}
+
+export async function recordVerification(args) {
+  return call('staffRecordVerification')(args);
+}
+
+export async function fetchVerifications(uid) {
+  const d = await call('staffVerifications')(uid ? { uid } : {});
+  if (!d || !d.rollup) throw new Error('staffVerifications: unexpected shape');
+  return d;
+}
+
 // ── Compliance ───────────────────────────────────────────────────────────────
 // Two registers that share a screen and nothing else: what the COMPANY must hold to
 // trade and employ people, and what must be on file for each EMPLOYEE. Expiry dates and

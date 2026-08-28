@@ -16,12 +16,13 @@
    Pay and statutory numbers travel only to admin and People (`canSeeSensitive`). A
    department lead needs to run their team, which does not require knowing what they earn. */
 import React from 'react';
-import { Card, SectionHead, Btn, Pill, Icon, Avatar, Stat, Modal, EmptyState, kes } from './ui.jsx';
+import { Card, SectionHead, Btn, Pill, Icon, Avatar, Stat, Modal, EmptyState, Seg, kes } from './ui.jsx';
 import { useDialogs } from './dialogs.jsx';
 import {
   fetchEmployeeRecord, saveEmployeeReview, fileComplaint, resolveComplaint,
   setEmployeeDetails, setStaffProfile, DEPT_LABEL, TIER_LABEL, useStaffClaims,
-  setLinkedIn, importLinkedInResume, parseResumeText, saveResume,
+  setLinkedIn, importLinkedInResume, parseResumeText, saveResumeClaim, fetchResumeComparison,
+  fetchVerificationPlan, recordVerification,
 } from './service.js';
 
 const { useState, useEffect, useCallback } = React;
@@ -136,6 +137,10 @@ function ResumeDraftModal({ draft, source, notice, onClose, onSave, busy }) {
    because the fetch is walled far more often than it succeeds. */
 function PasteResumeModal({ uid, onClose, onParsed }) {
   const [text, setText] = useState('');
+  // WHICH account this is, asked rather than guessed. The whole value of holding a CV and
+  // a profile is being able to compare them; filing both as "some text" compares a
+  // document against itself and reports everything as consistent.
+  const [source, setSource] = useState('cv');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -143,7 +148,7 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
     setBusy(true); setErr(null);
     try {
       const r = await parseResumeText({ uid, text });
-      onParsed(r);
+      onParsed({ ...r, source });
       onClose();
     } catch (e) {
       setErr(e.message || 'Could not read that.');
@@ -167,8 +172,16 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
       }
     >
       <div className="space-y-3 text-sm">
+        <div>
+          <div className="text-xs t3 mb-1">What is this?</div>
+          <Seg value={source} onChange={setSource} options={['cv', 'linkedin', 'declared']}
+            fmt={(o) => ({ cv: 'Their CV', linkedin: 'LinkedIn profile', declared: 'Declared at hire' }[o])} />
+          <div className="text-xs t3 mt-1">
+            Filed separately, never merged. Holding the CV and the profile apart is what lets the
+            two be compared — and a disagreement between them is the one thing neither shows alone.
+          </div>
+        </div>
         <div className="text-xs t3">
-          Ask them to open their profile, select the page and paste it here — or paste their CV.
           Nothing is saved until you have read what comes back.
         </div>
         <textarea
@@ -222,7 +235,8 @@ function ResumeCard({ rec, canEdit, onChanged }) {
   const saveDraft = async () => {
     setBusy('save');
     try {
-      await saveResume({ uid: rec.uid, resume: draft.draft, source: draft.source });
+      await saveResumeClaim({ uid: rec.uid, resume: draft.draft, source: draft.source,
+        via: draft.source === 'linkedin' && draft.via !== 'paste' ? 'linkedin_fetch' : 'paste' });
       setDraft(null);
       setMsg({ ok:true, text:'Resume saved.' });
       onChanged();
@@ -353,6 +367,280 @@ function ResumeCard({ rec, canEdit, onChanged }) {
   );
 }
 
+/* ── Where the accounts disagree, and what has actually been checked ──────────
+
+   TWO PANELS, TWO DIFFERENT QUESTIONS, AND THEY MUST NOT BE BLURRED:
+
+   • Discrepancies — do the accounts on file agree with each other? A disagreement is a
+     question to ask, not a finding about the person. A profile nobody updated looks
+     identical to an overstated CV from here, so every row names BOTH figures and the
+     screen never says who is right.
+
+   • Verification — did the body that ISSUED a credential confirm it? Only that turns a
+     claim into a fact. "Corroborated" is rendered in words, never as a green tick, because
+     the one thing this screen must never do is let weak evidence read as proof. */
+
+const SEV_TONE = { high: 'red', medium: 'amber', low: 'blue' };
+const VERDICT_TONE = { review: 'red', minor: 'amber', cosmetic: 'blue', consistent: 'ok' };
+const VERDICT_LABEL = {
+  review: 'Worth asking about', minor: 'Minor differences',
+  cosmetic: 'Wording only', consistent: 'Accounts agree',
+};
+const VSTATUS_TONE = {
+  verified: 'ok', corroborated: 'blue', contradicted: 'red',
+  not_found: 'red', inconclusive: 'amber', unchecked: 'amber',
+};
+
+function DiscrepancyPanel({ uid }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setData(await fetchResumeComparison(uid)); setErr(null); }
+    catch (e) { setErr(e.message || 'Could not load the comparison.'); }
+    finally { setLoading(false); }
+  }, [uid]);
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return null;
+  if (err) return <Card className="p-5 text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</Card>;
+
+  const c = data.comparison;
+  const meta = data.meta || {};
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h3 className="font-bold t1"><Icon name="code-compare" /> Accounts on file</h3>
+        {c.corroborated
+          ? <Pill tone={c.severity ? SEV_TONE[c.severity] : 'ok'}>{c.total} difference{c.total === 1 ? '' : 's'}</Pill>
+          : <Pill tone="amber">Nothing to compare against</Pill>}
+      </div>
+
+      <div className="flex flex-wrap gap-2 text-xs">
+        {Object.entries(meta).map(([k, m]) => (
+          <span key={k} className="px-2 py-1 rounded-lg t2" style={{ background:'var(--surface2)' }}>
+            {m.label} · {m.positions} role{m.positions === 1 ? '' : 's'}
+          </span>
+        ))}
+        {!Object.keys(meta).length && <span className="t3">No account filed yet.</span>}
+      </div>
+
+      {!c.corroborated && Object.keys(meta).length > 0 && (
+        /* One document cannot corroborate itself, and a green tick here would claim it had. */
+        <div className="text-xs t3 p-3 rounded-lg" style={{ background:'var(--surface2)' }}>
+          <Icon name="circle-info" /> Only one account is on file, so there is nothing to check it against.
+          Add the other — a CV if you have the profile, the profile if you have the CV — and the differences appear here.
+        </div>
+      )}
+
+      {c.comparisons.map((cmp, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <b className="t1">{cmp.sources.aLabel} against {cmp.sources.bLabel}</b>
+            <Pill tone={VERDICT_TONE[cmp.verdict]}>{VERDICT_LABEL[cmp.verdict]}</Pill>
+          </div>
+          {cmp.discrepancies.map((d, j) => (
+            <div key={j} className="text-sm py-1.5 flex items-start gap-2" style={{ borderTop:'1px solid var(--line)' }}>
+              <Pill tone={SEV_TONE[d.severity]}>{d.severity}</Pill>
+              <span className="t2">{d.detail}</span>
+            </div>
+          ))}
+          {/* Carried from the server rather than written here, so every surface says the
+              same thing about what a difference does and does not mean. */}
+          <div className="text-xs t3">{cmp.note}</div>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
+/* Recording one check. The outcome vocabulary is fixed at four states so that "we could
+   not find them" and "the register says otherwise" can never be collapsed into each
+   other — they mean completely different things about a person. */
+function RecordCheckModal({ uid, claim, check, onClose, onSaved }) {
+  const [outcome, setOutcome] = useState('confirmed');
+  const [note, setNote] = useState('');
+  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const save = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await recordVerification({ uid, claimId: claim.claimId, target: check.target, outcome, note, evidenceUrl });
+      onSaved(); onClose();
+    } catch (e) { setErr(e.message || 'Could not record that.'); }
+    finally { setBusy(false); }
+  };
+
+  const field = { width:'100%', padding:'8px 10px', border:'1px solid var(--line)', borderRadius:8, background:'var(--bg)', color:'var(--t1)' };
+
+  return (
+    <Modal
+      title={check.label}
+      subtitle={`${claim.title || ''}${claim.company ? ` at ${claim.company}` : ''}`}
+      icon="clipboard-check"
+      onClose={onClose}
+      maxWidth={540}
+      footer={
+        <>
+          <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn icon="check" onClick={save} disabled={busy}>{busy ? 'Recording…' : 'Record finding'}</Btn>
+        </>
+      }
+    >
+      <div className="space-y-3 text-sm">
+        <div className="text-xs t3">{check.verifies}</div>
+        {check.note && <div className="text-xs t3">{check.note}</div>}
+
+        <div>
+          <div className="text-xs t3 mb-1">What did the check show?</div>
+          <Seg value={outcome} onChange={setOutcome} options={['confirmed', 'not_found', 'contradicted', 'inconclusive']}
+            fmt={(o) => ({
+              confirmed: 'Confirmed', not_found: 'Not found',
+              contradicted: 'Contradicted', inconclusive: 'Inconclusive',
+            }[o])} />
+          {outcome === 'not_found' && !check.absenceMeaningful && (
+            /* Said here so nobody records an absence as though it counted. */
+            <div className="text-xs t3 mt-1">
+              An absence from this source means nothing on its own — it is recorded, but it will not count against the claim.
+            </div>
+          )}
+          {outcome === 'contradicted' && (
+            <div className="text-xs mt-1" style={{ color:'var(--red)' }}>
+              This is the finding that can cost somebody their job. Say what you actually saw, not what you concluded.
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="text-xs t3 mb-1">What you saw{outcome === 'contradicted' ? ' (required)' : ''}</div>
+          <textarea style={{ ...field, minHeight: 90, resize:'vertical', fontFamily:'inherit' }}
+            value={note} onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Register lists her as admitted 2016, practising certificate current." />
+        </div>
+
+        <div>
+          <div className="text-xs t3 mb-1">Link to the evidence (optional)</div>
+          <input style={field} value={evidenceUrl} onChange={(e) => setEvidenceUrl(e.target.value)} placeholder="https://…" />
+        </div>
+
+        {err && <div className="text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</div>}
+      </div>
+    </Modal>
+  );
+}
+
+function VerificationPanel({ uid, canVerify }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(null);      // claimId currently expanded
+  const [recording, setRecording] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setData(await fetchVerificationPlan(uid)); setErr(null); }
+    catch (e) { setErr(e.message || 'Could not load the verification plan.'); }
+    finally { setLoading(false); }
+  }, [uid]);
+  useEffect(() => { load(); }, [load]);
+
+  if (!canVerify) return null;
+  if (loading) return null;
+  if (err) return <Card className="p-5 text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</Card>;
+
+  const r = data.rollup;
+  if (!data.claims.length) {
+    return (
+      <Card className="p-5">
+        <h3 className="font-bold t1 mb-1"><Icon name="user-shield" /> Verification</h3>
+        <div className="text-xs t3">No claims on file to check. File a CV or a profile first.</div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-bold t1"><Icon name="user-shield" /> Verification</h3>
+          <div className="text-xs t3">
+            Only the body that issued a credential can verify it. Corroboration is worth recording and is not proof.
+          </div>
+        </div>
+        <Pill tone={r.attention ? 'red' : (r.verified ? 'ok' : 'amber')}>
+          {r.verified} of {r.total} verified
+        </Pill>
+      </div>
+
+      {data.claims.map((c) => (
+        <div key={c.claimId} className="py-2" style={{ borderTop:'1px solid var(--line)' }}>
+          <button
+            onClick={() => setOpen(open === c.claimId ? null : c.claimId)}
+            className="w-full flex items-start justify-between gap-3 text-left"
+            style={{ background:'none', border:0, padding:0, cursor:'pointer' }}
+          >
+            <div className="min-w-0">
+              <div className="t1 font-semibold text-sm">{c.title || '—'}</div>
+              <div className="text-xs t3">
+                {c.company}
+                {c.startYear ? ` · ${c.startYear}${c.endYear ? `–${c.endYear}` : ''}` : ''}
+                {/* A role only one account mentions is the one to check first. */}
+                {c.claimedBy.length === 1 ? ` · only on the ${c.claimedBy[0]}` : ''}
+              </div>
+            </div>
+            <Pill tone={VSTATUS_TONE[c.verification.status]}>{c.verification.label}</Pill>
+          </button>
+
+          {open === c.claimId && (
+            <div className="mt-2 space-y-1">
+              {c.checks.map((chk) => (
+                <div key={chk.target} className="flex items-center justify-between gap-2 text-sm py-1">
+                  <div className="min-w-0">
+                    <span className="t2">{chk.label}</span>
+                    <span className="text-xs t3"> · {chk.strength}</span>
+                    {chk.recorded && (
+                      <div className="text-xs t3">
+                        {chk.recorded.outcome}
+                        {chk.recorded.note ? ` — ${chk.recorded.note}` : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {chk.searchUrl && (
+                      <a href={chk.searchUrl} target="_blank" rel="noreferrer noopener">
+                        <Btn kind="ghost" size="sm" icon="magnifying-glass">Look</Btn>
+                      </a>
+                    )}
+                    <Btn kind="ghost" size="sm" icon="pen"
+                      onClick={() => setRecording({ claim: c, check: chk })}>
+                      {chk.recorded ? 'Update' : 'Record'}
+                    </Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {recording && (
+        <RecordCheckModal
+          uid={uid}
+          claim={recording.claim}
+          check={recording.check}
+          onClose={() => setRecording(null)}
+          onSaved={load}
+        />
+      )}
+    </Card>
+  );
+}
+
 /* ── Screen ───────────────────────────────────────────────────────────────── */
 export function EmployeeRecord({ uid, onBack }) {
   const [rec, setRec] = useState(null);
@@ -435,6 +723,8 @@ export function EmployeeRecord({ uid, onBack }) {
 
       {/* Profile & resume */}
       <ResumeCard rec={rec} canEdit={isPeople || isSelf} onChanged={load} />
+      <DiscrepancyPanel uid={uid} />
+      <VerificationPanel uid={uid} canVerify={isPeople} />
 
       {/* Employment */}
       <Card className="p-5">
