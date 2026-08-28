@@ -5,7 +5,7 @@
 import React from 'react';
 import { FA, Card, Btn } from './primitives.jsx';
 import { ksh } from './data.js';
-import { subscribeMerchant, confirmPayment, redeemCoupon } from '../../lib/firebase.js';
+import { subscribeMerchant, confirmPayment, redeemCoupon, fulfilmentStatus } from '../../lib/firebase.js';
 import { useEscape } from '../../lib/useEscape.js';
 import { DELIVERY_TIERS, SOFTWARE_TIERS, PLAN_ORDER, DELIVERY_FEATURES, findDeliveryTier } from './pricing.js';
 import { planUnlocks, TIER_RANK } from '../../lib/entitlements.js';
@@ -15,6 +15,12 @@ const ipt = { width: '100%', padding: '12px 14px', borderRadius: 11, border: '1p
 const errBox = { display: 'flex', gap: 9, alignItems: 'center', background: 'var(--m-inactive-bg)', color: 'var(--m-inactive-fg)', borderRadius: 11, padding: '11px 14px', fontSize: 13, fontWeight: 500, margin: '14px 0 0' };
 
 export default function SubscribeFlow({ onStarted, currentPlan }) {
+  // Same source as checkout and the delivery-rules screen, so a merchant is never told
+  // something different about the same hold depending on which page they are on.
+  const [status, setStatus] = useState(null);
+  useEffect(() => { fulfilmentStatus().then(setStatus).catch(() => setStatus(null)); }, []);
+  const paused = status ? status.riderDelivery === false : false;
+
   const [mode, setMode] = useState('delivery');
   const [tierId, setTierId] = useState('a05');
   const [picking, setPicking] = useState(null); // { kind, plan, price, deliveries?, subTier?, range? }
@@ -23,6 +29,14 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
   const [err, setErr] = useState('');
   const [cid, setCid] = useState(null);
   const [checking, setChecking] = useState(false);
+
+  // Delivery mode must not stay selected while carriage is paused — the page would open
+  // on plans that cannot be bought. Depends on `mode` as well as `paused` so it also
+  // corrects the /pricing funnel below, which selects a plan from the URL and would
+  // otherwise switch back to delivery after this had already run once.
+  useEffect(() => {
+    if (paused && mode === 'delivery') { setMode('software'); setPicking(null); }
+  }, [paused, mode]);
 
   const tier = findDeliveryTier(tierId);
   const pick = (obj) => { setPicking(obj); setPhone(''); setErr(''); setStage('idle'); setCid(null); };
@@ -84,10 +98,36 @@ export default function SubscribeFlow({ onStarted, currentPlan }) {
   return (
     <div>
       <CouponField />
+      {/* Selling a delivery plan while carriage is paused would take money for something
+          we cannot currently do. The server refuses it outright (mpesaStkPush); this
+          keeps the merchant from getting as far as the M-Pesa prompt to find out. */}
+      {paused && (
+        <Card style={{ padding: 16, marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-start', borderColor: 'var(--m-primary)' }}>
+          <FA i="fa-circle-info" style={{ fontSize: 18, color: 'var(--m-primary)', marginTop: 2 }} />
+          <div>
+            <div className="ym-h3" style={{ fontSize: 14 }}>Delivery plans are temporarily unavailable</div>
+            <div className="ym-cap" style={{ marginTop: 4 }}>{status?.notice}</div>
+            <div className="ym-cap" style={{ marginTop: 6 }}>
+              Software plans are unaffected — they carry no delivery. Any delivery plan you already
+              hold keeps its remaining time; nothing is lost while this is paused.
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div style={{ display: 'inline-flex', gap: 4, background: 'var(--m-surface-2)', borderRadius: 10, padding: 4, marginBottom: 18 }}>
-        {[['delivery', 'Delivery plans'], ['software', 'Software only']].map(([k, label]) => (
-          <button key={k} onClick={() => setMode(k)} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, background: mode === k ? 'var(--m-surface)' : 'transparent', color: mode === k ? 'var(--m-fg1)' : 'var(--m-fg3)', boxShadow: mode === k ? 'var(--m-shadow-card)' : 'none' }}>{label}</button>
-        ))}
+        {[['delivery', 'Delivery plans'], ['software', 'Software only']].map(([k, label]) => {
+          // Frozen rather than hidden: a merchant who came looking for delivery plans
+          // should see they exist and are paused, not conclude we stopped offering them.
+          const frozen = paused && k === 'delivery';
+          return (
+            <button key={k} onClick={() => { if (!frozen) setMode(k); }} disabled={frozen}
+              title={frozen ? status?.notice : undefined}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: frozen ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, opacity: frozen ? 0.5 : 1, background: mode === k ? 'var(--m-surface)' : 'transparent', color: mode === k ? 'var(--m-fg1)' : 'var(--m-fg3)', boxShadow: mode === k ? 'var(--m-shadow-card)' : 'none' }}>
+              {label}{frozen ? ' · paused' : ''}
+            </button>
+          );
+        })}
       </div>
 
       {mode === 'delivery' && (
