@@ -17,12 +17,13 @@ function loadEntities(isAdmin) {
   if (_cache) return Promise.resolve(_cache);
   if (!_cachePromise) {
     _cachePromise = Promise.allSettled([
-      fetchMerchants('all'),
+      // Merchants are no longer cached whole — see searchMerchants below.
+      Promise.resolve({ merchants: [] }),
       fetchMarketers(),
       isAdmin ? staffListUsers() : Promise.resolve({ users: [] }),
     ]).then(([m, mk, us]) => {
       _cache = {
-        merchants: m.status === 'fulfilled' && Array.isArray(m.value) ? m.value : [],
+        merchants: [],
         scouts: mk.status === 'fulfilled' && Array.isArray(mk.value?.scouts) ? mk.value.scouts : [],
         users: us.status === 'fulfilled' && Array.isArray(us.value?.users) ? us.value.users : [],
       };
@@ -40,6 +41,10 @@ export default function GlobalSearch({ open, onClose, sections, go, isAdmin }) {
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
   const [record, setRecord] = useState(null);
+  // Merchants are looked up on the server as you type. They used to be cached whole and
+  // filtered in the browser, which stops being possible at the size this console is being
+  // built for — and the palette is exactly where you go when the list is too big to scroll.
+  const [merchantHits, setMerchantHits] = useState([]);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -50,23 +55,38 @@ export default function GlobalSearch({ open, onClose, sections, go, isAdmin }) {
     else setData(_cache);
   }, [open, isAdmin]);
 
+  useEffect(() => {
+    const term = q.trim();
+    if (!open || term.length < 2) { setMerchantHits([]); return; }
+    let alive = true;
+    // Debounced: a keystroke should not be a query.
+    const t = setTimeout(() => {
+      fetchMerchants({ q: term, pageSize: 6 })
+        .then((d) => { if (alive) setMerchantHits(d.merchants || []); })
+        .catch(() => { if (alive) setMerchantHits([]); });
+    }, 220);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q, open]);
+
   const results = useMemo(() => {
     const ql = q.trim().toLowerCase();
     const out = [];
     const secs = ql ? sections.filter((s) => has(ql, s.label, s.wsLabel, s.desc)) : sections;
     secs.slice(0, ql ? 6 : sections.length).forEach((s) => out.push({ type:'section', key:s.key, icon:s.icon, title:s.label, sub:s.wsLabel }));
-    if (ql && data) {
-      // county is now the canonical one of the 47, so the finer text has to be searched
-      // too — it used to hold the raw area box, and "Westlands" would stop matching.
-      data.merchants.filter((m) => has(ql, m.shop, m.owner, m.county, m.town, m.subCounty, m.area, m.id)).slice(0, 6)
+    if (ql) {
+      // Matched by the server on a name prefix, so this is "starts with" rather than
+      // "contains" — the trade for not shipping the whole merchant table to the browser.
+      merchantHits.slice(0, 6)
         .forEach((m) => out.push({ type:'merchant', record:m, icon:'store', title:m.shop || m.id, sub:`${m.owner || ''}${m.county ? ' · ' + m.county : ''}${m.town && m.town !== m.county ? ' · ' + m.town : ''}` || 'Merchant' }));
+    }
+    if (ql && data) {
       data.scouts.filter((s) => has(ql, s.name, s.county, s.id)).slice(0, 6)
         .forEach((s) => out.push({ type:'scout', record:s, icon:'user-group', title:s.name || s.id, sub:s.county || 'Scout' }));
       data.users.filter((u) => has(ql, u.email, u.name, u.uid)).slice(0, 8)
         .forEach((u) => out.push({ type:'user', record:u, icon:'user', title:u.name || u.email || u.uid, sub:u.email || (u.roles || []).join(', ') || 'Account' }));
     }
     return out;
-  }, [q, data, sections]);
+  }, [q, data, sections, merchantHits]);
 
   useEffect(() => { setActive(0); }, [q]);
 

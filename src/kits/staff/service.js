@@ -527,10 +527,21 @@ export async function fetchOverview() {
   return d;
 }
 
-export async function fetchMerchants(status = 'all') {
-  const d = await call('staffListMerchants')({ status });
+/**
+ * One PAGE of merchants. Returns the whole envelope, not just the rows: the counts and
+ * the total come from server-side aggregation, and a caller that only had the rows would
+ * have to count the page — which is how a "3 pending" badge appears while 300 wait.
+ *
+ * { level, place, status, q, cursor, pageSize } -> { merchants, nextCursor, total, counts }
+ * A bare string is still accepted so older callers keep working.
+ */
+export async function fetchMerchants(opts = {}) {
+  const args = typeof opts === 'string'
+    ? (opts === 'all' ? {} : { status: opts })
+    : (opts || {});
+  const d = await call('staffListMerchants')(args);
   if (!Array.isArray(d?.merchants)) throw new Error('staffListMerchants: unexpected shape');
-  return d.merchants;
+  return d;
 }
 
 export async function fetchSubscriptions() {

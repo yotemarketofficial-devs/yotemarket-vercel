@@ -3,6 +3,7 @@
    and falls back to the bundled demo data when the backend isn't reachable. */
 import React from 'react';
 import { StoreGeoModal } from './coverage.jsx';
+import { KE_COUNTY_NAMES } from '../../lib/counties.js';
 import { KPIS, REVENUE_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, WALLET, SUBSCRIPTIONS } from './data.js';
 import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState, BackendError } from './ui.jsx';
 import { useEscape } from '../../lib/useEscape.js';
@@ -76,7 +77,7 @@ function PayoutChangeReview(){
     </Card>
   );
 }
-const { useState: useSS, useEffect: useES } = React;
+const { useState: useSS, useEffect: useES, useMemo: useMemoX, useCallback: useCallbackX } = React;
 
 /* ── Record audit — click any merchant/store/scout to inspect its full record ── */
 const prettyKey = (k) => k.replace(/([A-Z])/g, ' $1').replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase()).trim();
@@ -140,7 +141,7 @@ function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
 
   const act = async (action) => {
     setBusy(action);
-    try { await setMerchantStatus(storeId, action); reload(); onChanged && onChanged(); }
+    try { await setMerchantStatus(storeId, action); reload(); onChanged && onChanged(action); }
     catch (e) { toast({ tone:'error', title: e.message || 'Action failed.' }); }
     finally { setBusy(null); }
   };
@@ -441,39 +442,68 @@ function Mini({ label, sub, v, tone, icon }){
 /* ============ MERCHANT VERIFICATION & OVERSIGHT ============ */
 export function Approvals({ isAdmin }){
   const { confirm, prompt, toast } = useDialogs();
-  const { data, live, reload: reloadMerchants } = useStaffResource(()=>fetchMerchants('all'), MERCHANTS);
-  const [rows,setRows] = useSS(null);
-  useES(()=>{ setRows(data); }, [data]);
+  // Filters live in state and are sent to the server; nothing is narrowed in the browser.
+  // The whole point is that the browser never holds the merchant table.
   const [filter,setFilter] = useSS('pending');
+  const [place,setPlace] = useSS('');       // '' = every county
+  const [term,setTerm] = useSS('');         // name prefix
+  const [q,setQ] = useSS('');               // debounced copy of term
+  useES(()=>{ const t=setTimeout(()=>setQ(term.trim()), 260); return ()=>clearTimeout(t); }, [term]);
+
+  const [rows,setRows] = useSS(null);
+  const [page,setPage] = useSS({ cursor:null, total:null, counts:{}, next:null });
+  const [loading,setLoading] = useSS(false);
+  const [loadErr,setLoadErr] = useSS(null);
+  const [live,setLive] = useSS(true);
+
+  const args = useMemoX(()=>({
+    status: filter === 'all' ? null : filter,
+    level: place ? 'county' : null, place: place || null,
+    q: q || null, pageSize: 40,
+  }), [filter, place, q]);
+
+  // A filter change starts a new list; Load more appends to it.
+  const load = useCallbackX(async (append) => {
+    setLoading(true); setLoadErr(null);
+    try {
+      const d = await fetchMerchants({ ...args, cursor: append ? page.next : null });
+      setRows((prev)=> append && prev ? [...prev, ...(d.merchants||[])] : (d.merchants||[]));
+      setPage({ cursor:null, total:d.total, counts:d.counts||{}, next:d.nextCursor||null });
+      setLive(true);
+    } catch (e) {
+      setLoadErr(e?.message || 'Could not load merchants.');
+      if (!append) { setRows(MERCHANTS); setLive(false); }
+    } finally { setLoading(false); }
+  }, [args, page.next]);
+
+  useES(()=>{ load(false); /* eslint-disable-next-line */ }, [args]);
+  const reloadMerchants = ()=>load(false);
   const [consoleM,setConsoleM] = useSS(null); // merchant open in the console drawer
   const list = rows || [];
 
-  const apply = async (id, action, nextStatus) => {
-    const prev = list.find(r=>r.id===id)?.status;
-    setRows(rs=>(rs||[]).map(r=>r.id===id?{...r,status:nextStatus,_busy:true}:r));
-    try { await setMerchantStatus(id, action); }
-    catch { setRows(rs=>(rs||[]).map(r=>r.id===id?{...r,status:prev}:r)); }
-    finally { setRows(rs=>(rs||[]).map(r=>r.id===id?{...r,_busy:false}:r)); }
+  // Acting on a merchant used to reload the list, which at this size throws away the
+  // page you had scrolled to. The console drawer re-reads the authoritative record for
+  // itself, so the list only needs the row patched — mirroring the same transition the
+  // backend applies — plus a counts-only refresh so the status tabs stay honest.
+  const STATUS_PATCH = {
+    verify:{verified:true,suspended:false}, unverify:{verified:false},
+    suspend:{suspended:true,featured:false}, reinstate:{suspended:false},
+    feature:{featured:true}, unfeature:{featured:false},
+    topbrand:{topBrand:true,topBrandStaff:true}, untopbrand:{topBrand:false,topBrandStaff:false},
   };
-
-  // Flagship pick — shows as a circle-logo on the storefront's Featured stores row.
-  const toggleFeature = async (m) => {
-    const next = !m.featured;
-    setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,featured:next,_busy:true}:r));
-    try { await setMerchantStatus(m.id, next?'feature':'unfeature'); }
-    catch { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,featured:!next}:r)); }
-    finally { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,_busy:false}:r)); }
-  };
-
-  // Manual "Top brand" placement (staff override) — the storefront Top-brands rail.
-  // Effective topBrand = this staff toggle OR an active Enterprise subscription.
-  const toggleTopBrand = async (m) => {
-    if (m.enterprise && m.topBrand) { toast({ tone:'error', title: 'This store is on Enterprise, which already grants Top-brand placement. Deactivate Enterprise to remove it.' }); return; }
-    const next = !m.topBrand;
-    setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,topBrand:next,topBrandStaff:next,_busy:true}:r));
-    try { await setMerchantStatus(m.id, next?'topbrand':'untopbrand'); }
-    catch { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,topBrand:!next,topBrandStaff:!next}:r)); }
-    finally { setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,_busy:false}:r)); }
+  const onMerchantChanged = (id, action) => {
+    const patch = STATUS_PATCH[action];
+    if (patch) {
+      setRows(rs=>(rs||[]).map(r=>{
+        if (r.id !== id) return r;
+        const n = { ...r, ...patch };
+        n.status = n.suspended ? 'suspended' : n.verified ? 'verified' : 'pending';
+        return n;
+      }));
+    }
+    fetchMerchants({ ...args, pageSize:1 })
+      .then(d=>setPage(pg=>({ ...pg, counts:d.counts||pg.counts, total:d.total })))
+      .catch(()=>{});
   };
 
   // Enterprise activation modal (quote-based; price grounded in per-package-per-km).
@@ -500,9 +530,11 @@ export function Approvals({ isAdmin }){
   };
   const pendingClosures = (delReqs || []).filter(r=>r.status==='pending');
 
-  const isPending = s => s==='pending' || s==='review';
-  const shown = list.filter(r=> filter==='all' || (filter==='pending' ? isPending(r.status) : r.status===filter));
-  const count = s => list.filter(r=> s==='pending' ? isPending(r.status) : r.status===s).length;
+  // The server already applied the filter, so the page IS the view. Counts come from
+  // aggregation queries rather than the loaded page — counting what was loaded is how a
+  // "3 pending" badge appears while 300 are waiting.
+  const shown = list;
+  const count = s => (page.counts && page.counts[s] != null ? page.counts[s] : 0);
 
   return (<div className="fadeup space-y-6">
     <SectionHead icon="user-check" title="Merchant verification & oversight" sub={live ? 'Verify KYC + storefront readiness; suspend stores that breach policy' : 'Sample queue — connect the backend for live stores'}
@@ -511,54 +543,86 @@ export function Approvals({ isAdmin }){
       <Stat label="Awaiting verification" value={count('pending')} icon="hourglass-half" tone="amber" />
       <Stat label="Verified" value={count('verified')} icon="circle-check" tone="green" />
       <Stat label="Suspended" value={count('suspended')} icon="ban" tone="red" />
-      <Stat label="Total stores" value={list.length} icon="store" tone="pri" />
+      <Stat label="Total stores" value={count('all')} icon="store" tone="pri" />
     </div>
-    <div className="space-y-3">
-      {shown.map(m=>{
-        const ready = m.docs && m.items>=2 && m.socials>=3;
-        const suspended = m.status==='suspended';
-        const verified = m.status==='verified';
-        return (<Card key={m.id} className="p-4" style={suspended?{opacity:.7}:null}>
-          {/* identity + readiness — its own block so the action bar never squeezes the store name */}
-          <div className="flex items-start gap-3 sm:gap-4">
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name="store"/></div>
-            <div className="min-w-0 flex-1">
-              <div onClick={()=>setConsoleM(m)} style={{ cursor:'pointer' }} title="Open merchant console">
-                <div className="font-bold t1 flex items-center gap-2 flex-wrap" style={{ textDecoration:'underline', textDecorationColor:'var(--line)', textUnderlineOffset:3 }}>{m.shop}
-                  {verified && <Pill tone="ok">Verified</Pill>}
-                  {suspended && <Pill tone="red">Suspended</Pill>}
-                  {m.featured && <Pill tone="blue">Featured</Pill>}
-                  {m.enterprise && <Pill tone="amber">Enterprise</Pill>}
-                  {m.topBrand && !m.enterprise && <Pill tone="amber">Top brand</Pill>}
-                </div>
-                <div className="text-xs t3 mt-0.5">{m.owner}{m.county?` · ${m.county}`:''}{m.town&&m.town!==m.county?` · ${m.town}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap mt-2">
-                <Chk ok={m.docs} label="KYC docs" />
-                <Chk ok={m.items>=2} label={`${m.items||0} items`} />
-                <Chk ok={m.socials>=3} label={`${m.socials||0} socials`} />
-                {/* A store with no filable county drops out of every coverage view, so it
-                    is worth saying here rather than only on the map. */}
-                {!m.county && <Pill tone="amber">No county</Pill>}
-                {m.unresolvedCounty && <Pill tone="red">County unrecognised</Pill>}
-              </div>
-            </div>
-          </div>
-          {/* action bar — full-width row that wraps among itself instead of crushing the identity */}
-          <div className="flex gap-2 flex-wrap mt-3 pt-3" style={{ borderTop:'1px solid var(--line)' }}>
-            {!verified && !suspended && <Btn kind="success" size="sm" icon="circle-check" onClick={()=>apply(m.id,'verify','verified')} disabled={m._busy} title={ready?'':'Readiness checklist incomplete'}>Verify</Btn>}
-            {!suspended && <Btn kind={m.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>toggleFeature(m)} disabled={m._busy} title="Show as a flagship store on the storefront home">{m.featured?'Featured':'Feature'}</Btn>}
-            {!suspended && <Btn kind={m.enterprise?'primary':'soft'} size="sm" icon="crown" onClick={()=>setEntFor(m)} disabled={m._busy} title="Enterprise tier — all Pro features + high delivery allotment + Top-brand placement (quote-based, staff-activated)">{m.enterprise?'Enterprise':'Enterprise…'}</Btn>}
-            {!suspended && <Btn kind={m.topBrand?'primary':'soft'} size="sm" icon="award" onClick={()=>toggleTopBrand(m)} disabled={m._busy} title="Manually place this store in the storefront Top-brands rail (independent of Enterprise)">Top brand</Btn>}
-            <Btn kind="soft" size="sm" icon="map-location-dot" onClick={()=>setGeoM(m)} disabled={m._busy} title="Set the county, sub-county and town this store trades in">Location</Btn>
-            {suspended
-              ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>apply(m.id,'reinstate','verified')} disabled={m._busy}>Reinstate</Btn>
-              : <Btn kind="danger" size="sm" icon="ban" onClick={()=>apply(m.id,'suspend','suspended')} disabled={m._busy}>Suspend</Btn>}
-          </div>
-        </Card>);
-      })}
-      {shown.length===0 && <Card className="p-10 text-center t3"><Icon name="inbox" className="text-3xl mb-2"/><div>Nothing here.</div></Card>}
-    </div>
+    {/* Narrowing happens on the server. County first, because at this size "where" is the
+        question that shrinks the list fastest; then the status tabs; then a name. */}
+    <Card className="p-4">
+      <div className="flex gap-2 flex-wrap items-center">
+        <select className="ym-input" style={{ minWidth:170 }} value={place} onChange={e=>setPlace(e.target.value)}>
+          <option value="">All 47 counties</option>
+          {KE_COUNTY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <input className="ym-input" style={{ minWidth:220, flex:1 }} value={term}
+          onChange={e=>setTerm(e.target.value)} placeholder="Shop name starts with…" />
+        {(place || term) && (
+          <Btn kind="ghost" size="sm" icon="xmark" onClick={()=>{ setPlace(''); setTerm(''); }}>Clear</Btn>
+        )}
+        <span className="text-xs t3 ml-auto">
+          {loading ? 'Loading…'
+            : page.total == null ? `${list.length} shown`
+            : `Showing ${list.length} of ${page.total.toLocaleString()}`}
+        </span>
+      </div>
+      {/* Prefix, not substring — the trade for the browser never holding the table. */}
+      {term && <div className="text-xs t3 mt-2">Matching shop names that start with “{term.trim()}”.</div>}
+      {loadErr && <div className="text-xs mt-2" style={{ color:'var(--red)' }}>{loadErr}</div>}
+    </Card>
+
+    <Card className="p-0 overflow-hidden">
+      {list.length ? (
+        <DataTable minWidth={780} keyField="id" rows={shown} pageSize={40} onRowClick={(r)=>setConsoleM(r)}
+          columns={[
+            { key:'shop', header:'Store', sort:true, render:(m)=>(
+              <span className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name="store"/></span>
+                <span className="min-w-0">
+                  <span className="block font-semibold t1 truncate">{m.shop}</span>
+                  <span className="block text-xs t3 truncate">{m.owner || '—'}</span>
+                </span>
+              </span>) },
+            { key:'county', header:'County', sort:true, render:(m)=>(
+              m.county
+                ? <span className="text-sm t2">{m.county}{m.town && m.town !== m.county && <span className="block text-xs t3">{m.town}</span>}</span>
+                : m.unresolvedCounty
+                  ? <Pill tone="red">Unrecognised</Pill>
+                  : <Pill tone="amber">Not set</Pill>) },
+            { key:'status', header:'Status', sort:true, render:(m)=>(
+              m.suspended ? <Pill tone="red">Suspended</Pill>
+                : m.verified ? <Pill tone="ok">Verified</Pill>
+                  : <Pill tone="amber">Pending</Pill>) },
+            { key:'items', header:'Items', sort:true, render:(m)=><span className="num t3">{m.items||0}</span> },
+            { key:'flags', header:'', render:(m)=>(
+              <span className="flex gap-1 flex-wrap justify-end">
+                {m.enterprise && <Pill tone="amber">Enterprise</Pill>}
+                {m.topBrand && !m.enterprise && <Pill tone="amber">Top brand</Pill>}
+                {m.featured && <Pill tone="blue">Featured</Pill>}
+              </span>) },
+            { key:'go', header:'', render:(m)=>(
+              <span className="flex gap-1.5 justify-end">
+                <Btn kind="ghost" size="sm" icon="map-location-dot" title="Set this store's county, sub-county and town"
+                  onClick={(e)=>{ e.stopPropagation(); setGeoM(m); }} />
+                <Btn kind="soft" size="sm" icon="arrow-right" title="Open the merchant console"
+                  onClick={(e)=>{ e.stopPropagation(); setConsoleM(m); }} />
+              </span>) },
+          ]} />
+      ) : (
+        <div className="p-10 text-center t3">
+          <Icon name="inbox" className="text-3xl mb-2"/>
+          <div>{loading ? 'Loading…' : (place || term || filter !== 'all') ? 'No merchants match this filter.' : 'No merchants yet.'}</div>
+        </div>
+      )}
+    </Card>
+
+    {/* Paging is a cursor, not a page number: an offset would re-read everything it
+        skipped, which is the cost this screen was rebuilt to stop paying. */}
+    {page.next && (
+      <div className="text-center">
+        <Btn kind="soft" icon={loading ? 'spinner' : 'chevron-down'} disabled={loading}
+          onClick={()=>load(true)}>{loading ? 'Loading…' : 'Load more'}</Btn>
+      </div>
+    )}
 
     {pendingClosures.length > 0 && (
       <div className="space-y-3">
@@ -582,7 +646,7 @@ export function Approvals({ isAdmin }){
     )}
 
     {entFor && <EnterpriseModal m={entFor} onClose={()=>setEntFor(null)} onDone={onEnterpriseDone} />}
-    {consoleM && <MerchantConsole row={consoleM} onClose={()=>setConsoleM(null)} onChanged={reloadMerchants} onRaw={(m)=>setAuditM(m)} onEnterprise={(m)=>setEntFor(m)} />}
+    {consoleM && <MerchantConsole row={consoleM} onClose={()=>setConsoleM(null)} onChanged={(action)=>onMerchantChanged(consoleM.id, action)} onRaw={(m)=>setAuditM(m)} onEnterprise={(m)=>setEntFor(m)} />}
     {geoM && <StoreGeoModal store={geoM} onClose={()=>setGeoM(null)}
       onSaved={(g)=>setRows(rs=>(rs||[]).map(r=>r.id===geoM.id?{...r,...g,unresolvedCounty:false}:r))} />}
     {auditM && <RecordAudit title={auditM.shop} subtitle={`${auditM.owner || ''}${auditM.county ? ` · ${auditM.county}` : ''}`} record={auditM} onClose={()=>setAuditM(null)} />}

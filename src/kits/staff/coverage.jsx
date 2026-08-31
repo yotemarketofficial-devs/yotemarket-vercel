@@ -93,9 +93,13 @@ export function StoreGeoModal({ store, onClose, onSaved }) {
   );
 }
 
-/* ── The backfill ─────────────────────────────────────────────────────────────
-   A dry run first, always. This writes to every store it can read a place out of, and a
-   bulk write against live data is worth looking at before it happens rather than after. */
+/* ── Re-reading every store's location ────────────────────────────────────────
+   NOT the first-time fill — stores are stamped with their location automatically the
+   first time this console lists them. This is the RE-READ: it derives every store again
+   and shows where the stored answer and a fresh reading disagree, which is what you want
+   after the parsing rules change or when a county looks wrong on the map.
+
+   A dry run first, always, because unlike the automatic pass this one overwrites. */
 function Backfill({ onDone }) {
   const { confirm, toast } = useDialogs();
   const [preview, setPreview] = useState(null);
@@ -106,7 +110,7 @@ function Backfill({ onDone }) {
     try {
       const r = await backfillStoreGeography(commit);
       if (commit) {
-        toast({ tone: 'ok', title: `Filled in ${r.wouldWrite} store${r.wouldWrite === 1 ? '' : 's'}` });
+        toast({ tone: 'ok', title: `Updated ${r.wouldWrite} store${r.wouldWrite === 1 ? '' : 's'}` });
         setPreview(null);
         onDone?.();
       } else {
@@ -119,10 +123,10 @@ function Backfill({ onDone }) {
 
   const commit = async () => {
     const ok = await confirm({
-      title: `Write ${preview.wouldWrite} store location${preview.wouldWrite === 1 ? '' : 's'}?`,
-      body: 'Only stores with no county set are touched, and only where the area box could be '
-          + 'read. A merchant or staff member who set a county themselves is left alone.',
-      confirmLabel: 'Fill them in',
+      title: `Update ${preview.wouldWrite} store location${preview.wouldWrite === 1 ? '' : 's'}?`,
+      body: 'This overwrites the stored location with a fresh reading. Stores whose location '
+          + 'a person set by hand keep it — only their name and status fields are corrected.',
+      confirmLabel: 'Apply the re-read',
     });
     if (ok) run(true);
   };
@@ -130,22 +134,25 @@ function Backfill({ onDone }) {
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
-        <h3 className="font-bold t1"><Icon name="wand-magic-sparkles" /> Read locations from the old area box</h3>
+        <h3 className="font-bold t1"><Icon name="rotate" /> Re-read every store's location</h3>
         <Btn kind="ghost" size="sm" icon={busy && !preview ? 'spinner' : 'eye'} onClick={() => run(false)} disabled={busy}>Preview</Btn>
       </div>
       <p className="text-xs t3">
-        Stores that signed up before there was a county field still have only the free-text box.
-        This reads a county and town out of it where they can be read outright, and never guesses:
-        “Westlands” stays a town with no county.
+        Stores are stamped with a location automatically the first time this console lists them,
+        so this is not the first fill. It derives every store again and shows where the stored
+        answer disagrees with a fresh reading — useful after the parsing rules change. It never
+        guesses: “Westlands” stays a town with no county, and a location somebody set by hand
+        is left alone.
       </p>
 
       {preview && (
         <div className="mt-4 space-y-3">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Stat label="Would fill in" value={preview.wouldWrite} icon="pen" tone="pri" />
-            <Stat label="With a county" value={preview.withCounty} icon="map" tone="green" />
-            <Stat label="Town only" value={preview.townOnly} icon="location-dot" tone="amber" />
-            <Stat label="Nothing readable" value={preview.unreadable} icon="circle-question" tone="blue" />
+            <Stat label="Would change" value={preview.wouldWrite} icon="pen" tone="pri" />
+            <Stat label="Already correct" value={preview.unchanged} icon="circle-check" tone="green" />
+            <Stat label="Set by a person" value={preview.humanSet} icon="user-pen" tone="blue"
+              sub="left alone" />
+            <Stat label="Stores read" value={preview.scanned} icon="store" tone="amber" />
           </div>
 
           {!!preview.sample?.length && (
@@ -153,10 +160,12 @@ function Backfill({ onDone }) {
               {preview.sample.map((s) => (
                 <div key={s.id} className="flex gap-2 py-1" style={{ borderTop: '1px solid var(--line)' }}>
                   <span className="flex-1 truncate t2">{s.name}</span>
-                  <span className="truncate" style={{ maxWidth: 150 }}>“{s.area}”</span>
+                  <span className="truncate" style={{ maxWidth: 140 }}>
+                    {[s.from?.county, s.from?.town].filter(Boolean).join(' · ') || '—'}
+                  </span>
                   <Icon name="arrow-right" />
                   <span className="font-semibold t2 truncate" style={{ maxWidth: 170 }}>
-                    {[s.county, s.town].filter(Boolean).join(' · ') || '—'}
+                    {[s.to?.county, s.to?.town].filter(Boolean).join(' · ') || '—'}
                   </span>
                 </div>
               ))}
@@ -168,9 +177,11 @@ function Backfill({ onDone }) {
 
           <div className="flex items-center gap-2 flex-wrap">
             <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'pen'} onClick={commit} disabled={busy || !preview.wouldWrite}>
-              Fill in {preview.wouldWrite} store{preview.wouldWrite === 1 ? '' : 's'}
+              Update {preview.wouldWrite} store{preview.wouldWrite === 1 ? '' : 's'}
             </Btn>
-            <span className="text-xs t3">{preview.already} already have a county set.</span>
+            <span className="text-xs t3">
+              {preview.wouldWrite ? 'Review the list above before applying.' : 'Every store already matches a fresh reading.'}
+            </span>
           </div>
         </div>
       )}
