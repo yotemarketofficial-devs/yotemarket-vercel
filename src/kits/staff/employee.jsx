@@ -18,6 +18,9 @@
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, Avatar, Stat, Modal, EmptyState, Seg, kes } from './ui.jsx';
 import { useDialogs } from './dialogs.jsx';
+// Just the accept-list string. pdfjs and mammoth inside are dynamically imported,
+// so this costs nothing until somebody actually picks a file.
+import { CV_ACCEPT } from '../../lib/cv-text.js';
 import {
   fetchEmployeeRecord, saveEmployeeReview, fileComplaint, resolveComplaint,
   setEmployeeDetails, setStaffProfile, DEPT_LABEL, TIER_LABEL, useStaffClaims,
@@ -142,13 +145,38 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
   // document against itself and reports everything as consistent.
   const [source, setSource] = useState('cv');
   const [busy, setBusy] = useState(false);
+  const [reading, setReading] = useState(null);   // filename being read
+  const [detected, setDetected] = useState(null); // what the file looked like
   const [err, setErr] = useState(null);
+
+  /* Upload a CV file and take its text. Read in the BROWSER — the file never leaves the
+     machine unless somebody chooses to attach it to the record separately. The text lands
+     in the box below rather than going straight off to be parsed, so whoever is holding
+     the CV can see what was actually recovered before spending a model call on it. */
+  const pickFile = async (file) => {
+    if (!file) return;
+    setErr(null); setReading(file.name); setDetected(null);
+    try {
+      const { extractCvText, detectCvSource } = await import('../../lib/cv-text.js');
+      const t = await extractCvText(file);
+      setText(t);
+      // A LinkedIn "Save to PDF" export and a CV are different accounts of the same
+      // career, and filing one as the other compares a document against itself. Detected
+      // rather than left to a toggle somebody forgets — but still shown, and still
+      // overridable, because a wrong guess here is worse than no guess.
+      const d = detectCvSource(t);
+      setSource(d.source);
+      setDetected(d);
+    } catch (e) {
+      setErr(e.message || 'Could not read that file.');
+    } finally { setReading(null); }
+  };
 
   const go = async () => {
     setBusy(true); setErr(null);
     try {
       const r = await parseResumeText({ uid, text });
-      onParsed({ ...r, source });
+      onParsed({ ...r, source, linkedinUrl: detected?.linkedinUrl || null });
       onClose();
     } catch (e) {
       setErr(e.message || 'Could not read that.');
@@ -157,15 +185,15 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
 
   return (
     <Modal
-      title="Paste the profile or CV"
-      subtitle="Their LinkedIn profile text, or the contents of their CV"
-      icon="paste"
+      title="Upload a CV, or paste a profile"
+      subtitle="A PDF or Word CV, or their LinkedIn profile text"
+      icon="file-arrow-up"
       onClose={onClose}
       maxWidth={620}
       footer={
         <>
           <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
-          <Btn icon="wand-magic-sparkles" onClick={go} disabled={busy || text.trim().length < 60}>
+          <Btn icon="wand-magic-sparkles" onClick={go} disabled={busy || !!reading || text.trim().length < 60}>
             {busy ? 'Reading…' : 'Extract'}
           </Btn>
         </>
@@ -181,14 +209,49 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
             two be compared — and a disagreement between them is the one thing neither shows alone.
           </div>
         </div>
+        {/* The upload path. Reads the file here and drops its text in the box, so the
+            extraction is visible and correctable before anything is parsed or saved. */}
+        <div className="p-3 rounded-lg" style={{ background:'var(--surface2)' }}>
+          <label className="flex items-center gap-2 flex-wrap text-xs t2" style={{ cursor:'pointer' }}>
+            <Icon name="file-arrow-up" />
+            <span className="font-semibold">{reading ? `Reading ${reading}…` : 'Upload a CV file'}</span>
+            <input
+              type="file"
+              accept={CV_ACCEPT}
+              disabled={!!reading}
+              onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ''; }}
+              style={{ fontSize: '.75rem' }}
+            />
+          </label>
+          <div className="text-xs t3 mt-1">
+            PDF or .docx. Read on this device — the file itself is not uploaded anywhere.
+            A scanned CV has no text in it and will be refused rather than parsed to nothing.
+          </div>
+          {/* The best route to a LinkedIn profile, and the reason the fetch is rarely
+              worth fighting: the export is the FULL profile rather than the trimmed
+              public view, and no auth wall stands in the way of a file. */}
+          <div className="text-xs t3 mt-1">
+            <b className="t2">For LinkedIn:</b> open the profile → <b className="t2">More</b> → <b className="t2">Save to PDF</b>,
+            and upload that. It is the whole profile, not the cut-down public one, and it is recognised automatically.
+          </div>
+          {detected && (
+            <div className="text-xs mt-2" style={{ color: detected.confident ? 'var(--ok, var(--t2))' : 'var(--t3)' }}>
+              <Icon name={detected.confident ? 'circle-check' : 'circle-info'} />{' '}
+              {detected.confident
+                ? 'Recognised as a LinkedIn profile export — filed as the profile, not the CV.'
+                : 'Read as a CV. If this is actually a LinkedIn export, switch it above.'}
+            </div>
+          )}
+        </div>
+
         <div className="text-xs t3">
-          Nothing is saved until you have read what comes back.
+          Or paste the text directly. Nothing is saved until you have read what comes back.
         </div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={14}
-          placeholder="Paste the profile or CV text…"
+          placeholder="Paste the profile or CV text, or upload a file above…"
           style={{ width:'100%', padding:'10px', border:'1px solid var(--line)', borderRadius:8,
             background:'var(--bg)', color:'var(--t1)', fontFamily:'inherit', fontSize:'.875rem', resize:'vertical' }}
         />
@@ -237,8 +300,17 @@ function ResumeCard({ rec, canEdit, onChanged }) {
     try {
       await saveResumeClaim({ uid: rec.uid, resume: draft.draft, source: draft.source,
         via: draft.source === 'linkedin' && draft.via !== 'paste' ? 'linkedin_fetch' : 'paste' });
+      // A LinkedIn export prints the profile URL in its Contact block, so an upload hands
+      // us the link for free. Only filled in when the record has none — never overwriting
+      // a link somebody entered deliberately. Best-effort: a failure here must not make a
+      // saved resume look like it failed.
+      if (draft.linkedinUrl && !rec.linkedinUrl) {
+        await setLinkedIn({ uid: rec.uid, linkedinUrl: draft.linkedinUrl }).catch(() => {});
+      }
       setDraft(null);
-      setMsg({ ok:true, text:'Resume saved.' });
+      setMsg({ ok:true, text: draft.linkedinUrl && !rec.linkedinUrl
+        ? 'Saved, and the LinkedIn link was picked up from the export.'
+        : 'Resume saved.' });
       onChanged();
     } catch (e) {
       setMsg({ ok:false, text: e.message || 'Could not save that resume.' });
@@ -279,7 +351,7 @@ function ResumeCard({ rec, canEdit, onChanged }) {
             disabled={!rec.linkedinUrl || busy === 'import'}>
             {busy === 'import' ? 'Fetching…' : 'Fetch from LinkedIn'}
           </Btn>
-          <Btn kind="ghost" size="sm" icon="paste" onClick={() => setPasting(true)}>Paste profile or CV</Btn>
+          <Btn kind="ghost" size="sm" icon="file-arrow-up" onClick={() => setPasting(true)}>Upload CV or paste</Btn>
         </div>
       )}
 
@@ -289,7 +361,7 @@ function ResumeCard({ rec, canEdit, onChanged }) {
           {msg.advice && <div className="text-xs t3 mt-1">{msg.advice}</div>}
           {msg.offerPaste && (
             <div className="mt-2">
-              <Btn size="sm" icon="paste" onClick={() => { setMsg(null); setPasting(true); }}>Paste it instead</Btn>
+              <Btn size="sm" icon="file-arrow-up" onClick={() => { setMsg(null); setPasting(true); }}>Upload a CV or paste instead</Btn>
             </div>
           )}
         </div>
@@ -346,7 +418,7 @@ function ResumeCard({ rec, canEdit, onChanged }) {
       ) : (
         <div className="text-xs t3">
           No resume on file.
-          {canEdit ? ' Fetch it from their LinkedIn profile, or paste their CV.' : ''}
+          {canEdit ? ' Upload their CV, or fetch it from their LinkedIn profile.' : ''}
         </div>
       )}
 
