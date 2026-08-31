@@ -1,21 +1,14 @@
 /**
  * nav-visibility.test.js — who sees which workspace and section.
  *
- * This exists because of a bug that nearly shipped. When several departments share one
- * workspace, the workspace's `anyDept` is passed down to its sections — and the original
- * `canSee` checked `anyDept` BEFORE a section's own `dept`. Merging Trust & Safety,
- * Support, Comms and Growth into one rail would therefore have shown every section to
- * everyone in any of the four: a Support agent reading the moderation queue, a Comms
- * agent approving scout payouts.
+ * Hiding a section is presentation only; the callables behind each enforce the same rule
+ * server-side. This is defence in depth, not the boundary itself. It is still worth
+ * pinning: the console must never OFFER an action the backend will refuse, and must never
+ * imply somebody has access they do not.
  *
- * Hiding a section is presentation only — the callables behind each enforce the same rule
- * server-side — so this is defence in depth rather than the boundary itself. It is still
- * worth pinning: the console must never OFFER an action the backend will refuse, and it
- * must never imply somebody has access they do not.
- *
- * The logic under test is copied from index.jsx rather than imported, because that module
- * pulls in the whole console (every screen, firebase, mapbox) and cannot be loaded in a
- * unit test. Keep the two in step — if `canSee` changes there, change it here.
+ * The logic under test is COPIED from kits/staff/index.jsx rather than imported, because
+ * that module pulls in the whole console (every screen, firebase, mapbox) and cannot be
+ * loaded in a unit test. Keep the two in step — if `canSee` changes there, change it here.
  */
 import { describe, it, expect } from 'vitest';
 
@@ -39,135 +32,149 @@ function visible(workspaces, isAdmin, depts = []) {
     .filter((w) => w.sections.length > 0);
 }
 
-/* The shapes that actually matter, taken from the real workspace model. */
-const COMMUNITY = {
-  key: 'community', anyDept: ['safety', 'support', 'comms', 'growth'],
-  sections: [
-    { key: 'support', dept: 'support' },
-    { key: 'disputes', dept: 'support' },
-    { key: 'moderation', dept: 'safety' },
-    { key: 'reviews', dept: 'safety' },
-    { key: 'outreach', dept: 'comms' },
-    { key: 'broadcasts', dept: 'comms' },
-    { key: 'scouts', dept: 'growth' },
-    { key: 'promotions', dept: 'growth', adminOnly: true },
-  ],
+/* ── the shipped workspace model, in the shape that matters here ───────────── */
+const COMMAND = { key: 'command', dept: null, sections: [{ key: 'command' }, { key: 'account' }, { key: 'boards' }] };
+const SAFETY = { key: 'safety', dept: 'safety', sections: [{ key: 'moderation' }, { key: 'reviews' }] };
+const SUPPORT = { key: 'support', dept: 'support', sections: [{ key: 'support' }, { key: 'disputes' }] };
+const COMMS = { key: 'comms', dept: 'comms', sections: [{ key: 'outreach' }, { key: 'broadcasts' }] };
+const GROWTH = {
+  key: 'growth', dept: 'growth',
+  sections: [{ key: 'scouts' }, { key: 'territories' }, { key: 'promotions', adminOnly: true }],
 };
-const LEGAL = {
-  key: 'legal', dept: 'legal',
-  sections: [{ key: 'legal' }, { key: 'compliance' }],
-};
-const FINANCE = {
-  key: 'finance', dept: 'finance',
-  sections: [{ key: 'finance' }, { key: 'payroll' }, { key: 'filings' }],
-};
+const FINANCE = { key: 'finance', dept: 'finance', sections: [{ key: 'finance' }, { key: 'payroll' }, { key: 'filings' }] };
 const PEOPLE = {
   key: 'people', dept: 'people',
   sections: [{ key: 'people' }, { key: 'documents' }, { key: 'team', adminOnly: true }],
 };
+const LEGAL = { key: 'legal', dept: 'legal', sections: [{ key: 'legal' }, { key: 'compliance' }] };
 const RECRUITMENT = {
   key: 'recruitment', anyDept: ['people', 'logistics', 'growth'],
   sections: [{ key: 'recruitment' }],
 };
-const COMMAND = { key: 'command', dept: null, sections: [{ key: 'command' }, { key: 'boards' }] };
 const ADMIN = { key: 'admin', adminOnly: true, sections: [{ key: 'accounts' }] };
 
-const ALL = [COMMAND, COMMUNITY, FINANCE, PEOPLE, LEGAL, RECRUITMENT, ADMIN];
-const keysFor = (depts, isAdmin = false) =>
-  visible(ALL, isAdmin, depts).map((w) => [w.key, w.sections.map((s) => s.key)]);
+const ALL = [COMMAND, SAFETY, SUPPORT, COMMS, GROWTH, FINANCE, PEOPLE, LEGAL, RECRUITMENT, ADMIN];
+const wsFor = (depts, isAdmin = false) => visible(ALL, isAdmin, depts).map((w) => w.key);
 const sectionsIn = (ws, depts) =>
   (visible(ALL, false, depts).find((w) => w.key === ws) || { sections: [] }).sections.map((s) => s.key);
 
-describe('a shared workspace does not widen its sections', () => {
-  it('shows a Support person only the Support sections of Community', () => {
-    // THE BUG THIS PINS. Before the fix these four departments shared one `anyDept`,
-    // and every section matched it.
-    expect(sectionsIn('community', ['support'])).toEqual(['support', 'disputes']);
+describe('a department sees its own workspace and nothing else', () => {
+  it('gives Trust & Safety only its own rail', () => {
+    expect(wsFor(['safety'])).toEqual(['command', 'safety']);
   });
 
-  it('shows a Trust & Safety person only the moderation sections', () => {
-    expect(sectionsIn('community', ['safety'])).toEqual(['moderation', 'reviews']);
+  it('gives Support only its own rail', () => {
+    expect(wsFor(['support'])).toEqual(['command', 'support']);
   });
 
-  it('shows a Comms person only the outward messaging sections', () => {
-    expect(sectionsIn('community', ['comms'])).toEqual(['outreach', 'broadcasts']);
+  it('gives Comms only its own rail', () => {
+    expect(wsFor(['comms'])).toEqual(['command', 'comms']);
   });
 
-  it('never shows the moderation queue to Support, Comms or Growth', () => {
-    ['support', 'comms', 'growth'].forEach((d) => {
-      expect(sectionsIn('community', [d]), d).not.toContain('moderation');
-    });
-  });
-
-  it('never shows scout payouts to anyone but Growth', () => {
-    ['support', 'comms', 'safety'].forEach((d) => {
-      expect(sectionsIn('community', [d]), d).not.toContain('scouts');
-    });
-  });
-
-  it('still keeps an adminOnly section admin-only inside a shared workspace', () => {
-    expect(sectionsIn('community', ['growth'])).not.toContain('promotions');
-    expect(visible(ALL, true, []).find((w) => w.key === 'community').sections.map((s) => s.key))
-      .toContain('promotions');
-  });
-
-  it('gives someone in two of the four departments both sets and no more', () => {
-    expect(sectionsIn('community', ['support', 'comms']))
-      .toEqual(['support', 'disputes', 'outreach', 'broadcasts']);
-  });
-});
-
-describe('legal and compliance are one job, scoped to legal', () => {
-  it('gives a Legal person Records and the compliance register', () => {
+  it('gives Legal legal and compliance, and nothing else', () => {
+    // The stated principle: hired into legal and compliance, sees legal and compliance.
+    expect(wsFor(['legal'])).toEqual(['command', 'legal']);
     expect(sectionsIn('legal', ['legal'])).toEqual(['legal', 'compliance']);
   });
 
-  it('shows a Legal person NOTHING outside legal', () => {
-    // The stated principle: hired into legal and compliance, sees legal and compliance.
-    const seen = keysFor(['legal']).map(([k]) => k);
-    expect(seen).toEqual(['command', 'legal']);
+  it('keeps Finance and People out of the Legal workspace', () => {
+    expect(wsFor(['finance'])).not.toContain('legal');
+    expect(wsFor(['people'])).not.toContain('legal');
   });
 
-  it('does not put Finance or People into the Legal workspace', () => {
-    expect(keysFor(['finance']).map(([k]) => k)).not.toContain('legal');
-    expect(keysFor(['people']).map(([k]) => k)).not.toContain('legal');
-  });
-
-  it('gives Finance its own slice of compliance instead', () => {
+  it('gives Finance and People their own slice of compliance instead', () => {
     expect(sectionsIn('finance', ['finance'])).toContain('filings');
+    expect(sectionsIn('people', ['people'])).toContain('documents');
   });
 
-  it('gives People its own slice of compliance instead', () => {
-    expect(sectionsIn('people', ['people'])).toContain('documents');
+  it('gives somebody in two departments both rails and no more', () => {
+    expect(wsFor(['support', 'comms'])).toEqual(['command', 'support', 'comms']);
   });
 });
 
-describe('the rest of the model still holds', () => {
+describe('adminOnly still bites inside a visible workspace', () => {
+  it('hides promotions from Growth but not from an admin', () => {
+    expect(sectionsIn('growth', ['growth'])).toEqual(['scouts', 'territories']);
+    expect(visible(ALL, true, []).find((w) => w.key === 'growth').sections.map((s) => s.key))
+      .toContain('promotions');
+  });
+
+  it('hides Access & roles from People', () => {
+    expect(sectionsIn('people', ['people'])).not.toContain('team');
+  });
+});
+
+describe('shared workspaces', () => {
+  it('admits any of the three owning departments to Recruitment', () => {
+    ['people', 'logistics', 'growth'].forEach((d) => expect(wsFor([d]), d).toContain('recruitment'));
+  });
+
+  it('keeps everyone else out of Recruitment', () => {
+    ['support', 'comms', 'safety', 'finance', 'legal'].forEach((d) => {
+      expect(wsFor([d]), d).not.toContain('recruitment');
+    });
+  });
+});
+
+describe('a section inside a shared workspace is not widened by it', () => {
+  /* THE REGRESSION THIS GUARDS. `canSee` once tested `anyDept` before a node's own
+     `dept`, and a shared workspace passes its `anyDept` down to sections — so every
+     section became visible to everyone in any of the workspace's departments.
+     Recruitment is currently the only shared rail and its single section is meant to be
+     shared, so the fixture below is synthetic: it exists to keep the RULE pinned for the
+     next shared workspace, which would otherwise hit this again unnoticed. */
+  const SHARED = {
+    key: 'shared', anyDept: ['alpha', 'beta'],
+    sections: [
+      { key: 'alphaOnly', dept: 'alpha' },
+      { key: 'betaOnly', dept: 'beta' },
+      { key: 'either' },
+    ],
+  };
+
+  it('shows a section only to the department that owns it', () => {
+    expect(visible([SHARED], false, ['alpha'])[0].sections.map((s) => s.key))
+      .toEqual(['alphaOnly', 'either']);
+    expect(visible([SHARED], false, ['beta'])[0].sections.map((s) => s.key))
+      .toEqual(['betaOnly', 'either']);
+  });
+
+  it('never leaks one department’s section to the other', () => {
+    expect(visible([SHARED], false, ['alpha'])[0].sections.map((s) => s.key)).not.toContain('betaOnly');
+    expect(visible([SHARED], false, ['beta'])[0].sections.map((s) => s.key)).not.toContain('alphaOnly');
+  });
+
+  it('still lets an unscoped section inherit the shared rule', () => {
+    expect(visible([SHARED], false, ['alpha'])[0].sections.map((s) => s.key)).toContain('either');
+    expect(visible([SHARED], false, ['gamma'])).toEqual([]);
+  });
+});
+
+describe('the rest of the model', () => {
   it('shows Command to everyone, whatever their department', () => {
-    ['support', 'legal', 'finance', 'people', 'growth'].forEach((d) => {
-      expect(keysFor([d]).map(([k]) => k), d).toContain('command');
+    ['safety', 'support', 'comms', 'growth', 'legal', 'finance', 'people'].forEach((d) => {
+      expect(wsFor([d]), d).toContain('command');
+    });
+  });
+
+  it('gives everyone their own account section', () => {
+    // Everyone has a password, whatever they work on.
+    ['safety', 'legal', 'finance'].forEach((d) => {
+      expect(sectionsIn('command', [d]), d).toContain('account');
     });
   });
 
   it('hides the admin workspace from every non-admin', () => {
-    ['support', 'legal', 'finance', 'people'].forEach((d) => {
-      expect(keysFor([d]).map(([k]) => k), d).not.toContain('admin');
+    ['safety', 'support', 'legal', 'finance', 'people'].forEach((d) => {
+      expect(wsFor([d]), d).not.toContain('admin');
     });
   });
 
   it('gives an admin everything', () => {
-    expect(keysFor([], true).map(([k]) => k)).toEqual(ALL.map((w) => w.key));
+    expect(wsFor([], true)).toEqual(ALL.map((w) => w.key));
   });
 
-  it('admits any of the three owning departments to Recruitment', () => {
-    ['people', 'logistics', 'growth'].forEach((d) => {
-      expect(keysFor([d]).map(([k]) => k), d).toContain('recruitment');
-    });
-    expect(keysFor(['support']).map(([k]) => k)).not.toContain('recruitment');
-  });
-
-  it('drops a workspace entirely when none of its sections survive', () => {
-    // Somebody with no departments should see Command and nothing else.
-    expect(keysFor([]).map(([k]) => k)).toEqual(['command']);
+  it('leaves somebody with no departments just Command', () => {
+    expect(wsFor([])).toEqual(['command']);
   });
 });

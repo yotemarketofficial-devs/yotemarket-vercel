@@ -67,31 +67,29 @@ const WORKSPACES = [
     // one place. Logistics still sees them and nobody else gained access — the tab there
     // is gated to this same department.
   ]},
-  /* Trust & Safety, Support, Comms and Growth in one workspace: they are the four that
-     face OUTWARD, at people who do not work here — shoppers, merchants, marketers. Four
-     separate rails meant one conversation with one customer could span all of them.
-
-     EVERY SECTION KEEPS ITS OWN `dept`, which is what stops this being a widening. The
-     workspace admits any of the four so the rail appears; each section is gated to the
-     one department that owns it, so somebody in Support sees tickets and refunds and not
-     the moderation queue. `canSee` gives a section's own dept priority over the
-     workspace's `anyDept` precisely for this. */
-  { key:'community', label:'Community', icon:'people-group', blurb:'Everyone outside the company',
-    anyDept:['safety', 'support', 'comms', 'growth'], sections:[
-      { key:'support', label:'Tickets', icon:'ticket', dept:'support', desc:'Help Center requests — reply, resolve & route' },
-      { key:'disputes', label:'Returns & refunds', icon:'rotate-left', dept:'support', desc:'Buyer refund requests — review & resolve' },
-      { key:'moderation', label:'Chat moderation', icon:'comment-slash', dept:'safety', desc:'Reported conversations — transcript & block' },
-      { key:'reviews', label:'Review moderation', icon:'star-half-stroke', dept:'safety', desc:'Reported reviews — remove fraud or dismiss' },
-      // Talking TO people rather than only answering them. Threads opened here land in
-      // Support, so there is still exactly one inbox.
-      { key:'outreach', label:'Message someone', icon:'envelope-open-text', dept:'comms', desc:'Start a thread with any merchant, shopper, rider or marketer' },
-      { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', dept:'comms', desc:'Announce to a whole audience — in-app & push' },
-      // Marketer APPLICANTS live in Recruitment; this keeps the scouts already working
-      // and the money that goes with them.
-      { key:'scouts', label:'Scouts & payouts', icon:'people-group', dept:'growth', desc:'Approve payouts & verify proofs' },
-      { key:'territories', label:'Territories & coverage', icon:'map-location-dot', dept:'growth', desc:'County, sub-county and town — coverage and gaps' },
-      { key:'promotions', label:'Promotions & offers', icon:'tags', dept:'growth', desc:'Campaigns & coupons', adminOnly:true },
-    ]},
+  { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', dept:'safety', sections:[
+    { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
+    { key:'reviews', label:'Review moderation', icon:'star-half-stroke', desc:'Reported reviews — remove fraud or dismiss' },
+  ]},
+  { key:'support', label:'Support', icon:'headset', blurb:'Customer care', dept:'support', sections:[
+    { key:'support', label:'Tickets', icon:'ticket', desc:'Help Center requests — reply, resolve & route' },
+    { key:'disputes', label:'Returns & refunds', icon:'rotate-left', desc:'Buyer refund requests — review & resolve' },
+  ]},
+  // Talking TO people, rather than only answering them. Threads opened here land
+  // in Support, so there is still exactly one inbox.
+  { key:'comms', label:'Comms', icon:'paper-plane', blurb:'Reach people', dept:'comms', sections:[
+    { key:'outreach', label:'Message someone', icon:'envelope-open-text', desc:'Start a thread with any merchant, shopper, rider or marketer' },
+    { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', desc:'Announce to a whole audience — in-app & push' },
+  ]},
+  { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', dept:'growth', sections:[
+    // Marketer APPLICANTS live in Recruitment; Growth keeps the scouts already working
+    // and the money that goes with them.
+    { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
+    // Territory rather than payouts: where marketers are, where nobody is, and what each
+    // one is actually working. The Scouts screen next door stays the money workspace.
+    { key:'territories', label:'Territories & coverage', icon:'map-location-dot', desc:'County, sub-county and town — coverage and gaps' },
+    { key:'promotions', label:'Promotions & offers', icon:'tags', desc:'Campaigns & coupons', adminOnly:true },
+  ]},
   { key:'finance', label:'Finance', icon:'coins', blurb:'Money', dept:'finance', sections:[
     { key:'finance', label:'Revenue & ledger', icon:'chart-line', desc:'Live platform revenue and internal ledger' },
     // Finance rather than People on purpose: a payroll run posts a cost to the ledger and
@@ -165,10 +163,11 @@ const canSee = (node, isAdmin, depts) => {
   if (isAdmin) return true;
   if (node.adminOnly) return false;
   // A node's OWN department wins. This order is load-bearing: a workspace that admits
-  // several departments passes `anyDept` down to its sections, and a section that names
-  // its own department must not be widened by it. Checking anyDept first would show every
-  // section of a shared workspace to everyone in any of its departments — a Support agent
-  // reading the moderation queue, for one.
+  // several departments (Recruitment) passes `anyDept` down to its sections, and a section
+  // that names its own department must not be widened by it. With anyDept checked first,
+  // every section of a shared workspace becomes visible to everyone in any of its
+  // departments. Caught when four departments briefly shared one rail; the rule stays
+  // because the mechanism does, and the next shared workspace would hit it again.
   if (node.dept) return depts.includes(node.dept);
   if (Array.isArray(node.anyDept)) return node.anyDept.some((d) => depts.includes(d));
   return node.dept === undefined || node.dept === null;   // Command: everyone
