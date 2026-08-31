@@ -26,6 +26,7 @@ import { AuditLog } from './audit.jsx';
 import { AppReleases } from './releases.jsx';
 import { Payroll } from './payroll.jsx';
 import { Compliance } from './compliance.jsx';
+import { Recruitment } from './recruitment.jsx';
 import { Boards } from './boards.jsx';
 import { Territories } from './marketer.jsx';
 import GlobalSearch from './search.jsx';
@@ -59,7 +60,9 @@ const WORKSPACES = [
   { key:'logistics', label:'Logistics', icon:'truck-fast', blurb:'Delivery ops', dept:'logistics', sections:[
     { key:'logistics', label:'Runs & routes', icon:'route', desc:'The live engine — batching, hubs, exceptions' },
     { key:'roster', label:'Rider roster', icon:'id-card-clip', desc:'Who can claim work, and what blocks the rest' },
-    { key:'riders', label:'Rider applications', icon:'motorcycle', desc:'People joining the delivery network — vet & approve' },
+    // Rider APPLICATIONS moved to the Recruitment workspace, which holds every funnel in
+    // one place. Logistics still sees them and nobody else gained access — the tab there
+    // is gated to this same department.
   ]},
   { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', dept:'safety', sections:[
     { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
@@ -76,7 +79,8 @@ const WORKSPACES = [
     { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', desc:'Announce to a whole audience — in-app & push' },
   ]},
   { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', dept:'growth', sections:[
-    { key:'applications', label:'Marketers', icon:'bullhorn', desc:'Activate applicants as scouts · hiring track for a permanent role' },
+    // Marketer APPLICANTS moved to Recruitment; Growth keeps the scouts who are already
+    // working and the money that goes with them.
     { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
     // Territory rather than payouts: where marketers are, where nobody is, and what each
     // one is actually working. The Scouts screen next door stays the money workspace.
@@ -100,13 +104,15 @@ const WORKSPACES = [
     // that a People lead is needed to edit somebody else's.
     { key:'statutory', label:'Statutory numbers', icon:'id-card', desc:'KRA PIN, NSSF & SHIF — what PAYE returns are filed against' },
     { key:'contracts', label:'Contracts', icon:'file-signature', desc:'Individual employment terms, pay and renewals' },
-    { key:'careers', label:'Job applications', icon:'briefcase', desc:'Candidates from the careers page — triage & hire' },
+    // Job applications moved to Recruitment, beside the rider and marketer funnels.
   ]},
   { key:'intelligence', label:'Intelligence', icon:'chart-pie', blurb:'BI', dept:'intelligence', sections:[
     { key:'intelligence', label:'Business intelligence', icon:'chart-pie', desc:'Cross-platform data repository + AI brief' },
   ]},
   { key:'legal', label:'Legal', icon:'gavel', blurb:'Compliance', dept:'legal', sections:[
-    { key:'legal', label:'Records', icon:'scale-balanced', desc:'Contracts, policies, cases & compliance' },
+    // Deliberately no longer says "compliance": the register next door is the one place
+    // for that, and two screens claiming the word sent people to the wrong one.
+    { key:'legal', label:'Records', icon:'scale-balanced', desc:'Contracts, policies and legal cases' },
   ]},
   /* Its own workspace rather than a section of Legal, because it genuinely belongs to
      three departments at once: Legal renews the licences, Finance files the returns,
@@ -115,6 +121,14 @@ const WORKSPACES = [
   { key:'compliance', label:'Compliance', icon:'file-shield', blurb:'Licences & documents',
     anyDept:['legal', 'finance', 'people'], sections:[
       { key:'compliance', label:'Compliance register', icon:'file-shield', desc:'Licences, employee documents & statutory filing deadlines' },
+    ]},
+  /* One home for every application, for the same reason Compliance is one workspace:
+     three funnels each sat correctly in a different department, which meant there was no
+     single answer to "who has applied to us". Each tab inside stays gated to the
+     department that owns it, so this groups the question without widening the access. */
+  { key:'recruitment', label:'Recruitment', icon:'user-plus', blurb:'Everyone applying',
+    anyDept:['people', 'logistics', 'growth'], sections:[
+      { key:'recruitment', label:'Applications', icon:'user-plus', desc:'Job, rider and marketer applicants — whichever funnels are yours' },
     ]},
   { key:'admin', label:'Admin', icon:'user-shield', blurb:'Platform control', adminOnly:true, sections:[
     { key:'accounts', label:'Accounts', icon:'id-badge', desc:'User account administration' },
@@ -125,7 +139,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, recruitment:Recruitment, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

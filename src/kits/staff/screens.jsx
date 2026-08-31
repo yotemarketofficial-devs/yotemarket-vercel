@@ -332,13 +332,26 @@ export function Analytics(){
   const health = data.health || {};
   const max = Math.max(...revenue.map(d=>d.v), 1);
   const scale = moneyScale(revenue.map(d=>d.v));
+  // The server decides whether this caller may see money, and says so rather than
+  // sending zeroes — a zero revenue chart reads as "we earned nothing", which is a
+  // very different statement from "this is not yours to see".
+  const withheld = !!data.revenueWithheld;
   return (<div className="fadeup space-y-6">
-    <SectionHead icon="gauge-high" title="Platform overview" sub={demo ? 'Sample KPIs — no backend configured' : (live ? 'Live subscription revenue, retention and delivery cost' : 'Loading live KPIs…')} />
+    <SectionHead icon="gauge-high" title="Platform overview" sub={demo ? 'Sample KPIs — no backend configured' : (withheld ? 'Live platform activity — revenue is limited to Finance' : (live ? 'Live subscription revenue, retention and delivery cost' : 'Loading live KPIs…'))} />
     <BackendError error={error} onRetry={reload} />
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {kpis.map(k=><Stat key={k.label} {...k} delta={k.delta} deltaUp={k.up} />)}
     </div>
+    {withheld && (
+      <Card className="p-4">
+        <div className="text-sm t2"><Icon name="lock" /> Revenue figures are limited to Finance and Intelligence.</div>
+        <div className="text-xs t3 mt-1">
+          Everything else on this page — activity, retention and the activation funnel — is the whole platform.
+        </div>
+      </Card>
+    )}
     <div className="grid lg:grid-cols-3 gap-6">
+      {!withheld && (
       <Card className="p-6 lg:col-span-2">
         <div className="flex items-center justify-between mb-5">
           <div><h3 className="font-bold t1">Subscription revenue</h3><p className="text-xs t3">Money we actually collected — merchant plans only</p></div>
@@ -356,6 +369,7 @@ export function Analytics(){
           ))}
         </div>)}
       </Card>
+      )}
       <Card className="p-6">
         <h3 className="font-bold t1 mb-4">Subscription mix</h3>
         {!subMix.length && <EmptyState icon="wallet" title="No subscriptions" sub="No active plans to break down." />}
