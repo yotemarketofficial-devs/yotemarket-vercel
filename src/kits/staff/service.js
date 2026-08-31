@@ -384,17 +384,9 @@ export async function fetchStatutoryFilings(period) {
 // normalised server-side but never validated against a list, because no complete list of
 // Kenyan sub-counties or villages exists to validate against.
 
-/** The 47, for the county picker. Mirrors KE_COUNTIES in functions/geography.js —
- *  a picker rather than a text box is what stops one place becoming four spellings. */
-export const KE_COUNTY_NAMES = [
-  'Mombasa', 'Kwale', 'Kilifi', 'Tana River', 'Lamu', 'Taita Taveta', 'Garissa', 'Wajir',
-  'Mandera', 'Marsabit', 'Isiolo', 'Meru', 'Tharaka-Nithi', 'Embu', 'Kitui', 'Machakos',
-  'Makueni', 'Nyandarua', 'Nyeri', 'Kirinyaga', "Murang'a", 'Kiambu', 'Turkana',
-  'West Pokot', 'Samburu', 'Trans Nzoia', 'Uasin Gishu', 'Elgeyo-Marakwet', 'Nandi',
-  'Baringo', 'Laikipia', 'Nakuru', 'Narok', 'Kajiado', 'Kericho', 'Bomet', 'Kakamega',
-  'Vihiga', 'Bungoma', 'Busia', 'Siaya', 'Kisumu', 'Homa Bay', 'Migori', 'Kisii',
-  'Nyamira', 'Nairobi',
-];
+// The 47 live in lib/counties.js — the merchant dashboard needs the same picker and must
+// not import staff-console code to get it. Re-exported so existing imports keep working.
+export { KE_COUNTY_NAMES } from '../../lib/counties.js';
 
 export async function fetchMarketerDetail(uid) {
   const d = await call('staffMarketerDetail')({ uid });
@@ -411,6 +403,27 @@ export async function fetchMarketerCoverage(level) {
   if (!d || !Array.isArray(d.rollup)) throw new Error('staffMarketerCoverage: unexpected shape');
   return d;
 }
+
+// ── Merchant geography ───────────────────────────────────────────────────────
+// Where our merchants are, as opposed to where our scouts are. Same map, different
+// question, and the gap between the two is the one worth acting on.
+
+export async function fetchMerchantCoverage(level) {
+  const d = await call('staffMerchantCoverage')({ level });
+  if (!d || !Array.isArray(d.rollup)) throw new Error('staffMerchantCoverage: unexpected shape');
+  return d;
+}
+
+export async function setStoreGeography(args) {
+  return call('staffSetStoreGeography')(args);
+}
+
+// Dry run unless commit is explicitly true — this writes to every store it can read a
+// place out of, so the count is shown before anything happens.
+export async function backfillStoreGeography(commit = false) {
+  return call('staffBackfillStoreGeography')({ commit: commit === true });
+}
+
 // ── Departmental work boards ─────────────────────────────────────────────────
 // One board per department so a team can see who is on what. The backend scopes every
 // read to the caller's own departments, so there is nothing to filter here.

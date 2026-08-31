@@ -1,5 +1,6 @@
 /* extras.jsx — Merchant: Sales, Wallet, Subscription, Settings, Chat (aligned theme). */
 import React from 'react';
+import { KE_COUNTY_NAMES } from '../../lib/counties.js';
 import { doc, onSnapshot, collection, query, where, limit } from 'firebase/firestore';
 import { FA, Card, Btn, Pill, Avatar, Stat, SectionCard, useTheme } from './primitives.jsx';
 import Markdown from '../../components/Markdown.jsx';
@@ -786,13 +787,21 @@ function ShopProfileForm({ shop, toast }){
   const [name, setName] = useStateX(shop.name || '');
   const [area, setArea] = useStateX(shop.area || '');
   const [tagline, setTagline] = useStateX(shop.tagline || '');
+  const [county, setCounty] = useStateX(shop.county || '');
+  const [subCounty, setSubCounty] = useStateX(shop.subCounty || '');
+  const [town, setTown] = useStateX(shop.town || '');
   const [busy, setBusy] = useStateX(false);
-  useEffX(()=>{ setName(shop.name||''); setArea(shop.area||''); setTagline(shop.tagline||''); }, [shop.shopId, shop.name, shop.area, shop.tagline]);
-  const dirty = name.trim() !== (shop.name||'').trim() || area.trim() !== (shop.area||'').trim() || tagline.trim() !== (shop.tagline||'').trim();
+  useEffX(()=>{ setName(shop.name||''); setArea(shop.area||''); setTagline(shop.tagline||'');
+    setCounty(shop.county||''); setSubCounty(shop.subCounty||''); setTown(shop.town||''); },
+  [shop.shopId, shop.name, shop.area, shop.tagline, shop.county, shop.subCounty, shop.town]);
+  const dirty = name.trim() !== (shop.name||'').trim() || area.trim() !== (shop.area||'').trim()
+    || tagline.trim() !== (shop.tagline||'').trim() || county !== (shop.county||'')
+    || subCounty.trim() !== (shop.subCounty||'').trim() || town.trim() !== (shop.town||'').trim();
   const save = () => {
     if (name.trim().length < 2) { toast && toast('Enter a shop name'); return; }
     setBusy(true);
-    updateStoreProfile({ name:name.trim(), area:area.trim(), tagline:tagline.trim() })
+    updateStoreProfile({ name:name.trim(), area:area.trim(), tagline:tagline.trim(),
+      county, subCounty:subCounty.trim(), town:town.trim() })
       .then(()=>toast&&toast('Shop profile updated','fa-check'))
       .catch((e)=>toast&&toast(e?.message||'Could not update'))
       .finally(()=>setBusy(false));
@@ -801,7 +810,19 @@ function ShopProfileForm({ shop, toast }){
     <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16 }}>
       <div><label className="ym-label">Shop name</label><input className="ipt" value={name} onChange={e=>setName(e.target.value)} maxLength={80} placeholder="Your shop name" /></div>
       <div><label className="ym-label">Owner</label><div className="ipt" style={{ display:'flex', alignItems:'center', minHeight:44, color:'var(--m-fg3)' }}>{shop.owner || '—'}</div></div>
-      <div><label className="ym-label">Area / town</label><input className="ipt" value={area} onChange={e=>setArea(e.target.value)} maxLength={80} placeholder="e.g. Westlands, Nairobi" /></div>
+      {/* County is a picker because it is the one level with a right answer — the 47 are
+          fixed. Sub-county and town are free text on purpose: no complete list of Kenyan
+          sub-counties or villages exists, so validating them would reject real answers. */}
+      <div><label className="ym-label">County</label>
+        <select className="ipt" value={county} onChange={e=>setCounty(e.target.value)}>
+          <option value="">Select your county…</option>
+          {KE_COUNTY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <div className="ym-cap" style={{ marginTop:5 }}>Shoppers browse by county, so this is how they find you nearby.</div>
+      </div>
+      <div><label className="ym-label">Sub-county</label><input className="ipt" value={subCounty} onChange={e=>setSubCounty(e.target.value)} maxLength={80} placeholder="e.g. Westlands" /></div>
+      <div><label className="ym-label">Town, city or village</label><input className="ipt" value={town} onChange={e=>setTown(e.target.value)} maxLength={80} placeholder="e.g. Parklands" /></div>
+      <div><label className="ym-label">Area / landmark</label><input className="ipt" value={area} onChange={e=>setArea(e.target.value)} maxLength={80} placeholder="e.g. Sarit Centre, 2nd floor" /></div>
       <div><label className="ym-label">Tagline</label><input className="ipt" value={tagline} onChange={e=>setTagline(e.target.value)} maxLength={160} placeholder="A short line shoppers see on your store" /></div>
       <Btn kind="primary" icon="fa-check" disabled={busy || !dirty} onClick={save} style={{ alignSelf:'flex-start' }}>{busy?'Saving…':'Save changes'}</Btn>
     </div>

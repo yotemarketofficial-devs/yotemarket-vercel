@@ -3,6 +3,7 @@
    signup (registerStore); store but no active subscription → subscribe paywall;
    active subscriber → the dashboard. Demo mode (no backend) shows it directly. */
 import React from 'react';
+import { KE_COUNTY_NAMES } from '../../lib/counties.js';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
@@ -71,6 +72,9 @@ function StoreSignupPanel() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('electronics');
   const [area, setArea] = useState('');
+  const [county, setCounty] = useState('');
+  const [subCounty, setSubCounty] = useState('');
+  const [town, setTown] = useState('');
   const [tagline, setTagline] = useState('');
   const [phone, setPhone] = useState('');
   const [referral, setReferral] = useState(readInviteCode);
@@ -84,7 +88,15 @@ function StoreSignupPanel() {
     setBusy(true);
     try {
       const payout = phone.trim() ? { method: 'b2c', phone: phone.trim() } : undefined;
-      await registerStore({ name: name.trim(), category, area: area.trim(), tagline: tagline.trim(), ...(payout ? { payout } : {}), ...(referral.trim() ? { referral: referral.trim() } : {}) });
+      await registerStore({
+        name: name.trim(), category, area: area.trim(), tagline: tagline.trim(),
+        // Sent only when filled in. The backend accepts a blank county and reads what it
+        // can out of the area box instead — the Flutter signup does not send these yet,
+        // so requiring one here would make the two signups disagree about what is valid.
+        ...(county ? { county } : {}), ...(subCounty.trim() ? { subCounty: subCounty.trim() } : {}),
+        ...(town.trim() ? { town: town.trim() } : {}),
+        ...(payout ? { payout } : {}), ...(referral.trim() ? { referral: referral.trim() } : {}),
+      });
       try { sessionStorage.removeItem(REF_KEY); } catch { /* */ }  // spent — don't reuse it
       // The merchants/{uid} listener in the gate advances to the paywall; keep busy.
     } catch (e) { setErr(e.message || 'Could not create your store.'); setBusy(false); }
@@ -103,7 +115,19 @@ function StoreSignupPanel() {
             {CATS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </Field>
-        <Field label="Area / location"><input style={ipt} value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Nairobi CBD" /></Field>
+        {/* County is a picker, not a text box: it is the one level with a right answer,
+            and typing it free-hand is exactly how one place became four spellings. The
+            two below it are free text on purpose — no complete list of Kenyan sub-counties
+            or villages exists, and validating against one would reject real answers. */}
+        <Field label="County">
+          <select style={ipt} value={county} onChange={(e) => setCounty(e.target.value)}>
+            <option value="">Select your county…</option>
+            {KE_COUNTY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Sub-county (optional)"><input style={ipt} value={subCounty} onChange={(e) => setSubCounty(e.target.value)} placeholder="e.g. Westlands" /></Field>
+        <Field label="Town, city or village (optional)"><input style={ipt} value={town} onChange={(e) => setTown(e.target.value)} placeholder="e.g. Parklands" /></Field>
+        <Field label="Area / landmark (optional)"><input style={ipt} value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Sarit Centre, 2nd floor" /></Field>
         <Field label="Tagline (optional)"><input style={ipt} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="What you sell, in a line" /></Field>
         <Field label="M-Pesa payout number (optional)"><input style={ipt} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XX XXX XXX" inputMode="tel" /></Field>
         <Field label="Referral code (optional)">

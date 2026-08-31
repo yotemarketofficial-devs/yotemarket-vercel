@@ -16,6 +16,7 @@ import {
   fetchMarketerDetail, setMarketerTerritory, fetchMarketerCoverage,
   KE_COUNTY_NAMES, useStaffClaims, useStaffResource, fetchMarketers,
 } from './service.js';
+import { MerchantCoverage } from './coverage.jsx';
 
 const { useState, useEffect, useCallback } = React;
 
@@ -296,6 +297,10 @@ export function MarketerCoverage() {
 export function Territories() {
   const [openUid, setOpenUid] = useState(null);
   const [q, setQ] = useState('');
+  // Two sides of one map. Scouts and merchants are asked about together — "where are we
+  // thin" is only actionable next to "who is there" — but they are different populations
+  // with different gaps, so they get a tab each rather than one merged table.
+  const [tab, setTab] = useState('marketers');
   const { data } = useStaffResource(fetchMarketers, { applicants: [], scouts: [] });
 
   if (openUid) return <MarketerRecord uid={openUid} onBack={() => setOpenUid(null)} />;
@@ -309,8 +314,16 @@ export function Territories() {
   return (
     <div className="fadeup space-y-6">
       <SectionHead icon="map-location-dot" title="Territories & coverage"
-        sub="Where our marketers are, where nobody is, and what each one is actually working" />
+        sub="Where our marketers and merchants are, where nobody is, and what each scout is working" />
 
+      <div className="flex gap-2 flex-wrap">
+        {[['marketers', 'Marketers', 'people-group'], ['merchants', 'Merchants', 'store']].map(([k, label, icon]) => (
+          <Btn key={k} kind={tab === k ? 'primary' : 'ghost'} size="sm" icon={icon}
+            onClick={() => setTab(k)}>{label}</Btn>
+        ))}
+      </div>
+
+      {tab === 'merchants' ? <MerchantCoverage /> : <>
       <MarketerCoverage />
 
       <Card className="p-5">
@@ -340,6 +353,7 @@ export function Territories() {
         ) : <EmptyState icon="people-group" title="No marketers yet."
               sub="Activated scouts appear here with their territory." />}
       </Card>
+      </>}
     </div>
   );
 }
