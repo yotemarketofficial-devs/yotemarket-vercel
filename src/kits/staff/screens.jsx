@@ -2,6 +2,7 @@
    Each screen reads live data through ./service.js (staff-gated Cloud Functions)
    and falls back to the bundled demo data when the backend isn't reachable. */
 import React from 'react';
+import { StoreGeoModal } from './coverage.jsx';
 import { KPIS, REVENUE_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, WALLET, SUBSCRIPTIONS } from './data.js';
 import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState, BackendError } from './ui.jsx';
 import { useEscape } from '../../lib/useEscape.js';
@@ -464,6 +465,7 @@ export function Approvals({ isAdmin }){
   // Enterprise activation modal (quote-based; price grounded in per-package-per-km).
   const [entFor, setEntFor] = useSS(null);
   const [auditM, setAuditM] = useSS(null); // click a store to inspect its full record
+  const [geoM, setGeoM] = useSS(null);     // fixing where a store actually is
   const onEnterpriseDone = (m, patch) => setRows(rs=>(rs||[]).map(r=>r.id===m.id?{...r,...patch}:r));
 
   // Store-closure requests (merchant asks to close → staff approve/reject).
@@ -515,12 +517,16 @@ export function Approvals({ isAdmin }){
                   {m.enterprise && <Pill tone="amber">Enterprise</Pill>}
                   {m.topBrand && !m.enterprise && <Pill tone="amber">Top brand</Pill>}
                 </div>
-                <div className="text-xs t3 mt-0.5">{m.owner}{m.county?` · ${m.county}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
+                <div className="text-xs t3 mt-0.5">{m.owner}{m.county?` · ${m.county}`:''}{m.town&&m.town!==m.county?` · ${m.town}`:''}{m.band?` · Band ${m.band}`:''}{m.plan?` · ${m.plan}`:''}{m.scout?` · scout ${m.scout}`:''}</div>
               </div>
               <div className="flex items-center gap-2 flex-wrap mt-2">
                 <Chk ok={m.docs} label="KYC docs" />
                 <Chk ok={m.items>=2} label={`${m.items||0} items`} />
                 <Chk ok={m.socials>=3} label={`${m.socials||0} socials`} />
+                {/* A store with no filable county drops out of every coverage view, so it
+                    is worth saying here rather than only on the map. */}
+                {!m.county && <Pill tone="amber">No county</Pill>}
+                {m.unresolvedCounty && <Pill tone="red">County unrecognised</Pill>}
               </div>
             </div>
           </div>
@@ -530,6 +536,7 @@ export function Approvals({ isAdmin }){
             {!suspended && <Btn kind={m.featured?'primary':'soft'} size="sm" icon="star" onClick={()=>toggleFeature(m)} disabled={m._busy} title="Show as a flagship store on the storefront home">{m.featured?'Featured':'Feature'}</Btn>}
             {!suspended && <Btn kind={m.enterprise?'primary':'soft'} size="sm" icon="crown" onClick={()=>setEntFor(m)} disabled={m._busy} title="Enterprise tier — all Pro features + high delivery allotment + Top-brand placement (quote-based, staff-activated)">{m.enterprise?'Enterprise':'Enterprise…'}</Btn>}
             {!suspended && <Btn kind={m.topBrand?'primary':'soft'} size="sm" icon="award" onClick={()=>toggleTopBrand(m)} disabled={m._busy} title="Manually place this store in the storefront Top-brands rail (independent of Enterprise)">Top brand</Btn>}
+            <Btn kind="soft" size="sm" icon="map-location-dot" onClick={()=>setGeoM(m)} disabled={m._busy} title="Set the county, sub-county and town this store trades in">Location</Btn>
             {suspended
               ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>apply(m.id,'reinstate','verified')} disabled={m._busy}>Reinstate</Btn>
               : <Btn kind="danger" size="sm" icon="ban" onClick={()=>apply(m.id,'suspend','suspended')} disabled={m._busy}>Suspend</Btn>}
@@ -562,6 +569,8 @@ export function Approvals({ isAdmin }){
 
     {entFor && <EnterpriseModal m={entFor} onClose={()=>setEntFor(null)} onDone={onEnterpriseDone} />}
     {consoleM && <MerchantConsole row={consoleM} onClose={()=>setConsoleM(null)} onChanged={reloadMerchants} onRaw={(m)=>setAuditM(m)} onEnterprise={(m)=>setEntFor(m)} />}
+    {geoM && <StoreGeoModal store={geoM} onClose={()=>setGeoM(null)}
+      onSaved={(g)=>setRows(rs=>(rs||[]).map(r=>r.id===geoM.id?{...r,...g,unresolvedCounty:false}:r))} />}
     {auditM && <RecordAudit title={auditM.shop} subtitle={`${auditM.owner || ''}${auditM.county ? ` · ${auditM.county}` : ''}`} record={auditM} onClose={()=>setAuditM(null)} />}
   </div>);
 }
