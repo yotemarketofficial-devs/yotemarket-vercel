@@ -381,7 +381,17 @@ function Filings() {
 }
 
 /* ── Screen ───────────────────────────────────────────────────────────────── */
-export function Compliance() {
+/**
+ * The register. `only` narrows it to a single tab so a department can be given the part
+ * of compliance that is ITS job, inside ITS own workspace — Finance the filings, People
+ * the employee documents — instead of everyone being sent to a shared screen. Called with
+ * no `only`, it shows every tab the caller is entitled to.
+ *
+ * `only` NARROWS AND NEVER GRANTS. It is intersected with what the caller may see, so
+ * pointing a section at a tab cannot hand somebody a tab their department does not own,
+ * and the callables behind each tab enforce the same rule again regardless.
+ */
+export function Compliance({ only = null }) {
   const { isAdmin, departments = [] } = useStaffClaims();
   const has = (d) => isAdmin || departments.includes(d);
 
@@ -404,11 +414,13 @@ export function Compliance() {
   // Tabs mirror the SERVER gates. Hiding one is presentation only — the callables behind
   // each enforce the same rule, so a hidden tab is genuinely unreachable, not just unseen.
   const TAB_LABEL = { company: 'Company', workforce: 'Workforce', filings: 'Filings' };
-  const tabs = [
+  const allowed = [
     ...(has('legal') || has('finance') || has('people') ? ['company'] : []),
     ...(has('people') ? ['workforce'] : []),
     ...(has('finance') || has('legal') ? ['filings'] : []),
   ];
+  // Intersected, not substituted: `only` can hide a tab, never reveal one.
+  const tabs = only ? allowed.filter((t) => t === only) : allowed;
   const [tab, setTab] = useState(tabs.length ? tabs[0] : null);
 
   if (!tabs.length) {
@@ -420,19 +432,34 @@ export function Compliance() {
     );
   }
 
+  const active = tabs.includes(tab) ? tab : tabs[0];
+
   if (openUid) return <EmployeeRecord uid={openUid} onBack={() => setOpenUid(null)} />;
+
+  const TITLE = { company: 'Compliance register', workforce: 'Employee documents', filings: 'Statutory filings' };
+  const SUB = {
+    company: "Licences and registrations the company must hold to trade",
+    workforce: "What must be on file for each member of staff",
+    filings: "What a payroll month owes, to whom, and by when",
+  };
 
   return (
     <div className="fadeup space-y-6">
-      <SectionHead icon="file-shield" title="Compliance"
-        sub="The company's own paperwork, and every employee's"
-        action={tabs.length > 1 ? <Seg value={tab} onChange={setTab} options={tabs} fmt={(o) => TAB_LABEL[o]} /> : null} />
+      <SectionHead icon="file-shield"
+        title={only ? TITLE[active] : 'Compliance'}
+        sub={only ? SUB[active] : "The company's own paperwork, and every employee's"}
+        action={tabs.length > 1 ? <Seg value={active} onChange={setTab} options={tabs} fmt={(o) => TAB_LABEL[o]} /> : null} />
 
-      {tab === 'company' && <CompanyRegister staffOptions={staffOptions} />}
-      {tab === 'workforce' && <Workforce onOpenPerson={setOpenUid} />}
-      {tab === 'filings' && <Filings />}
+      {active === 'company' && <CompanyRegister staffOptions={staffOptions} />}
+      {active === 'workforce' && <Workforce onOpenPerson={setOpenUid} />}
+      {active === 'filings' && <Filings />}
     </div>
   );
 }
+
+/* Named entry points, so a workspace can carry the slice of compliance that belongs to
+   that department rather than pointing everyone at one shared screen. */
+export const StatutoryFilings = () => <Compliance only="filings" />;
+export const EmployeeDocuments = () => <Compliance only="workforce" />;
 
 export default Compliance;

@@ -212,17 +212,21 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
         {/* The upload path. Reads the file here and drops its text in the box, so the
             extraction is visible and correctable before anything is parsed or saved. */}
         <div className="p-3 rounded-lg" style={{ background:'var(--surface2)' }}>
-          <label className="flex items-center gap-2 flex-wrap text-xs t2" style={{ cursor:'pointer' }}>
-            <Icon name="file-arrow-up" />
-            <span className="font-semibold">{reading ? `Reading ${reading}…` : 'Upload a CV file'}</span>
-            <input
-              type="file"
-              accept={CV_ACCEPT}
-              disabled={!!reading}
-              onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ''; }}
-              style={{ fontSize: '.75rem' }}
-            />
-          </label>
+          {/* NOT wrapped in a <label>. A file input nested inside its own label gets the
+              click twice — once itself, once forwarded by the label — and Chrome opens the
+              picker, then opens it again as the first one closes. The rest of the console
+              (see releases.jsx) uses a bare input for exactly this reason. */}
+          <div className="text-xs t2 font-semibold mb-1.5">
+            <Icon name="file-arrow-up" /> {reading ? `Reading ${reading}…` : 'Upload a CV file'}
+          </div>
+          <input
+            type="file"
+            accept={CV_ACCEPT}
+            disabled={!!reading}
+            onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ''; }}
+            className="ym-input"
+            style={{ padding: '8px 10px', fontSize: '.8rem' }}
+          />
           <div className="text-xs t3 mt-1">
             PDF or .docx. Read on this device — the file itself is not uploaded anywhere.
             A scanned CV has no text in it and will be refused rather than parsed to nothing.
@@ -249,8 +253,11 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
         </div>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={14}
+          // Editing the text by hand invalidates what the FILE was detected as — the
+          // profile URL in particular came from a document that is no longer what is in
+          // the box. Dropping it is right: a stale detection would file the wrong source.
+          onChange={(e) => { setText(e.target.value); if (detected) setDetected(null); }}
+          rows={10}
           placeholder="Paste the profile or CV text, or upload a file above…"
           style={{ width:'100%', padding:'10px', border:'1px solid var(--line)', borderRadius:8,
             background:'var(--bg)', color:'var(--t1)', fontFamily:'inherit', fontSize:'.875rem', resize:'vertical' }}

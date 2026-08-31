@@ -25,8 +25,9 @@ import { Accounts } from './accounts.jsx';
 import { AuditLog } from './audit.jsx';
 import { AppReleases } from './releases.jsx';
 import { Payroll } from './payroll.jsx';
-import { Compliance } from './compliance.jsx';
+import { Compliance, StatutoryFilings, EmployeeDocuments } from './compliance.jsx';
 import { Recruitment } from './recruitment.jsx';
+import { MyAccount } from './account.jsx';
 import { Boards } from './boards.jsx';
 import { Territories } from './marketer.jsx';
 import GlobalSearch from './search.jsx';
@@ -49,6 +50,8 @@ const WORKSPACES = [
     { key:'analytics', label:'Analytics', icon:'chart-simple', desc:'Revenue, retention & delivery cost' },
     // Your own employment terms — not People-gated: everyone is entitled to these.
     { key:'mycontract', label:'My contract', icon:'file-signature', desc:'Your own employment terms — review & sign' },
+    // Not dept-gated: everyone has an account and a password, whatever they work on.
+    { key:'account', label:'My account', icon:'id-badge', desc:'Your profile, and your console password' },
     // Not dept-gated: every staffer has a board, and the screen scopes itself to the
     // departments they are actually in.
     { key:'boards', label:'Work board', icon:'clipboard-list', desc:'Who in your department is on what' },
@@ -64,35 +67,40 @@ const WORKSPACES = [
     // one place. Logistics still sees them and nobody else gained access — the tab there
     // is gated to this same department.
   ]},
-  { key:'safety', label:'Trust & Safety', icon:'shield-halved', blurb:'Integrity', dept:'safety', sections:[
-    { key:'moderation', label:'Chat moderation', icon:'comment-slash', desc:'Reported conversations — transcript & block' },
-    { key:'reviews', label:'Review moderation', icon:'star-half-stroke', desc:'Reported reviews — remove fraud or dismiss' },
-  ]},
-  { key:'support', label:'Support', icon:'headset', blurb:'Customer care', dept:'support', sections:[
-    { key:'support', label:'Tickets', icon:'ticket', desc:'Help Center requests — reply, resolve & route' },
-    { key:'disputes', label:'Returns & refunds', icon:'rotate-left', desc:'Buyer refund requests — review & resolve' },
-  ]},
-  // Talking TO people, rather than only answering them. Threads opened here land
-  // in Support, so there is still exactly one inbox.
-  { key:'comms', label:'Comms', icon:'paper-plane', blurb:'Reach people', dept:'comms', sections:[
-    { key:'outreach', label:'Message someone', icon:'envelope-open-text', desc:'Start a thread with any merchant, shopper, rider or marketer' },
-    { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', desc:'Announce to a whole audience — in-app & push' },
-  ]},
-  { key:'growth', label:'Growth', icon:'seedling', blurb:'Scouts & offers', dept:'growth', sections:[
-    // Marketer APPLICANTS moved to Recruitment; Growth keeps the scouts who are already
-    // working and the money that goes with them.
-    { key:'scouts', label:'Scouts & payouts', icon:'people-group', desc:'Approve payouts & verify proofs' },
-    // Territory rather than payouts: where marketers are, where nobody is, and what each
-    // one is actually working. The Scouts screen next door stays the money workspace.
-    { key:'territories', label:'Territories & coverage', icon:'map-location-dot', desc:'County, sub-county and town — coverage and gaps' },
-    { key:'promotions', label:'Promotions & offers', icon:'tags', desc:'Campaigns & coupons', adminOnly:true },
-  ]},
+  /* Trust & Safety, Support, Comms and Growth in one workspace: they are the four that
+     face OUTWARD, at people who do not work here — shoppers, merchants, marketers. Four
+     separate rails meant one conversation with one customer could span all of them.
+
+     EVERY SECTION KEEPS ITS OWN `dept`, which is what stops this being a widening. The
+     workspace admits any of the four so the rail appears; each section is gated to the
+     one department that owns it, so somebody in Support sees tickets and refunds and not
+     the moderation queue. `canSee` gives a section's own dept priority over the
+     workspace's `anyDept` precisely for this. */
+  { key:'community', label:'Community', icon:'people-group', blurb:'Everyone outside the company',
+    anyDept:['safety', 'support', 'comms', 'growth'], sections:[
+      { key:'support', label:'Tickets', icon:'ticket', dept:'support', desc:'Help Center requests — reply, resolve & route' },
+      { key:'disputes', label:'Returns & refunds', icon:'rotate-left', dept:'support', desc:'Buyer refund requests — review & resolve' },
+      { key:'moderation', label:'Chat moderation', icon:'comment-slash', dept:'safety', desc:'Reported conversations — transcript & block' },
+      { key:'reviews', label:'Review moderation', icon:'star-half-stroke', dept:'safety', desc:'Reported reviews — remove fraud or dismiss' },
+      // Talking TO people rather than only answering them. Threads opened here land in
+      // Support, so there is still exactly one inbox.
+      { key:'outreach', label:'Message someone', icon:'envelope-open-text', dept:'comms', desc:'Start a thread with any merchant, shopper, rider or marketer' },
+      { key:'broadcasts', label:'Broadcasts', icon:'bullhorn', dept:'comms', desc:'Announce to a whole audience — in-app & push' },
+      // Marketer APPLICANTS live in Recruitment; this keeps the scouts already working
+      // and the money that goes with them.
+      { key:'scouts', label:'Scouts & payouts', icon:'people-group', dept:'growth', desc:'Approve payouts & verify proofs' },
+      { key:'territories', label:'Territories & coverage', icon:'map-location-dot', dept:'growth', desc:'County, sub-county and town — coverage and gaps' },
+      { key:'promotions', label:'Promotions & offers', icon:'tags', dept:'growth', desc:'Campaigns & coupons', adminOnly:true },
+    ]},
   { key:'finance', label:'Finance', icon:'coins', blurb:'Money', dept:'finance', sections:[
     { key:'finance', label:'Revenue & ledger', icon:'chart-line', desc:'Live platform revenue and internal ledger' },
     // Finance rather than People on purpose: a payroll run posts a cost to the ledger and
     // exposes every salary in one screen, so it sits behind the finance gate the callables
     // enforce (assertLead 'finance'), not the HR one.
     { key:'payroll', label:'Payroll', icon:'money-check-dollar', desc:'Monthly pay, PAYE & statutory deductions' },
+    // The deadlines a payroll run creates, beside the run that creates them — rather than
+    // in a compliance workspace Finance would otherwise have to be admitted to.
+    { key:'filings', label:'Statutory filings', icon:'calendar-check', desc:'PAYE, NSSF, SHIF and the housing levy — what is owed, and by when' },
   ]},
   { key:'people', label:'People', icon:'users', blurb:'HR', dept:'people', sections:[
     { key:'people', label:'Directory', icon:'address-book', desc:'Employee directory, onboarding & offboarding' },
@@ -104,24 +112,27 @@ const WORKSPACES = [
     // that a People lead is needed to edit somebody else's.
     { key:'statutory', label:'Statutory numbers', icon:'id-card', desc:'KRA PIN, NSSF & SHIF — what PAYE returns are filed against' },
     { key:'contracts', label:'Contracts', icon:'file-signature', desc:'Individual employment terms, pay and renewals' },
+    // The document side of compliance, where People already work. Same screen as the
+    // Legal register, narrowed to the tab that is theirs.
+    { key:'documents', label:'Employee documents', icon:'folder-open', desc:'IDs, permits and clearances — what is on file, and what has lapsed' },
     // Job applications moved to Recruitment, beside the rider and marketer funnels.
   ]},
   { key:'intelligence', label:'Intelligence', icon:'chart-pie', blurb:'BI', dept:'intelligence', sections:[
     { key:'intelligence', label:'Business intelligence', icon:'chart-pie', desc:'Cross-platform data repository + AI brief' },
   ]},
-  { key:'legal', label:'Legal', icon:'gavel', blurb:'Compliance', dept:'legal', sections:[
-    // Deliberately no longer says "compliance": the register next door is the one place
-    // for that, and two screens claiming the word sent people to the wrong one.
+  /* Legal and compliance are one job and one workspace, and it admits ONLY legal.
+     Somebody hired into legal and compliance should see legal and compliance — not
+     Finance's ledger, not the HR directory — so this is `dept:'legal'` and nothing wider.
+
+     The other two departments with a stake in the register are given THEIR slice of it in
+     THEIR own workspace instead (Finance → Statutory filings, People → Employee
+     documents). That is the same rule applied consistently: each department gets the
+     compliance work that is its own, where it already works, rather than everyone being
+     admitted to a shared screen. */
+  { key:'legal', label:'Legal', icon:'gavel', blurb:'Records & compliance', dept:'legal', sections:[
     { key:'legal', label:'Records', icon:'scale-balanced', desc:'Contracts, policies and legal cases' },
+    { key:'compliance', label:'Compliance register', icon:'file-shield', desc:'Licences and registrations the company must hold to trade' },
   ]},
-  /* Its own workspace rather than a section of Legal, because it genuinely belongs to
-     three departments at once: Legal renews the licences, Finance files the returns,
-     People chase the employee documents. `anyDept` mirrors the server, which admits all
-     three, and the screen's own tabs show each of them only their half. */
-  { key:'compliance', label:'Compliance', icon:'file-shield', blurb:'Licences & documents',
-    anyDept:['legal', 'finance', 'people'], sections:[
-      { key:'compliance', label:'Compliance register', icon:'file-shield', desc:'Licences, employee documents & statutory filing deadlines' },
-    ]},
   /* One home for every application, for the same reason Compliance is one workspace:
      three funnels each sat correctly in a different department, which meant there was no
      single answer to "who has applied to us". Each tab inside stays gated to the
@@ -139,7 +150,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, recruitment:Recruitment, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, filings:StatutoryFilings, documents:EmployeeDocuments, recruitment:Recruitment, account:MyAccount, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};
@@ -153,11 +164,14 @@ WORKSPACES.forEach((w) => w.sections.forEach((s) => { SECTION_INDEX[s.key] = { s
 const canSee = (node, isAdmin, depts) => {
   if (isAdmin) return true;
   if (node.adminOnly) return false;
-  // Some things belong to more than one department — the compliance register is owned by
-  // Legal, filed by Finance and chased by People, and the server admits all three.
+  // A node's OWN department wins. This order is load-bearing: a workspace that admits
+  // several departments passes `anyDept` down to its sections, and a section that names
+  // its own department must not be widened by it. Checking anyDept first would show every
+  // section of a shared workspace to everyone in any of its departments — a Support agent
+  // reading the moderation queue, for one.
+  if (node.dept) return depts.includes(node.dept);
   if (Array.isArray(node.anyDept)) return node.anyDept.some((d) => depts.includes(d));
-  if (node.dept === undefined || node.dept === null) return true;   // Command: everyone
-  return depts.includes(node.dept);
+  return node.dept === undefined || node.dept === null;   // Command: everyone
 };
 function visibleWorkspaces(isAdmin, depts = []) {
   return WORKSPACES
@@ -165,7 +179,9 @@ function visibleWorkspaces(isAdmin, depts = []) {
     .map((w) => ({ ...w, sections: w.sections.filter((sec) => canSee({
       ...sec,
       dept: sec.dept === undefined ? w.dept : sec.dept,
-      anyDept: sec.anyDept === undefined ? w.anyDept : sec.anyDept,
+      // Only inherited when the section does not name its own department — otherwise the
+      // narrower rule would be silently replaced by the wider one.
+      anyDept: sec.dept !== undefined ? undefined : (sec.anyDept === undefined ? w.anyDept : sec.anyDept),
     }, isAdmin, depts)) }))
     .filter((w) => w.sections.length > 0);
 }

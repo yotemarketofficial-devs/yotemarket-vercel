@@ -286,6 +286,69 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  /**
+   * Which sign-in methods this account actually has.
+   *
+   * A staff member who signed in with Google has NO password to change, and offering them
+   * a change-password form produces an SDK error nobody can act on. Asked rather than
+   * assumed, so the screen can say what is true for that person.
+   */
+  const signInMethods = useMemo(() => {
+    const providers = (user?.providerData || []).map((x) => x?.providerId).filter(Boolean);
+    return {
+      providers,
+      hasPassword: providers.includes('password'),
+      hasGoogle: providers.includes('google.com'),
+    };
+  }, [user]);
+
+  /**
+   * Change your own password.
+   *
+   * THE PASSWORD NEVER REACHES OUR BACKEND, which is the same rule the staff-badge sign-in
+   * follows: Firebase verifies the old one and stores the new one, and no server of ours
+   * sees either. Handling staff passwords ourselves would mean being able to log them and
+   * would buy nothing.
+   *
+   * Reauthentication first, and it is a feature rather than an obstacle: without it, anyone
+   * who found an unlocked laptop could take the account permanently by setting a new
+   * password. Firebase demands it for a session that is not recent; doing it every time
+   * makes the behaviour predictable instead of intermittently surprising.
+   */
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    if (!firebaseEnabled) throw new Error('Not connected — password changes need the live backend.');
+    const { auth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await sdk();
+    const u = auth?.currentUser;
+    if (!u) throw new Error('Sign in again before changing your password.');
+
+    const providers = (u.providerData || []).map((x) => x?.providerId);
+    if (!providers.includes('password')) {
+      throw new Error(
+        'This account signs in with Google, so it has no password to change. '
+        + 'Change it in your Google account instead.');
+    }
+    if (!u.email) throw new Error('This account has no email address on it, so the current password cannot be checked.');
+
+    try {
+      await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, String(currentPassword || '')));
+    } catch (err) {
+      // Told apart deliberately: "your current password is wrong" and "the service is
+      // rate-limiting you" need completely different responses from the person typing.
+      const code = err?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        throw new Error('That is not your current password.');
+      }
+      throw new Error(friendlyError(err));
+    }
+
+    try {
+      await updatePassword(u, String(newPassword || ''));
+    } catch (err) {
+      throw new Error(friendlyError(err));
+    }
+    return { ok: true };
+  }, []);
+
   // A "real account" is a signed-in user that isn't an anonymous/local guest.
   const isGuest = Boolean(user?.isGuest) || Boolean(user?.isAnonymous);
   const hasAccount = Boolean(user) && !isGuest;
@@ -307,8 +370,10 @@ export function AuthProvider({ children }) {
       signOutUser,
       resendVerification,
       resetPassword,
+      changePassword,
+      signInMethods,
     }),
-    [user, loading, hasAccount, isGuest, redirectError, signInEmail, registerEmail, signInGoogle, signInWithGoogleCredential, continueAsGuest, signOutUser, resendVerification, resetPassword],
+    [user, loading, hasAccount, isGuest, redirectError, signInEmail, registerEmail, signInGoogle, signInWithGoogleCredential, continueAsGuest, signOutUser, resendVerification, resetPassword, changePassword, signInMethods],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
