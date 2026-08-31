@@ -220,7 +220,12 @@ function RefTable({ rows, compact }){
           {rows.map(r=>(
             <tr key={r.id} style={{borderTop:'1px solid var(--line)'}}>
               <td className="px-5 py-3"><div className="font-semibold t1">{r.shop}</div></td>
-              <td className="px-4 py-3 t2">{r.county}</td>
+              {/* County is the canonical one now, so it can be blank where the shop never
+                  gave one. The finer place still shows, rather than an empty cell. */}
+              <td className="px-4 py-3 t2">
+                <div>{r.county || <span className="t3">—</span>}</div>
+                {r.place && <div className="text-xs t3">{r.place}</div>}
+              </td>
               {!compact && <td className="px-4 py-3"><ReqDots n={r.items} max={2} /></td>}
               <td className="px-4 py-3">
                 {(!r.follow || r.follow==='none' || r.follow==='rejected')

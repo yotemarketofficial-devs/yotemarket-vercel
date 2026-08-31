@@ -58,7 +58,10 @@ export async function fetchMyReferrals(uid) {
   const rows = list.map((r) => ({
     id: r.storeId,
     shop: r.name || 'Store',
-    county: r.area || '',
+    // The canonical county, not the free-text area box that used to be labelled one.
+    // The area rides along as the finer line so a scout still recognises the shop.
+    county: r.county || '',
+    place: [r.town, r.area].filter(Boolean).filter((v, i, xs) => xs.indexOf(v) === i).join(' · '),
     items: r.listed ? 2 : 0,
     follow: r.follow || 'none', // none|submitted|approved|rejected
     status: r.activated ? 'verified' : 'pending', // 'verified' == activated (first paid sale)
