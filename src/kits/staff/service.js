@@ -408,8 +408,8 @@ export async function fetchMarketerCoverage(level) {
 // Where our merchants are, as opposed to where our scouts are. Same map, different
 // question, and the gap between the two is the one worth acting on.
 
-export async function fetchMerchantCoverage(level) {
-  const d = await call('staffMerchantCoverage')({ level });
+export async function fetchMerchantCoverage(level, county) {
+  const d = await call('staffMerchantCoverage')({ level, county: county || null });
   if (!d || !Array.isArray(d.rollup)) throw new Error('staffMerchantCoverage: unexpected shape');
   return d;
 }

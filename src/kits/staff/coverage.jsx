@@ -192,6 +192,9 @@ function Backfill({ onDone }) {
 /* ── Merchant coverage ────────────────────────────────────────────────────── */
 export function MerchantCoverage() {
   const [level, setLevel] = useState('county');
+  // Below county the levels are open sets — there is no list of every Kenyan sub-county to
+  // count against — so drilling in needs a county, which also bounds the read to it.
+  const [within, setWithin] = useState('');
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const { isAdmin } = useStaffClaims();
@@ -199,11 +202,11 @@ export function MerchantCoverage() {
   const load = useCallback(() => {
     let alive = true;
     setErr(null);
-    fetchMerchantCoverage(level)
+    fetchMerchantCoverage(level, within)
       .then((d) => { if (alive) setData(d); })
       .catch((e) => { if (alive) setErr(e?.message || 'Could not load coverage.'); });
     return () => { alive = false; };
-  }, [level]);
+  }, [level, within]);
 
   useEffect(load, [load]);
 
@@ -227,27 +230,36 @@ export function MerchantCoverage() {
     <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Trading merchants" value={t.merchants || 0} icon="store" tone="pri"
-          sub={t.suspended ? `${t.suspended} suspended, not counted` : null} />
+          sub={within ? `in ${within}` : null} />
         <Stat label="Counties reached" value={47 - (data.uncovered?.length || 0)} icon="map" tone="green" sub="of 47" />
-        <Stat label="No location at all" value={t.unassigned || 0} icon="circle-question" tone="amber" />
-        <Stat label="County unrecognised" value={t.unresolved || 0} icon="triangle-exclamation" tone="red" />
+        <Stat label="No location set" value={t.unassigned || 0} icon="circle-question" tone="amber" />
+        <Stat label="Suspended" value={t.suspended || 0} icon="ban" tone="blue" sub="not counted as coverage" />
       </div>
 
-      {!!t.derived && (
-        <div className="text-xs t3 rounded p-2.5" style={{ background: 'var(--surface2)' }}>
-          <Icon name="circle-info" /> {t.derived} of these were read out of the old free-text area box
-          rather than stated by the merchant. They are the ones most worth checking.
-        </div>
-      )}
-
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {[['county', 'County'], ['subCounty', 'Sub-county'], ['town', 'Town / village']].map(([k, label]) => (
           <Btn key={k} kind={level === k ? 'primary' : 'ghost'} size="sm" onClick={() => setLevel(k)}>{label}</Btn>
         ))}
+        {level !== 'county' && (
+          <select className="ym-input" style={{ minWidth: 170 }} value={within}
+            onChange={(e) => setWithin(e.target.value)}>
+            <option value="">Pick a county to drill into…</option>
+            {KE_COUNTY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        {within && <Btn kind="ghost" size="sm" icon="xmark" onClick={() => { setWithin(''); setLevel('county'); }}>Clear</Btn>}
       </div>
 
+      {level !== 'county' && !within && (
+        <Card className="p-5 text-sm t3">
+          Pick a county above. Sub-counties and villages are open lists — there is no complete
+          register of them to count against — so this level is read within one county rather
+          than guessed at across all 47.
+        </Card>
+      )}
+
       <Card className="p-5">
-        <h3 className="font-bold t1 mb-2">Where our merchants are</h3>
+        <h3 className="font-bold t1 mb-2">Where our merchants are{within ? ` — ${within}` : ''}</h3>
         {data.rollup?.length ? (
           <div className="space-y-1">
             {data.rollup.map((r) => (
@@ -272,8 +284,9 @@ export function MerchantCoverage() {
       </Card>
 
       {/* The cross-tab neither list answers alone. Both sides are an action; a coverage
-          count on its own is only a number. */}
-      <div className="grid md:grid-cols-2 gap-4">
+          count on its own is only a number. Only meaningful at county level, which is the
+          level a scout's territory is set at. */}
+      {level === 'county' && <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
             <h3 className="font-bold t1"><Icon name="user-plus" /> Merchants, no scout</h3>
@@ -301,9 +314,9 @@ export function MerchantCoverage() {
             {!gaps.scoutNoMerchants?.length && <span className="text-xs t3">Every scout's county has at least one merchant.</span>}
           </div>
         </Card>
-      </div>
+      </div>}
 
-      <Card className="p-5">
+      {level === 'county' && <Card className="p-5">
         <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
           <h3 className="font-bold t1"><Icon name="map-pin" /> Counties with no merchant</h3>
           <Pill tone={data.uncovered?.length ? 'amber' : 'ok'}>{data.uncovered?.length || 0} of 47</Pill>
@@ -317,7 +330,7 @@ export function MerchantCoverage() {
             <span key={c} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface2)', color: 'var(--t2)' }}>{c}</span>
           ))}
         </div>
-      </Card>
+      </Card>}
 
       {isAdmin && <Backfill onDone={load} />}
     </div>
