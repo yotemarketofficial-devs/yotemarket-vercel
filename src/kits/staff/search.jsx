@@ -56,8 +56,10 @@ export default function GlobalSearch({ open, onClose, sections, go, isAdmin }) {
     const secs = ql ? sections.filter((s) => has(ql, s.label, s.wsLabel, s.desc)) : sections;
     secs.slice(0, ql ? 6 : sections.length).forEach((s) => out.push({ type:'section', key:s.key, icon:s.icon, title:s.label, sub:s.wsLabel }));
     if (ql && data) {
-      data.merchants.filter((m) => has(ql, m.shop, m.owner, m.county, m.id)).slice(0, 6)
-        .forEach((m) => out.push({ type:'merchant', record:m, icon:'store', title:m.shop || m.id, sub:`${m.owner || ''}${m.county ? ' · ' + m.county : ''}` || 'Merchant' }));
+      // county is now the canonical one of the 47, so the finer text has to be searched
+      // too — it used to hold the raw area box, and "Westlands" would stop matching.
+      data.merchants.filter((m) => has(ql, m.shop, m.owner, m.county, m.town, m.subCounty, m.area, m.id)).slice(0, 6)
+        .forEach((m) => out.push({ type:'merchant', record:m, icon:'store', title:m.shop || m.id, sub:`${m.owner || ''}${m.county ? ' · ' + m.county : ''}${m.town && m.town !== m.county ? ' · ' + m.town : ''}` || 'Merchant' }));
       data.scouts.filter((s) => has(ql, s.name, s.county, s.id)).slice(0, 6)
         .forEach((s) => out.push({ type:'scout', record:s, icon:'user-group', title:s.name || s.id, sub:s.county || 'Scout' }));
       data.users.filter((u) => has(ql, u.email, u.name, u.uid)).slice(0, 8)
