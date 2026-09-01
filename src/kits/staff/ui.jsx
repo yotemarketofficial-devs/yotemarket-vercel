@@ -92,18 +92,27 @@ export const Bar = ({ pct, color }) => (
 export function SectionHead({ icon, title, sub, action }){
   return (
     <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
-      {/* Centred against the text when the title stands alone — the chip is 40px and a
-          single title line is nearer 30, so top-aligning left it visibly hanging. With a
-          subtitle the chip stays top-aligned so it pairs with the TITLE rather than
-          drifting to the middle of a block that may run to several lines. */}
-      <div className={`flex gap-3 ${sub ? 'items-start' : 'items-center'}`}>
+      {/* `min-w-0 flex-1` is what keeps the action on this row. A flex item will not
+          shrink below the width of its own content unless min-width is cleared, so the
+          title group held its full natural width and shoved the action onto a line of its
+          own — on screens with plenty of room to spare. Now the group yields space and
+          the title wraps within it instead.
+
+          The outer flex-wrap stays as a last resort: on a genuinely tiny viewport it is
+          better for the action to drop below than to be crushed or overflow.
+
+          The chip is centred against the text when the title stands alone — it is 40px
+          against a title line nearer 30, so top-aligning left it visibly hanging. With a
+          subtitle it stays top-aligned, pairing with the TITLE rather than drifting to
+          the middle of a block that may run to several lines. */}
+      <div className={`flex gap-3 min-w-0 flex-1 ${sub ? 'items-start' : 'items-center'}`}>
         {icon && <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name={icon}/></div>}
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold t1 leading-tight">{title}</h1>
           {sub && <p className="text-sm t3 mt-0.5">{sub}</p>}
         </div>
       </div>
-      {action}
+      {action && <div className="flex-shrink-0">{action}</div>}
     </div>
   );
 }
