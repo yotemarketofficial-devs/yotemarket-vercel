@@ -17,6 +17,7 @@
    department lead needs to run their team, which does not require knowing what they earn. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, Avatar, Stat, Modal, EmptyState, Seg, kes } from './ui.jsx';
+import { DocumentsPanel } from './documents.jsx';
 import { useDialogs } from './dialogs.jsx';
 // Just the accept-list string. pdfjs and mammoth inside are dynamically imported,
 // so this costs nothing until somebody actually picks a file.
@@ -25,6 +26,7 @@ import {
   fetchEmployeeRecord, saveEmployeeReview, fileComplaint, resolveComplaint,
   setEmployeeDetails, setStaffProfile, DEPT_LABEL, TIER_LABEL, useStaffClaims,
   setLinkedIn, importLinkedInResume, parseResumeText, saveResumeClaim, fetchResumeComparison,
+  fetchVerificationPlan, recordVerification,
 } from './service.js';
 
 const { useState, useEffect, useCallback } = React;
@@ -35,6 +37,11 @@ const EDUCATION_LEVELS = [
   ['masters', "Master's"], ['doctorate', 'Doctorate'],
 ];
 const EDU_LABEL = Object.fromEntries(EDUCATION_LEVELS);
+
+const VSTATUS_TONE = {
+  verified: 'ok', corroborated: 'blue', contradicted: 'red',
+  not_found: 'red', inconclusive: 'amber', unchecked: 'amber',
+};
 
 const COMPLAINT_TONE = { open:'red', investigating:'amber', upheld:'red', dismissed:'blue', resolved:'ok' };
 const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }) : '—');
@@ -531,6 +538,190 @@ function DiscrepancyPanel({ uid }) {
   );
 }
 
+/* Recording one check. The outcome vocabulary is fixed at four states so that "we could
+   not find them" and "the register says otherwise" can never be collapsed into each
+   other — they mean completely different things about a person. */
+function RecordCheckModal({ uid, claim, check, onClose, onSaved }) {
+  const [outcome, setOutcome] = useState('confirmed');
+  const [note, setNote] = useState('');
+  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const save = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await recordVerification({ uid, claimId: claim.claimId, target: check.target, outcome, note, evidenceUrl });
+      onSaved(); onClose();
+    } catch (e) { setErr(e.message || 'Could not record that.'); }
+    finally { setBusy(false); }
+  };
+
+  const field = { width:'100%', padding:'8px 10px', border:'1px solid var(--line)', borderRadius:8, background:'var(--bg)', color:'var(--t1)' };
+
+  return (
+    <Modal
+      title={check.label}
+      subtitle={`${claim.title || ''}${claim.company ? ` at ${claim.company}` : ''}`}
+      icon="clipboard-check"
+      onClose={onClose}
+      maxWidth={540}
+      footer={
+        <>
+          <Btn kind="ghost" onClick={onClose}>Cancel</Btn>
+          <Btn icon="check" onClick={save} disabled={busy}>{busy ? 'Recording…' : 'Record finding'}</Btn>
+        </>
+      }
+    >
+      <div className="space-y-3 text-sm">
+        <div className="text-xs t3">{check.verifies}</div>
+        {check.note && <div className="text-xs t3">{check.note}</div>}
+
+        <div>
+          <div className="text-xs t3 mb-1">What did the check show?</div>
+          <Seg value={outcome} onChange={setOutcome} options={['confirmed', 'not_found', 'contradicted', 'inconclusive']}
+            fmt={(o) => ({
+              confirmed: 'Confirmed', not_found: 'Not found',
+              contradicted: 'Contradicted', inconclusive: 'Inconclusive',
+            }[o])} />
+          {outcome === 'not_found' && !check.absenceMeaningful && (
+            /* Said here so nobody records an absence as though it counted. */
+            <div className="text-xs t3 mt-1">
+              An absence from this source means nothing on its own — it is recorded, but it will not count against the claim.
+            </div>
+          )}
+          {outcome === 'contradicted' && (
+            <div className="text-xs mt-1" style={{ color:'var(--red)' }}>
+              This is the finding that can cost somebody their job. Say what you actually saw, not what you concluded.
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="text-xs t3 mb-1">What you saw{outcome === 'contradicted' ? ' (required)' : ''}</div>
+          <textarea style={{ ...field, minHeight: 90, resize:'vertical', fontFamily:'inherit' }}
+            value={note} onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Register lists her as admitted 2016, practising certificate current." />
+        </div>
+
+        <div>
+          <div className="text-xs t3 mb-1">Link to the evidence (optional)</div>
+          <input style={field} value={evidenceUrl} onChange={(e) => setEvidenceUrl(e.target.value)} placeholder="https://…" />
+        </div>
+
+        {err && <div className="text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</div>}
+      </div>
+    </Modal>
+  );
+}
+
+function VerificationPanel({ uid, canVerify }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(null);      // claimId currently expanded
+  const [recording, setRecording] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setData(await fetchVerificationPlan(uid)); setErr(null); }
+    catch (e) { setErr(e.message || 'Could not load the verification plan.'); }
+    finally { setLoading(false); }
+  }, [uid]);
+  useEffect(() => { load(); }, [load]);
+
+  if (!canVerify) return null;
+  if (loading) return null;
+  if (err) return <Card className="p-5 text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</Card>;
+
+  const r = data.rollup;
+  if (!data.claims.length) {
+    return (
+      <Card className="p-5">
+        <h3 className="font-bold t1 mb-1"><Icon name="user-shield" /> Verification</h3>
+        <div className="text-xs t3">No claims on file to check. File a CV or a profile first.</div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-5 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-bold t1"><Icon name="user-shield" /> Verification</h3>
+          <div className="text-xs t3">
+            Only the body that issued a credential can verify it. Corroboration is worth recording and is not proof.
+          </div>
+        </div>
+        <Pill tone={r.attention ? 'red' : (r.verified ? 'ok' : 'amber')}>
+          {r.verified} of {r.total} verified
+        </Pill>
+      </div>
+
+      {data.claims.map((c) => (
+        <div key={c.claimId} className="py-2" style={{ borderTop:'1px solid var(--line)' }}>
+          <button
+            onClick={() => setOpen(open === c.claimId ? null : c.claimId)}
+            className="w-full flex items-start justify-between gap-3 text-left"
+            style={{ background:'none', border:0, padding:0, cursor:'pointer' }}
+          >
+            <div className="min-w-0">
+              <div className="t1 font-semibold text-sm">{c.title || '—'}</div>
+              <div className="text-xs t3">
+                {c.company}
+                {c.startYear ? ` · ${c.startYear}${c.endYear ? `–${c.endYear}` : ''}` : ''}
+                {/* A role only one account mentions is the one to check first. */}
+                {c.claimedBy.length === 1 ? ` · only on the ${c.claimedBy[0]}` : ''}
+              </div>
+            </div>
+            <Pill tone={VSTATUS_TONE[c.verification.status]}>{c.verification.label}</Pill>
+          </button>
+
+          {open === c.claimId && (
+            <div className="mt-2 space-y-1">
+              {c.checks.map((chk) => (
+                <div key={chk.target} className="flex items-center justify-between gap-2 text-sm py-1">
+                  <div className="min-w-0">
+                    <span className="t2">{chk.label}</span>
+                    <span className="text-xs t3"> · {chk.strength}</span>
+                    {chk.recorded && (
+                      <div className="text-xs t3">
+                        {chk.recorded.outcome}
+                        {chk.recorded.note ? ` — ${chk.recorded.note}` : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {chk.searchUrl && (
+                      <a href={chk.searchUrl} target="_blank" rel="noreferrer noopener">
+                        <Btn kind="ghost" size="sm" icon="magnifying-glass">Look</Btn>
+                      </a>
+                    )}
+                    <Btn kind="ghost" size="sm" icon="pen"
+                      onClick={() => setRecording({ claim: c, check: chk })}>
+                      {chk.recorded ? 'Update' : 'Record'}
+                    </Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {recording && (
+        <RecordCheckModal
+          uid={uid}
+          claim={recording.claim}
+          check={recording.check}
+          onClose={() => setRecording(null)}
+          onSaved={load}
+        />
+      )}
+    </Card>
+  );
+}
+
 /* ── Screen ───────────────────────────────────────────────────────────────── */
 export function EmployeeRecord({ uid, onBack }) {
   const [rec, setRec] = useState(null);
@@ -602,6 +793,10 @@ export function EmployeeRecord({ uid, onBack }) {
           sub={`${rec.attendance?.daysWorked || 0} days on the clock`} tone="pri" />
       </div>
 
+      {/* The papers this person must have on file. Attaching is open to them; only
+          People may tick verified, which is why the panel asks the claims itself. */}
+      <DocumentsPanel uid={uid} />
+
       {/* Education */}
       <Card className="p-5">
         <h3 className="font-bold t1 mb-2"><Icon name="graduation-cap" /> Education</h3>
@@ -614,6 +809,7 @@ export function EmployeeRecord({ uid, onBack }) {
       {/* Profile & resume */}
       <ResumeCard rec={rec} canEdit={isPeople || isSelf} onChanged={load} />
       <DiscrepancyPanel uid={uid} />
+      <VerificationPanel uid={uid} canVerify={isPeople} />
 
       {/* Employment */}
       <Card className="p-5">
