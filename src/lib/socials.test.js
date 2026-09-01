@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { SOCIAL_LINKS, ORG_SAME_AS, FOUNDERS, WHATSAPP_URL, founderSameAs } from './socials.js';
+import { SOCIAL_LINKS, COMPANY_PROFILES, ORG_SAME_AS, FOUNDERS, WHATSAPP_URL, founderSameAs } from './socials.js';
 
 /* The identity YoteMarket claims lives in two files that cannot import each other:
  * lib/socials.js (the app) and the JSON-LD in index.html (what crawlers and AI answer
@@ -47,6 +47,30 @@ describe('the organisation entity in index.html', () => {
   });
 });
 
+describe('the company directory profiles', () => {
+  it('are absolute https urls, listed once each', () => {
+    const labels = COMPANY_PROFILES.map((p) => p.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    for (const { label, url } of COMPANY_PROFILES) expect(url, label).toMatch(/^https:\/\//);
+  });
+
+  it('are claimed in the organisation sameAs, like the social profiles', () => {
+    for (const { label, url } of COMPANY_PROFILES) expect(ORG_SAME_AS, label).toContain(url);
+  });
+
+  it('are linked from the About page, so a crawler can follow them', () => {
+    // sameAs is a claim; the outbound link is what a crawler follows. An off-site profile
+    // cannot go in sitemap.xml (same-host rule), so this page is how it gets discovered.
+    const about = readFileSync(new URL('../pages/About.jsx', import.meta.url), 'utf8');
+    expect(about).toContain('COMPANY_PROFILES');
+  });
+
+  it('never appear in the sitemap — it may only advertise our own host', () => {
+    const gen = readFileSync(new URL('../../scripts/generate-sitemap.mjs', import.meta.url), 'utf8');
+    for (const { label, url } of COMPANY_PROFILES) expect(gen, label).not.toContain(url);
+  });
+});
+
 describe('the founder entities in index.html', () => {
   it('covers every founder socials.js knows about', () => {
     const ids = org.founder.map((f) => String(f['@id']).split('#')[1]);
@@ -74,5 +98,13 @@ describe('the founder entities in index.html', () => {
     const about = readFileSync(new URL('../pages/About.jsx', import.meta.url), 'utf8');
     expect(about).toContain("from '../lib/socials.js'");
     for (const f of FOUNDERS) expect(about, f.id).toContain(f.id);
+  });
+
+  it('renders ALL of a founder\'s profiles, not just the first', () => {
+    // The page used to hard-code `links[0]`, so adding a second profile to a founder
+    // claimed it in sameAs while the page still linked only the LinkedIn one.
+    const about = readFileSync(new URL('../pages/About.jsx', import.meta.url), 'utf8');
+    expect(about).not.toMatch(/links\[\d+\]/);
+    expect(FOUNDERS.some((f) => f.links.length > 1)).toBe(true);
   });
 });
