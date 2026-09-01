@@ -99,4 +99,12 @@ describe('the founder entities in index.html', () => {
     expect(about).toContain("from '../lib/socials.js'");
     for (const f of FOUNDERS) expect(about, f.id).toContain(f.id);
   });
+
+  it('renders ALL of a founder\'s profiles, not just the first', () => {
+    // The page used to hard-code `links[0]`, so adding a second profile to a founder
+    // claimed it in sameAs while the page still linked only the LinkedIn one.
+    const about = readFileSync(new URL('../pages/About.jsx', import.meta.url), 'utf8');
+    expect(about).not.toMatch(/links\[\d+\]/);
+    expect(FOUNDERS.some((f) => f.links.length > 1)).toBe(true);
+  });
 });

@@ -3,6 +3,27 @@ import { Link } from 'react-router-dom';
 // `sameAs` in index.html, or the entity splits. See lib/socials.js.
 import { COMPANY_PROFILES, FOUNDERS } from '../lib/socials.js';
 
+/* Every profile socials.js claims for a founder, as a rel="me" link.
+ *
+ * The whole list, never just the first entry: the Person `sameAs` in index.html
+ * claims all of them, and a profile claimed in JSON-LD but not linked from the page
+ * is the exact half-claim that leaves an entity unresolved. The first link carries
+ * the name ("Arnold on LinkedIn"), the rest just the site ("and Crunchbase"). */
+function FounderLinks({ id, first }) {
+  const links = FOUNDERS.find((f) => f.id === id).links;
+  return (
+    <>
+      {links.map((l, i) => (
+        <span key={l.url}>
+          {i === 0 ? '' : i === links.length - 1 ? ' and ' : ', '}
+          <a href={l.url} target="_blank" rel="noopener noreferrer me"
+            style={{ color: 'var(--purple)', fontWeight: 600 }}>{i === 0 ? `${first} on ${l.label}` : l.label}</a>
+        </span>
+      ))}
+    </>
+  );
+}
+
 function About() {
   return (
     <main>
@@ -68,8 +89,7 @@ function About() {
               media independently, and supports <em>Jacity Travellers &amp; Tours</em> in Nairobi with content
               and social campaigns in the travel sector. He is certified by Google in Digital Marketing
               Fundamentals and has studied information technology.{' '}
-              <a href={FOUNDERS.find((f) => f.id === 'moses-kiambi').links[0].url} target="_blank" rel="noopener noreferrer me"
-                style={{ color: 'var(--purple)', fontWeight: 600 }}>Moses on LinkedIn</a>.
+              <FounderLinks id="moses-kiambi" first="Moses" />.
             </p>
             <p id="arnold-kamau">
               <strong>Arnold Kamau — Chief Operating Officer (COO).</strong> Arnold carries the rest of the
@@ -89,8 +109,7 @@ function About() {
               University in the political economy of institutions and development and in international
               humanitarian law, and a specialisation in negotiation, mediation and conflict resolution from
               ESSEC Business School.{' '}
-              <a href={FOUNDERS.find((f) => f.id === 'arnold-kamau').links[0].url} target="_blank" rel="noopener noreferrer me"
-                style={{ color: 'var(--purple)', fontWeight: 600 }}>Arnold on LinkedIn</a>.
+              <FounderLinks id="arnold-kamau" first="Arnold" />.
             </p>
             <h3>YoteMarket elsewhere</h3>
             <p>

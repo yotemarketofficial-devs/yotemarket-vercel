@@ -54,6 +54,7 @@ export const FOUNDERS = [
     role: 'Chief Executive Officer (CEO)',
     links: [
       { label: 'LinkedIn', url: 'https://www.linkedin.com/in/moses-kiambi-84043625b' },
+      { label: 'Crunchbase', url: 'https://www.crunchbase.com/person/moses-kiambi' },
     ],
   },
   {
@@ -62,6 +63,7 @@ export const FOUNDERS = [
     role: 'Chief Operating Officer (COO)',
     links: [
       { label: 'LinkedIn', url: 'https://www.linkedin.com/in/arnold-w-554439198' },
+      { label: 'Crunchbase', url: 'https://www.crunchbase.com/person/arnold-wanjiku-1ce7' },
     ],
   },
 ];
