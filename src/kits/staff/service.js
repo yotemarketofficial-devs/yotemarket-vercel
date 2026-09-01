@@ -972,6 +972,20 @@ export async function fetchStaff() {
 export async function setStaffAccess({ email, role, departments }) {
   return call('staffSetRole')({ email, role, departments });
 }
+/** Find (and on commit, repair) staff who hold the six-department over-grant.
+ *  A role change made without naming departments used to write the full legacy
+ *  operational set, and the console called it that way — so people granted access before
+ *  that was fixed may still be holding all six. Dry run unless commit is true. */
+export async function repairStaffDepartments(commit = false) {
+  return call('staffRepairDepartments')({ commit: commit === true });
+}
+
+/** Give existing merchants and store employees their storeId claim, so the bucket can
+ *  tell whose folder an upload belongs in. Dry run unless commit is true. */
+export async function backfillStoreClaims(commit = false) {
+  return call('staffBackfillStoreClaims')({ commit: commit === true });
+}
+
 /** Onboard a new employee (HR record + console access). */
 export async function onboardStaff(args) { return call('onboardEmployee')(args); }
 /** Offboard — revokes portal access immediately. */

@@ -21,6 +21,7 @@ import {
   fetchStaff, setStaffAccess, onboardStaff, offboardStaff,
   clockIn, clockOut, fetchMyShifts, fetchAttendance, closeShift,
   ALL_DEPTS, DEPT_LABEL, TIER_LABEL, setStatutoryIds, setStaffProfile,
+  repairStaffDepartments,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useCallback } = React;
@@ -169,10 +170,98 @@ export function ClockControl({ rail = false, wide = false }) {
 }
 
 /* ══ Access & roles ═══════════════════════════════════════════════════════ */
+/* Repairing the six-department over-grant.
+
+   A role change made without naming departments used to write the whole legacy
+   operational set, and the console called it exactly that way from two screens. So people
+   granted access before that was fixed may be holding marketplace, logistics, safety,
+   support, growth and comms without anyone having decided that.
+
+   It NEVER repairs silently. An admin could in principle have picked those six by hand,
+   so the dry run names everybody and what they would become, and a person decides. */
+function DepartmentRepair({ isAdmin, onDone }) {
+  const { confirm, toast } = useDialogs();
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!isAdmin) return null;
+
+  const run = async (commit) => {
+    setBusy(true);
+    try {
+      const r = await repairStaffDepartments(commit);
+      if (commit) {
+        toast({ tone: 'ok', title: `Repaired ${r.repaired} record${r.repaired === 1 ? '' : 's'}` });
+        setPreview(null); onDone && onDone();
+      } else if (!r.affected) {
+        toast({ tone: 'ok', title: 'Nothing to repair — every record names its own departments.' });
+        setPreview(r);
+      } else setPreview(r);
+    } catch (e) {
+      toast({ tone: 'error', title: 'Could not check', body: e?.message || 'Try again.' });
+    } finally { setBusy(false); }
+  };
+
+  const apply = async () => {
+    const ok = await confirm({
+      title: `Narrow ${preview.affected} record${preview.affected === 1 ? '' : 's'}?`,
+      body: 'Each person keeps the department their HR record names, or support if it names '
+          + 'none. Anyone who needs more gets it here, which is a decision somebody makes '
+          + 'rather than one the code made for them.',
+      confirmLabel: 'Narrow them',
+    });
+    if (ok) run(true);
+  };
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+        <h3 className="font-bold t1"><Icon name="user-shield" /> Check for over-granted access</h3>
+        <Btn kind="ghost" size="sm" icon={busy && !preview ? 'spinner' : 'magnifying-glass'}
+          disabled={busy} onClick={() => run(false)}>Check</Btn>
+      </div>
+      <p className="text-xs t3">
+        Granting a role used to hand out six departments — including safety, which moderates
+        people, and marketplace, which suspends merchants. This finds anyone still holding
+        them and shows what each would become before anything changes.
+      </p>
+
+      {preview && (
+        <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Stat label="Records affected" value={preview.affected} icon="triangle-exclamation"
+              tone={preview.affected ? 'amber' : 'green'} />
+            <Stat label="Would keep" value={preview.affected ? 'their HR department' : '—'}
+              icon="building" tone="blue" />
+            <Stat label="Fallback" value="support" icon="life-ring" tone="pri" />
+          </div>
+
+          {!!preview.sample?.length && (
+            <div className="text-xs t3 space-y-1 max-h-56 overflow-y-auto">
+              {preview.sample.map((a) => (
+                <div key={a.uid} className="flex gap-2 py-1 items-center" style={{ borderTop: '1px solid var(--line)' }}>
+                  <span className="flex-1 truncate t2">{a.name}</span>
+                  <span className="truncate" style={{ maxWidth: 150 }}>{a.reason}</span>
+                  <Icon name="arrow-right" />
+                  <span className="font-semibold t2">{a.to.map((d) => DEPT_LABEL[d] || d).join(', ')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!!preview.affected && (
+            <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'check'} disabled={busy}
+              onClick={apply}>Narrow {preview.affected} record{preview.affected === 1 ? '' : 's'}</Btn>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function StaffAccess() {
   const { data, live, error, demo, reload } = useStaffResource(fetchStaff, []);
   const { confirm, toast } = useDialogs();
-  const { user } = useStaffClaims();
+  const { user, isAdmin } = useStaffClaims();
   const [editing, setEditing] = useState(null);   // employee row
   const [adding, setAdding] = useState(false);
 
@@ -196,6 +285,7 @@ export function StaffAccess() {
       sub={demo ? 'No backend configured' : (live ? 'What each person can open, and what they can do there' : 'Loading the team…')}
       action={<Btn kind="primary" size="md" icon="user-plus" onClick={() => setAdding(true)}>Add someone</Btn>} />
     <BackendError error={error} onRetry={reload} />
+    <DepartmentRepair isAdmin={isAdmin} onDone={reload} />
 
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Stat label="Active staff" value={active.length} sub={`${rows.length - active.length} offboarded`} icon="users" tone="pri" />
