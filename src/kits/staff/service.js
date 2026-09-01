@@ -315,28 +315,6 @@ export async function deleteResumeClaim({ uid, source }) {
   return call('staffDeleteResumeClaim')({ uid, source });
 }
 
-// Verification against the bodies that ISSUED a credential — the half of "OSINT" that
-// proves anything. The plan generates one-click searches; a NAMED HUMAN runs them and
-// records what they found. Nothing here fetches a person's name off the open web: a name
-// match is not an identity match, and an automated dossier on an employee is what s.35 of
-// the Data Protection Act lets them object to.
-
-export async function fetchVerificationPlan(uid) {
-  const d = await call('staffVerificationPlan')({ uid });
-  if (!d || !Array.isArray(d.claims)) throw new Error('staffVerificationPlan: unexpected shape');
-  return d;
-}
-
-export async function recordVerification(args) {
-  return call('staffRecordVerification')(args);
-}
-
-export async function fetchVerifications(uid) {
-  const d = await call('staffVerifications')(uid ? { uid } : {});
-  if (!d || !d.rollup) throw new Error('staffVerifications: unexpected shape');
-  return d;
-}
-
 // ── Compliance ───────────────────────────────────────────────────────────────
 // Two registers that share a screen and nothing else: what the COMPANY must hold to
 // trade and employ people, and what must be on file for each EMPLOYEE. Expiry dates and
