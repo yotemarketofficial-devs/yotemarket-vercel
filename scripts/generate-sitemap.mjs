@@ -30,6 +30,13 @@ const today = new Date().toISOString().slice(0, 10);
 
 // Static pages, highest priority first. Keep in step with App.jsx routes and the
 // PAGES map in components/RouteSeo.jsx.
+//
+// Only OUR OWN urls belong here. A sitemap may list urls on the host that serves it and
+// nowhere else (sitemaps.org same-host rule), so an off-site page about the company —
+// the Crunchbase profile, an app-store listing, a press piece — is rejected by Search
+// Console as "URL not allowed" and can poison the whole submission. Those live in
+// `ORG_SAME_AS` (src/lib/socials.js), which is what actually ties them to this entity,
+// and are linked from /about so a crawler can follow them.
 const STATIC = [
   ['/', 'daily', '1.0'],
   ['/storefront', 'daily', '0.9'],

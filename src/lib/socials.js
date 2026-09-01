@@ -11,12 +11,26 @@ export const SOCIAL_LINKS = [
   { label: 'WhatsApp',  icon: 'fa-whatsapp',    url: 'https://wa.me/254720730861' },
 ];
 
+/* Directory / database profiles of the COMPANY that aren't social accounts — the pages
+ * an investor, journalist or answer engine lands on when it asks "what is this company?".
+ * They belong in `sameAs` for exactly the same reason the social profiles do, but not in
+ * SOCIAL_LINKS: that list is the footer icon row, and Font Awesome ships no brand glyph
+ * for these, so they're rendered as text links (About.jsx) instead.
+ *
+ * They are NOT sitemap entries. A sitemap may only list urls on the host that serves it
+ * (sitemaps.org 'same host' rule — Search Console rejects the rest as "URL not allowed"),
+ * so an off-site profile is claimed here, in sameAs, and linked to from a real page. */
+export const COMPANY_PROFILES = [
+  { label: 'Crunchbase', url: 'https://www.crunchbase.com/organization/yotemarket' },
+];
+
 // The organisation's PROFILE urls, for schema.org `sameAs`. WhatsApp is deliberately
 // absent: sameAs means "another page about this same entity", and a wa.me link is a way
 // to contact us, not a profile of us. It is published as a contactPoint instead.
-export const ORG_SAME_AS = SOCIAL_LINKS
-  .filter((s) => s.label !== 'WhatsApp')
-  .map((s) => s.url);
+export const ORG_SAME_AS = [
+  ...SOCIAL_LINKS.filter((s) => s.label !== 'WhatsApp').map((s) => s.url),
+  ...COMPANY_PROFILES.map((p) => p.url),
+];
 
 // The WhatsApp business line, as a contact rather than an identity.
 export const WHATSAPP_NUMBER = '+254720730861';

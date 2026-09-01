@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { SOCIAL_LINKS, ORG_SAME_AS, FOUNDERS, WHATSAPP_URL, founderSameAs } from './socials.js';
+import { SOCIAL_LINKS, COMPANY_PROFILES, ORG_SAME_AS, FOUNDERS, WHATSAPP_URL, founderSameAs } from './socials.js';
 
 /* The identity YoteMarket claims lives in two files that cannot import each other:
  * lib/socials.js (the app) and the JSON-LD in index.html (what crawlers and AI answer
@@ -44,6 +44,30 @@ describe('the organisation entity in index.html', () => {
   it('publishes WhatsApp as a contactPoint instead, so the number is still machine-readable', () => {
     const phones = (org.contactPoint || []).map((c) => c.telephone);
     expect(phones.some((p) => WHATSAPP_URL.includes(String(p).replace('+', '')))).toBe(true);
+  });
+});
+
+describe('the company directory profiles', () => {
+  it('are absolute https urls, listed once each', () => {
+    const labels = COMPANY_PROFILES.map((p) => p.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    for (const { label, url } of COMPANY_PROFILES) expect(url, label).toMatch(/^https:\/\//);
+  });
+
+  it('are claimed in the organisation sameAs, like the social profiles', () => {
+    for (const { label, url } of COMPANY_PROFILES) expect(ORG_SAME_AS, label).toContain(url);
+  });
+
+  it('are linked from the About page, so a crawler can follow them', () => {
+    // sameAs is a claim; the outbound link is what a crawler follows. An off-site profile
+    // cannot go in sitemap.xml (same-host rule), so this page is how it gets discovered.
+    const about = readFileSync(new URL('../pages/About.jsx', import.meta.url), 'utf8');
+    expect(about).toContain('COMPANY_PROFILES');
+  });
+
+  it('never appear in the sitemap — it may only advertise our own host', () => {
+    const gen = readFileSync(new URL('../../scripts/generate-sitemap.mjs', import.meta.url), 'utf8');
+    for (const { label, url } of COMPANY_PROFILES) expect(gen, label).not.toContain(url);
   });
 });
 

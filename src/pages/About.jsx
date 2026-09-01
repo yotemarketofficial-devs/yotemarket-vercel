@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 // One source of truth for the founders' profile urls — these must match the Person
 // `sameAs` in index.html, or the entity splits. See lib/socials.js.
-import { FOUNDERS } from '../lib/socials.js';
+import { COMPANY_PROFILES, FOUNDERS } from '../lib/socials.js';
 
 function About() {
   return (
@@ -91,6 +91,18 @@ function About() {
               ESSEC Business School.{' '}
               <a href={FOUNDERS.find((f) => f.id === 'arnold-kamau').links[0].url} target="_blank" rel="noopener noreferrer me"
                 style={{ color: 'var(--purple)', fontWeight: 600 }}>Arnold on LinkedIn</a>.
+            </p>
+            <h3>YoteMarket elsewhere</h3>
+            <p>
+              The company is listed on{' '}
+              {COMPANY_PROFILES.map((p, i) => (
+                <span key={p.url}>
+                  {i > 0 ? ', ' : ''}
+                  <a href={p.url} target="_blank" rel="noopener noreferrer me"
+                    style={{ color: 'var(--purple)', fontWeight: 600 }}>{p.label}</a>
+                </span>
+              ))}. Those pages describe the same company as this one — they are claimed in our
+              structured data so search and answer engines resolve them to one YoteMarket.
             </p>
             <h3>Join us</h3>
             <p>
