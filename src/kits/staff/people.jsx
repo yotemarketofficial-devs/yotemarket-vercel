@@ -21,7 +21,7 @@ import {
   fetchStaff, setStaffAccess, onboardStaff, offboardStaff,
   clockIn, clockOut, fetchMyShifts, fetchAttendance, closeShift,
   ALL_DEPTS, DEPT_LABEL, TIER_LABEL, setStatutoryIds, setStaffProfile,
-  repairStaffDepartments,
+  repairStaffDepartments, backfillStoreClaims,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect, useCallback } = React;
@@ -179,6 +179,83 @@ export function ClockControl({ rail = false, wide = false }) {
 
    It NEVER repairs silently. An admin could in principle have picked those six by hand,
    so the dry run names everybody and what they would become, and a person decides. */
+/* Giving existing merchants their storeId claim.
+
+   Storage rules cannot read Firestore, so the bucket had no way to tell whether the
+   person uploading a photo owns the store whose folder they are writing to — anybody with
+   an account could add files to any store's folder. Ownership now travels as a claim the
+   backend mirrors from the merchant and store_staff records.
+
+   THIS HAS TO RUN BEFORE THE RULE THAT REQUIRES IT. New stores get the claim as they are
+   created; everyone who already existed needs it filling in, and until they have it the
+   rule would refuse their uploads. */
+function StoreClaimBackfill({ isAdmin }) {
+  const { confirm, toast } = useDialogs();
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!isAdmin) return null;
+
+  const run = async (commit) => {
+    setBusy(true);
+    try {
+      const r = await backfillStoreClaims(commit);
+      setPreview(r);
+      if (commit) {
+        toast({ tone: 'ok',
+          title: `Claim set for ${r.owners + r.employees} account${r.owners + r.employees === 1 ? '' : 's'}`,
+          body: 'Tokens refresh within the hour; the merchant dashboard forces it on entry.' });
+      }
+    } catch (e) {
+      toast({ tone: 'error', title: 'Could not run', body: e?.message || 'Try again.' });
+    } finally { setBusy(false); }
+  };
+
+  const apply = async () => {
+    const ok = await confirm({
+      title: `Set the store claim on ${preview.owners + preview.employees} account${preview.owners + preview.employees === 1 ? '' : 's'}?`,
+      body: 'This only mirrors what the merchant and store_staff records already say. It grants '
+          + 'nothing new — it lets the storage bucket see what the database already knows.',
+      confirmLabel: 'Set the claims',
+    });
+    if (ok) run(true);
+  };
+
+  const pending = preview ? preview.owners + preview.employees : 0;
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+        <h3 className="font-bold t1"><Icon name="store" /> Store upload permissions</h3>
+        <Btn kind="ghost" size="sm" icon={busy && !preview ? 'spinner' : 'magnifying-glass'}
+          disabled={busy} onClick={() => run(false)}>Check</Btn>
+      </div>
+      <p className="text-xs t3">
+        Merchants upload product photos and feed clips straight to storage, and the bucket
+        cannot read the database to check whose folder it is. Ownership travels as a token
+        claim instead. New stores get it automatically; existing ones need this once.
+      </p>
+
+      {preview && (
+        <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Stat label="Store owners" value={preview.owners} icon="user-tie" tone="pri" />
+            <Stat label="Store employees" value={preview.employees} icon="users" tone="blue" />
+            <Stat label="Already set" value={preview.skipped} icon="circle-check" tone="green" />
+            <Stat label="No account" value={preview.failed} icon="circle-question" tone="amber" />
+          </div>
+          {preview.committed
+            ? <div className="text-xs t3">Done. Tokens carry the claim within the hour, and the
+                merchant dashboard forces a refresh on entry.</div>
+            : pending
+              ? <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'check'} disabled={busy}
+                  onClick={apply}>Set {pending} claim{pending === 1 ? '' : 's'}</Btn>
+              : <div className="text-xs t3">Every merchant already has theirs.</div>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function DepartmentRepair({ isAdmin, onDone }) {
   const { confirm, toast } = useDialogs();
   const [preview, setPreview] = useState(null);
@@ -286,6 +363,7 @@ export function StaffAccess() {
       action={<Btn kind="primary" size="md" icon="user-plus" onClick={() => setAdding(true)}>Add someone</Btn>} />
     <BackendError error={error} onRetry={reload} />
     <DepartmentRepair isAdmin={isAdmin} onDone={reload} />
+    <StoreClaimBackfill isAdmin={isAdmin} />
 
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Stat label="Active staff" value={active.length} sub={`${rows.length - active.length} offboarded`} icon="users" tone="pri" />
