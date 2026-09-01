@@ -220,13 +220,18 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
         </div>
         {/* The upload path. Reads the file here and drops its text in the box, so the
             extraction is visible and correctable before anything is parsed or saved. */}
-        <div className="p-3 rounded-lg" style={{ background:'var(--surface2)' }}>
+        {/* The container is a tinted panel, so anything inside it needs its own edges. A
+            `ghost` Btn sets only a text colour — no background, no border — which on this
+            background read as a line of muted text rather than a control, and the box
+            appeared to swallow the picker. A dashed border makes the panel a drop zone,
+            and the button inside it is solid. */}
+        <div className="p-3 rounded-lg" style={{ background:'var(--surface2)', border:'1px dashed var(--line2)' }}>
           {/* The input is hidden and driven by a button through a ref. A visible file
               input inside a <label> gets the click twice and opens the picker twice; a
               bare one styles badly and is the element browser extensions most like to
               hook. One button, one click, one dialog. */}
           <div className="flex items-center gap-2 flex-wrap">
-            <Btn kind="ghost" size="sm" icon="folder-open" disabled={!!reading}
+            <Btn kind="primary" size="sm" icon="folder-open" disabled={!!reading}
               onClick={() => fileRef.current && fileRef.current.click()}>
               {reading ? `Reading ${reading}…` : 'Choose a file'}
             </Btn>
