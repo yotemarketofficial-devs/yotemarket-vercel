@@ -548,8 +548,10 @@ export async function approvePayrollRun(id) {
   return call('staffApprovePayrollRun')({ id });
 }
 
-export async function voidPayrollRun(id, reason) {
-  return call('staffVoidPayrollRun')({ id, reason });
+/** Void a run. `acknowledgePaid` is required by the server when salaries have already
+ *  been sent — a void cannot recall them, so it refuses to pretend otherwise silently. */
+export async function voidPayrollRun(id, reason, acknowledgePaid = false) {
+  return call('staffVoidPayrollRun')({ id, reason, acknowledgePaid });
 }
 
 export async function payPayrollRun(id) {
@@ -986,6 +988,33 @@ export async function fetchContracts(uid) {
 /** My own contract(s) — everyone may read their own terms. */
 export async function fetchMyContract() { return call('staffMyContract')(); }
 /** Issue (omit id) or amend a contract. Issuing supersedes the current active one. */
+// ── Contract templates ───────────────────────────────────────────────────────
+// Two shapes ship with the platform and the difference is legal, not cosmetic: the
+// founder-executive one subordinates the Executive's own pay and carries a 12-month
+// restraint, both void or unlawful against an ordinary employee. That is what
+// `restricted` marks, and why applying one has to be deliberate.
+
+export async function fetchContractTemplates() {
+  const d = await call('staffContractTemplates')({});
+  if (!d || !Array.isArray(d.templates)) throw new Error('staffContractTemplates: unexpected shape');
+  return d;
+}
+
+export async function saveContractTemplate(args) { return call('staffSaveContractTemplate')(args); }
+export async function deleteContractTemplate(id) { return call('staffDeleteContractTemplate')({ id }); }
+
+/** Fill {{placeholders}} from the contract on screen. An unfilled one is LEFT VISIBLE:
+ *  a contract showing {{payAmount}} is obviously unfinished, while a silent gap where the
+ *  pay should be is a contract somebody signs by mistake. Mirrors renderTemplate in
+ *  functions/contract-templates.js. */
+export function fillTemplate(body, values = {}) {
+  return String(body == null ? '' : body).replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (whole, key) => {
+    const v = values[key];
+    if (v === undefined || v === null || String(v).trim() === '') return whole;
+    return String(v);
+  });
+}
+
 export async function saveContract(args) { return call('staffSaveContract')(args); }
 /** Acknowledge your own contract by typing your name. */
 export async function signContract(id, name) { return call('staffSignContract')({ id, name }); }

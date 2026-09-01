@@ -465,18 +465,42 @@ function RunDetail({ id, onBack, onChanged }) {
     finally { setBusy(false); }
   };
 
+  /* Voiding says a run should be read as though it never happened, so the dialog has to
+     say plainly what that claim does NOT undo — a posted finance entry, and above all any
+     salary already sent. The server refuses the money case unless it is acknowledged; this
+     asks for that acknowledgement rather than letting the refusal arrive as an error. */
   const doVoid = async () => {
-    const reason = await dialogs.prompt({
-      title: 'Void this payroll run',
-      body: run.financeEntryId
+    const pay = run.payment || {};
+    const moved = (pay.paid || 0) + (pay.sent || 0);
+
+    const body = moved
+      ? `${moved} payment${moved === 1 ? '' : 's'} have already left for this run `
+        + `(${pay.paid || 0} confirmed, ${pay.sent || 0} awaiting confirmation). `
+        + 'Voiding does NOT recall them — the money stays gone and the run will record that it went. '
+        + 'Recover it separately. Say why this is being voided.'
+      : run.financeEntryId
         ? 'This run has already posted to finance. Voiding it here does NOT reverse that entry — that is a deliberate finance correction, not a side effect. Say why.'
-        : 'Say why this run is being voided.',
-      confirmPhrase: 'VOID',
+        : 'Say why this run is being voided.';
+
+    const reason = await dialogs.prompt({
+      title: moved ? 'Void a run that has already paid people' : 'Void this payroll run',
+      body,
+      tone: moved ? 'danger' : undefined,
+      confirmPhrase: moved ? 'PAID' : 'VOID',
     });
     if (!reason) return;
     setBusy(true);
-    try { await voidPayrollRun(id, reason); await load(); onChanged?.(); }
-    catch (e) { dialogs.toast?.({ title: e.message || 'Could not void.', tone: 'error' }); }
+    try {
+      const r = await voidPayrollRun(id, reason, moved > 0);
+      await load(); onChanged?.();
+      if (r?.paidAlready || r?.sentAlready) {
+        dialogs.toast?.({
+          title: 'Voided — money had already gone out',
+          body: `${r.paidAlready} confirmed and ${r.sentAlready} in flight. Recovering it is a separate job.`,
+          tone: 'info',
+        });
+      }
+    } catch (e) { dialogs.toast?.({ title: e.message || 'Could not void.', tone: 'error' }); }
     finally { setBusy(false); }
   };
 
