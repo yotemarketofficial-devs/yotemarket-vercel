@@ -315,6 +315,28 @@ export async function deleteResumeClaim({ uid, source }) {
   return call('staffDeleteResumeClaim')({ uid, source });
 }
 
+// Verification against the bodies that ISSUED a credential — the half of "OSINT" that
+// proves anything. The plan generates one-click searches; a NAMED HUMAN runs them and
+// records what they found. Nothing here fetches a person's name off the open web: a name
+// match is not an identity match, and an automated dossier on an employee is what s.35 of
+// the Data Protection Act lets them object to.
+
+export async function fetchVerificationPlan(uid) {
+  const d = await call('staffVerificationPlan')({ uid });
+  if (!d || !Array.isArray(d.claims)) throw new Error('staffVerificationPlan: unexpected shape');
+  return d;
+}
+
+export async function recordVerification(args) {
+  return call('staffRecordVerification')(args);
+}
+
+export async function fetchVerifications(uid) {
+  const d = await call('staffVerifications')(uid ? { uid } : {});
+  if (!d || !d.rollup) throw new Error('staffVerifications: unexpected shape');
+  return d;
+}
+
 // ── Compliance ───────────────────────────────────────────────────────────────
 // Two registers that share a screen and nothing else: what the COMPANY must hold to
 // trade and employ people, and what must be on file for each EMPLOYEE. Expiry dates and
@@ -335,6 +357,68 @@ export async function fetchEmployeeCompliance(uid) {
   const d = await call('staffEmployeeCompliance')(uid ? { uid } : {});
   if (!d || !d.compliance) throw new Error('staffEmployeeCompliance: unexpected shape');
   return d;
+}
+
+// ── HR files (employee documents, signed contracts) ──────────────────────────
+// These never touch Storage from the browser. A Firebase download URL carries a token
+// that bypasses Storage rules, so a police clearance behind one is readable by anyone who
+// sees the link — the bytes go through a callable both ways instead. See
+// firebase/functions/hrfiles.js for the whole reasoning.
+
+/** 5 MB, matching hrfiles.MAX_BYTES. Checked here too so the person is told BEFORE a
+ *  multi-megabyte upload rather than after it. */
+export const HR_FILE_MAX_BYTES = 5 * 1024 * 1024;
+export const HR_FILE_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic';
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('That file could not be read.'));
+    r.onload = () => {
+      const s = String(r.result || '');
+      const comma = s.indexOf(',');
+      resolve(comma >= 0 ? s.slice(comma + 1) : s);
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+/** Attach a file to an employee document or a contract. { scope, subjectId, key?, file } */
+export async function uploadHrFile({ scope, subjectId, key, file }) {
+  if (!file) throw new Error('Choose a file first.');
+  if (file.size > HR_FILE_MAX_BYTES) {
+    throw new Error(`That file is ${(file.size / (1024 * 1024)).toFixed(1)} MB. The limit is 5 MB — `
+      + 'scan in black and white, or split it.');
+  }
+  const dataBase64 = await fileToBase64(file);
+  return call('staffUploadHrFile')({
+    scope, subjectId, ...(key ? { key } : {}),
+    filename: file.name, contentType: file.type || 'application/octet-stream', dataBase64,
+  });
+}
+
+/** Read one back. Returns a Blob plus the filename it was filed under. */
+export async function fetchHrFile({ scope, subjectId, key }) {
+  const d = await call('staffHrFile')({ scope, subjectId, ...(key ? { key } : {}) });
+  if (!d || !d.dataBase64) throw new Error('Nothing is attached.');
+  const bin = atob(d.dataBase64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { blob: new Blob([bytes], { type: d.contentType }), filename: d.filename, size: d.size };
+}
+
+/** Open an attachment in a new tab, revoking the object URL once the tab has taken it. */
+export async function openHrFile(args) {
+  const { blob, filename } = await fetchHrFile(args);
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank', 'noopener');
+  if (!w) {
+    // Pop-up blocked — fall back to a download so the click still does something.
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return filename;
 }
 
 export async function setEmployeeDocument(args) {

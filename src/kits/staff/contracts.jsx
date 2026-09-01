@@ -22,10 +22,11 @@ import {
   fetchContracts, fetchStaff, saveContract, terminateContract,
   fetchMyContract, signContract,
   CONTRACT_TYPE_LABEL, PAY_PERIOD_LABEL, DEPT_LABEL,
+  uploadHrFile, openHrFile, HR_FILE_ACCEPT,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 import { aiTask } from '../../lib/firebase.js';
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 const STATUS_TONE = { active:'ok', draft:'blue', expired:'amber', terminated:'red', superseded:'blue' };
 const STATUS_LABEL = { active:'Active', draft:'Draft', expired:'Expired', terminated:'Terminated', superseded:'Superseded' };
@@ -315,6 +316,70 @@ function ContractDrawer({ contract, staff, onClose, onSaved }) {
   );
 }
 
+/* The SIGNED PDF — the paper version, which is what actually binds.
+   The drafted terms above are ours; this is the copy with signatures on it, and in a
+   dispute it is the one that matters. Same private mechanism as employee documents:
+   nothing is uploaded straight to Storage and no public link is ever minted, because a
+   Firebase download URL would bypass the rules that are meant to protect it. */
+function SignedPdf({ contract, onChanged }) {
+  const { toast } = useDialogs();
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState('');
+  const signed = contract.signed || null;
+
+  const attach = async (file) => {
+    if (!file) return;
+    setBusy('upload');
+    try {
+      await uploadHrFile({ scope: 'contract', subjectId: contract.id, file });
+      toast({ tone: 'ok', title: 'Signed contract filed' });
+      onChanged && onChanged();
+    } catch (e) {
+      toast({ tone: 'error', title: 'Could not attach', body: e?.message || 'Try again.' });
+    } finally {
+      setBusy('');
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const view = async () => {
+    setBusy('view');
+    try { await openHrFile({ scope: 'contract', subjectId: contract.id }); }
+    catch (e) { toast({ tone: 'error', title: 'Could not open', body: e?.message || 'Try again.' }); }
+    finally { setBusy(''); }
+  };
+
+  return (
+    <div className="rounded-xl p-3" style={{ background: 'var(--surface2)' }}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-semibold t3 uppercase" style={{ letterSpacing: '.06em' }}>
+          Signed copy
+        </span>
+        {signed
+          ? <Pill tone="ok">On file</Pill>
+          : <Pill tone="amber">Not filed</Pill>}
+        <span className="flex-1" />
+        {signed && (
+          <Btn kind="soft" size="sm" icon={busy === 'view' ? 'spinner' : 'eye'}
+            disabled={!!busy} onClick={view}>View</Btn>
+        )}
+        <input ref={fileRef} type="file" accept={HR_FILE_ACCEPT} style={{ display: 'none' }}
+          onChange={(e) => attach(e.target.files && e.target.files[0])} />
+        <Btn kind={signed ? 'ghost' : 'primary'} size="sm"
+          icon={busy === 'upload' ? 'spinner' : 'file-arrow-up'} disabled={!!busy}
+          onClick={() => fileRef.current && fileRef.current.click()}>
+          {signed ? 'Replace' : 'Attach PDF'}
+        </Btn>
+      </div>
+      <div className="text-xs t3 mt-1.5">
+        {signed
+          ? `${signed.filename} · ${Math.max(1, Math.round((signed.size || 0) / 1024))} KB`
+          : 'Scan the signed contract and file it here. PDF or photo, up to 5 MB.'}
+      </div>
+    </div>
+  );
+}
+
 function ContractView({ c, onClose, onEdit }) {
   const dl = daysLeft(c.endDate);
   return (
@@ -336,6 +401,7 @@ function ContractView({ c, onClose, onEdit }) {
           <div><div className="text-xs font-semibold t3 uppercase mb-1" style={{ letterSpacing:'.06em' }}>Terms</div>
             <div className="text-sm t2 rounded-xl p-3" style={{ background:'var(--surface2)', whiteSpace:'pre-wrap' }}>{c.terms}</div></div>
         )}
+        <SignedPdf contract={c} onChanged={onClose} />
         <div className="text-xs t3">
           {c.signedAt ? `Signed by ${c.signedName || 'the employee'} on ${new Date(c.signedAt).toLocaleDateString('en-KE')}.` : 'Not yet signed by the employee.'}
           {c.issuedByEmail && ` Issued by ${c.issuedByEmail.split('@')[0]}.`}
