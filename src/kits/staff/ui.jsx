@@ -92,7 +92,11 @@ export const Bar = ({ pct, color }) => (
 export function SectionHead({ icon, title, sub, action }){
   return (
     <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
-      <div className="flex items-start gap-3">
+      {/* Centred against the text when the title stands alone — the chip is 40px and a
+          single title line is nearer 30, so top-aligning left it visibly hanging. With a
+          subtitle the chip stays top-aligned so it pairs with the TITLE rather than
+          drifting to the middle of a block that may run to several lines. */}
+      <div className={`flex gap-3 ${sub ? 'items-start' : 'items-center'}`}>
         {icon && <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{background:'var(--pri-soft)',color:'var(--pri)'}}><Icon name={icon}/></div>}
         <div>
           <h1 className="text-xl sm:text-2xl font-bold t1 leading-tight">{title}</h1>

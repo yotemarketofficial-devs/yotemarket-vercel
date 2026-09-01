@@ -79,3 +79,27 @@ html.dark .kit-staff{
 @media (prefers-reduced-motion: no-preference){ .kit-staff .fadeup{animation:fadeUp .35s ease;} }
 
 .kit-staff{min-height:100vh;}
+
+/* ── Headings that lead with an icon ──────────────────────────────────────────
+   Twenty-odd card headings are written as `<h3><Icon/> Text</h3>`. A Font Awesome icon
+   is an <i> sitting on the TEXT BASELINE, and its optical centre is lower than that of
+   the capitals beside it, so in a bold heading it reads as sagging.
+
+   Fixed here rather than at each call site: it is one rule instead of twenty-odd edits
+   across files two people are working in, and any heading written the same way later
+   inherits it without anyone having to remember.
+
+   `:has(> i)` scopes this to headings that actually lead with an icon, so SectionHead —
+   whose icon lives in a sibling chip — is untouched. The text becomes an anonymous flex
+   item, which is a block container, so its leading space is dropped and `gap` alone
+   controls the spacing. `align-items: center` suits the short labels these are; a
+   heading long enough to wrap would centre the icon against the whole block, which is
+   why they are kept short. */
+.kit-staff :is(h1, h2, h3, h4, h5, h6):has(> i) {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.kit-staff :is(h1, h2, h3, h4, h5, h6):has(> i) > i {
+  flex: 0 0 auto;   /* the glyph must not squash when the text is long */
+}
