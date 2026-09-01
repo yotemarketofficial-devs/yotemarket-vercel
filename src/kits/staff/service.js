@@ -337,6 +337,18 @@ export async function fetchVerifications(uid) {
   return d;
 }
 
+// ── Delivery from the work board ─────────────────────────────────────────────
+// What the board can say about how somebody is delivering: dates met, how long work took,
+// whether estimates hold, how often it came back. NOT a rating and not a score — the
+// server refuses to produce a rate at all below a usable sample, and returns sentences a
+// reviewer reads beside what they already know. Never render this as a grade.
+
+export async function fetchDelivery(uid, days) {
+  const d = await call('staffDelivery')(days ? { uid, days } : { uid });
+  if (!d || !d.delivery) throw new Error('staffDelivery: unexpected shape');
+  return d;
+}
+
 // ── Compliance ───────────────────────────────────────────────────────────────
 // Two registers that share a screen and nothing else: what the COMPANY must hold to
 // trade and employ people, and what must be on file for each EMPLOYEE. Expiry dates and

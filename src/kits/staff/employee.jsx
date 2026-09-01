@@ -26,6 +26,7 @@ import {
   fetchEmployeeRecord, saveEmployeeReview, fileComplaint, resolveComplaint,
   setEmployeeDetails, setStaffProfile, DEPT_LABEL, TIER_LABEL, useStaffClaims,
   setLinkedIn, importLinkedInResume, parseResumeText, saveResumeClaim, fetchResumeComparison,
+  fetchDelivery,
   fetchVerificationPlan, recordVerification,
 } from './service.js';
 
@@ -758,6 +759,93 @@ function VerificationPanel({ uid, canVerify }) {
   );
 }
 
+/* ── Delivery, from the work board ────────────────────────────────────────────
+
+   Sentences, not a score. The server refuses to produce a rate at all until there are
+   enough completed tasks to mean something, and there is deliberately no headline number
+   here to quote: speed and quality pull against each other, and a single figure hides
+   which one moved while becoming the thing people optimise instead of the work.
+
+   Read beside what the reviewer already knows. It cannot see difficulty, a bad brief, or
+   the quarter somebody spent covering for a colleague. */
+function DeliveryPanel({ uid, compact = false }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setData(await fetchDelivery(uid)); setErr(null); }
+    catch (e) { setErr(e.message || 'Could not load delivery.'); }
+    finally { setLoading(false); }
+  }, [uid]);
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return compact ? null : <Card className="p-5 t3 text-sm">Loading delivery…</Card>;
+  if (err) {
+    return compact ? null
+      : <Card className="p-5 text-sm" style={{ color:'var(--red)' }}><Icon name="circle-exclamation" /> {err}</Card>;
+  }
+
+  const d = data.delivery;
+  const lines = data.readOut || [];
+
+  const body = (
+    <>
+      {/* Counts only — context a reader needs to weigh the sentences below. Never a rate,
+          because volume is not merit: twenty trivial tasks must not outrank three hard ones. */}
+      <div className="flex flex-wrap gap-2 text-xs mb-3">
+        <span className="px-2 py-1 rounded-lg t2" style={{ background:'var(--surface2)' }}>
+          {d.completed} finished · {data.window.days} days
+        </span>
+        <span className="px-2 py-1 rounded-lg t2" style={{ background:'var(--surface2)' }}>
+          {d.openNow} open
+        </span>
+        {d.overdueNow > 0 && (
+          <span className="px-2 py-1 rounded-lg" style={{ background:'var(--red-bg, var(--surface2))', color:'var(--red)' }}>
+            {d.overdueNow} overdue now
+          </span>
+        )}
+      </div>
+
+      <ul className="space-y-2" style={{ listStyle:'none', padding:0 }}>
+        {lines.map((l) => (
+          <li key={l.kind} className="text-sm t2 flex items-start gap-2">
+            <Icon name={l.kind === 'insufficient' ? 'circle-info' : 'circle-check'}
+              className="text-xs" style={{ color:'var(--t3)', marginTop:3 }} />
+            <span>{l.text}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Carried from the server rather than written here, so every surface repeats the
+          same caveat instead of each inventing its own. */}
+      <div className="text-xs t3 mt-3">{data.note}</div>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="rounded-xl p-3" style={{ background:'var(--surface2)' }}>
+        <div className="text-xs font-semibold t3 mb-2" style={{ textTransform:'uppercase', letterSpacing:'.04em' }}>
+          What the board shows
+        </div>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Card className="p-5">
+      <h3 className="font-bold t1 mb-1"><Icon name="gauge-high" /> Delivery</h3>
+      <p className="text-xs t3 mb-3">
+        From the work board over the last {data.window.days} days. Evidence for a review, not a rating.
+      </p>
+      {body}
+    </Card>
+  );
+}
+
 /* ── Screen ───────────────────────────────────────────────────────────────── */
 export function EmployeeRecord({ uid, onBack }) {
   const [rec, setRec] = useState(null);
@@ -844,6 +932,7 @@ export function EmployeeRecord({ uid, onBack }) {
 
       {/* Profile & resume */}
       <ResumeCard rec={rec} canEdit={isPeople || isSelf} onChanged={load} />
+      <DeliveryPanel uid={uid} />
       <DiscrepancyPanel uid={uid} />
       <VerificationPanel uid={uid} canVerify={isPeople} />
 
@@ -1026,6 +1115,11 @@ function ReviewModal({ uid, name, onClose, onSaved }) {
         <Btn kind="primary" size="sm" icon={busy ? 'spinner' : 'check'} onClick={save} disabled={busy}>Record</Btn>
       </>}>
       <div className="space-y-3">
+        {/* The board's figures sit ABOVE the rating, so they are read before a number is
+            chosen rather than used to justify one afterwards. They are still only part of
+            the picture — the reviewer knows things the board cannot see. */}
+        <DeliveryPanel uid={uid} compact />
+
         <label className="block text-xs font-semibold t3">Period
           <input value={f.period} onChange={(e) => set('period', e.target.value)} className="ym-input mt-1" style={{ width:'100%' }} />
         </label>

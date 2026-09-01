@@ -44,6 +44,7 @@ function TaskModal({ task, department, members, onClose, onSaved }) {
     priority: task?.priority || 'normal',
     status: task?.status || 'todo',
     dueDate: task?.dueDate || '',
+    estimateHours: task?.estimateHours ?? '',
   }));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -99,6 +100,15 @@ function TaskModal({ task, department, members, onClose, onSaved }) {
             Due
             <input type="date" className="ym-input" style={{ width: '100%' }}
               value={f.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
+          </label>
+          {/* Set when the work is ASSIGNED, not by whoever picks it up. That is the whole
+              anti-gaming control: an estimate written by the person being measured on it
+              can simply be padded, and every figure derived from it then flatters them. */}
+          <label className="text-xs font-semibold t3">
+            Estimate (hours)
+            <input type="number" min="0.25" max="400" step="0.25" className="ym-input" style={{ width: '100%' }}
+              placeholder="e.g. 6" value={f.estimateHours}
+              onChange={(e) => set('estimateHours', e.target.value)} />
           </label>
           <label className="text-xs font-semibold t3">
             Priority
