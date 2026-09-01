@@ -23,6 +23,7 @@ import {
   fetchMyContract, signContract,
   CONTRACT_TYPE_LABEL, PAY_PERIOD_LABEL, DEPT_LABEL,
   uploadHrFile, openHrFile, HR_FILE_ACCEPT,
+  fetchContractTemplates, fillTemplate,
 } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 import { aiTask } from '../../lib/firebase.js';
@@ -159,6 +160,101 @@ export function Contracts() {
   </div>);
 }
 
+/* Pick a house shape instead of starting from a blank page.
+
+   THE RESTRICTED FLAG IS THE POINT. The founder-executive template subordinates the
+   Executive's OWN pay to the company's operating obligations and carries a twelve-month
+   restraint of trade. A founder may agree to both about themselves; against an ordinary
+   employee wages are a statutory debt and restraint is void unless reasonable. So picking
+   that shape for somebody is a deliberate act with a warning on it, not a default. */
+function TemplatePicker({ form, person, onApply }) {
+  const { confirm, toast } = useDialogs();
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    if (!open || data) return;
+    fetchContractTemplates().then(setData).catch((e) => setErr(e?.message || 'Could not load templates.'));
+  }, [open, data]);
+
+  const values = {
+    employeeName: person?.name || form.name || '',
+    companyName: 'Yote Market Limited',
+    role: form.title || '',
+    department: person?.department || '',
+    startDate: form.startDate ? fmtDate(form.startDate) : '',
+    endDate: form.endDate ? fmtDate(form.endDate) : '',
+    payAmount: Number(form.payAmount) ? kes(Number(form.payAmount)) : '',
+    payPeriod: PAY_PERIOD_LABEL[form.payPeriod] || 'per month',
+    hoursPerWeek: form.hoursPerWeek || '',
+    noticeDays: '30',
+    annualLeaveDays: '21',
+    probationMonths: '6',
+    today: fmtDate(new Date().toISOString().slice(0, 10)),
+  };
+
+  const apply = async (t) => {
+    if (t.restricted) {
+      const ok = await confirm({
+        title: `Use the ${t.name} template?`,
+        tone: 'danger',
+        body: "This shape subordinates the person's own pay to the company's operating "
+            + 'obligations and imposes a twelve-month restraint of trade. Those are lawful '
+            + 'between founders. Against an ordinary employee, wages are a statutory debt and '
+            + 'the restraint is void — do not use this for a normal hire.',
+        confirmLabel: 'This is a founder',
+      });
+      if (!ok) return;
+    }
+    if (form.terms.trim()) {
+      const ok = await confirm({
+        title: 'Replace the terms already written?',
+        body: 'The terms box is not empty. Applying a template overwrites what is there.',
+        confirmLabel: 'Replace',
+      });
+      if (!ok) return;
+    }
+    const filled = fillTemplate(t.body, values);
+    onApply(filled);
+    setOpen(false);
+    const left = (filled.match(/\{\{[A-Za-z0-9_]+\}\}/g) || []).length;
+    toast({ tone: left ? 'info' : 'ok', title: `${t.name} applied`,
+      body: left ? `${left} placeholder${left === 1 ? '' : 's'} still need filling in — they are shown in the text.` : null });
+  };
+
+  return (
+    <>
+      <Btn kind="ghost" size="sm" icon="file-lines" onClick={() => setOpen(true)}>Use a template</Btn>
+      {open && (
+        <Modal title="Contract templates" icon="file-lines" onClose={() => setOpen(false)} maxWidth={560}
+          footer={<Btn kind="ghost" size="sm" onClick={() => setOpen(false)}>Close</Btn>}>
+          {err && <div className="text-sm mb-2" style={{ color: 'var(--red)' }}>{err}</div>}
+          {!data && !err && <div className="t3 text-sm">Loading…</div>}
+          <div className="space-y-2">
+            {(data?.templates || []).map((t) => (
+              <div key={t.id} className="rounded-xl p-3" style={{ background: 'var(--surface2)' }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold t1">{t.name}</span>
+                  {t.builtIn && <Pill tone="blue">Built in</Pill>}
+                  {t.restricted && <Pill tone="red">Founders only</Pill>}
+                  <span className="flex-1" />
+                  <Btn kind="soft" size="sm" icon="check" onClick={() => apply(t)}>Use</Btn>
+                </div>
+                {t.note && <div className="text-xs t3 mt-1">{t.note}</div>}
+              </div>
+            ))}
+          </div>
+          <div className="text-xs t3 mt-3">
+            Names, dates and pay are filled from the fields above. Anything still showing as
+            {' '}<code>{'{{like_this}}'}</code> has nothing to fill it yet.
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
 function ContractDrawer({ contract, staff, onClose, onSaved }) {
   const { toast } = useDialogs();
   const isNew = !contract.id;
@@ -288,6 +384,9 @@ function ContractDrawer({ contract, staff, onClose, onSaved }) {
         <div>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <label className="text-xs font-semibold t3">Terms &amp; conditions</label>
+            {/* A house shape first; the model is for when none of them fits. */}
+            <span className="flex-1" />
+            <TemplatePicker form={f} person={person} onApply={(terms) => set('terms', terms)} />
             <Btn kind="ghost" size="sm" icon={drafting ? 'spinner' : 'wand-magic-sparkles'}
               onClick={draftTerms} disabled={drafting || busy || !f.title.trim()}>
               {drafting ? 'Drafting…' : f.terms.trim() ? 'Redraft from these details' : 'Draft with AI'}
