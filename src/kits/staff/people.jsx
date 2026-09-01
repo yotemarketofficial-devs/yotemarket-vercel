@@ -500,6 +500,17 @@ export function Attendance() {
    Anyone can fill in their OWN numbers; a People lead can fill in anybody's. The
    employee is the source of truth for their own, and HR should not be a bottleneck
    for a number the person is holding in their hand. */
+/* What the server accepts for NSSF and SHIF (see normaliseStatutoryId in statutory.js):
+   letters, digits, spaces, slashes and dashes, up to 32 characters.
+
+   These inputs used to run `.replace(/\D/g, '')` on every keystroke, which silently ate
+   everything but digits. SHA no longer issues digit strings — employer returns are keyed
+   on a Digital Health Agency CR number like CR1105684025860-6 — so the field could not
+   express the number people were being asked to enter, and NSSF's trailing X went the
+   same way. Filtering to what the server allows keeps the guard without lying about the
+   format; the server still validates. */
+const statId = (v) => String(v || '').toUpperCase().replace(/[^A-Z0-9 /-]/g, '').slice(0, 32);
+
 export function StatutoryIds() {
   const { data, error, reload } = useStaffResource(fetchStaff, []);
   const { toast } = useDialogs();
@@ -624,13 +635,13 @@ export function StatutoryIds() {
             </label>
             <label className="block text-xs font-semibold t3">
               NSSF number
-              <input value={edit.nssfNo} onChange={(e) => set('nssfNo', e.target.value.replace(/\D/g, ''))}
-                inputMode="numeric" className="ym-input mt-1" style={{ width:'100%' }} />
+              <input value={edit.nssfNo} onChange={(e) => set('nssfNo', statId(e.target.value))}
+                placeholder="e.g. 0012345678X" maxLength={32} className="ym-input mt-1" style={{ width:'100%' }} />
             </label>
             <label className="block text-xs font-semibold t3">
               SHIF number
-              <input value={edit.shifNo} onChange={(e) => set('shifNo', e.target.value.replace(/\D/g, ''))}
-                inputMode="numeric" className="ym-input mt-1" style={{ width:'100%' }} />
+              <input value={edit.shifNo} onChange={(e) => set('shifNo', statId(e.target.value))}
+                placeholder="e.g. CR1105684025860-6" maxLength={32} className="ym-input mt-1" style={{ width:'100%' }} />
               <span className="block text-[11px] t3 mt-1 font-normal">Your SHA/SHIF membership number (formerly NHIF).</span>
             </label>
             <div className="text-xs t3">Leave a field blank if you do not have it yet — blanks are reported, never guessed.</div>

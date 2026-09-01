@@ -363,7 +363,14 @@ export function Legal({ isAdmin }){
   };
   const remove = async (r) => { if (!await confirm({ title: `Delete "${r.title}"?` })) return; try { await deleteLegalRecord({ id: r.id }); if (editingId === r.id) cancelEdit(); load(); } catch (e) { setMsg({ ok:false, text:e.message || 'Failed.' }); } };
 
-  const counts = LEGAL_TYPES.map(t => ({ ...t, n: rows.filter(r => r.type === t.key).length }));
+  /* Counts BOTH what was filed here and what is derived from staff_contracts, because
+     the screen below shows both. Counting only `rows` meant every tile read zero while
+     the list underneath was full of contracts — the counter disagreeing with the page it
+     sits on top of. */
+  const counts = LEGAL_TYPES.map(t => ({
+    ...t,
+    n: rows.filter(r => r.type === t.key).length + derived.filter(r => r.type === t.key).length,
+  }));
 
   return (
     <div className="fadeup space-y-6">

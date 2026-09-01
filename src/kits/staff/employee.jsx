@@ -29,7 +29,7 @@ import {
   fetchVerificationPlan, recordVerification,
 } from './service.js';
 
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 
 const EDUCATION_LEVELS = [
   ['', 'Not recorded'], ['none', 'None'], ['primary', 'Primary'], ['secondary', 'Secondary'],
@@ -153,6 +153,8 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
   const [busy, setBusy] = useState(false);
   const [reading, setReading] = useState(null);   // filename being read
   const [detected, setDetected] = useState(null); // what the file looked like
+  const [picked, setPicked] = useState(null);     // filename, shown after a successful read
+  const fileRef = useRef(null);
   const [err, setErr] = useState(null);
 
   /* Upload a CV file and take its text. Read in the BROWSER — the file never leaves the
@@ -161,7 +163,7 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
      the CV can see what was actually recovered before spending a model call on it. */
   const pickFile = async (file) => {
     if (!file) return;
-    setErr(null); setReading(file.name); setDetected(null);
+    setErr(null); setReading(file.name); setDetected(null); setPicked(null);
     try {
       const { extractCvText, detectCvSource } = await import('../../lib/cv-text.js');
       const t = await extractCvText(file);
@@ -173,6 +175,7 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
       const d = detectCvSource(t);
       setSource(d.source);
       setDetected(d);
+      setPicked(file.name);
     } catch (e) {
       setErr(e.message || 'Could not read that file.');
     } finally { setReading(null); }
@@ -218,20 +221,29 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
         {/* The upload path. Reads the file here and drops its text in the box, so the
             extraction is visible and correctable before anything is parsed or saved. */}
         <div className="p-3 rounded-lg" style={{ background:'var(--surface2)' }}>
-          {/* NOT wrapped in a <label>. A file input nested inside its own label gets the
-              click twice — once itself, once forwarded by the label — and Chrome opens the
-              picker, then opens it again as the first one closes. The rest of the console
-              (see releases.jsx) uses a bare input for exactly this reason. */}
-          <div className="text-xs t2 font-semibold mb-1.5">
-            <Icon name="file-arrow-up" /> {reading ? `Reading ${reading}…` : 'Upload a CV file'}
+          {/* The input is hidden and driven by a button through a ref. A visible file
+              input inside a <label> gets the click twice and opens the picker twice; a
+              bare one styles badly and is the element browser extensions most like to
+              hook. One button, one click, one dialog. */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Btn kind="ghost" size="sm" icon="folder-open" disabled={!!reading}
+              onClick={() => fileRef.current && fileRef.current.click()}>
+              {reading ? `Reading ${reading}…` : 'Choose a file'}
+            </Btn>
+            {picked && !reading && <span className="text-xs t2">{picked}</span>}
           </div>
           <input
+            ref={fileRef}
             type="file"
             accept={CV_ACCEPT}
-            disabled={!!reading}
-            onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ''; }}
-            className="ym-input"
-            style={{ padding: '8px 10px', fontSize: '.8rem' }}
+            hidden
+            onChange={(e) => {
+              const f = e.target.files && e.target.files[0];
+              // Cleared before the async read so choosing the SAME file twice still fires
+              // a change event — otherwise a retry after a failure silently does nothing.
+              e.target.value = '';
+              pickFile(f);
+            }}
           />
           <div className="text-xs t3 mt-1">
             PDF or .docx. Read on this device — the file itself is not uploaded anywhere.
@@ -359,12 +371,31 @@ function ResumeCard({ rec, canEdit, onChanged }) {
       )}
 
       {canEdit && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <Btn kind="ghost" size="sm" icon="cloud-arrow-down" onClick={importFromLinkedIn}
-            disabled={!rec.linkedinUrl || busy === 'import'}>
-            {busy === 'import' ? 'Fetching…' : 'Fetch from LinkedIn'}
+        <div className="space-y-2">
+          {/* UPLOAD IS THE PRIMARY ACTION and the fetch is not, because the fetch almost
+              never succeeds: LinkedIn serves an auth wall to logged-out visitors and
+              blocks datacenter ranges, which is what a Cloud Function calls from. Leading
+              with a button that reliably fails made the whole feature read as broken. */}
+          <Btn size="sm" icon="file-arrow-up" onClick={() => setPasting(true)}>
+            Upload a CV or LinkedIn PDF
           </Btn>
-          <Btn kind="ghost" size="sm" icon="file-arrow-up" onClick={() => setPasting(true)}>Upload CV or paste</Btn>
+          <div className="text-xs t3">
+            For LinkedIn: open the profile → <b className="t2">More</b> → <b className="t2">Save to PDF</b>, then upload it.
+            That is the full profile, and it always works.
+          </div>
+          <details>
+            <summary className="text-xs t3" style={{ cursor: 'pointer' }}>Try fetching the public profile instead</summary>
+            <div className="mt-2">
+              <Btn kind="ghost" size="sm" icon="cloud-arrow-down" onClick={importFromLinkedIn}
+                disabled={!rec.linkedinUrl || busy === 'import'}>
+                {busy === 'import' ? 'Fetching…' : 'Fetch from LinkedIn'}
+              </Btn>
+              <div className="text-xs t3 mt-1">
+                Usually blocked — LinkedIn only shows profiles to signed-in visitors, and refuses
+                server addresses. Worth a try if the person has no PDF to hand.
+              </div>
+            </div>
+          </details>
         </div>
       )}
 
