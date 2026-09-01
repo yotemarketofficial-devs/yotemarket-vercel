@@ -6,7 +6,7 @@ import React from 'react';
 import { KE_COUNTY_NAMES } from '../../lib/counties.js';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../lib/useAuth.jsx';
-import { db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
+import { auth, db, firebaseEnabled, registerStore } from '../../lib/firebase.js';
 import { FA, Card, Btn } from './primitives.jsx';
 import AuthPanel from '../../components/AuthPanel.jsx';
 import BrandedLoader from '../../components/BrandedLoader.jsx';
@@ -176,6 +176,16 @@ export default function MerchantGate({ children }) {
     if (!firebaseEnabled || !db || loading) return undefined;
     if (!hasAccount || !uid) { setMerchant(null); setSub(null); setStaff(null); return undefined; }
     setMerchant(undefined); setSub(undefined); setStaff(undefined);
+    /* Refresh the ID token once on entry.
+
+       Store media uploads are authorised by a `storeId` custom claim (see syncStoreClaim
+       in functions/index.js) — Storage rules cannot read Firestore, so the claim is the
+       only way the bucket can tell whose folder a file belongs in. A token minted before
+       the claim was set does not carry it, and Firebase only refreshes hourly, so without
+       this a merchant could sit in front of a photo upload that refuses them for an hour
+       with nothing visibly wrong. */
+    auth?.currentUser?.getIdToken(true).catch(() => {});
+
     const u1 = onSnapshot(doc(db, 'merchants', uid), (s) => setMerchant(s.exists() ? s.data() : null), () => setMerchant(null));
     const u2 = onSnapshot(doc(db, 'subscriptions', uid), (s) => setSub(s.exists() ? s.data() : null), () => setSub(null));
     const u3 = onSnapshot(doc(db, 'store_staff', uid), (s) => setStaff(s.exists() && (s.data().status || 'active') === 'active' ? s.data() : null), () => setStaff(null));
