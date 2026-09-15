@@ -10,6 +10,7 @@ import { submitReview, reportReview } from '../../lib/firebase.js';
 import { StoreClipsRail } from './feed.jsx';
 import { subscribeFeed, subscribeFeedSeen } from '../../lib/feed.js';
 import { storeOpenState, todayWindow } from '../../lib/hours.js';
+import { setMissing } from '../../lib/soft404.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 const { useState: useSS, useEffect: useEffSS, useRef: useRefSS } = React;
@@ -157,7 +158,17 @@ function ProductReviews({ product }){
   );
 }
 
+/* Reached when a real route carries an id that resolves to nothing — a deleted
+   product, a store that was taken down. A static SPA still answers 200 here, which is
+   a soft 404; flag it so RouteSeo can noindex the URL. Gated on the catalogue actually
+   having loaded, because until then "missing" just means "still fetching". */
 function NotFound({ back, label }){
+  const { catalogReady } = useYM();
+  useEffSS(() => {
+    if (!catalogReady) return undefined;
+    setMissing(true);
+    return () => setMissing(false);
+  }, [catalogReady]);
   return (
     <div className="wrap anim-up" style={{ paddingTop:70, textAlign:'center', paddingBottom:70 }}>
       <FA i="fa-magnifying-glass" style={{ fontSize:42, color:'var(--m-fg4)', marginBottom:14 }} />

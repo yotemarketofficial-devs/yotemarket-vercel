@@ -12,10 +12,11 @@
  * index.html, so shared links show the homepage card. Fixing that properly needs
  * prerendering/SSR — see the platform audit.
  */
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useLocation } from 'react-router-dom';
 // Shared with scripts/prerender.mjs so the crawled HTML and the hydrated page agree.
 import { SITE, DEFAULT, PAGES, robotsFor } from '../lib/seo-pages.mjs';
+import { isMissing, subscribeMissing } from '../lib/soft404.js';
 
 
 /** Set (or create) a <meta> tag. */
@@ -43,6 +44,11 @@ function canonical(url) {
 
 export default function RouteSeo() {
   const { pathname } = useLocation();
+  // /product/:pid and /store/:sid are real routes, so robotsFor() calls them
+  // indexable — it can't know the id behind one was deleted. The screen that looked
+  // it up reports that here; see lib/soft404.js for why the screen doesn't just write
+  // the tag itself.
+  const missing = useSyncExternalStore(subscribeMissing, isMissing, () => false);
 
   useEffect(() => {
     // Trailing slashes would otherwise canonicalise to a different URL than the
@@ -71,9 +77,10 @@ export default function RouteSeo() {
     meta('twitter:description', page.description);
 
     // Gated areas and any unmatched path (which renders <NotFound/> at HTTP 200 —
-    // a soft 404) are kept out of the index. See robotsFor().
-    meta('robots', robotsFor(path));
-  }, [pathname]);
+    // a soft 404) are kept out of the index. See robotsFor(). A known route whose id
+    // no longer resolves is the same defect wearing a valid URL, so it goes too.
+    meta('robots', missing ? 'noindex, follow' : robotsFor(path));
+  }, [pathname, missing]);
 
   return null;
 }
