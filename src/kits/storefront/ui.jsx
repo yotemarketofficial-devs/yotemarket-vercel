@@ -43,6 +43,26 @@ export function Thumb({ icon, tint='#4f46e5', size=56, radius=14, fs, img }){
   );
 }
 
+/* A real <a href> that still navigates through the screen stack.
+ *
+ * The cards used to be plain <div onClick>. That works for a person and is invisible
+ * to everything else: a crawler does not click divs, and the address bar only catches
+ * up afterwards via replaceState, so no indexed page ever linked into the catalogue.
+ * Every /store/:sid and /product/:pid URL was reachable only from sitemap.xml —
+ * which is what puts them in Search Console's "Discovered - currently not indexed"
+ * instead of the index.
+ *
+ * A modifier-click is left to the browser (and kept from reaching the card's own
+ * onClick) so "open in new tab" works the way it looks like it should.
+ */
+function CardLink({ href, onOpen, children, style }){
+  const click = (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { e.stopPropagation(); return; }
+    e.preventDefault(); e.stopPropagation(); onOpen();
+  };
+  return <a href={href} onClick={click} style={{ color:'inherit', textDecoration:'none', ...style }}>{children}</a>;
+}
+
 export function ProductCard({ p }){
   const { nav, addToCart } = useYM();
   const store = ymStore(p.store);
@@ -58,8 +78,14 @@ export function ProductCard({ p }){
         {p.negotiable && <span style={{ position:'absolute', bottom:10, left:10, zIndex:2, background:'var(--m-primary)', color:'#fff', fontSize:10.5, fontWeight:700, padding:'3px 9px', borderRadius:9999, display:'inline-flex', gap:5, alignItems:'center' }}><FA i="fa-handshake" style={{ fontSize:10 }} /> Negotiable</span>}
       </div>
       <div style={{ padding:'12px 14px 14px' }}>
-        <div className="ym-h3 line2" style={{ fontSize:14, height:38 }}>{p.name}</div>
-        <div className="ym-cap" style={{ margin:'4px 0 8px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{store?.name}</div>
+        <div className="ym-h3 line2" style={{ fontSize:14, height:38 }}>
+          <CardLink href={`/product/${encodeURIComponent(p.id)}`} onOpen={()=>nav('product',{pid:p.id})}>{p.name}</CardLink>
+        </div>
+        <div className="ym-cap" style={{ margin:'4px 0 8px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+          {store?.id
+            ? <CardLink href={`/store/${encodeURIComponent(store.id)}`} onOpen={()=>nav('store',{sid:store.id})}>{store.name}</CardLink>
+            : store?.name}
+        </div>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
           <div>
             <div style={{ fontWeight:700, fontSize:15.5, color:'var(--m-fg1)' }}>{ymPrice(p.price)}</div>
@@ -89,7 +115,9 @@ export function StoreCard({ s }){
           {s.logo ? <img src={s.logo} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i={s.icon} style={{ fontSize:24, color:s.tint }} />}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.name}</span>
+          <span className="ym-h3" style={{ fontSize:15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+            <CardLink href={`/store/${encodeURIComponent(s.id)}`} onOpen={()=>nav('store',{sid:s.id})}>{s.name}</CardLink>
+          </span>
           {s.verified && <FA i="fa-circle-check" style={{ color:'var(--m-primary)', fontSize:13, flexShrink:0 }} />}
         </div>
         <div className="ym-cap" style={{ margin:'3px 0 10px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{s.tagline}</div>

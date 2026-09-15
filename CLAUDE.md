@@ -7,7 +7,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 132 tests, all passing as of 2026-08-24
+npm test           # vitest — 210 tests, all passing as of 2026-09-15
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 
@@ -117,6 +117,54 @@ or every publish is refused.
 - **No APK published yet.** Both apps show "not published yet" until the first
   upload. Play Store URLs (`playUrl`) are empty too.
 - Rider APK is wired up identically but has never been uploaded.
+
+## Indexing — the catalogue was orphaned (fixed 2026-09-15)
+
+Search Console `sc-domain:yotemarket.co.ke` reported 59 pages as **"Discovered –
+currently not indexed"** and climbing — roughly the whole sitemap. That bucket means
+Google knows the URL and has never spent crawl budget fetching it, and the cause was
+structural: **nothing on the site linked into the catalogue.** The storefront navigates
+with a screen stack (`nav()` in `kits/storefront/index.jsx`) and only syncs the address
+bar with `replaceState`, so no `<a href>` to a `/store/`, `/product/` or `/feed/` URL
+existed anywhere in `src/`. `sitemap.xml` was the sole referrer for all 65 of them, and
+a URL whose only referrer is a sitemap does not get crawled.
+
+Three things now supply the missing links:
+
+- `ProductCard` / `StoreCard` (`kits/storefront/ui.jsx`) render the title and seller name
+  through `CardLink` — a real `<a href>` that still navigates via the screen stack, and
+  leaves modifier-clicks to the browser so "open in new tab" works.
+- `scripts/prerender.mjs` gives `/storefront` and `/feed` a `catalogueIndex()` body
+  listing every store, product and clip as a plain link. The homepage `<noscript>` already
+  links both, so the crawl path is homepage → hub → item in two hops. Bounded at
+  `MAX_LISTED`; stores are always listed in full because each store page carries its own
+  products (capped at 60 — raise it if a store ever exceeds that).
+- **Verify after a deploy:** `grep -c 'href="/product/' dist/storefront.html` should match
+  the product count `prerender` prints.
+
+Two related defects fixed in the same pass:
+
+- **Static pages were hostage to Firestore.** `prerender.mjs` returned early when
+  `fetchListable()` threw, and the static-page loop sat *after* that return — so one
+  Firestore blip during a Vercel build shipped every marketing URL as a bare copy of
+  `index.html`, carrying the homepage's canonical. That alone would fold /about, /pricing
+  and the rest into the homepage. The catalogue loops are now behind `if (cat)` and the
+  static pages always ship.
+- **Prerendered pages had no `robots` meta**, so they inherited index.html's
+  `index, follow`; `/delete-account` shipped indexable and only went `noindex` once Google
+  rendered the JS. `render()` now takes `robots` and the static loop passes `robotsFor(path)`.
+- **Soft 404s.** `/product/:pid` is a real route, so `robotsFor()` calls it indexable even
+  when the id was deleted — the SPA answers 200 with "Product not found". `src/lib/soft404.js`
+  is a small signal the `NotFound` screen raises (once `catalogReady`, since before that
+  "missing" only means "still fetching") and `RouteSeo` reads. RouteSeo stays the ONLY
+  writer of the robots meta on purpose: child effects run before parent ones, so a second
+  writer would just be overwritten.
+
+The other Search Console buckets are expected and need no fix: *Page with redirect* (4) is
+the apex → www 308 on a domain property, *Excluded by noindex* (5) is `/delete-account`
+plus the gated areas, *Alternate page with proper canonical* (2) is benign. *Discovered*
+and *Crawled – currently not indexed* also improve with domain authority over time, so
+give the fix a few weeks and a re-crawl before judging it.
 
 ## Gotchas worth remembering
 

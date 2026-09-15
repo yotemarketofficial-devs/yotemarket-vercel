@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { SITE, fetchListable, str, num, productImage, storeImage, ksh } from './lib/catalog.mjs';
 // The same titles/descriptions RouteSeo sets after hydration, baked into the served HTML.
-import { PAGES } from '../src/lib/seo-pages.mjs';
+import { PAGES, robotsFor } from '../src/lib/seo-pages.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
@@ -36,7 +36,7 @@ const jsonLd = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 const clip = (s, n) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t; };
 
 /** Swap the head tags + noscript body of the built index.html for this page's own. */
-function render(tpl, { title, description, url, image, schema, body, ogType = 'website' }) {
+function render(tpl, { title, description, url, image, schema, body, ogType = 'website', robots }) {
   let h = tpl;
   h = h.replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`);
   const meta = (attr, key, val) => {
@@ -45,6 +45,12 @@ function render(tpl, { title, description, url, image, schema, body, ogType = 'w
     h = re.test(h) ? h.replace(re, tag) : h.replace('</head>', `  ${tag}\n  </head>`);
   };
   meta('name', 'description', description);
+  // The served HTML must carry the SAME robots directive RouteSeo sets after hydration.
+  // It didn't: every prerendered file inherited index.html's "index, follow", so
+  // /delete-account shipped as indexable and only went noindex once Google rendered the
+  // JS. Two different answers from one URL is the kind of thing that lands a page in
+  // "Excluded by noindex" with a Failed validation and keeps it there.
+  if (robots) meta('name', 'robots', robots);
   meta('property', 'og:title', title);
   meta('property', 'og:description', description);
   meta('property', 'og:url', url);
@@ -73,131 +79,188 @@ function write(rel, html) {
   writeFileSync(file, html);
 }
 
+/* The crawlable catalogue index carried by /storefront and /feed.
+ *
+ * WHY THIS EXISTS: every store, product and clip URL was ORPHANED. The storefront
+ * navigates with a screen stack and only syncs the address bar with replaceState, so
+ * nothing in the shop is ever an <a href> — there is no link from any indexed page
+ * into the catalogue. sitemap.xml was the sole thing pointing at those URLs, and a URL
+ * whose only referrer is a sitemap is precisely what Search Console files under
+ * "Discovered - currently not indexed": Google knows the address and never spends
+ * crawl budget fetching it. These two pages are the way in.
+ *
+ * Bounded on purpose. /storefront links EVERY store (the stores are the spine, and
+ * each store page already lists its own products), and the newest slice of products
+ * directly. A catalogue of any size therefore stays reachable in two hops without
+ * this file growing without limit.
+ */
+const MAX_LISTED = 500;
+
+function catalogueIndex(path, cat) {
+  if (!cat) return '';
+  const link = (href, text) => `<li><a href="${esc(href)}">${esc(text)}</a></li>`;
+
+  if (path === '/storefront') {
+    const stores = cat.stores
+      .map((s) => link(`/store/${encodeURIComponent(s.id)}`, str(s.fields.name) || 'Store'))
+      .join('');
+    const products = cat.products.slice(0, MAX_LISTED)
+      .map((p) => {
+        const price = num(p.fields.price);
+        return link(`/product/${encodeURIComponent(p.id)}`,
+          `${str(p.fields.name) || 'Product'}${price != null ? ` — ${ksh(price)}` : ''}`);
+      }).join('');
+    return (stores ? `<h2>Stores on YoteMarket</h2><ul>${stores}</ul>` : '')
+      + (products ? `<h2>Products on YoteMarket</h2><ul>${products}</ul>` : '');
+  }
+
+  if (path === '/feed') {
+    const clips = cat.feed.slice(0, MAX_LISTED)
+      .map((c) => {
+        const seller = str(c.fields.storeName) || 'a YoteMarket store';
+        const caption = str(c.fields.caption).replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim();
+        return link(`/feed/${encodeURIComponent(c.id)}`, clip(caption || `A clip from ${seller}`, 90));
+      }).join('');
+    return clips ? `<h2>Shoppable clips on YoteFeed</h2><ul>${clips}</ul>` : '';
+  }
+
+  return '';
+}
+
+
 async function main() {
   const tplPath = join(DIST, 'index.html');
   if (!existsSync(tplPath)) { console.warn('[prerender] no dist/index.html — skipped'); return; }
   const tpl = readFileSync(tplPath, 'utf8');
 
-  let cat;
+  // A catalogue failure must NOT take the static pages down with it. It used to:
+  // this returned early, so a Firestore blip during a Vercel build shipped every
+  // marketing URL as a bare copy of index.html — same <title> and, fatally, the
+  // homepage's canonical. That tells Google /about, /pricing and the rest ARE the
+  // homepage while the sitemap begs for them to be indexed.
+  let cat = null;
   try {
     cat = await fetchListable();
   } catch (err) {
-    console.warn(`[prerender] could not read the catalogue (${err.message}) — SPA ships unchanged.`);
-    return;
+    console.warn(`[prerender] could not read the catalogue (${err.message}) — static pages still ship; store/product/feed pages are skipped this build.`);
   }
 
-  const storeName = (id) => str(cat.storeById.get(id)?.fields.name) || 'a YoteMarket store';
+  if (cat) {
 
-  for (const s of cat.stores) {
-    const f = s.fields;
-    const name = str(f.name) || 'Store';
-    const url = `${SITE}/store/${encodeURIComponent(s.id)}`;
-    const img = storeImage(f);
-    const where = [str(f.area), str(f.town)].filter(Boolean).join(', ');
-    const desc = clip(str(f.tagline) || `Shop ${name} on YoteMarket${where ? ` — ${where}` : ''}. Chat with the seller, pay with M-Pesa and collect at your nearest pickup point.`, 155);
-    const mine = cat.products.filter((p) => (str(p.fields.storeId) || str(p.fields.store)) === s.id);
-    write(`store/${s.id}.html`, render(tpl, {
-      title: clip(`${name} — shop online on YoteMarket`, 65),
-      description: desc, url, image: img,
-      schema: {
-        '@context': 'https://schema.org', '@type': 'Store', '@id': `${url}#store`,
-        name, url, ...(img ? { image: img } : {}), description: desc,
-        ...(where ? { address: { '@type': 'PostalAddress', addressLocality: str(f.area) || str(f.town), addressCountry: 'KE' } } : {}),
-        parentOrganization: { '@id': `${SITE}/#organization` },
-        currenciesAccepted: 'KES', paymentAccepted: 'M-Pesa',
-      },
-      body: `<h1>${esc(name)}</h1><p>${esc(desc)}</p>` +
-        (where ? `<p>${esc(where)}, Kenya</p>` : '') +
-        (mine.length ? `<h2>Products from ${esc(name)}</h2><ul>` + mine.slice(0, 60).map((p) =>
-          `<li><a href="/product/${encodeURIComponent(p.id)}">${esc(str(p.fields.name))}</a> — ${esc(ksh(num(p.fields.price)))}</li>`).join('') + '</ul>' : '') +
-        `<p><a href="/storefront">Browse all stores on YoteMarket</a></p>`,
-    }));
-  }
+    const storeName = (id) => str(cat.storeById.get(id)?.fields.name) || 'a YoteMarket store';
 
-  for (const p of cat.products) {
-    const f = p.fields;
-    const name = str(f.name) || 'Product';
-    const sid = str(f.storeId) || str(f.store);
-    const seller = storeName(sid);
-    const url = `${SITE}/product/${encodeURIComponent(p.id)}`;
-    const img = productImage(f);
-    const price = num(f.price);
-    const stock = f.stock?.integerValue != null ? Number(f.stock.integerValue) : null;
-    const inStock = f.inStock?.booleanValue !== false && (stock == null || stock > 0);
-    const desc = clip(str(f.desc) || `${name} from ${seller} on YoteMarket${price != null ? ` — ${ksh(price)}` : ''}. Pay with M-Pesa and collect at your nearest pickup point.`, 155);
-    write(`product/${p.id}.html`, render(tpl, {
-      title: clip(`${name}${price != null ? ` — ${ksh(price)}` : ''} | ${seller}`, 65),
-      description: desc, url, image: img, ogType: 'product',
-      schema: {
-        '@context': 'https://schema.org', '@type': 'Product', '@id': `${url}#product`,
-        name, ...(img ? { image: [img] } : {}), description: desc,
-        ...(str(f.sku) ? { sku: str(f.sku) } : {}),
-        ...(str(f.brand) ? { brand: { '@type': 'Brand', name: str(f.brand) } } : {}),
-        ...(str(f.weightKg) || num(f.weightKg) ? { weight: { '@type': 'QuantitativeValue', value: num(f.weightKg), unitCode: 'KGM' } } : {}),
-        ...(price != null ? {
-          offers: {
-            '@type': 'Offer', url, price: String(price), priceCurrency: 'KES',
-            availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            seller: { '@type': 'Organization', name: seller, ...(sid ? { '@id': `${SITE}/store/${encodeURIComponent(sid)}#store` } : {}) },
-            areaServed: { '@type': 'Country', name: 'Kenya' },
-          },
-        } : {}),
-      },
-      body: `<h1>${esc(name)}</h1>` +
-        (price != null ? `<p><strong>${esc(ksh(price))}</strong> — ${inStock ? 'in stock' : 'out of stock'}</p>` : '') +
-        `<p>${esc(desc)}</p>` +
-        (sid ? `<p>Sold by <a href="/store/${encodeURIComponent(sid)}">${esc(seller)}</a> on YoteMarket.</p>` : '') +
-        `<p><a href="/storefront">Shop more on YoteMarket</a> · <a href="/about">About YoteMarket</a></p>`,
-    }));
-  }
+    for (const s of cat.stores) {
+      const f = s.fields;
+      const name = str(f.name) || 'Store';
+      const url = `${SITE}/store/${encodeURIComponent(s.id)}`;
+      const img = storeImage(f);
+      const where = [str(f.area), str(f.town)].filter(Boolean).join(', ');
+      const desc = clip(str(f.tagline) || `Shop ${name} on YoteMarket${where ? ` — ${where}` : ''}. Chat with the seller, pay with M-Pesa and collect at your nearest pickup point.`, 155);
+      const mine = cat.products.filter((p) => (str(p.fields.storeId) || str(p.fields.store)) === s.id);
+      write(`store/${s.id}.html`, render(tpl, {
+        title: clip(`${name} — shop online on YoteMarket`, 65),
+        description: desc, url, image: img,
+        schema: {
+          '@context': 'https://schema.org', '@type': 'Store', '@id': `${url}#store`,
+          name, url, ...(img ? { image: img } : {}), description: desc,
+          ...(where ? { address: { '@type': 'PostalAddress', addressLocality: str(f.area) || str(f.town), addressCountry: 'KE' } } : {}),
+          parentOrganization: { '@id': `${SITE}/#organization` },
+          currenciesAccepted: 'KES', paymentAccepted: 'M-Pesa',
+        },
+        body: `<h1>${esc(name)}</h1><p>${esc(desc)}</p>` +
+          (where ? `<p>${esc(where)}, Kenya</p>` : '') +
+          (mine.length ? `<h2>Products from ${esc(name)}</h2><ul>` + mine.slice(0, 60).map((p) =>
+            `<li><a href="/product/${encodeURIComponent(p.id)}">${esc(str(p.fields.name))}</a> — ${esc(ksh(num(p.fields.price)))}</li>`).join('') + '</ul>' : '') +
+          `<p><a href="/storefront">Browse all stores on YoteMarket</a></p>`,
+      }));
+    }
 
-  // ── YoteFeed ────────────────────────────────────────────────────────────────
-  // Clips had no URL at all until now, so nothing in the feed could be crawled,
-  // shared or ranked — the whole video catalogue was invisible. Each live clip gets
-  // a real page with VideoObject markup and a <video> element a crawler can see.
-  for (const c of cat.feed) {
-    const f = c.fields;
-    const prod = f.product?.mapValue?.fields || {};
-    const sid = str(f.storeId);
-    const seller = str(f.storeName) || storeName(sid);
-    const url = `${SITE}/feed/${encodeURIComponent(c.id)}`;
-    const video = str(f.videoUrl);
-    // Merchant captions carry marketing asterisks/emoji and line breaks — flatten
-    // before using them as a title.
-    const caption = str(f.caption).replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim();
-    const thumb = str(f.posterUrl) || productImage(prod) || str(f.storeLogo) ||
-      storeImage(cat.storeById.get(sid)?.fields || {});
-    const pname = str(prod.name);
-    const pprice = num(prod.price);
-    const pid = str(prod.id) || str(f.productId);
-    const title = clip(caption || `${seller} on YoteFeed`, 65);
-    const desc = clip(caption || `A short video from ${seller} on YoteMarket — watch it and buy what is in it.`, 155);
-    const uploaded = f.createdAt?.timestampValue || c.updateTime || null;
-    write(`feed/${c.id}.html`, render(tpl, {
-      title, description: desc, url, image: thumb, ogType: 'video.other',
-      schema: {
-        '@context': 'https://schema.org', '@type': 'VideoObject', '@id': `${url}#video`,
-        name: title, description: desc, contentUrl: video, url,
-        ...(thumb ? { thumbnailUrl: [thumb] } : {}),
-        ...(uploaded ? { uploadDate: uploaded } : {}),
-        isFamilyFriendly: true,
-        publisher: { '@id': `${SITE}/#organization` },
-        ...(sid ? { creator: { '@type': 'Organization', name: seller, '@id': `${SITE}/store/${encodeURIComponent(sid)}#store` } } : {}),
-        ...(pname ? {
-          about: {
-            '@type': 'Product', name: pname,
-            ...(pid ? { '@id': `${SITE}/product/${encodeURIComponent(pid)}#product` } : {}),
-            ...(pprice != null ? { offers: { '@type': 'Offer', price: String(pprice), priceCurrency: 'KES', ...(pid ? { url: `${SITE}/product/${encodeURIComponent(pid)}` } : {}) } } : {}),
-          },
-        } : {}),
-      },
-      body: `<h1>${esc(title)}</h1>` +
-        `<video controls preload="none" src="${esc(video)}"${thumb ? ` poster="${esc(thumb)}"` : ''}></video>` +
-        `<p>${esc(desc)}</p>` +
-        (sid ? `<p>Posted by <a href="/store/${encodeURIComponent(sid)}">${esc(seller)}</a> on YoteMarket.</p>` : '') +
-        (pname && pid ? `<p>In this video: <a href="/product/${encodeURIComponent(pid)}">${esc(pname)}</a>${pprice != null ? ` — ${esc(ksh(pprice))}` : ''}</p>` : '') +
-        `<p><a href="/feed">More shoppable video on YoteFeed</a> · <a href="/storefront">Shop YoteMarket</a></p>`,
-    }));
+    for (const p of cat.products) {
+      const f = p.fields;
+      const name = str(f.name) || 'Product';
+      const sid = str(f.storeId) || str(f.store);
+      const seller = storeName(sid);
+      const url = `${SITE}/product/${encodeURIComponent(p.id)}`;
+      const img = productImage(f);
+      const price = num(f.price);
+      const stock = f.stock?.integerValue != null ? Number(f.stock.integerValue) : null;
+      const inStock = f.inStock?.booleanValue !== false && (stock == null || stock > 0);
+      const desc = clip(str(f.desc) || `${name} from ${seller} on YoteMarket${price != null ? ` — ${ksh(price)}` : ''}. Pay with M-Pesa and collect at your nearest pickup point.`, 155);
+      write(`product/${p.id}.html`, render(tpl, {
+        title: clip(`${name}${price != null ? ` — ${ksh(price)}` : ''} | ${seller}`, 65),
+        description: desc, url, image: img, ogType: 'product',
+        schema: {
+          '@context': 'https://schema.org', '@type': 'Product', '@id': `${url}#product`,
+          name, ...(img ? { image: [img] } : {}), description: desc,
+          ...(str(f.sku) ? { sku: str(f.sku) } : {}),
+          ...(str(f.brand) ? { brand: { '@type': 'Brand', name: str(f.brand) } } : {}),
+          ...(str(f.weightKg) || num(f.weightKg) ? { weight: { '@type': 'QuantitativeValue', value: num(f.weightKg), unitCode: 'KGM' } } : {}),
+          ...(price != null ? {
+            offers: {
+              '@type': 'Offer', url, price: String(price), priceCurrency: 'KES',
+              availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              seller: { '@type': 'Organization', name: seller, ...(sid ? { '@id': `${SITE}/store/${encodeURIComponent(sid)}#store` } : {}) },
+              areaServed: { '@type': 'Country', name: 'Kenya' },
+            },
+          } : {}),
+        },
+        body: `<h1>${esc(name)}</h1>` +
+          (price != null ? `<p><strong>${esc(ksh(price))}</strong> — ${inStock ? 'in stock' : 'out of stock'}</p>` : '') +
+          `<p>${esc(desc)}</p>` +
+          (sid ? `<p>Sold by <a href="/store/${encodeURIComponent(sid)}">${esc(seller)}</a> on YoteMarket.</p>` : '') +
+          `<p><a href="/storefront">Shop more on YoteMarket</a> · <a href="/about">About YoteMarket</a></p>`,
+      }));
+    }
+
+    // ── YoteFeed ────────────────────────────────────────────────────────────────
+    // Clips had no URL at all until now, so nothing in the feed could be crawled,
+    // shared or ranked — the whole video catalogue was invisible. Each live clip gets
+    // a real page with VideoObject markup and a <video> element a crawler can see.
+    for (const c of cat.feed) {
+      const f = c.fields;
+      const prod = f.product?.mapValue?.fields || {};
+      const sid = str(f.storeId);
+      const seller = str(f.storeName) || storeName(sid);
+      const url = `${SITE}/feed/${encodeURIComponent(c.id)}`;
+      const video = str(f.videoUrl);
+      // Merchant captions carry marketing asterisks/emoji and line breaks — flatten
+      // before using them as a title.
+      const caption = str(f.caption).replace(/[*_~`]/g, '').replace(/\s+/g, ' ').trim();
+      const thumb = str(f.posterUrl) || productImage(prod) || str(f.storeLogo) ||
+        storeImage(cat.storeById.get(sid)?.fields || {});
+      const pname = str(prod.name);
+      const pprice = num(prod.price);
+      const pid = str(prod.id) || str(f.productId);
+      const title = clip(caption || `${seller} on YoteFeed`, 65);
+      const desc = clip(caption || `A short video from ${seller} on YoteMarket — watch it and buy what is in it.`, 155);
+      const uploaded = f.createdAt?.timestampValue || c.updateTime || null;
+      write(`feed/${c.id}.html`, render(tpl, {
+        title, description: desc, url, image: thumb, ogType: 'video.other',
+        schema: {
+          '@context': 'https://schema.org', '@type': 'VideoObject', '@id': `${url}#video`,
+          name: title, description: desc, contentUrl: video, url,
+          ...(thumb ? { thumbnailUrl: [thumb] } : {}),
+          ...(uploaded ? { uploadDate: uploaded } : {}),
+          isFamilyFriendly: true,
+          publisher: { '@id': `${SITE}/#organization` },
+          ...(sid ? { creator: { '@type': 'Organization', name: seller, '@id': `${SITE}/store/${encodeURIComponent(sid)}#store` } } : {}),
+          ...(pname ? {
+            about: {
+              '@type': 'Product', name: pname,
+              ...(pid ? { '@id': `${SITE}/product/${encodeURIComponent(pid)}#product` } : {}),
+              ...(pprice != null ? { offers: { '@type': 'Offer', price: String(pprice), priceCurrency: 'KES', ...(pid ? { url: `${SITE}/product/${encodeURIComponent(pid)}` } : {}) } } : {}),
+            },
+          } : {}),
+        },
+        body: `<h1>${esc(title)}</h1>` +
+          `<video controls preload="none" src="${esc(video)}"${thumb ? ` poster="${esc(thumb)}"` : ''}></video>` +
+          `<p>${esc(desc)}</p>` +
+          (sid ? `<p>Posted by <a href="/store/${encodeURIComponent(sid)}">${esc(seller)}</a> on YoteMarket.</p>` : '') +
+          (pname && pid ? `<p>In this video: <a href="/product/${encodeURIComponent(pid)}">${esc(pname)}</a>${pprice != null ? ` — ${esc(ksh(pprice))}` : ''}</p>` : '') +
+          `<p><a href="/feed">More shoppable video on YoteFeed</a> · <a href="/storefront">Shop YoteMarket</a></p>`,
+      }));
+    }
+
   }
 
   // ── Static pages ────────────────────────────────────────────────────────────
@@ -209,12 +272,15 @@ async function main() {
     if (path === '/') continue; // dist/index.html already is the homepage
     write(`${path.replace(/^\//, '')}.html`, render(tpl, {
       title: page.title, description: page.description, url: `${SITE}${path}`,
+      robots: robotsFor(path),
       body: `<h1>${esc(page.title)}</h1><p>${esc(page.description)}</p>` +
+        catalogueIndex(path, cat) +
         `<p><a href="/">YoteMarket</a> · <a href="/storefront">Shop</a> · <a href="/feed">YoteFeed</a> · <a href="/help">Help</a></p>`,
     }));
   }
 
-  console.log(`[prerender] ${cat.stores.length} stores + ${cat.products.length} products + ${cat.feed.length} feed clips + ${Object.keys(PAGES).length - 1} static → dist/*.html`);
+  const n = cat ? `${cat.stores.length} stores + ${cat.products.length} products + ${cat.feed.length} feed clips` : 'no catalogue';
+  console.log(`[prerender] ${n} + ${Object.keys(PAGES).length - 1} static → dist/*.html`);
 }
 
 main().catch((e) => console.warn(`[prerender] skipped (${e.message})`));

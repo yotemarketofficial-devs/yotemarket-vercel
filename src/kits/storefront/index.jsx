@@ -81,7 +81,10 @@ export default function StorefrontApp(){
   const pendingRef = useRef(null);
 
   // Pull real Firestore catalog (no-op in demo mode); re-renders this tree when it lands.
-  useCatalogSync(applyCatalog);
+  // The returned version is 0 until the first Firestore snapshot lands. Screens need
+  // that: before it, "this product isn't in the catalogue" only means "still fetching",
+  // and reporting a soft 404 on it would noindex a page that is perfectly fine.
+  const catalogReady = useCatalogSync(applyCatalog) > 0;
 
   // Live orders for the signed-in shopper (null = demo/guest → bundled sample orders).
   const [liveOrders, setLiveOrders] = useState(null);
@@ -180,7 +183,7 @@ export default function StorefrontApp(){
 
   const ctx = { nav, back, reset, theme, setTheme, cart, cartCount, addToCart, setCartQty, removeFromCart, clearCart,
     cartOpen, openCart:()=>setCartOpen(true), closeCart:()=>setCartOpen(false), toast,
-    account, openAuth, requireAuth, signOut: doSignOut, liveOrders,
+    account, openAuth, requireAuth, signOut: doSignOut, liveOrders, catalogReady,
     startTour: () => setTour(true) };
 
   // YoteAI floats as a glass overlay over the page you were on — so render the
