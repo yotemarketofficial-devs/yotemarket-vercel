@@ -341,8 +341,22 @@ export const entitlementContext = callable('entitlementContext');
 // ── Careers ──────────────────────────────────────────────────────────────────
 /** Public: apply for a job from /careers → { id, ref }. { name, email, phone?, dept, role?, links?, message }. */
 export const submitJobApplication = callable('submitJobApplication');
+/**
+ * Public: attach the applicant's CV to the application they just submitted
+ * → { ok, cv:{ name, size } }. { applicationId, ref, filename, contentType, dataBase64 }.
+ *
+ * A SECOND STEP ON PURPOSE. Applying is anonymous — no account — so the application has to
+ * land whatever happens to the file: a 4 MB CV on a bad connection must not cost somebody
+ * their application. It is also why `ref` is required alongside the id: the JOB-XXXXXX
+ * reference is handed only to whoever submitted, so knowing a document id is not enough to
+ * write a CV onto a stranger's application. The server stores the storage PATH and mints no
+ * public URL, the same way employee documents are held (see functions/hrfiles.js).
+ */
+export const attachApplicationCv = callable('attachApplicationCv');
 /** Staff: every job application, newest first → { applications, counts }. */
 export const staffListJobApplications = callable('staffListJobApplications');
+/** Staff: fetch an applicant's CV back → { dataBase64, contentType, filename, size }. { id }. */
+export const staffJobApplicationCv = callable('staffJobApplicationCv');
 /** Staff: move an application through the hiring funnel → { ok, stage }. { id, stage, note? }. */
 export const staffSetJobApplicationStage = callable('staffSetJobApplicationStage');
 /** Staff: create/update a job opening → { ok, id }. { id?, dept, title, type?, location?, summary?, status? }. */

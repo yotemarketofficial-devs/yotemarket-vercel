@@ -4,13 +4,14 @@
 import React from 'react';
 import { StoreGeoModal } from './coverage.jsx';
 import { KE_COUNTY_NAMES } from '../../lib/counties.js';
-import { KPIS, REVENUE_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS, WALLET, SUBSCRIPTIONS } from './data.js';
+import { CATEGORY_TREE } from '../storefront/categories.js';
+import { KPIS, REVENUE_TREND, SUB_MIX, FUNNEL, MERCHANTS, APPLICANTS, SCOUTS, PAYOUT_REQUESTS } from './data.js';
 import { Card, SectionHead, Seg, Btn, Pill, Avatar, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState, BackendError } from './ui.jsx';
 import { useEscape } from '../../lib/useEscape.js';
 import {
   useStaffResource, fetchOverview, fetchMerchants, setMerchantStatus,
   enterpriseQuote, setEnterprise,
-  fetchSubscriptions, fetchReports, fetchTranscript,
+  fetchReports, fetchTranscript,
   moderateConversation, resolveReport, setStaffRole,
   fetchMarketers, setMarketerStage, setMarketerHireStage, fetchPayouts, resolvePayout,
   fetchMerchantFollows, resolveMerchantFollow, snapshotScoutFloors,
@@ -29,54 +30,16 @@ const YOTE_SOCIALS = {
   x: 'https://x.com/yotemarket',
   youtube: 'https://www.youtube.com/@yotemarket',
 };
-import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
 import { useDialogs } from './dialogs.jsx';
+// The payout-method formatter lives with the billing screen that owns the approvals queue;
+// the merchant record below prints the same label, so it is imported rather than re-written.
+import { payoutLabelStaff } from './billing.jsx';
 
-const payoutLabelStaff = (p) => {
-  if (!p) return 'Not set';
-  const t = p.type || (p.method === 'b2b' ? 'paybill' : 'phone');
-  if (t === 'phone') return `M-Pesa ${p.phone}`;
-  if (t === 'pochi') return `Pochi ${p.phone}`;
-  if (t === 'till') return `Till ${p.till}`;
-  if (t === 'paybill') return `Paybill ${p.paybill} · Acc ${p.account}`;
-  return 'Set';
-};
+// A store's catId → the label shoppers see. Unknown ids are shown as themselves rather
+// than hidden: a category nobody recognises is worth seeing, not worth swallowing.
+const CAT_LABEL = Object.fromEntries(CATEGORY_TREE.map((c) => [c.id, c.label]));
+const catLabel = (id) => CAT_LABEL[id] || id;
 
-/* Staff review of merchant payout-change requests (staff approval required). */
-function PayoutChangeReview(){
-  const { useState, useEffect, useCallback } = React;
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState(null);
-  const load = useCallback(async () => {
-    setLoading(true);
-    try { const r = await staffListPayoutChanges(); setRows(r.requests || []); } catch (e) { /* backend off */ } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-  const resolve = async (id, approve) => {
-    try { await staffResolvePayoutChange({ id, approve }); setMsg({ ok:true, text: approve ? 'Payout change approved.' : 'Request rejected.' }); load(); }
-    catch (e) { setMsg({ ok:false, text: e.message || 'Failed.' }); }
-  };
-  if (!loading && rows.length === 0) return null;
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="flex items-center justify-between p-5 pb-3"><h3 className="font-bold t1">Payout-change requests</h3>{rows.length > 0 && <Pill tone="amber">{rows.length} pending</Pill>}</div>
-      {msg && <div className="px-5 pb-2 text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
-      <div className="divide-y" style={{ borderColor:'var(--line)' }}>
-        {rows.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 p-4" style={{ borderTop:'1px solid var(--line)' }}>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold t1 text-sm truncate">{r.storeName || r.merchantId}</div>
-              <div className="text-xs t3 mt-0.5">{payoutLabelStaff(r.current)} <Icon name="arrow-right" className="mx-1" /> <span className="t1 font-semibold">{payoutLabelStaff(r.requested)}</span></div>
-            </div>
-            <Btn kind="soft" size="sm" onClick={()=>resolve(r.id, false)}>Reject</Btn>
-            <Btn kind="primary" size="sm" onClick={()=>resolve(r.id, true)}>Approve</Btn>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
 const { useState: useSS, useEffect: useES, useMemo: useMemoX, useCallback: useCallbackX } = React;
 
 /* ── Record audit — click any merchant/store/scout to inspect its full record ── */
@@ -446,6 +409,7 @@ export function Approvals({ isAdmin }){
   // The whole point is that the browser never holds the merchant table.
   const [filter,setFilter] = useSS('pending');
   const [place,setPlace] = useSS('');       // '' = every county
+  const [cat,setCat] = useSS('');           // '' = every category (store catId)
   const [term,setTerm] = useSS('');         // name prefix
   const [q,setQ] = useSS('');               // debounced copy of term
   useES(()=>{ const t=setTimeout(()=>setQ(term.trim()), 260); return ()=>clearTimeout(t); }, [term]);
@@ -459,8 +423,11 @@ export function Approvals({ isAdmin }){
   const args = useMemoX(()=>({
     status: filter === 'all' ? null : filter,
     level: place ? 'county' : null, place: place || null,
+    // Sent like every other filter — the server narrows, the browser never holds the table.
+    // Whether the deployed callable actually honours it is checked below rather than assumed.
+    cat: cat || null,
     q: q || null, pageSize: 40,
-  }), [filter, place, q]);
+  }), [filter, place, cat, q]);
 
   // A filter change starts a new list; Load more appends to it.
   const load = useCallbackX(async (append) => {
@@ -533,7 +500,19 @@ export function Approvals({ isAdmin }){
   // The server already applied the filter, so the page IS the view. Counts come from
   // aggregation queries rather than the loaded page — counting what was loaded is how a
   // "3 pending" badge appears while 300 are waiting.
-  const shown = list;
+  //
+  // EXCEPT for the category, which is the one filter whose support has to be PROVEN rather
+  // than trusted. A callable that predates the `cat` argument ignores it in silence and
+  // answers with the unnarrowed list, which is the worst possible failure for a filter:
+  // it looks like it worked and the answer is wrong. So the page is checked against what
+  // was asked for. If the server did narrow it, every row matches and this costs one pass;
+  // if it did not, the browser narrows the page itself and says plainly that the result is
+  // page-local — useful, and not passing itself off as the whole set.
+  const catMatched = cat ? list.filter((m) => (m.cat || '') === cat) : list;
+  const catHonoured = !cat || catMatched.length === list.length;
+  // No `cat` on any row at all — the field isn't in the payload yet, so nothing can match.
+  const catAbsent = Boolean(cat) && list.length > 0 && list.every((m) => m.cat === undefined);
+  const shown = catHonoured ? list : catMatched;
   const count = s => (page.counts && page.counts[s] != null ? page.counts[s] : 0);
 
   return (<div className="fadeup space-y-6">
@@ -553,10 +532,16 @@ export function Approvals({ isAdmin }){
           <option value="">All 47 counties</option>
           {KE_COUNTY_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        {/* The same taxonomy the merchant picked from at signup (storefront/categories.js),
+            so "Electronics" here means the catId their store actually carries. */}
+        <select className="ym-input" style={{ minWidth:170 }} value={cat} onChange={e=>setCat(e.target.value)}>
+          <option value="">All categories</option>
+          {CATEGORY_TREE.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
         <input className="ym-input" style={{ minWidth:220, flex:1 }} value={term}
           onChange={e=>setTerm(e.target.value)} placeholder="Shop name starts with…" />
-        {(place || term) && (
-          <Btn kind="ghost" size="sm" icon="xmark" onClick={()=>{ setPlace(''); setTerm(''); }}>Clear</Btn>
+        {(place || cat || term) && (
+          <Btn kind="ghost" size="sm" icon="xmark" onClick={()=>{ setPlace(''); setCat(''); setTerm(''); }}>Clear</Btn>
         )}
         <span className="text-xs t3 ml-auto">
           {loading ? 'Loading…'
@@ -566,6 +551,18 @@ export function Approvals({ isAdmin }){
       </div>
       {/* Prefix, not substring — the trade for the browser never holding the table. */}
       {term && <div className="text-xs t3 mt-2">Matching shop names that start with “{term.trim()}”.</div>}
+      {cat && !catHonoured && (
+        <div className="text-xs mt-2 flex items-start gap-1.5" style={{ color:'var(--amber)' }}>
+          <Icon name="triangle-exclamation" className="mt-0.5" />
+          <span>
+            {catAbsent
+              ? 'This backend does not send a store category yet, so nothing can be matched.'
+              : `Narrowed in the browser — showing ${catMatched.length} of the ${list.length} rows on this page.`}
+            {' '}The category filter needs `staffListMerchants` to accept it; the tallies above and
+            “Load more” still cover every category. See docs/staff-portal-backend.md.
+          </span>
+        </div>
+      )}
       {loadErr && <div className="text-xs mt-2" style={{ color:'var(--red)' }}>{loadErr}</div>}
     </Card>
 
@@ -592,6 +589,10 @@ export function Approvals({ isAdmin }){
               m.suspended ? <Pill tone="red">Suspended</Pill>
                 : m.verified ? <Pill tone="ok">Verified</Pill>
                   : <Pill tone="amber">Pending</Pill>) },
+            { key:'cat', header:'Category', sort:true, render:(m)=>(
+              m.cat
+                ? <span className="text-sm t2">{catLabel(m.cat)}</span>
+                : <span className="text-xs t3">—</span>) },
             { key:'items', header:'Items', sort:true, render:(m)=><span className="num t3">{m.items||0}</span> },
             { key:'flags', header:'', render:(m)=>(
               <span className="flex gap-1 flex-wrap justify-end">
@@ -610,7 +611,7 @@ export function Approvals({ isAdmin }){
       ) : (
         <div className="p-10 text-center t3">
           <Icon name="inbox" className="text-3xl mb-2"/>
-          <div>{loading ? 'Loading…' : (place || term || filter !== 'all') ? 'No merchants match this filter.' : 'No merchants yet.'}</div>
+          <div>{loading ? 'Loading…' : (place || cat || term || filter !== 'all') ? 'No merchants match this filter.' : 'No merchants yet.'}</div>
         </div>
       )}
     </Card>
@@ -1034,38 +1035,8 @@ export function Scouts({ isAdmin }){
   </div>);
 }
 
-/* ============ SUBSCRIPTIONS & WALLET ============ */
-export function Wallet(){
-  const { data, live, error, demo, reload } = useStaffResource(fetchSubscriptions, { subscriptions:SUBSCRIPTIONS, wallet:WALLET });
-  // Money figures MUST never fall back to demo — an invented float is the most
-  // dangerous number in the console. Missing → em-dash, not a plausible amount.
-  const wallet = data.wallet || {};
-  const subs = data.subscriptions || [];
-  const money = (v) => (v == null || v === '' ? '—' : v);
-  const tone = { active:'ok', overdue:'red' };
-  return (<div className="fadeup space-y-6">
-    <SectionHead icon="wallet" title="Subscriptions & wallet" sub={demo ? 'Sample billing — no backend configured' : (live ? 'Platform float, M-Pesa settlement, and merchant billing oversight' : 'Loading live billing…')} />
-    <BackendError error={error} onRetry={reload} />
-    <PayoutChangeReview />
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <Stat label="Platform float" value={money(wallet.float)} icon="vault" tone="pri" />
-      <Stat label="M-Pesa settled today" value={money(wallet.mpesaToday)} icon="mobile-alt" tone="green" />
-      <Stat label="Pending payouts" value={money(wallet.pendingPayouts)} icon="hourglass-half" tone="amber" />
-      <Stat label="Badge insurance fund" value={money(wallet.badgeFund)} icon="shield-halved" tone="blue" />
-    </div>
-    <Card className="p-0 overflow-hidden">
-      <div className="flex items-center justify-between p-5 pb-3"><h3 className="font-bold t1">Merchant subscriptions</h3><Btn kind="soft" size="sm" icon="download">Export</Btn></div>
-      <DataTable minWidth={600} rows={subs} empty={<EmptyState icon="wallet" title="No subscriptions yet." />} columns={[
-        { key:'shop', header:'Shop', render:s=><span className="font-semibold t1">{s.shop}</span> },
-        { key:'plan', header:'Plan', render:s=><span className="t2">{s.plan}</span> },
-        { key:'band', header:'Band', render:s=><span className="t3">{s.band}</span> },
-        { key:'amount', header:'Amount', render:s=><span className="num t1">{kes(s.amount)}<span className="text-xs t3">/mo</span></span> },
-        { key:'next', header:'Next billing', render:s=><span className="num" style={{color: s.status==='overdue'?'var(--red)':'var(--t2)'}}>{s.next}</span> },
-        { key:'status', header:'Status', render:s=><Pill tone={tone[s.status]}>{s.status}</Pill> },
-      ]} />
-    </Card>
-  </div>);
-}
+/* Subscriptions & billing moved to ./billing.jsx — it grew a derived-state layer, a
+   per-merchant drawer and the entitlement panel, none of which belong in this file. */
 
 /* ============ CHAT MODERATION (reports → transcript → block) ============ */
 const REPORTS_DEMO = [

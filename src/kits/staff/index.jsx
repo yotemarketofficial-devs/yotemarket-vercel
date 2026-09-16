@@ -9,7 +9,8 @@ import './staff.css';
 import './tailwind.css';
 import { ThemeProvider, Logo, Icon, Avatar, ThemeToggle } from './ui.jsx';
 import { StaffLogin, StaffDenied, StaffSplash } from './auth.jsx';
-import { Analytics, Approvals, Applications, Scouts, Wallet, Moderation, ReviewModeration, Team, Maintenance } from './screens.jsx';
+import { Analytics, Approvals, Applications, Scouts, Moderation, ReviewModeration, Team, Maintenance } from './screens.jsx';
+import { Billing } from './billing.jsx';
 import { Logistics, RiderRoster } from './logistics.jsx';
 import { Outreach, Broadcasts } from './comms.jsx';
 import { CommandCenter } from './command.jsx';
@@ -148,7 +149,7 @@ const WORKSPACES = [
   ]},
 ];
 
-const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Wallet, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, filings:StatutoryFilings, documents:EmployeeDocuments, recruitment:Recruitment, account:MyAccount, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
+const SCREENS = { command:CommandCenter, analytics:Analytics, approvals:Approvals, applications:Applications, scouts:Scouts, logistics:Logistics, roster:RiderRoster, wallet:Billing, promotions:Promotions, intelligence:Intelligence, people:People, careers:Careers, riders:RiderApplications, finance:Finance, legal:Legal, accounts:Accounts, moderation:Moderation, reviews:ReviewModeration, support:Support, disputes:Disputes, outreach:Outreach, broadcasts:Broadcasts, team:StaffAccess, attendance:Attendance, contracts:Contracts, mycontract:MyContract, audit:AuditLog, maintenance:Maintenance, releases:AppReleases, payroll:Payroll, compliance:Compliance, filings:StatutoryFilings, documents:EmployeeDocuments, recruitment:Recruitment, account:MyAccount, boards:Boards, territories:Territories, statutory:StatutoryIds, economics:Economics };
 
 // Flat lookup: section key → { section, workspace }
 const SECTION_INDEX = {};

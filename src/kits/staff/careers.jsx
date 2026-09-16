@@ -3,7 +3,7 @@
    (candidate PII). Auto-refreshes via useStaffResource. */
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Icon, DataTable } from './ui.jsx';
-import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening, deleteJobApplication } from './service.js';
+import { useStaffResource, fetchJobApplications, setJobApplicationStage, fetchJobOpenings, saveJobOpening, deleteJobOpening, deleteJobApplication, openJobApplicationCv } from './service.js';
 import { useEscape } from '../../lib/useEscape.js';
 import { useDialogs } from './dialogs.jsx';
 import { AddStaffDrawer } from './people.jsx';
@@ -26,6 +26,31 @@ const DEPT_LABEL = {
   growth: 'Growth & Partnerships', finance: 'Finance & Admin', marketing: 'Marketing & Brand', other: 'Other',
 };
 const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const fmtKb = (b) => (b ? `${(b / 1024).toFixed(0)} KB` : '');
+
+/* The links box is one free-text field a candidate types anything into — usually two or
+   three URLs separated by spaces, commas or newlines. It used to render as flat text, so
+   the CV link in it could not be opened: the one field whose entire purpose is to be
+   followed was the one thing on the screen you could not click. Split, then linkify only
+   what actually looks like a URL; the rest stays as the words they typed. */
+const LINK_SPLIT = /[\s,;]+/;
+function CandidateLinks({ value }) {
+  const parts = String(value || '').split(LINK_SPLIT).filter(Boolean);
+  if (!parts.length) return null;
+  return (
+    <div className="text-sm t2 break-all flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Icon name="link" className="t3" />
+      {parts.map((raw, i) => {
+        const url = /^https?:\/\//i.test(raw) ? raw : (/^[\w-]+(\.[\w-]+)+\//.test(raw) || /^(www\.|linkedin\.com|github\.com)/i.test(raw) ? `https://${raw}` : null);
+        return url
+          // noreferrer as well as noopener: a candidate's link should not carry the console's
+          // URL to wherever it points.
+          ? <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--pri)' }}>{raw} <Icon name="arrow-up-right-from-square" className="text-[10px]" /></a>
+          : <span key={i}>{raw}</span>;
+      })}
+    </div>
+  );
+}
 
 /* Detail drawer — the full application + funnel controls. */
 function ApplicantDrawer({ app, onClose, onMoved }) {
@@ -34,7 +59,18 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
   const [note, setNote] = useState('');
   const [onboarding, setOnboarding] = useState(false);
   const [err, setErr] = useState('');
+  const [cvBusy, setCvBusy] = useState(false);
+  const [cvErr, setCvErr] = useState('');
   useEscape(onClose, !busy); // Esc closes, unless a stage move is in flight
+  // The bytes arrive through a staff-gated callable and are shown from an object URL, so
+  // the CV is never given a public link. A failure here is the candidate's document being
+  // unreachable, which is worth naming rather than logging silently.
+  const openCv = async () => {
+    setCvBusy(true); setCvErr('');
+    try { await openJobApplicationCv(app.id); }
+    catch (e) { setCvErr(e.message || 'Could not open that CV.'); }
+    finally { setCvBusy(false); }
+  };
   const move = async (stage) => {
     setBusy(true); setErr('');
     try { await setJobApplicationStage(app.id, stage, note.trim()); setNote(''); onMoved && onMoved(); onClose(); }
@@ -43,7 +79,7 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
   };
   // Right to erasure — a candidate can ask us to delete their data.
   const erase = async () => {
-    if (!await confirm({ title: `Permanently erase ${app.name}'s application (${app.ref})? This deletes their name, contact details and CV links. It can't be undone.` })) return;
+    if (!await confirm({ title: `Permanently erase ${app.name}'s application (${app.ref})? This deletes their name, contact details, links and any CV they attached. It can't be undone.` })) return;
     setBusy(true); setErr('');
     try { await deleteJobApplication(app.id); onMoved && onMoved(); onClose(); }
     catch (e) { setErr(e.message || 'Could not delete.'); setBusy(false); }
@@ -69,7 +105,18 @@ function ApplicantDrawer({ app, onClose, onMoved }) {
         <Card className="p-4 space-y-2">
           <div className="text-sm t2"><Icon name="envelope" className="mr-2 t3" /><a href={`mailto:${app.email}`} style={{ color: 'var(--pri)' }}>{app.email}</a></div>
           {app.phone && <div className="text-sm t2"><Icon name="phone" className="mr-2 t3" /><a href={`tel:${app.phone}`} style={{ color: 'var(--pri)' }}>{app.phone}</a></div>}
-          {app.links && <div className="text-sm t2 break-all"><Icon name="link" className="mr-2 t3" />{app.links}</div>}
+          {app.links && <CandidateLinks value={app.links} />}
+          {app.cv
+            ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Btn kind="soft" size="sm" icon={cvBusy ? 'spinner' : 'file-arrow-down'} disabled={cvBusy} onClick={openCv}>
+                  {cvBusy ? 'Fetching…' : 'Open CV'}
+                </Btn>
+                <span className="text-xs t3">{app.cv.name}{app.cv.size ? ` · ${fmtKb(app.cv.size)}` : ''}</span>
+              </div>
+            )
+            : <div className="text-xs t3"><Icon name="paperclip" className="mr-2" />No CV attached — they applied with links only.</div>}
+          {cvErr && <div className="text-xs" style={{ color: 'var(--red)' }}><Icon name="circle-exclamation" className="mr-1" />{cvErr}</div>}
         </Card>
 
         <div>
@@ -230,6 +277,9 @@ export function Careers() {
     { key: 'dept', header: 'Team', sort: true, render: (r) => (<div><div className="text-sm t2">{DEPT_LABEL[r.dept] || r.dept}</div>{r.role && <div className="text-xs t3">{r.role}</div>}</div>) },
     { key: 'stage', header: 'Stage', sort: true, render: (r) => <Pill tone={stageMeta(r.stage).tone}>{stageMeta(r.stage).label}</Pill> },
     { key: 'createdAt', header: 'Applied', sort: true, sortValue: (r) => r.createdAt || 0, render: (r) => <span className="text-xs t3">{fmtDate(r.createdAt)}</span> },
+    { key: 'cv', header: 'CV', render: (r) => (r.cv
+      ? <Icon name="paperclip" className="t2" title={r.cv.name || 'CV attached'} />
+      : <span className="text-xs t3">—</span>) },
     { key: 'ref', header: 'Ref', render: (r) => <span className="text-xs t3">{r.ref}</span> },
   ];
 
