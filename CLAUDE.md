@@ -1,5 +1,9 @@
 # YoteMarket web app — working notes
 
+> **Looking for what to do next? → [`docs/TODO.md`](docs/TODO.md).** That file is the
+> queue: open items, which repo each one lives in, what "done" looks like, and which ones
+> need credentials an agent does not have. Tick the box in the same commit as the work.
+
 React 19 + Vite SPA, deployed to Vercel on every push to `main`. Firebase (Auth,
 Firestore, Storage) is the backend; the Cloud Functions, Firestore rules and
 Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
@@ -112,11 +116,9 @@ or every publish is refused.
 
 ## Still open
 
-- **No Uptodown listing URL yet.** Paste it into Admin → App releases when Uptodown
-  publishes and the badge flips everywhere.
-- **No APK published yet.** Both apps show "not published yet" until the first
-  upload. Play Store URLs (`playUrl`) are empty too.
-- Rider APK is wired up identically but has never been uploaded.
+Moved to [`docs/TODO.md`](docs/TODO.md) — the APK/Uptodown items are under P3 there, with
+the rest of the queue. Kept in one place on purpose: two todo lists drift, and the stale one
+is always the one somebody reads.
 
 ## Indexing — the catalogue was orphaned (fixed 2026-09-15)
 
