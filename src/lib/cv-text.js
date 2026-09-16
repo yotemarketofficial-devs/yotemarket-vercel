@@ -17,8 +17,18 @@
  */
 
 /** What a person may hand us. Kept narrow deliberately: an image of a CV extracts to
- *  nothing, and accepting one would produce an empty draft rather than an honest refusal. */
-export const CV_ACCEPT = '.pdf,.docx,.txt,.md,application/pdf,text/plain';
+ *  nothing, and accepting one would produce an empty draft rather than an honest refusal.
+ *
+ *  Both extensions AND media types are listed because the picker matches on whichever the
+ *  platform gives it. A .docx arriving from Drive, iCloud or a Windows share is offered as
+ *  its media type with no filename extension in some pickers, and with only the extension
+ *  listed here those files were greyed out — a real CV the person could not select. */
+export const CV_ACCEPT = [
+  '.pdf', '.docx', '.txt', '.md',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain', 'text/markdown',
+].join(',');
 
 /** Roughly the point past which a CV is not a CV. Guards the model call, and catches
  *  somebody picking a 200-page report by mistake. */
@@ -125,7 +135,14 @@ export async function extractCvText(file) {
     }
   } else if (e === 'docx') {
     text = await fromDocx(file);
-  } else if (['txt', 'md', 'rtf'].includes(e) || (file.type || '').startsWith('text/')) {
+  } else if (e === 'rtf' || file.type === 'application/rtf' || file.type === 'text/rtf') {
+    // RTF is markup wearing a text/* media type, so the plain-text branch below happily
+    // "read" it and handed back a wall of control words — \\rtf1\\ansi\\deff0{\\fonttbl… —
+    // which is long enough to clear the too-short guard and looks to the parser like a
+    // career. A refusal naming the format is worth more than a draft full of nonsense.
+    throw new CvTextError('RTF files cannot be read properly — the text comes out as formatting codes. '
+      + 'Save it as a PDF or .docx and try again.');
+  } else if (['txt', 'md'].includes(e) || (file.type || '').startsWith('text/')) {
     text = await file.text();
   } else if (e === 'doc') {
     // Old binary .doc is a different format entirely and mammoth does not read it.

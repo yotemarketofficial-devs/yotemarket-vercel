@@ -10,7 +10,7 @@
  * So the tests below push from both sides.
  */
 import { describe, it, expect } from 'vitest';
-import { detectCvSource, CV_ACCEPT } from './cv-text.js';
+import { detectCvSource, CV_ACCEPT, extractCvText } from './cv-text.js';
 
 /* Shaped like LinkedIn's actual "Save to PDF" output: a Contact block carrying the profile
    URL and a literal "(LinkedIn)", then its own section furniture. */
@@ -106,10 +106,55 @@ describe('CV_ACCEPT', () => {
     expect(CV_ACCEPT).toContain('.docx');
   });
 
+  it('offers the media types too, not just the extensions', () => {
+    // A .docx from Drive or a Windows share is offered to the picker by media type with no
+    // extension; listing only '.docx' greyed out files the person could legitimately pick.
+    expect(CV_ACCEPT).toContain('application/pdf');
+    expect(CV_ACCEPT).toContain('officedocument.wordprocessingml.document');
+  });
+
   it('does not invite a format that would extract to nothing', () => {
     // An image of a CV has no text layer; accepting one produces a blank draft.
     expect(CV_ACCEPT).not.toContain('image/');
     expect(CV_ACCEPT).not.toContain('.jpg');
     expect(CV_ACCEPT).not.toContain('.doc,');
+  });
+});
+
+/* A stand-in for a picked file. extractCvText only ever asks for these four things, so a
+   plain object exercises the real routing without needing a DOM File. */
+const pick = (name, body = '', type = '') => ({
+  name, type, size: body.length || 1,
+  text: async () => body,
+  arrayBuffer: async () => new TextEncoder().encode(body).buffer,
+});
+
+describe('extractCvText — formats it must refuse rather than mangle', () => {
+  it('refuses RTF instead of returning its control words as a career history', async () => {
+    // Long enough to clear the too-short guard, which is exactly why this slipped through:
+    // the draft came back full of \\fonttbl junk rather than empty.
+    const rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}}\\pard Jane Wanjiku \\b Operations \\b0 par }'.repeat(4);
+    await expect(extractCvText(pick('cv.rtf', rtf))).rejects.toThrow(/RTF/i);
+  });
+
+  it('refuses RTF offered by media type with a misleading extension', async () => {
+    await expect(extractCvText(pick('cv.txt', 'x'.repeat(200), 'application/rtf'))).rejects.toThrow(/RTF/i);
+  });
+
+  it('still refuses old binary .doc, naming the fix', async () => {
+    await expect(extractCvText(pick('cv.doc', 'x'.repeat(200)))).rejects.toThrow(/\.docx or PDF/i);
+  });
+
+  it('refuses a format it cannot read at all rather than guessing', async () => {
+    await expect(extractCvText(pick('cv.pages', 'x'.repeat(200)))).rejects.toThrow(/Cannot read/i);
+  });
+
+  it('refuses a file with barely any text in it', async () => {
+    await expect(extractCvText(pick('cv.txt', 'Jane'))).rejects.toThrow(/Barely any text/i);
+  });
+
+  it('reads a plain-text CV', async () => {
+    const body = 'Jane Wanjiku\nHead of Operations\n'.repeat(6);
+    await expect(extractCvText(pick('cv.txt', body))).resolves.toContain('Head of Operations');
   });
 });

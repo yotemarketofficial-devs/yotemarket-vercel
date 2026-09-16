@@ -3,11 +3,27 @@
    Degrades to the careers inbox email if the backend isn't configured. */
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { submitJobApplication } from '../lib/firebase.js';
+import { submitJobApplication, attachApplicationCv } from '../lib/firebase.js';
+import { CV_ACCEPT } from '../lib/cv-text.js';
 import { subscribeJobOpenings } from '../lib/careers.js';
 import { useAuth } from '../lib/useAuth.jsx';
 
 const CAREERS_EMAIL = 'general@yotemarket.com';
+
+/* A CV crosses the wire base64-encoded inside the callable, which inflates it by a third
+   against a 10 MB request ceiling. 5 MB is the honest limit to state, and it is far more
+   than a CV needs — anything above it is a scan that should have been a document. */
+const CV_MAX_BYTES = 5 * 1024 * 1024;
+
+/** A picked file → its base64 payload, without the data: prefix. */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('That file could not be read.'));
+    r.onload = () => { const t = String(r.result || ''); const c = t.indexOf(','); resolve(c >= 0 ? t.slice(c + 1) : t); };
+    r.readAsDataURL(file);
+  });
+}
 
 // `id` must match CAREER_DEPTS in firebase/functions/index.js.
 const DEPARTMENTS = [
@@ -24,8 +40,11 @@ function Careers() {
   const formRef = useRef(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', dept: 'engineering', role: '', links: '', message: '' });
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(null); // { ref }
+  const [done, setDone] = useState(null); // { ref, cv: 'saved' | 'failed' | null }
   const [err, setErr] = useState('');
+  const [cv, setCv] = useState(null);     // the chosen CV file, not yet sent
+  const [cvErr, setCvErr] = useState('');
+  const cvRef = useRef(null);
   const [openings, setOpenings] = useState([]); // live, staff-posted roles
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -44,6 +63,18 @@ function Careers() {
     try { formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* older browsers */ }
   };
 
+  // Checked here rather than only on the server so a 20 MB scan is refused before somebody
+  // spends their data allowance uploading it.
+  const pickCv = (file) => {
+    setCvErr('');
+    if (!file) { setCv(null); return; }
+    if (file.size > CV_MAX_BYTES) {
+      setCvErr(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB — the limit is 5 MB. Send the document rather than a scan of it.`);
+      setCv(null); return;
+    }
+    setCv(file);
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
@@ -56,7 +87,23 @@ function Careers() {
         name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(),
         dept: form.dept, role: form.role.trim(), links: form.links.trim(), message: form.message.trim(),
       });
-      setDone({ ref: r.ref });
+      // The application is in. The CV is a separate call ON PURPOSE: a file that fails to
+      // upload — bad connection, a backend that predates this feature — must never cost
+      // somebody their application, so this can only ever downgrade the confirmation
+      // message, never turn a submitted application into an error.
+      let cvState = null;
+      if (cv) {
+        try {
+          await attachApplicationCv({
+            applicationId: r.id, ref: r.ref, filename: cv.name,
+            contentType: cv.type || 'application/octet-stream',
+            dataBase64: await fileToBase64(cv),
+          });
+          cvState = 'saved';
+        } catch { cvState = 'failed'; }
+      }
+      setDone({ ref: r.ref, cv: cvState });
+      setCv(null);
     } catch (e2) {
       const msg = String(e2?.message || '');
       setErr(msg.includes('Backend not configured')
@@ -154,6 +201,17 @@ function Careers() {
                   Thanks {form.name.split(' ')[0]} — your reference is <b className="career-ref">{done.ref}</b>.
                   We’ve logged it against <b>{deptLabel}</b> and will reply to <b>{form.email}</b>.
                 </p>
+                {done.cv === 'saved' && (
+                  <p className="career-cv-ok"><i className="fas fa-paperclip"></i> Your CV is attached to the application.</p>
+                )}
+                {done.cv === 'failed' && (
+                  /* The application is safely in — only the file did not make it, so this
+                     says exactly that rather than leaving them wondering whether to re-apply. */
+                  <p className="career-cv-warn">
+                    <i className="fas fa-triangle-exclamation"></i> Your application is in, but the CV
+                    didn’t upload. Email it to <a href={`mailto:${CAREERS_EMAIL}?subject=CV%20for%20${done.ref}`}>{CAREERS_EMAIL}</a> quoting {done.ref}.
+                  </p>
+                )}
                 <button className="btn btn-outline" onClick={() => { setDone(null); setForm((f) => ({ ...f, role: '', links: '', message: '' })); }}>
                   Apply for another role
                 </button>
@@ -190,6 +248,38 @@ function Careers() {
                   <label>CV / portfolio links
                     <input value={form.links} onChange={(e) => set('links', e.target.value)} placeholder="Link to your CV, LinkedIn, GitHub or portfolio" />
                   </label>
+                  {/* Attaching the document beats linking to it: a link rots, sits behind a
+                      Drive permission prompt, or points at a profile that changes between
+                      applying and being read. The field input is hidden and driven by the
+                      button, so the click opens one dialog and the control can be styled. */}
+                  <div className="career-cv">
+                    <span className="career-cv-label">Attach your CV <span className="career-cv-opt">optional</span></span>
+                    <div className="career-cv-row">
+                      <button type="button" className="btn btn-outline career-cv-btn" onClick={() => cvRef.current?.click()}>
+                        <i className="fas fa-paperclip"></i> {cv ? 'Choose a different file' : 'Choose a file'}
+                      </button>
+                      {cv && (
+                        <span className="career-cv-file">
+                          <i className="fas fa-file-lines"></i> {cv.name} <span>({(cv.size / 1024).toFixed(0)} KB)</span>
+                          <button type="button" className="career-cv-x" onClick={() => { setCv(null); setCvErr(''); }} aria-label="Remove attached CV">
+                            <i className="fas fa-xmark"></i>
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      ref={cvRef} type="file" accept={CV_ACCEPT} hidden
+                      onChange={(e) => {
+                        const f = e.target.files && e.target.files[0];
+                        // Cleared first so picking the SAME file again still fires a change
+                        // event — otherwise a retry after a rejection does nothing at all.
+                        e.target.value = '';
+                        pickCv(f);
+                      }}
+                    />
+                    <span className="career-cv-hint">PDF, Word or plain text, up to 5 MB. Held privately for the hiring team — never published.</span>
+                    {cvErr && <span className="career-cv-err"><i className="fas fa-circle-exclamation"></i> {cvErr}</span>}
+                  </div>
                   <label>Tell us about yourself <span className="req">*</span>
                     <textarea value={form.message} onChange={(e) => set('message', e.target.value)} rows={5} placeholder="What you've built or run, what you're great at, and why YoteMarket." required />
                   </label>
@@ -214,6 +304,18 @@ function Careers() {
       </section>
 
       <style>{`
+      .career-cv{ display:flex; flex-direction:column; gap:7px; }
+      .career-cv-label{ font-size:13px; font-weight:700; }
+      .career-cv-opt{ font-weight:500; color:var(--muted,#6b7280); margin-left:6px; font-size:12px; }
+      .career-cv-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+      .career-cv-btn{ padding:8px 14px; font-size:13px; }
+      .career-cv-file{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; }
+      .career-cv-file span{ font-weight:500; color:var(--muted,#6b7280); }
+      .career-cv-x{ background:none; border:0; cursor:pointer; color:var(--muted,#6b7280); padding:2px 4px; }
+      .career-cv-hint{ font-size:12px; color:var(--muted,#6b7280); }
+      .career-cv-err{ font-size:13px; color:#dc2626; display:inline-flex; align-items:center; gap:6px; }
+      .career-cv-ok{ font-size:14px; display:inline-flex; align-items:center; gap:7px; color:var(--green,#009B3A); font-weight:600; }
+      .career-cv-warn{ font-size:14px; display:inline-flex; align-items:center; gap:7px; color:#b45309; font-weight:600; flex-wrap:wrap; justify-content:center; }
       .career-pick{ cursor:pointer; transition:border-color .15s, transform .15s, box-shadow .15s; }
       .career-pick:hover{ transform:translateY(-2px); }
       .career-pick.is-on{ border-color:var(--purple); box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 18%, transparent); }

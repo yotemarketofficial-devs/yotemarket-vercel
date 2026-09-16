@@ -41,6 +41,10 @@ export const SCREEN_FEATURE = { pos: 'pos', insight: 'insights', feed: 'yotefeed
 
 function renewMs(sub) {
   const r = sub && sub.renewsAt; if (!r) return 0;
+  // A callable that serialised the timestamp sends a plain number of milliseconds. Scoring
+  // that as "no renewal date" would let an expired plan keep its rank — the exact case the
+  // expiry check below exists to catch — so it is read first.
+  if (typeof r === 'number') return Number.isFinite(r) ? r : 0;
   if (typeof r.toMillis === 'function') return r.toMillis();
   if (r.seconds != null) return r.seconds * 1000;
   if (r._seconds != null) return r._seconds * 1000;

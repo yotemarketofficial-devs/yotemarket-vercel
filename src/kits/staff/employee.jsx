@@ -155,6 +155,7 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
   const [reading, setReading] = useState(null);   // filename being read
   const [detected, setDetected] = useState(null); // what the file looked like
   const [picked, setPicked] = useState(null);     // filename, shown after a successful read
+  const [dragging, setDragging] = useState(false); // a file is hovering over the panel
   const fileRef = useRef(null);
   const [err, setErr] = useState(null);
 
@@ -226,7 +227,28 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
             background read as a line of muted text rather than a control, and the box
             appeared to swallow the picker. A dashed border makes the panel a drop zone,
             and the button inside it is solid. */}
-        <div className="p-3 rounded-lg" style={{ background:'var(--surface2)', border:'1px dashed var(--line2)' }}>
+        {/* The dashed border promised a drop zone that did not exist — dragging a CV onto it
+            did nothing, or worse, navigated the whole console away to the file. It is a real
+            drop target now, and the panel lights up while a file is over it so the promise
+            and the behaviour finally agree. */}
+        <div
+          className="p-3 rounded-lg"
+          onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => { e.preventDefault(); if (!dragging) setDragging(true); }}
+          // Only a leave that actually exits the panel counts: crossing onto a child fires
+          // dragleave on the parent, which made the highlight flicker on every move.
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false); }}
+          onDrop={(e) => {
+            e.preventDefault(); setDragging(false);
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) pickFile(f);
+          }}
+          style={{
+            background: dragging ? 'var(--pri-soft)' : 'var(--surface2)',
+            border: `1px dashed ${dragging ? 'var(--pri)' : 'var(--line2)'}`,
+            transition: 'background .12s, border-color .12s',
+          }}
+        >
           {/* The input is hidden and driven by a button through a ref. A visible file
               input inside a <label> gets the click twice and opens the picker twice; a
               bare one styles badly and is the element browser extensions most like to
@@ -237,6 +259,7 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
               {reading ? `Reading ${reading}…` : 'Choose a file'}
             </Btn>
             {picked && !reading && <span className="text-xs t2">{picked}</span>}
+            {!picked && !reading && <span className="text-xs t3">or drop one here</span>}
           </div>
           <input
             ref={fileRef}
@@ -253,7 +276,8 @@ function PasteResumeModal({ uid, onClose, onParsed }) {
           />
           <div className="text-xs t3 mt-1">
             PDF or .docx. Read on this device — the file itself is not uploaded anywhere.
-            A scanned CV has no text in it and will be refused rather than parsed to nothing.
+            A scanned CV has no text in it and will be refused rather than parsed to nothing, and
+            so is an .rtf — its text comes out as formatting codes.
           </div>
           {/* The best route to a LinkedIn profile, and the reason the fetch is rarely
               worth fighting: the export is the FULL profile rather than the trimmed

@@ -166,6 +166,45 @@ plus the gated areas, *Alternate page with proper canonical* (2) is benign. *Dis
 and *Crawled – currently not indexed* also improve with domain authority over time, so
 give the fix a few weeks and a re-crawl before judging it.
 
+## The staff portal — three fixes, and the half that isn't here (2026-09-16)
+
+**Subscriptions & billing** moved out of `screens.jsx` into `kits/staff/billing.jsx`. The
+complaint was stale data, and the cause was not caching: `subscriptions/{uid}.status` is
+rewritten by a sweep that runs once a day at 08:00, so the console was printing a word that
+could be up to 24 hours out of date. `lib/subscription-state.js` (pure, unit-tested) derives
+the live state from the renewal timestamp the way `lib/entitlements.js` already does, tells
+cancelled apart from lapsed, and marks a row as the SERVER'S word when no timestamp came
+with it. Rows open a drawer — plan, price, renewal, delivery allotment, what is locked,
+settlements, notes — because a billing screen you cannot drill into cannot answer "what has
+this merchant actually paid". The Export button, which had no `onClick` at all, works.
+
+**Does service really stop when a plan lapses?** On the client, yes, at the renewal instant
+— `tierRank()` returns 0 for active-but-expired, and the screen's own enforcement panel is
+rendered from that same matrix so it cannot drift. On the SERVER there is a hole: `storeTier()`
+trusts the denormalised `stores/{id}.planTier`, which is only recomputed when the subscription
+document is written, and a plan lapsing is not a write. Fix is three lines and is written out
+in `docs/staff-portal-backend.md` §1. Do that one first.
+
+**The CV uploader**, both ends. On the employee record the panel was drawn as a drop zone
+(dashed border, the comment says so) but had no drop handler — dragging a CV onto it did
+nothing. It drops now. `.rtf` was being read down the plain-text path, so a CV came back as
+`\rtf1\ansi\deff0{\fonttbl…` — long enough to clear the too-short guard, which is why it
+produced a draft of nonsense rather than an error; it is refused by name. The accept list
+carries media types as well as extensions, or a .docx from Drive is greyed out in the picker.
+On `/careers`, candidates can attach the file instead of only linking to it — the upload is a
+second call after the application lands, so a failed upload can never cost somebody their
+application. The staff inbox shows it, and the links field is finally clickable.
+
+**Merchants have a category filter**, sent server-side like county and status. The row shape
+has no category yet, so the screen PROVES the filter was applied rather than trusting it: if
+the page comes back unnarrowed it narrows it in the browser and says so, rather than showing
+an unfiltered list that looks filtered.
+
+Everything above ships and degrades honestly without the backend. `docs/staff-portal-backend.md`
+is the other half — exact diffs for `yotemarket-flutter/firebase/` (the callables, four
+composite indexes, a Storage rule and two new careers callables), written against commit
+`f7e71fb` and applyable as-is.
+
 ## Gotchas worth remembering
 
 - **The prerender `<noscript>` swap is position-sensitive.** A head comment mentions

@@ -620,6 +620,18 @@ export async function fetchMerchants(opts = {}) {
   return d;
 }
 
+/**
+ * Every merchant subscription + the platform wallet → { subscriptions, wallet }.
+ *
+ * Each row is `{ id (= owner uid), shop, plan, band, amount, next, status }`. The billing
+ * screen ALSO reads two optional fields, and lights up fully when they arrive:
+ *   renewsAt  — the renewal instant in epoch ms. Without it nothing can be derived, because
+ *               `status` is only rewritten by a once-daily sweep; with it, a plan that
+ *               lapsed an hour ago reads as lapsed instead of as active.
+ *   statusRaw — the stored status before the server collapses it to active/overdue, so a
+ *               cancelled plan stops being reported as an unpaid one.
+ * See docs/staff-portal-backend.md for the change that adds them.
+ */
 export async function fetchSubscriptions() {
   const d = await call('staffListSubscriptions')();
   if (!d || !Array.isArray(d.subscriptions)) throw new Error('staffListSubscriptions: unexpected shape');
@@ -912,6 +924,31 @@ export async function fetchJobApplications() {
   const d = await call('staffListJobApplications')();
   if (!d || !Array.isArray(d.applications)) throw new Error('staffListJobApplications: unexpected shape');
   return d;
+}
+/**
+ * Open a candidate's attached CV.
+ *
+ * The bytes come back through a callable rather than from a download URL, because a CV is
+ * candidate PII and a Firebase download URL is a permanent, unauthenticated link to it —
+ * the same reason employee documents are held this way (see openHrFile above). Nothing is
+ * cached: the file is fetched, shown, and the object URL revoked.
+ */
+export async function openJobApplicationCv(id) {
+  const d = await call('staffJobApplicationCv')({ id });
+  if (!d || !d.dataBase64) throw new Error('No CV is attached to this application.');
+  const bin = atob(d.dataBase64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], { type: d.contentType || 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, '_blank', 'noopener');
+  if (!w) {
+    // Pop-up blocked — fall back to a download so the click still does something.
+    const a = document.createElement('a');
+    a.href = url; a.download = d.filename || 'cv'; a.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return d.filename || 'cv';
 }
 /** Move an application through the funnel. stage: new|review|shortlist|interview|offer|hired|rejected. */
 export async function setJobApplicationStage(id, stage, note = '') {
