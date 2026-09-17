@@ -453,6 +453,10 @@ export function Billing() {
         Sorted worst-first. Open a row for the full billing record — plan, renewal, delivery allotment,
         what is locked, settlements and notes. Plans due inside {DUE_SOON_DAYS} days are the same ones the
         backend has already reminded by push.
+        {data.hidden && data.hidden.closed > 0 && (
+          <> Not listed: {data.hidden.closed} cancelled subscription{data.hidden.closed === 1 ? '' : 's'} of
+          {' '}closed or deleted stores — the payment record survives, the store does not.</>
+        )}
       </div>
     </Card>
 
