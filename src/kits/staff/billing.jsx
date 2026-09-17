@@ -20,16 +20,14 @@
  *    and that list is not prose here — it is read out of lib/entitlements.js, the same
  *    matrix the dashboard gates on, so it cannot drift from what actually happens.
  *
- * WHAT THIS SCREEN STILL CANNOT DO, and does not pretend to: `staffListSubscriptions`
- * sends a pre-formatted date string rather than a timestamp, so derivation is only
- * possible where a timestamp exists — the drawer (which reads `staffUserDetail` /
- * `staffMerchantDetail`, both of which do send one). Rows without one are marked as the
- * server's word rather than dressed up as live. See docs/staff-portal-backend.md.
+ * Rows derive from `renewsAt` when `staffListSubscriptions` sends it. A row that arrives
+ * without a timestamp (an older deploy of the callable) is marked as the server's word
+ * rather than dressed up as live. See docs/staff-portal-backend.md.
  */
 import React from 'react';
 import { Card, SectionHead, Seg, Btn, Pill, Stat, Bar, Icon, kes, DataTable, Modal, EmptyState, BackendError, exportCsv } from './ui.jsx';
 import { staffListPayoutChanges, staffResolvePayoutChange } from '../../lib/firebase.js';
-import { useStaffResource, fetchSubscriptions, fetchUserDetail, fetchMerchantDetail, addStaffNote } from './service.js';
+import { useStaffResource, fetchSubscriptions, fetchUserDetail, fetchMerchantDetail, fetchMerchantBilling, addStaffNote } from './service.js';
 import { billingState, billingTotals, renewalPhrase, stateOrder, DUE_SOON_DAYS } from '../../lib/subscription-state.js';
 import { FEATURES, TIER_NAMES } from '../../lib/entitlements.js';
 import { SUBSCRIPTIONS, WALLET } from './data.js';
@@ -125,19 +123,25 @@ function EnforcementCard() {
 }
 
 /* ── One merchant's billing record ────────────────────────────────────────────
-   Two reads, because the two callables know different halves: the account read resolves
-   who they are and which store is theirs, and the store read carries the priced plan —
-   kind, band, delivery allotment — plus the settlement history. */
+   Three reads, because the callables know different halves: the account read resolves
+   who they are and which store is theirs, the store read carries the priced plan — kind,
+   band, delivery allotment — plus the settlement history, and the billing read is what
+   they have paid us. */
 function BillingDrawer({ row, onClose }) {
   const uid = row.uid || row.id;
   const [d, setD] = useState(null);
   const [m, setM] = useState(null);
+  // null = still loading; an array (possibly empty) = the server answered; false = it
+  // could not, which must read differently from "never paid".
+  const [pay, setPay] = useState(null);
   const [err, setErr] = useState(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setErr(null);
+    // Independent of the account read: what they paid us is keyed on the uid alone.
+    fetchMerchantBilling(uid).then(setPay).catch(() => setPay(false));
     try {
       const acct = await fetchUserDetail(uid);
       setD(acct);
@@ -231,9 +235,32 @@ function BillingDrawer({ row, onClose }) {
             </div>
           </div>
 
-          {/* Money that has moved. Settlements are payouts TO the merchant; what they have
-              paid US is not in any callable yet, and saying so beats an empty panel that
-              reads as "never paid". */}
+          {/* Money that has moved, in two panels that must never be read as one: payments
+              are what they paid US (our revenue); settlements are payouts TO them (their
+              money). Payments first, because this is the revenue screen. */}
+          <div>
+            <div className="font-bold t1 text-sm mb-2">Payment history <span className="t3 font-normal">· subscription payments from this merchant</span></div>
+            {pay && pay.length ? (
+              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--line)' }}>
+                {pay.slice(0, 12).map((p, i) => (
+                  <div key={p.id} className="flex items-center gap-3 px-3 py-2.5 text-sm" style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
+                    <span className="t3 text-xs" style={{ width: 92 }}>{fmtDay(p.at)}</span>
+                    <Pill tone={p.status === 'paid' ? 'ok' : (p.status === 'failed' ? 'red' : 'amber')}>{p.status || 'pending'}</Pill>
+                    <span className="t2 text-xs truncate">{[p.plan, p.kind].filter(Boolean).join(' · ')}</span>
+                    <span className="num font-semibold t1 flex-1" style={{ textAlign: 'right' }}>{kes(p.amount)}</span>
+                    {p.reference && <span className="num t3 text-xs hidden sm:block">{p.reference}</span>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs t3">
+                {pay === null && 'Loading payments…'}
+                {pay === false && <><Icon name="triangle-exclamation" className="mr-1" />Could not load their payments — M-Pesa is the record until this loads.</>}
+                {Array.isArray(pay) && !pay.length && 'No subscription payments recorded from this merchant.'}
+              </div>
+            )}
+          </div>
+
           <div>
             <div className="font-bold t1 text-sm mb-2">Settlement history <span className="t3 font-normal">· payouts to this merchant</span></div>
             {settlements.length ? (
@@ -248,11 +275,6 @@ function BillingDrawer({ row, onClose }) {
                 ))}
               </div>
             ) : <div className="text-xs t3">{m ? 'No settlements recorded.' : 'Loading the store record…'}</div>}
-            <div className="text-xs t3 mt-2">
-              <Icon name="circle-info" /> Subscription payments received FROM this merchant are not
-              exposed by any staff callable yet — see docs/staff-portal-backend.md. Until they are,
-              M-Pesa is the record for what they paid.
-            </div>
           </div>
 
           {/* The STORE's orders, from the store record. The account read also returns a

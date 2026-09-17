@@ -740,6 +740,16 @@ export async function fetchMerchantDetail(storeId) {
   return call('staffMerchantDetail')({ storeId });
 }
 
+/** What a merchant has paid US — their subscription payments, newest first. Settlements
+ *  (money going TO them) come with fetchMerchantDetail; this is the other direction, and
+ *  the only one that is our revenue. { payments:[{id, at, amount, reference, plan, kind,
+ *  status}] } */
+export async function fetchMerchantBilling(uid) {
+  const d = await call('staffMerchantBilling')({ uid });
+  if (!d || !Array.isArray(d.payments)) throw new Error('staffMerchantBilling: unexpected shape');
+  return d.payments;
+}
+
 /** Add an internal staff note to a merchant/user. entity: 'merchant' | 'user'. */
 export async function addStaffNote(entity, entityId, text) {
   return call('staffAddNote')({ entity, entityId, text });

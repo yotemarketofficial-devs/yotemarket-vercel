@@ -53,10 +53,10 @@ function renewMs(sub) {
 
 /** The merchant's capability rank (0–4) from their subscription doc. Plan name maps
  *  straight to rank — a delivery plan is its software tier + delivery, so no floor. */
-export function tierRank(sub) {
+export function tierRank(sub, now = Date.now()) {
   if (!sub || sub.status !== 'active') return 0;
   const ms = renewMs(sub);
-  if (ms && ms < Date.now()) return 0; // active-but-expired → no plan
+  if (ms && ms < now) return 0; // active-but-expired → no plan
   return TIER_RANK[sub.plan] || 0;
 }
 

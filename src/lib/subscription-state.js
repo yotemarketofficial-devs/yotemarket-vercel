@@ -77,8 +77,9 @@ export function billingState(sub, now = Date.now()) {
   const plan = (sub && sub.plan) || null;
 
   // The gate's own verdict, asked exactly the way the dashboard asks it. Passing the
-  // timestamp through means an active-but-expired plan scores 0 here too.
-  const rank = tierRank({ status: raw, plan, renewsAt: ms || null });
+  // timestamp through means an active-but-expired plan scores 0 here too — against THIS
+  // clock, so the verdict and the label below can never disagree about what "now" is.
+  const rank = tierRank({ status: raw, plan, renewsAt: ms || null }, now);
 
   const days = ms ? Math.floor((ms - now) / DAY) : null;
   const expired = Boolean(ms) && ms <= now;

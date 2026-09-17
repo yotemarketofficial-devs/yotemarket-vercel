@@ -24,6 +24,12 @@ Rules for whoever works this list, human or agent:
 ## P1 — a correctness bug, do this first
 
 - [ ] **`[fn]` A lapsed plan keeps its server-side entitlements for up to 24 hours.**
+  **Status 2026-09-17:** fixed in code — `planRenewsAt` stamped by the trigger AND the
+  backfill, `storeTier()` checks it, arithmetic extracted to `functions/entitlements.js`
+  with `tests/entitlements.test.js` (15 cases, including the exact active-but-expired
+  shape). Committed in yotemarket-flutter `c283ca7`. **Deploy pending** (see
+  `firebase/.deploy/2026-09-17-staff-portal/README.md`), then run `backfillStoreTiers`
+  once so existing stores carry the expiry.
   `storeTier()` trusts the denormalised `stores/{id}.planTier`, and that field is only
   recomputed when the subscription document is *written*. A plan lapsing is not a write —
   the next one is the 08:00 sweep. So between the renewal instant and the next morning,
@@ -44,6 +50,7 @@ visible notice that disappears by itself once the matching backend change lands 
 further web change needed. The notice is how you verify.
 
 - [ ] **`[fn]` Send `renewsAt` and `statusRaw` from `staffListSubscriptions`.**
+  **Status 2026-09-17:** code half done and committed in yotemarket-flutter `c283ca7`; **deploy pending** — the session that wrote it was refused the prod deploy. The batch plan is `firebase/.deploy/2026-09-17-staff-portal/README.md` (indexes + Storage rule first, then 22 functions in two batches). Tick this once the screen check below passes.
   Today the callable sends a pre-formatted date string and collapses every non-active
   status to `"overdue"`, so the billing table cannot derive anything and a cancelled plan is
   indistinguishable from an unpaid one. Two added fields; `next` and `status` stay as they
@@ -55,9 +62,15 @@ further web change needed. The notice is how you verify.
 - [ ] **`[fn]` Stop sending `badgeFund: fmtKsh(0)`.** It is a hardcoded zero rendered as a
   measured figure on the billing screen. Either compute it or send `null` — the screen
   already prints an em-dash for a missing money figure, which is the honest answer.
+  **Status 2026-09-17:** sends `null` (nothing in the backend computes a badge fund).
+  Same commit and deploy as the item above.
   **Done when:** the "Badge insurance fund" tile shows a real number or a dash, not `KSh 0`.
 
 - [ ] **`[fn]` Accept `cat` in `staffListMerchants`.** The web filter is built and sends it.
+  **Status 2026-09-17:** done in `c283ca7` — filter on page + tallies, `cat` on the row,
+  `catId` in `storeIndexFields`, `ensureStoreIndex` widened to revisit stores stamped
+  without it (`STORE_INDEX_VERSION` 2), four indexes in `firestore.indexes.json`.
+  **Deploy pending** — indexes go in batch 0, before the function.
   Needs: the `where("catId", "==", cat)` on both the query and the counts scope, `cat` on
   each returned row, four composite indexes, and a backfill — note that `ensureStoreIndex`
   only stamps documents missing `nameLower`, so bumping `STORE_INDEX_VERSION` alone will
@@ -69,6 +82,9 @@ further web change needed. The notice is how you verify.
   change with the category rather than staying put.
 
 - [ ] **`[fn]` The two careers CV callables, the Storage rule, and erasure.**
+  **Status 2026-09-17:** all four pieces in `c283ca7` (callables, `job_applications/`
+  rule with 5 rules tests, `cv` through `serializeApplication`, object deleted in
+  `staffDeleteDoc`). **Deploy pending.**
   `attachApplicationCv` (public, second step, reference-checked, create-only) and
   `staffJobApplicationCv` (People-gated, returns bytes, mints no URL), plus
   `match /job_applications/{path=**} { allow read, write: if false; }`, plus `cv` passed
@@ -78,17 +94,24 @@ further web change needed. The notice is how you verify.
   button, and erasing that application removes the file from the bucket as well — check the
   bucket, not just the callable's return.
 
-- [ ] **`[fn]` `staffMerchantBilling` — what a merchant has paid us.** Settlements (money
+- [ ] **`[fn]` `staffMerchantBilling` — what a merchant has paid us.**
+  **Status 2026-09-17:** in `c283ca7`. Field checked: subscription payments key off
+  `ownerId` — but so do wallet top-ups and POS sales, so the query also filters
+  `purpose == "subscription"` (two equalities, no composite index). **Deploy pending.** Settlements (money
   going *to* a merchant) are visible; subscription payments *from* them are in no staff
   callable at all. One query over `mpesa_payments`. [§5](./staff-portal-backend.md).
   **Check the field name first** — that collection also holds order and top-up payments and
   they may not all key off `ownerId`.
 
-- [ ] **`[web]` Render the payment history once the callable above exists.**
+- [x] **`[web]` Render the payment history once the callable above exists.**
   `src/kits/staff/billing.jsx` → the "Settlement history" block currently ends with a line
   saying subscription payments are not exposed yet. Replace that line with the real list;
   keep settlements and payments clearly separated, because one is our revenue and the other
   is their money.
+  Done 2026-09-17: a separate **Payment history** panel above Settlement history
+  (`fetchMerchantBilling` in service.js). Three states, none of which reads as "never
+  paid": loading, the server could not answer, and an empty list. Until the callable is
+  deployed the panel shows the could-not-load line.
 
 ---
 
@@ -103,9 +126,10 @@ further web change needed. The notice is how you verify.
 - [ ] **Verify `/apk` once a build is up.** Load `https://www.yotemarket.co.ke/apk` and check
   the version, size and SHA-256 are the ones that were uploaded.
 - [ ] **`[web]` Verify the catalogue links after a deploy.**
-  `grep -c 'href="/product/' dist/storefront.html` should match the product count
-  `scripts/prerender.mjs` prints. This is the check that catches the indexing fix silently
-  regressing.
+  `grep -o 'href="/product/' dist/storefront.html | wc -l` should match the product count
+  `scripts/prerender.mjs` prints. (Not `grep -c` — the prerendered page is one line, so
+  that always prints 1.) This is the check that catches the indexing fix silently
+  regressing. Last verified 2026-09-17 on a local build: 35 links, 35 products.
 - [ ] **Play Store URLs (`playUrl`) are empty** in `src/lib/apk-releases.mjs`.
 
 ---
