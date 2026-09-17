@@ -23,13 +23,15 @@ Rules for whoever works this list, human or agent:
 
 ## P1 — a correctness bug, do this first
 
-- [ ] **`[fn]` A lapsed plan keeps its server-side entitlements for up to 24 hours.**
+- [x] **`[fn]` A lapsed plan keeps its server-side entitlements for up to 24 hours.**
   **Status 2026-09-17:** fixed in code — `planRenewsAt` stamped by the trigger AND the
   backfill, `storeTier()` checks it, arithmetic extracted to `functions/entitlements.js`
   with `tests/entitlements.test.js` (15 cases, including the exact active-but-expired
-  shape). Committed in yotemarket-flutter `c283ca7`. **Deploy pending** (see
-  `firebase/.deploy/2026-09-17-staff-portal/README.md`), then run `backfillStoreTiers`
-  once so existing stores carry the expiry.
+  shape). Committed in yotemarket-flutter `c283ca7`. **DEPLOYED 2026-09-17 20:03 EAT** —
+  all 22 affected functions (every `assertEntitlement` caller included), each confirmed by
+  name in its deploy log. One click still owed by a signed-in admin: Promotions → Plan
+  tiers → **Backfill store tiers**, so stores stamped before today carry `planRenewsAt`
+  (until then they keep the cached tier exactly as before — no worse than yesterday).
   `storeTier()` trusts the denormalised `stores/{id}.planTier`, and that field is only
   recomputed when the subscription document is *written*. A plan lapsing is not a write —
   the next one is the 08:00 sweep. So between the renewal instant and the next morning,
@@ -43,14 +45,16 @@ Rules for whoever works this list, human or agent:
 
 ---
 
-## P2 — shipped UI waiting on its backend half
+## P2 — shipped UI waiting on its backend half — ALL LANDED 2026-09-17
 
-All four screens below are **already deployed and degrade honestly**. Each one carries a
-visible notice that disappears by itself once the matching backend change lands — no
-further web change needed. The notice is how you verify.
+Kept for the record. The screens shipped first and degraded honestly, each carrying a
+notice that disappears by itself once its backend half is live; the backend half is live
+now. If any notice is still showing, that is the bug to chase, not this list.
 
-- [ ] **`[fn]` Send `renewsAt` and `statusRaw` from `staffListSubscriptions`.**
-  **Status 2026-09-17:** code half done and committed in yotemarket-flutter `c283ca7`; **deploy pending** — the session that wrote it was refused the prod deploy. The batch plan is `firebase/.deploy/2026-09-17-staff-portal/README.md` (indexes + Storage rule first, then 22 functions in two batches). Tick this once the screen check below passes.
+- [x] **`[fn]` Send `renewsAt` and `statusRaw` from `staffListSubscriptions`.**
+  **DEPLOYED 2026-09-17 20:00 EAT** (yotemarket-flutter `c283ca7`; log-verified per function).
+  Ticked on the deploy, not on a screenshot — if the amber banner is still there, the
+  console is reading a cached response: reload the page before reading the diff.
   Today the callable sends a pre-formatted date string and collapses every non-active
   status to `"overdue"`, so the billing table cannot derive anything and a cancelled plan is
   indistinguishable from an unpaid one. Two added fields; `next` and `status` stay as they
@@ -59,18 +63,20 @@ further web change needed. The notice is how you verify.
   on Admin → Subscriptions & billing is gone, and a lapsed plan shows a red **Lapsed** pill
   with "overdue by N days" without waiting for the sweep.
 
-- [ ] **`[fn]` Stop sending `badgeFund: fmtKsh(0)`.** It is a hardcoded zero rendered as a
+- [x] **`[fn]` Stop sending `badgeFund: fmtKsh(0)`.** It is a hardcoded zero rendered as a
   measured figure on the billing screen. Either compute it or send `null` — the screen
   already prints an em-dash for a missing money figure, which is the honest answer.
-  **Status 2026-09-17:** sends `null` (nothing in the backend computes a badge fund).
-  Same commit and deploy as the item above.
+  Sends `null` (nothing in the backend computes a badge fund). Same commit and deploy as
+  the item above — live 2026-09-17.
   **Done when:** the "Badge insurance fund" tile shows a real number or a dash, not `KSh 0`.
 
-- [ ] **`[fn]` Accept `cat` in `staffListMerchants`.** The web filter is built and sends it.
+- [x] **`[fn]` Accept `cat` in `staffListMerchants`.** The web filter is built and sends it.
   **Status 2026-09-17:** done in `c283ca7` — filter on page + tallies, `cat` on the row,
   `catId` in `storeIndexFields`, `ensureStoreIndex` widened to revisit stores stamped
   without it (`STORE_INDEX_VERSION` 2), four indexes in `firestore.indexes.json`.
-  **Deploy pending** — indexes go in batch 0, before the function.
+  **DEPLOYED 2026-09-17** — indexes submitted 19:52 EAT, function 20:00 EAT. If the screen
+  reports "The merchant index is still building" right after, that is the four composite
+  indexes finishing; it clears on its own.
   Needs: the `where("catId", "==", cat)` on both the query and the counts scope, `cat` on
   each returned row, four composite indexes, and a backfill — note that `ensureStoreIndex`
   only stamps documents missing `nameLower`, so bumping `STORE_INDEX_VERSION` alone will
@@ -81,10 +87,12 @@ further web change needed. The notice is how you verify.
   column, the amber "narrowed in the browser" note is gone, and the four status tallies
   change with the category rather than staying put.
 
-- [ ] **`[fn]` The two careers CV callables, the Storage rule, and erasure.**
+- [x] **`[fn]` The two careers CV callables, the Storage rule, and erasure.**
   **Status 2026-09-17:** all four pieces in `c283ca7` (callables, `job_applications/`
   rule with 5 rules tests, `cv` through `serializeApplication`, object deleted in
-  `staffDeleteDoc`). **Deploy pending.**
+  `staffDeleteDoc`). **DEPLOYED 2026-09-17** — rule released 19:52 EAT, callables
+  20:00 EAT (`attachApplicationCv` answers 400 to an empty body, i.e. reachable and
+  validating; `staffJobApplicationCv` 403 unauthenticated).
   `attachApplicationCv` (public, second step, reference-checked, create-only) and
   `staffJobApplicationCv` (People-gated, returns bytes, mints no URL), plus
   `match /job_applications/{path=**} { allow read, write: if false; }`, plus `cv` passed
@@ -94,10 +102,10 @@ further web change needed. The notice is how you verify.
   button, and erasing that application removes the file from the bucket as well — check the
   bucket, not just the callable's return.
 
-- [ ] **`[fn]` `staffMerchantBilling` — what a merchant has paid us.**
+- [x] **`[fn]` `staffMerchantBilling` — what a merchant has paid us.**
   **Status 2026-09-17:** in `c283ca7`. Field checked: subscription payments key off
   `ownerId` — but so do wallet top-ups and POS sales, so the query also filters
-  `purpose == "subscription"` (two equalities, no composite index). **Deploy pending.** Settlements (money
+  `purpose == "subscription"` (two equalities, no composite index). **DEPLOYED 2026-09-17.** Settlements (money
   going *to* a merchant) are visible; subscription payments *from* them are in no staff
   callable at all. One query over `mpesa_payments`. [§5](./staff-portal-backend.md).
   **Check the field name first** — that collection also holds order and top-up payments and
