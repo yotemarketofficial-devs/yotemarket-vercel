@@ -20,8 +20,9 @@
  * send `Access-Control-Allow-Origin: *`. Hence: existence checks go to metadata, and
  * the index is read through INDEX_URL — a same-origin path that vercel.json rewrites
  * onto the download URL, so the browser never makes a cross-origin request for it.
- * (Setting a CORS policy on the bucket would also work, but needs gsutil and
- * credentials on someone's machine; a rewrite ships with the site.)
+ * (Setting a CORS policy on the bucket would also work — `gcloud storage buckets update
+ * gs://<bucket> --cors-file=…` — but that needs credentials on someone's machine; a
+ * rewrite ships with the site.)
  *
  * THE RULE THIS NEEDS: the app_releases/ block in firebase/storage.rules over in the
  * yotemarket-flutter repo — public read, admin-claim (or verified founding-owner)
