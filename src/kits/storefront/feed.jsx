@@ -6,6 +6,7 @@
 import React from 'react';
 import { useYM, FA } from './ui.jsx';
 import { ymPrice, ymProduct } from './data.js';
+import { hasVariants } from '../../lib/variants.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { subscribeFeed, subscribeStoreFeed, subscribeMyFeedLikes, subscribeFeedSeen, rankFeed, feedVideoUrl } from '../../lib/feed.js';
 import { likeFeedPost, reportFeedPost, deleteFeedPost, recordFeedEvents } from '../../lib/firebase.js';
@@ -194,7 +195,8 @@ export function FeedScreen({ params = {} }){
   const onBuy = (post) => {
     if (!post.demo) bump(post.id, 'shopTaps');
     const prod = post.productId ? ymProduct(post.productId) : null;
-    if (prod && prod.inStock) { addToCart(prod.id, 1); toast('Added to cart', 'fa-cart-plus'); }
+    // A product with colours or sizes needs a choice first — its page has the picker.
+    if (prod && prod.inStock && !hasVariants(prod)) { addToCart(prod.id, 1); toast('Added to cart', 'fa-cart-plus'); }
     else if (post.productId) nav('product', { pid: post.productId });
     else if (post.storeId) nav('store', { sid: post.storeId });
   };

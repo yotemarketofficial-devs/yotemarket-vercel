@@ -7,6 +7,7 @@ import { findHub, nearestHub, resolveHubs } from './hubs.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { placeOrder, quoteDelivery, fulfilmentStatus, mpesaStkPush, confirmPayment, payOrderWithWallet, placeCashOrder, cancelOrder, dismissOrder, submitReview, openDispute, db, firebaseEnabled, auth } from '../../lib/firebase.js';
 import { offerItems, offerTotal } from '../../lib/chat.js';
+import { lineKey, findVariant, needsVariant, variantLabel } from '../../lib/variants.js';
 import { normalizeHours, minutesOf } from '../../lib/hours.js';
 const { useState: useSCm, useEffect: useEffCm, useRef: useRefCm } = React;
 
@@ -35,10 +36,13 @@ export function CheckoutScreen({ params }){
           const lineTotal = i === raw.length - 1 ? Math.max(0, offerSum - alloc) : Math.round(offerSum * (r.cat / catSum));
           if (i < raw.length - 1) alloc += lineTotal;
           const unit = r.q > 0 ? lineTotal / r.q : lineTotal;
-          return { pid: r.it.productId, qty: r.q, p: { ...r.base, price: unit, name: r.it.productName || r.base.name || 'Item', store: offer.storeId || r.base.store || null, img: r.it.productImage || r.base.img, icon: r.base.icon || r.it.productIcon || 'fa-box' } };
+          return { pid: r.it.productId, variantId: r.it.variantId || null, key: lineKey(r.it.productId, r.it.variantId), qty: r.q, p: { ...r.base, price: unit, name: r.it.productName || r.base.name || 'Item', store: offer.storeId || r.base.store || null, img: r.it.productImage || r.base.img, icon: r.base.icon || r.it.productIcon || 'fa-box' } };
         });
       })()
-    : cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
+    : cart.map(c=>({ ...c, key: lineKey(c.pid, c.variantId), p:ymProduct(c.pid) })).filter(x=>x.p);
+  // What an order line sends: the product, the quantity, and — for a product
+  // with colours or sizes — which one. The server prices it; we never send prices.
+  const orderLine = (x) => ({ pid: x.pid, qty: x.qty, ...(x.variantId ? { variantId: x.variantId } : {}) });
   const subtotal = offer ? offerSum : items.reduce((s,x)=>s+x.p.price*x.qty,0);
   const offerCatalog = offer ? offerLines.reduce((s, it) => { const p = ymProduct(it.productId); return s + (Number(p?.price) || 0) * (Number(it.qty) || 1); }, 0) : 0;
   const [fulfillment, setFulfillment] = useSCm('hub'); // hub | store_pickup
@@ -212,6 +216,12 @@ export function CheckoutScreen({ params }){
     // Demo mode only (no backend): optimistic confirmation.
     if (!firebaseEnabled || !db || !uid) { settle('YM-' + Math.floor(58300 + Math.random() * 99), pay); return; }
     if (pay === 'mpesa' && !phone.trim()) { setErr('Enter your M-Pesa number.'); return; }
+    // The server refuses a line for a product with variants that names none; say
+    // which one here, before an order and a payment prompt are started.
+    if (!offer) {
+      const unchosen = items.find((x) => needsVariant(x.p, x));
+      if (unchosen) { setErr(`${unchosen.p.name}: choose which ${variantLabel(unchosen.p).toLowerCase()} you want — open your cart to pick one.`); return; }
+    }
 
     // Multi-store cart → one order PER store, placed + paid sequentially (PT-18). The backend
     // requires single-store orders, so we split here; each store settles to its own merchant.
@@ -229,7 +239,7 @@ export function CheckoutScreen({ params }){
           const storeName = ymStore(sid)?.name || '';
           setErr(`Ordering from ${storeName || 'store'} (${i + 1} of ${storeIds.length})…`);
           const { orderId } = await placeOrder({
-            items: groups[sid].map(x => ({ pid: x.pid, qty: x.qty })),
+            items: groups[sid].map(orderLine),
             fulfillment,
             ...(fulfillment === 'store_pickup' || !hub ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
             payMethod: pay, buyerName, buyerPhone,
@@ -240,7 +250,7 @@ export function CheckoutScreen({ params }){
           else await awaitMpesa(orderId, storeName);
           // Paid → drop this store's items from the cart so a partial-failure retry can't
           // re-order + re-charge them (S6).
-          groups[sid].forEach((x) => removeFromCart && removeFromCart(x.pid));
+          groups[sid].forEach((x) => removeFromCart && removeFromCart(x.key));
         }
         setErr(''); setBusy(false); settle(lastRcpt, pay); return;
       } catch (e) {
@@ -258,7 +268,7 @@ export function CheckoutScreen({ params }){
       const { orderId } = await placeOrder({
         ...(offer
           ? { offer: { convId: offer.convId, offerId: offer.id } }
-          : { items: items.map(x => ({ pid: x.pid, qty: x.qty })) }),
+          : { items: items.map(orderLine) }),
         fulfillment,
         ...(fulfillment === 'store_pickup' || !hub ? {} : { hubId: hub.id, hubName: hub.name, ...(slotStart ? { slot: { start: slotStart } } : {}) }),
         payMethod: pay,
@@ -473,13 +483,17 @@ export function CheckoutScreen({ params }){
         <div className="ym-card" style={{ padding:22, position:'sticky', top:150 }}>
           <div className="ym-h3" style={{ marginBottom:14 }}>Order summary</div>
           <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:14 }}>
-            {items.map(x=>(
-              <div key={x.pid} style={{ display:'flex', gap:12, alignItems:'center' }}>
-                <Thumb icon={x.p.icon} tint={'#7c3aed'} size={48} radius={12} img={x.p.img} />
-                <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.p.name}</div><div className="ym-cap">Qty {x.qty}</div></div>
+            {items.map(x=>{
+              const v = findVariant(x.p, x.variantId);
+              return (
+              <div key={x.key} style={{ display:'flex', gap:12, alignItems:'center' }}>
+                <Thumb icon={x.p.icon} tint={'#7c3aed'} size={48} radius={12} img={v?.image || x.p.img} />
+                <div style={{ flex:1, minWidth:0 }}><div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{x.p.name}</div>
+                  <div className="ym-cap" style={needsVariant(x.p, x) && !offer ? { color:'var(--m-danger)', fontWeight:600 } : undefined}>Qty {x.qty}{v ? ` · ${v.name}` : (needsVariant(x.p, x) && !offer ? ` · choose a ${variantLabel(x.p).toLowerCase()}` : '')}</div></div>
                 <div className="ym-sub" style={{ fontWeight:700, color:'var(--m-fg1)' }}>{ymPrice(x.p.price*x.qty)}</div>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div style={{ borderTop:'1px solid var(--m-border)', paddingTop:14, display:'flex', flexDirection:'column', gap:8 }}>
             <Row l="Subtotal" v={ymPrice(subtotal)} />
@@ -805,7 +819,7 @@ function OrderDetail({ view, onClose }){
               <Thumb icon={p?.icon || 'fa-box'} tint={store?.tint || '#7c3aed'} size={48} radius={12} img={p?.img} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div className="ym-sub" style={{ color:'var(--m-fg1)', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{it.name || p?.name || 'Item'}</div>
-                <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>{ymPrice(it.price||0)} × {it.qty||1}{delivered && it.pid && <>· <ItemReview productId={it.pid} /></>}</div>
+                <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>{it.variantName ? `${it.variantName} · ` : ''}{ymPrice(it.price||0)} × {it.qty||1}{delivered && it.pid && <>· <ItemReview productId={it.pid} /></>}</div>
               </div>
               <div style={{ fontWeight:700, fontSize:14, color:'var(--m-fg1)' }}>{ymPrice((it.price||0)*(it.qty||1))}</div>
             </div>

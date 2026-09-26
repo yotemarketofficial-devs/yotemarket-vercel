@@ -7,6 +7,7 @@ import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/fir
 import { useAuth } from '../../lib/useAuth.jsx';
 import { auth, db, firebaseEnabled, entitlementContext } from '../../lib/firebase.js';
 import { tierRank, tierName, canRank } from '../../lib/entitlements.js';
+import { normVariants } from '../../lib/variants.js';
 import { SHOP, SUBSCRIPTION, KPIS, WEEK, PROD_ROWS, ORDER_ROWS, ksh } from './data.js';
 const { createContext, useContext, useEffect, useState, useMemo } = React;
 
@@ -188,6 +189,12 @@ export function useStoreOverview() {
       catId: p.catId || null, sub: p.sub || '', desc: p.desc || '',
       was: p.was != null ? Number(p.was) : null, inStock: p.inStock !== false,
       img: p.img || null, images: Array.isArray(p.images) ? p.images.filter(Boolean) : (p.img ? [p.img] : []),
+      // Without these the edit modal opened every product as not-negotiable with
+      // no weight, and saving it cleared both.
+      negotiable: p.negotiable === true,
+      weightKg: typeof p.weightKg === 'number' ? p.weightKg : null,
+      weightSource: p.weightSource || null,
+      variants: normVariants(p.variants), variantLabel: typeof p.variantLabel === 'string' ? p.variantLabel : '',
     }));
     const orderRows = os.map((o) => ({
       id: o.id, orderNo: o.orderNo || null, buyer: o.buyerName || 'Customer', avatar: 'avatar-1.png',

@@ -1,6 +1,7 @@
 /* screens.jsx — Storefront: Home, Search, Product, Store. */
 import React from 'react';
-import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, TopBrandCard, SectionTitle, QtyStepper, LOW_STOCK } from './ui.jsx';
+import { useYM, FA, Stars, Thumb, PhotoOverlay, ProductCard, StoreCard, TopBrandCard, SectionTitle, QtyStepper, VariantPicker, LOW_STOCK } from './ui.jsx';
+import { hasVariants, findVariant, defaultVariant, variantSoldOut } from '../../lib/variants.js';
 import { YM_PRODUCTS, YM_STORES, YM_CATEGORIES, ymProduct, ymStore, ymCat, ymPrice } from './data.js';
 import { CATEGORY_TREE, catalogIdsFor, matchesSub } from './categories.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -628,8 +629,15 @@ export function ProductScreen({ params }){
   const tint = (ymCat(p.cat)||{}).tint || '#4f46e5';
   const [qty, setQty] = useSS(1);
   const [sel, setSel] = useSS(0);
+  // The chosen colour/size. Null = the product's default (first one in stock).
+  const [vid, setVid] = useSS(null);
+  const variant = findVariant(p, vid) || defaultVariant(p);
+  // Stock and the Add button follow the chosen variant when it keeps a count.
+  const stockHere = typeof variant?.stock === 'number' ? variant.stock : p.stock;
+  const canBuy = p.inStock && !variantSoldOut(variant);
   const gallery = (p.images && p.images.length) ? p.images : (p.img ? [p.img] : []);
-  const cover = gallery[sel] || p.img;
+  // The chosen variant's own photo, when the merchant shot one.
+  const cover = variant?.image || gallery[sel] || p.img;
   const related = YM_PRODUCTS.filter(x=>x.cat===p.cat && x.id!==p.id).slice(0,4);
   return (
     <div className="wrap anim-up" style={{ paddingTop:20 }}>
@@ -659,13 +667,18 @@ export function ProductScreen({ params }){
               <span className="ym-cap">({p.reviews} review{p.reviews!==1?'s':''})</span></>
             ) : <span className="ym-cap"><Stars rating={0} /> No reviews yet</span>}
             <button onClick={()=>document.getElementById('product-reviews')?.scrollIntoView({ behavior:'smooth' })} style={{ border:'none', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600, color:'var(--m-link)', padding:0, display:'inline-flex', alignItems:'center', gap:5 }}><FA i="fa-star" /> Write a review</button>
-            <span className={'ym-pill '+(p.inStock?'ym-pill-active':'ym-pill-inactive')}>{p.inStock?(p.stock!=null&&p.stock<=LOW_STOCK?`Only ${p.stock} left`:'In stock'):'Out of stock'}</span>
+            <span className={'ym-pill '+(canBuy?'ym-pill-active':'ym-pill-inactive')}>{canBuy?(stockHere!=null&&stockHere<=LOW_STOCK?`Only ${stockHere} left`:'In stock'):'Out of stock'}</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, flexWrap:'wrap' }}>
             <span style={{ fontSize:30, fontWeight:800, color:'var(--m-fg1)' }}>{ymPrice(p.price)}</span>
             {p.was && <span className="ym-sub" style={{ textDecoration:'line-through', fontSize:17 }}>{ymPrice(p.was)}</span>}
             {p.negotiable && <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5, fontWeight:700, color:'var(--m-primary)', background:'color-mix(in srgb, var(--m-primary) 12%, transparent)', border:'1px solid color-mix(in srgb, var(--m-primary) 40%, transparent)', borderRadius:9999, padding:'4px 11px' }}><FA i="fa-handshake" /> Negotiable</span>}
           </div>
+          {hasVariants(p) && (
+            <div style={{ marginBottom:20 }}>
+              <VariantPicker p={p} value={variant?.id} onChange={(id)=>{ setVid(id); setQty(1); }} />
+            </div>
+          )}
           <div className="ym-card" style={{ display:'flex', alignItems:'center', gap:14, padding:14, marginBottom:18, cursor:'pointer' }} onClick={()=>nav('store',{sid:store.id})}>
             <Thumb icon={store.icon} tint={store.tint} size={46} radius={9999} img={store.logo || store.img} />
             <div style={{ flex:1 }}>
@@ -677,8 +690,8 @@ export function ProductScreen({ params }){
           <div className="ym-h3" style={{ marginBottom:6 }}>About this item</div>
           <p className="ym-body" style={{ marginTop:0, textWrap:'pretty' }}>{p.desc}</p>
           <div style={{ display:'flex', alignItems:'center', gap:16, marginTop:24, flexWrap:'wrap' }}>
-            <QtyStepper qty={qty} onChange={setQty} max={p.stock ?? undefined} />
-            <button className="ym-btn ym-btn-primary" style={{ flex:1, minWidth:220 }} disabled={!p.inStock} onClick={()=>addToCart(p.id,qty)}><FA i="fa-cart-plus" /> {p.inStock?'Add to cart':'Out of stock'} · {ymPrice(p.price*qty)}</button>
+            <QtyStepper qty={qty} onChange={setQty} max={stockHere ?? undefined} />
+            <button className="ym-btn ym-btn-primary" style={{ flex:1, minWidth:220 }} disabled={!canBuy} onClick={()=>addToCart(p.id,qty,variant?.id || null)}><FA i="fa-cart-plus" /> {canBuy?'Add to cart':'Out of stock'} · {ymPrice(p.price*qty)}</button>
           </div>
           <button className="ym-btn ym-btn-outline" style={{ width:'100%', marginTop:12 }} onClick={()=>requireAuth(()=>nav('messages',{ store, product: { id: p.id, name: p.name, price: p.price, img: p.img || null, storeId: store.id } }))}><FA i="fa-comments" style={{ fontSize:17 }} /> Chat with seller{p.negotiable ? ' · Make an offer' : ''}</button>
         </div>

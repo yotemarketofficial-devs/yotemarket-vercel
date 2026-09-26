@@ -9,6 +9,8 @@ import { saveProduct, deleteProduct, estimateProductWeight } from '../../lib/fir
 import { useEscape } from '../../lib/useEscape.js';
 import { CATEGORY_TREE } from '../storefront/categories.js';
 import { ScreenCoach } from './ScreenCoach.jsx';
+import { VariantEditor } from './variantEditor.jsx';
+import { validateVariants } from '../../lib/variants.js';
 const { useState: useStateP } = React;
 
 const PRODUCTS_COACH = [
@@ -135,7 +137,12 @@ export function AddProductModal({ onClose, onSave, editing }){
     negotiable: editing.negotiable === true,
     weightKg: editing.weightKg != null ? String(editing.weightKg) : '',
     images: Array.isArray(editing.images) && editing.images.length ? editing.images.filter(Boolean) : (editing.img ? [editing.img] : []),
-  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', negotiable:false, weightKg:'', images:[] });
+    variants: Array.isArray(editing.variants) ? editing.variants.map((v) => ({ id: v.id, name: v.name, hex: v.hex || null, image: v.image || null })) : [],
+    variantLabel: editing.variantLabel || '',
+  } : { name:'', catId:'electronics', sub:'', summary:'', desc:'', price:'', discount:'', stock:'', negotiable:false, weightKg:'', images:[], variants:[], variantLabel:'' });
+  // Variants are sent only when changed here, so an edit that never touched them
+  // can't disturb the ids shoppers' cart lines are keyed on.
+  const [variantsTouched, setVariantsTouched] = useStateP(false);
   // AI weight estimate: a SUGGESTION the merchant can overwrite. weightSource records
   // whether the saved figure came from the estimate or from a human.
   const [wAi, setWAi] = useStateP(null);      // { kg, basis, confidence } | null
@@ -169,6 +176,8 @@ export function AddProductModal({ onClose, onSave, editing }){
     if (sale != null && (!(sale > 0) || sale >= regular)) {
       setErr('The discounted price must be a positive amount that is lower than the price.'); setStep(2); return;
     }
+    const vErr = validateVariants(form.variants, form.variantLabel);
+    if (vErr) { setErr(vErr); setStep(3); return; }
     setSaving(true); setErr('');
     try {
       await saveProduct({
@@ -183,6 +192,10 @@ export function AddProductModal({ onClose, onSave, editing }){
         weightKg: String(form.weightKg).trim() === '' ? null : Number(form.weightKg),
         weightSource,
         images: form.images, img: form.images[0] || null,
+        ...(variantsTouched ? {
+          variants: form.variants.map((v) => ({ ...(v.id ? { id: v.id } : {}), name: v.name.trim().replace(/\s+/g, ' '), hex: v.hex || null, image: v.image || null })),
+          variantLabel: form.variantLabel.trim(),
+        } : {}),
       });
       onSave(form);
     } catch (e) { setErr(e.message || 'Could not save the product.'); setSaving(false); }
@@ -319,6 +332,8 @@ export function AddProductModal({ onClose, onSave, editing }){
               </div>
               <div className="ym-cap" style={{ marginTop:8 }}>{storeId ? 'PNG or JPG · square crop · add up to 6' : 'Set up your store first'}</div>
             </div>
+            <VariantEditor variants={form.variants} label={form.variantLabel} photos={form.images}
+              onChange={(variants, variantLabel) => { setForm((f) => ({ ...f, variants, variantLabel })); setVariantsTouched(true); }} />
             <div style={{ display:'flex', gap:10, padding:'12px 14px', borderRadius:12, background:'var(--m-surface-3)', fontSize:12.5, color:'var(--m-fg2)', lineHeight:1.55 }}>
               <FA i="fa-shield-halved" style={{ color:'var(--m-primary)', marginTop:2, flexShrink:0 }} />
               <span>By publishing, you confirm this product is genuine, lawful, and accurately described, and that you hold any licenses required for regulated goods (e.g. medicines, alcohol). Counterfeit, substandard, misrepresented, unlicensed, or illegal goods will be removed, may forfeit payouts, and can be reported to the authorities — see our <a href="/terms" target="_blank" rel="noreferrer" style={{ color:'var(--m-primary)', fontWeight:600 }}>Terms of Service</a>.</span>

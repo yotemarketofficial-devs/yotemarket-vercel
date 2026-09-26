@@ -1,6 +1,7 @@
 /* ui.jsx — Storefront shared primitives (web, mirrors mobile app visual language). */
 import React from 'react';
 import { ymPrice, ymStore, ymCat, YM_STORES } from './data.js';
+import { hasVariants, findVariant, variantSoldOut, variantLabel, inkOn } from '../../lib/variants.js';
 import { resolveHubs } from './hubs.js';
 import { mapboxStaticUrl, approxCenterFor, MAPBOX_TOKEN } from '../../lib/maps.js';
 const { useState, useEffect, useRef, createContext, useContext } = React;
@@ -91,7 +92,9 @@ export function ProductCard({ p }){
             <div style={{ fontWeight:700, fontSize:15.5, color:'var(--m-fg1)' }}>{ymPrice(p.price)}</div>
             {p.was && <div className="ym-cap" style={{ textDecoration:'line-through' }}>{ymPrice(p.was)}</div>}
           </div>
-          <button onClick={e=>{ e.stopPropagation(); addToCart(p.id); }} aria-label="Add to cart" disabled={!p.inStock} style={{
+          {/* A product with colours or sizes can't be added blind — the server
+              refuses a line that doesn't name one — so its button opens the page. */}
+          <button onClick={e=>{ e.stopPropagation(); if (hasVariants(p)) nav('product',{pid:p.id}); else addToCart(p.id); }} aria-label={hasVariants(p) ? `Choose ${variantLabel(p).toLowerCase()}` : 'Add to cart'} disabled={!p.inStock} style={{
             width:38, height:38, borderRadius:11, border:'none', cursor:p.inStock?'pointer':'not-allowed', flexShrink:0,
             background: p.inStock?'var(--m-primary-deep)':'var(--m-surface-2)', color:p.inStock?'#fff':'var(--m-fg4)', fontSize:14,
             display:'flex', alignItems:'center', justifyContent:'center' }}><FA i="fa-plus" /></button>
@@ -171,6 +174,39 @@ export function SectionTitle({ children, action, onAction }){
 
 // `max` caps the stepper at the units actually in stock. Undefined = untracked, so
 // no cap (the server still has the final say — this only saves a wasted round trip).
+/* The merchant's variant axis — colour swatches, or text chips for sizes and
+   capacities — as a radio group. Shown only when the product has variants. */
+export function VariantPicker({ p, value, onChange }){
+  if (!hasVariants(p)) return null;
+  const label = variantLabel(p);
+  const cur = findVariant(p, value);
+  return (
+    <div role="radiogroup" aria-label={label}>
+      <div className="ym-cap" style={{ marginBottom:9, fontWeight:600, color:'var(--m-fg2)' }}>
+        {label}{cur ? <>: <span style={{ color:'var(--m-fg1)' }}>{cur.name}</span></> : ' — choose one'}
+      </div>
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
+        {p.variants.map((v) => {
+          const on = cur?.id === v.id;
+          const out = variantSoldOut(v);
+          const a11y = { role:'radio', 'aria-checked':on, 'aria-label':`${v.name}${out ? ', sold out' : ''}`, title: out ? `${v.name} — sold out` : v.name, onClick: () => onChange(v.id) };
+          return v.hex ? (
+            <button key={v.id} {...a11y} style={{ width:34, height:34, borderRadius:9999, background:v.hex, border:'none', cursor:'pointer', padding:0,
+              display:'inline-flex', alignItems:'center', justifyContent:'center', opacity: out ? .4 : 1, transition:'box-shadow .15s ease',
+              boxShadow: on ? '0 0 0 3px var(--m-bg), 0 0 0 5px var(--m-primary)' : 'inset 0 0 0 1px rgba(0,0,0,.18)' }}>
+              {on && <FA i="fa-check" style={{ fontSize:13, color:inkOn(v.hex) }} />}
+            </button>
+          ) : (
+            <button key={v.id} {...a11y} style={{ padding:'8px 15px', borderRadius:9999, cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600,
+              border: on ? '2px solid var(--m-primary)' : '1px solid var(--m-border)', background: on ? 'var(--m-surface-3)' : 'var(--m-surface)',
+              color: on ? 'var(--m-primary)' : 'var(--m-fg2)', opacity: out ? .55 : 1, textDecoration: out ? 'line-through' : 'none' }}>{v.name}</button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function QtyStepper({ qty, onChange, onRemove, max }){
   const b = { width:36, height:36, borderRadius:9999, border:'1px solid var(--m-border)', background:'var(--m-surface)', color:'var(--m-fg1)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 };
   const atMin = qty<=1;

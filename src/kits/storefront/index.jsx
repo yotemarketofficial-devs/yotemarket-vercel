@@ -13,6 +13,7 @@ import { ProfileScreen } from './profile.jsx';
 import { FollowingScreen } from './following.jsx';
 import { FeedScreen } from './feed.jsx';
 import { applyCatalog, ymProduct } from './data.js';
+import { lineKey, findVariant } from '../../lib/variants.js';
 import { useCatalogSync, subscribeUserOrders } from '../../lib/catalog.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useChatPush } from '../../lib/push.js';
@@ -125,22 +126,44 @@ export default function StorefrontApp(){
   // Cart quantities are capped at a tracked product's stock — tapping "+" five times
   // on a last-unit item shouldn't build a basket that checkout will only reject. The
   // server re-checks regardless; this is courtesy, not the guard.
-  const stockCap = (pid) => { const p = ymProduct(pid); return typeof p?.stock === 'number' ? p.stock : null; };
-  const addToCart = (pid, qty=1) => {
-    const cap = stockCap(pid);
+  // A variant's own count, when the merchant keeps one, else the product's.
+  const stockCap = (pid, variantId) => {
+    const p = ymProduct(pid);
+    const v = findVariant(p, variantId);
+    if (typeof v?.stock === 'number') return v.stock;
+    return typeof p?.stock === 'number' ? p.stock : null;
+  };
+  // Lines are keyed by product + variant (lib/variants.js lineKey): the same
+  // product in two colours is two lines, and a line names the colour it's for —
+  // the server refuses a line for a product with variants that names none.
+  const keyOf = (x) => lineKey(x.pid, x.variantId);
+  const addToCart = (pid, qty=1, variantId=null) => {
+    const key = lineKey(pid, variantId);
+    const cap = stockCap(pid, variantId);
     let capped = false;
     setCart(c=>{
-      const ex=c.find(x=>x.pid===pid);
+      const ex=c.find(x=>keyOf(x)===key);
       const want = ex ? ex.qty+qty : qty;
       const next = cap != null ? Math.min(cap, want) : want;
       capped = next < want;
       if (next <= 0) return c;
-      return ex? c.map(x=>x.pid===pid?{...x,qty:next}:x):[...c,{pid,qty:next}];
+      return ex? c.map(x=>keyOf(x)===key?{...x,qty:next}:x):[...c, variantId ? {pid,qty:next,variantId} : {pid,qty:next}];
     });
     toast(capped ? `Only ${cap} in stock` : 'Added to cart', capped ? 'fa-triangle-exclamation' : 'fa-cart-plus');
   };
-  const setCartQty = (pid,qty)=> setCart(c=>c.map(x=>{ if(x.pid!==pid) return x; const cap=stockCap(pid); return {...x, qty: cap!=null?Math.min(cap,qty):qty}; }));
-  const removeFromCart = (pid)=> setCart(c=>c.filter(x=>x.pid!==pid));
+  /** `key` is the line key (lineKey), not the product id. */
+  const setCartQty = (key,qty)=> setCart(c=>c.map(x=>{ if(keyOf(x)!==key) return x; const cap=stockCap(x.pid, x.variantId); return {...x, qty: cap!=null?Math.min(cap,qty):qty}; }));
+  const removeFromCart = (key)=> setCart(c=>c.filter(x=>keyOf(x)!==key));
+  /** Points a line at a variant — the cart's answer to "choose a colour" — and
+   *  merges it into an existing line for that variant rather than keeping two. */
+  const setCartVariant = (key, variantId) => setCart(c=>{
+    const line = c.find(x=>keyOf(x)===key);
+    if (!line) return c;
+    const target = lineKey(line.pid, variantId);
+    const twin = c.find(x=>x!==line && keyOf(x)===target);
+    if (twin) return c.filter(x=>x!==line).map(x=>x===twin?{...x, qty:x.qty+line.qty}:x);
+    return c.map(x=>x===line?{...x, variantId}:x);
+  });
   const clearCart = ()=> setCart([]);
   const cartCount = cart.reduce((n,c)=>n+c.qty,0);
 
@@ -181,7 +204,7 @@ export default function StorefrontApp(){
     initials: hasAccount ? initialsFrom(user.displayName || user.email || 'A') : 'G',
   };
 
-  const ctx = { nav, back, reset, theme, setTheme, cart, cartCount, addToCart, setCartQty, removeFromCart, clearCart,
+  const ctx = { nav, back, reset, theme, setTheme, cart, cartCount, addToCart, setCartQty, removeFromCart, setCartVariant, clearCart,
     cartOpen, openCart:()=>setCartOpen(true), closeCart:()=>setCartOpen(false), toast,
     account, openAuth, requireAuth, signOut: doSignOut, liveOrders, catalogReady,
     startTour: () => setTour(true) };

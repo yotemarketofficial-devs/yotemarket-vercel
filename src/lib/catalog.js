@@ -5,6 +5,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db, firebaseEnabled } from './firebase.js';
+import { normVariants } from './variants.js';
 
 const toArray = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
@@ -64,6 +65,10 @@ const normProduct = (d) => ({
   icon: faIcon(d.icon, 'fa-box'),
   img: d.img || d.imageUrl || d.photo || undefined,
   images: Array.isArray(d.images) ? d.images.filter(Boolean) : (d.img ? [d.img] : []),  // gallery (first = cover)
+  // The merchant's variant axis (colour, size…) — a line for this product must
+  // name one (lib/variants.js). `stock` per value is server-derived when counted.
+  variants: normVariants(d.variants),
+  variantLabel: typeof d.variantLabel === 'string' ? d.variantLabel : '',
   createdAt: d.createdAt || null,   // Firestore Timestamp — powers "Latest products"
 });
 const normStore = (d) => ({

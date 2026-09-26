@@ -1,7 +1,8 @@
 /* chrome.jsx — Storefront header, category nav, footer, cart drawer. */
 import React from 'react';
-import { useYM, FA, Thumb, QtyStepper } from './ui.jsx';
+import { useYM, FA, Thumb, QtyStepper, VariantPicker } from './ui.jsx';
 import { ymProduct, ymPrice, ymStore } from './data.js';
+import { lineKey, findVariant, needsVariant, variantLabel } from '../../lib/variants.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { useUnreadCount } from '../../lib/chat.js';
 import { SOCIAL_LINKS } from '../../lib/socials.js';
@@ -247,8 +248,8 @@ export function Footer(){
 }
 
 export function CartDrawer(){
-  const { cart, cartOpen, closeCart, setCartQty, removeFromCart, nav } = useYM();
-  const items = cart.map(c=>({ ...c, p:ymProduct(c.pid) })).filter(x=>x.p);
+  const { cart, cartOpen, closeCart, setCartQty, removeFromCart, setCartVariant, nav } = useYM();
+  const items = cart.map(c=>({ ...c, key:lineKey(c.pid, c.variantId), p:ymProduct(c.pid) })).filter(x=>x.p);
   const subtotal = items.reduce((s,x)=>s+x.p.price*x.qty,0);
   if(!cartOpen) return null;
   return (
@@ -266,16 +267,25 @@ export function CartDrawer(){
               <div className="ym-h3">Your cart is empty</div>
               <div className="ym-sub" style={{ marginTop:4 }}>Browse the mall to add items.</div>
             </div>
-          ) : items.map(x=>(
-            <div key={x.pid} style={{ display:'flex', gap:14, padding:'14px 0', borderBottom:'1px solid var(--m-border)' }}>
-              <Thumb icon={x.p.icon} tint={'#7c3aed'} size={64} radius={14} img={x.p.img} />
+          ) : items.map(x=>{
+            const v = findVariant(x.p, x.variantId);
+            return (
+            <div key={x.key} style={{ display:'flex', gap:14, padding:'14px 0', borderBottom:'1px solid var(--m-border)' }}>
+              <Thumb icon={x.p.icon} tint={'#7c3aed'} size={64} radius={14} img={v?.image || x.p.img} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div className="ym-h3" style={{ fontSize:14 }}>{x.p.name}</div>
+                {v && <div className="ym-cap" style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+                  {v.hex && <span style={{ width:10, height:10, borderRadius:9999, background:v.hex, boxShadow:'inset 0 0 0 1px rgba(0,0,0,.2)' }} />}{variantLabel(x.p)}: {v.name}
+                </div>}
                 <div style={{ fontWeight:700, color:'var(--m-fg1)', margin:'4px 0 8px' }}>{ymPrice(x.p.price)}</div>
-                <QtyStepper qty={x.qty} onChange={q=>setCartQty(x.pid,q)} onRemove={()=>removeFromCart(x.pid)} />
+                {/* Saved before the merchant added colours, or naming one since
+                    removed: never guessed — the shopper picks, right here. */}
+                {needsVariant(x.p, x) && <div style={{ margin:'2px 0 10px' }}><VariantPicker p={x.p} value={null} onChange={(id)=>setCartVariant(x.key, id)} /></div>}
+                <QtyStepper qty={x.qty} onChange={q=>setCartQty(x.key,q)} onRemove={()=>removeFromCart(x.key)} />
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         {items.length>0 && (
           <div style={{ padding:'18px 22px 22px', borderTop:'1px solid var(--m-border)' }}>

@@ -313,7 +313,7 @@ function LiveChatThread({ conv, user, onBack, openProduct, openOrder }){
   // Share my cart items from THIS store so a Pro merchant's Deal Assist can help.
   useEffE(() => {
     if (!conv.storeId) return;
-    const its = (cart || []).map((c) => { const p = ymProduct(c.pid); return (p && p.store === conv.storeId) ? { productId: c.pid, name: p.name || 'Item', qty: c.qty || 1, price: Number(p.price) || 0, img: p.img || null, icon: p.icon || 'fa-box' } : null; }).filter(Boolean);
+    const its = (cart || []).map((c) => { const p = ymProduct(c.pid); if (!p || p.store !== conv.storeId) return null; const v = (p.variants || []).find((x) => x.id === c.variantId); return { productId: c.pid, name: p.name || 'Item', qty: c.qty || 1, price: Number(p.price) || 0, img: (v && v.image) || p.img || null, icon: p.icon || 'fa-box', ...(v ? { variantId: v.id, variantName: v.name } : {}) }; }).filter(Boolean);
     updateCartHint(conv.id, its);
   }, [conv.id, conv.storeId, cart]);
 
