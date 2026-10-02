@@ -3,7 +3,13 @@ import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
+import PhoneMockup from '../components/PhoneMockup.jsx';
+import { APPS } from '../lib/apk-releases.mjs';
 import { SOCIAL_LINKS } from '../lib/socials.js';
+
+// Names, subtitles and launcher icons come from the same entries /apk publishes.
+const SHOPPER_APP = APPS.find((a) => a.slug === 'shopper');
+const RIDER_APP = APPS.find((a) => a.slug === 'rider');
 
 const SHOPPER_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'The whole mall, by category', desc: 'Browse hundreds of local stores by category and subcategory — just like walking a real mall.' },
@@ -398,30 +404,39 @@ function HomePage() {
         <div className="wrap">
           <div className="download reveal">
             <div className="glow"></div>
-            <div className="dl-grid">
+            <div className="dl-grid is-duo">
               <div className="dl-text">
-                <div className="kicker">Get the app</div>
+                <div className="kicker">Get the apps</div>
                 <h2>YoteMarket in your pocket</h2>
-                <div className="icon-row" style={{ marginTop: '24px' }}>
-                  <div className="appicon">
-                    <img src="/assets/favicon.png" alt="YoteMarket app icon" />
+                <div className="dl-apps">
+                  <div className="dl-app">
+                    <img src={SHOPPER_APP.icon} alt="" width="56" height="56" loading="lazy" />
+                    <div>
+                      <div className="n">{SHOPPER_APP.name}</div>
+                      <div className="s">
+                        {SHOPPER_APP.subtitle}
+                        <span className="stars">
+                          <i className="fas fa-star"></i>
+                          <i className="fas fa-star"></i>
+                          <i className="fas fa-star"></i>
+                          <i className="fas fa-star"></i>
+                          <i className="fas fa-star-half-alt"></i>
+                          {' '}4.7
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="meta">
-                    <div className="n">YoteMarket</div>
-                    <div className="s">Shop · Sell · Deliver</div>
-                    <div className="stars">
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star"></i>
-                      <i className="fas fa-star-half-alt"></i>
-                      4.7
+                  <div className="dl-app">
+                    <img src={RIDER_APP.icon} alt="" width="56" height="56" loading="lazy" />
+                    <div>
+                      <div className="n">{RIDER_APP.name}</div>
+                      <div className="s">{RIDER_APP.subtitle}</div>
                     </div>
                   </div>
                 </div>
                 <p>
-                  Shop on the go, manage your store, or ride with us — more stops, more earnings.
-                  One app for shoppers and riders alike.
+                  Shop on the go and run your store with YoteMarket. Riding with us? YoteMarket Rider
+                  brings more stops and more earnings.
                 </p>
                 <div className="badges" style={{ marginTop: '26px' }}>
                   <Link className="store" to="/mobile">
@@ -435,84 +450,15 @@ function HomePage() {
                   <UptodownBadge />
                 </div>
               </div>
-              <div className="phone-wrap">
-                <div className="phone">
-                  <div className="screen">
-                    <div className="island"></div>
-                    <div className="ap-head">
-                      <div className="ap-status">
-                        <span>9:41</span>
-                        <span className="r">
-                          <i className="fas fa-signal"></i>
-                          <i className="fas fa-wifi"></i>
-                          <i className="fas fa-battery-full"></i>
-                        </span>
-                      </div>
-                      <div className="ap-top">
-                        <img src="/assets/logo-white.png" alt="YoteMarket" />
-                        <div className="ap-icons">
-                          <span className="ap-ic"><i className="fas fa-coins" style={{ color: '#f4b530' }}></i></span>
-                          <span className="ap-ic"><i className="fas fa-cart-shopping"></i></span>
-                        </div>
-                      </div>
-                      <div className="ap-search">
-                        <i className="fas fa-magnifying-glass"></i>
-                        Search the mall
-                      </div>
-                    </div>
-                    <div className="ap-body">
-                      <div className="ap-chips">
-                        <span className="ap-chip on"><i className="fas fa-border-all"></i> All</span>
-                        <span className="ap-chip"><i className="fas fa-mobile-screen" style={{ color: '#3b82f6' }}></i> Electronics</span>
-                        <span className="ap-chip"><i className="fas fa-shirt" style={{ color: '#a020f0' }}></i> Fashion</span>
-                      </div>
-                      <div className="ap-sec">Explore the mall</div>
-                      <div className="ap-store">
-                        <div className="bn"><i className="fas fa-store"></i></div>
-                        <div className="bd">
-                          <div className="lg"><i className="fas fa-store"></i></div>
-                          <div className="nm">
-                            Wanjiku Electronics <i className="fas fa-circle-check" style={{ color: '#5b2c9c', fontSize: '9px' }}></i>
-                          </div>
-                          <div className="mt">★ 4.8 · 124 products</div>
-                        </div>
-                      </div>
-                      <div className="ap-sec">For you</div>
-                      <div className="ap-grid">
-                        <div className="ap-pc">
-                          <div className="im" style={{ background: 'linear-gradient(135deg,#3b82f62e,#3b82f655)', color: '#3b82f6' }}>
-                            <i className="fas fa-mobile-screen-button"></i>
-                          </div>
-                          <div className="pb">
-                            <div className="pn">Samsung Galaxy A15 128GB</div>
-                            <div className="pr">
-                              <span className="pp">Ksh 18,500</span>
-                              <span className="pa"><i className="fas fa-plus"></i></span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="ap-pc">
-                          <div className="im" style={{ background: 'linear-gradient(135deg,#10b9812e,#10b98155)', color: '#10b981' }}>
-                            <i className="fas fa-seedling"></i>
-                          </div>
-                          <div className="pb">
-                            <div className="pn">Fresh Avocados (6 pack)</div>
-                            <div className="pr">
-                              <span className="pp">Ksh 350</span>
-                              <span className="pa"><i className="fas fa-plus"></i></span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="ap-nav">
-                      <div className="nv on"><div className="pillx"><i className="fas fa-house"></i></div><span>Home</span></div>
-                      <div className="nv"><div className="pillx"><i className="fas fa-store"></i></div><span>Mall</span></div>
-                      <div className="nv"><div className="pillx"><i className="fas fa-comments"></i></div><span>Chats</span></div>
-                      <div className="nv"><div className="pillx"><i className="fas fa-box"></i></div><span>Orders</span></div>
-                      <div className="nv"><div className="pillx"><i className="fas fa-user"></i></div><span>Profile</span></div>
-                    </div>
-                  </div>
+              {/* The two apps as they actually look — see components/PhoneMockup.jsx. */}
+              <div className="phone-wrap phone-duo">
+                <div className="phone-duo-item">
+                  <PhoneMockup app="shopper" />
+                  <span className="phone-duo-cap"><img src={SHOPPER_APP.icon} alt="" width="22" height="22" loading="lazy" />{SHOPPER_APP.name}</span>
+                </div>
+                <div className="phone-duo-item">
+                  <PhoneMockup app="rider" />
+                  <span className="phone-duo-cap"><img src={RIDER_APP.icon} alt="" width="22" height="22" loading="lazy" />{RIDER_APP.name}</span>
                 </div>
               </div>
             </div>

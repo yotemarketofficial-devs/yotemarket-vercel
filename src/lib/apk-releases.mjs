@@ -38,7 +38,8 @@ export const APPS = [
     // yotemarket-upload.jks). The staff uploader refuses any build not signed by it.
     // See the note on the rider entry for why this is pinned rather than merely checked.
     signingSha256: '22047af9046681dbbedf9a20d696b1b0cf1b088d8cad8b8149673379ba20add9',
-    icon: '/assets/app_icon.png',
+    // The launcher icon the app ships with (mobile_app/assets/launcher_icon.png), at 192px.
+    icon: '/assets/app-icon-shopper.png',
     minAndroid: '6.0',
     abi: 'universal (arm64-v8a, armeabi-v7a, x86_64)',
     playUrl: '',
@@ -76,7 +77,8 @@ export const APPS = [
      * it or every publish will be refused.
      */
     signingSha256: '8ffc3b1a116e281cdf7331a1b206c41c6b0bdada8b6882718d889bcfb20ea832',
-    icon: '/assets/rider_app_icon.png',
+    // rider_app/assets/app_icon.png at 192px — the 1024px original is ~500 KB.
+    icon: '/assets/app-icon-rider.png',
     minAndroid: '6.0',
     abi: 'universal (arm64-v8a, armeabi-v7a, x86_64)',
     playUrl: '',

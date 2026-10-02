@@ -38,7 +38,7 @@ function MobilePage() {
             <span>Works on Android &amp; iOS</span>
           </div>
         </div>
-        <PhoneMockup />
+        <div className="phone-wrap"><PhoneMockup app="shopper" /></div>
       </section>
 
       <section className="pad" style={{ paddingTop: '32px' }}>
