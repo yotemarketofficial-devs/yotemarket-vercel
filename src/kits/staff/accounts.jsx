@@ -9,9 +9,9 @@ import { staffListUsers } from '../../lib/firebase.js';
 import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount, sendVerificationEmails } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 import { toMillis, fmtDay } from '../../lib/dates.js';
-import { needsVerification, chunk, tally, describeTally, describeCallError } from '../../lib/verify-emails.js';
+import { needsVerification, chunk, tally, describeTally, tallyIsError, describeCallError, refusedBeforeSending } from '../../lib/verify-emails.js';
 import { MessageButton } from './comms.jsx';
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef, useSyncExternalStore } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
 // 'unverified' is not a role: it is the accounts the verification button would email
@@ -23,10 +23,56 @@ const inFilter = (u, f) => f === 'all' || (f === 'unverified' ? needsVerificatio
 // sort key and the cell.
 const fmtDate = fmtDay;
 
+/* The bulk verification run lives OUTSIDE the component. The staff shell mounts one
+   screen at a time, so leaving Accounts mid-run unmounted it: the summary — failures
+   included — was lost, and coming back offered the button again while the first run was
+   still sending. This store keeps progress and the last summary until the next run. */
+const verifyRun = { state: { running: false, done: 0, total: 0, summary: null }, subs: new Set() };
+const setVerifyRun = (patch) => { verifyRun.state = { ...verifyRun.state, ...patch }; verifyRun.subs.forEach((f) => f()); };
+const subscribeVerifyRun = (f) => { verifyRun.subs.add(f); return () => verifyRun.subs.delete(f); };
+const useVerifyRun = () => useSyncExternalStore(subscribeVerifyRun, () => verifyRun.state);
+
+/* Send in requests of 25. The server hands back any it ran out of time for
+   (`notAttempted`) and those go next. A request that fails outright stops the run: if the
+   server refused it before touching anyone (not deployed, another admin's run, no
+   permission) its accounts are "not attempted"; otherwise nobody can say whether they
+   were emailed, and the summary says exactly that rather than guessing. */
+async function runVerification(uids) {
+  if (verifyRun.state.running) return;
+  setVerifyRun({ running: true, done: 0, total: uids.length, summary: null });
+  const results = [];
+  const queue = chunk(uids);
+  let lost = 0;
+  let stopped = '';
+  while (queue.length) {
+    const batch = queue.shift();
+    try {
+      const r = await sendVerificationEmails(batch);
+      results.push(...((r && r.results) || []));
+      const back = (r && Array.isArray(r.notAttempted)) ? r.notAttempted : [];
+      if (back.length) queue.unshift(...chunk(back));
+    } catch (e) {
+      stopped = describeCallError(e);
+      if (refusedBeforeSending(e)) queue.unshift(batch); else lost += batch.length;
+      break;
+    }
+    setVerifyRun({ done: results.length + lost });
+  }
+  const notAttempted = queue.reduce((a, b) => a + b.length, 0);
+  const t = tally(results, { lost, notAttempted });
+  setVerifyRun({ running: false, summary: {
+    ok: !stopped && !tallyIsError(t),
+    text: [stopped, describeTally(t)].filter(Boolean).join(' '),
+    // The directory is stale if the server found accounts that changed since it loaded.
+    refresh: Boolean(t.verified || t.other),
+  } });
+}
+
 export function Accounts(){
   const { confirm } = useDialogs();
   const [users, setUsers] = useState([]);
-  const [verifying, setVerifying] = useState(null);   // { done, total } while sending
+  const run = useVerifyRun();
+  const [truncated, setTruncated] = useState(false);
   const [source, setSource] = useState('auth');
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -36,7 +82,13 @@ export function Accounts(){
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const r = await staffListUsers(); setUsers(r.users || []); setSource(r.source || 'auth'); }
+    try {
+      const r = await staffListUsers();
+      const src = r.source || 'auth';
+      setUsers(r.users || []); setSource(src); setTruncated(Boolean(r.truncated));
+      // The Firestore fallback has no Auth data: "unverified" is unknown there, not zero.
+      if (src !== 'auth') setFilter((f) => (f === 'unverified' ? 'all' : f));
+    }
     catch (e) { setMsg({ ok:false, text:e.message || 'Could not load accounts.' }); }
     finally { setLoading(false); }
   }, []);
@@ -47,45 +99,40 @@ export function Accounts(){
     inFilter(u, filter) &&
     (!ql || (u.email||'').toLowerCase().includes(ql) || (u.name||'').toLowerCase().includes(ql) || (u.uid||'').toLowerCase().includes(ql)));
   const count = (f) => users.filter((u) => inFilter(u, f)).length;
+  const filters = source === 'auth' ? FILTERS : FILTERS.filter(([k]) => k !== 'unverified');
+
+  // Reload once a run that found stale rows finishes — but not for a summary that was
+  // already showing when this screen mounted (the mount load covers that).
+  const seenSummary = useRef(run.summary);
+  useEffect(() => {
+    if (run.summary && run.summary !== seenSummary.current) {
+      seenSummary.current = run.summary;
+      if (run.summary.refresh) load();
+    }
+  }, [run.summary, load]);
 
   /* Email every unverified account a fresh "confirm your email". The list only decides
-     who to ASK about — the server re-checks each account against Auth and skips anyone
-     verified, disabled, address-less or already sent one in the last 24 hours. Sent in
-     requests of 25 so a long list shows progress and one failed request doesn't lose the
-     rest; a request that fails outright stops the run and says why. */
+     whom to ASK about — the server re-checks each account against Auth and skips anyone
+     verified, disabled, address-less, new, or already sent one in the last 24 hours. */
   const unverified = source === 'auth' ? users.filter(needsVerification) : [];
   const sendAllVerification = async () => {
     const list = unverified.map((u) => u.uid);
-    if (!list.length) return;
+    if (!list.length || run.running) return;
     const ok = await confirm({
       title: `Email ${list.length} account${list.length === 1 ? '' : 's'} a link to confirm their address?`,
       icon: 'envelope-circle-check',
-      body: 'Each gets the same “Confirm your email” message YoteMarket sends at sign-up. The server checks every account first: anyone verified, disabled, or already sent one in the last 24 hours is skipped.',
+      body: 'Each gets the same “Confirm your email” message YoteMarket sends at sign-up. The server checks every account first and skips anyone verified, disabled, signed up in the last day, or sent one through YoteMarket in the last 24 hours.',
       facts: [
         { label: 'Accounts', value: list.length.toLocaleString() },
         { label: 'Sent as', value: 'YoteMarket’s branded verification email' },
+        truncated && { label: 'Covers', value: `Only the first ${users.length.toLocaleString()} accounts listed here` },
       ],
       ...(list.length > 1 ? { confirmPhrase: 'SEND' } : {}),
       confirmLabel: 'Send', confirmIcon: 'paper-plane',
     });
     if (!ok) return;
     setMsg(null);
-    const results = [];
-    let stopped = '';
-    const batches = chunk(list);
-    setVerifying({ done: 0, total: list.length });
-    for (const batch of batches) {
-      try { const r = await sendVerificationEmails(batch); results.push(...((r && r.results) || [])); }
-      catch (e) { stopped = describeCallError(e); break; }
-      setVerifying({ done: Math.min(list.length, results.length), total: list.length });
-    }
-    setVerifying(null);
-    const t = tally(results);
-    const left = list.length - results.length;
-    const text = [results.length ? describeTally(t) : '', stopped, stopped && left && results.length ? `${left} account${left === 1 ? ' was' : 's were'} not attempted.` : '']
-      .filter(Boolean).join(' ');
-    // Red only for a failure; "everyone was skipped" is the server doing its job.
-    setMsg({ ok: !stopped && !t.failed, text });
+    runVerification(list);
   };
 
   const columns = [
@@ -105,19 +152,25 @@ export function Accounts(){
 
   return (
     <div className="fadeup space-y-6">
-      <SectionHead icon="address-book" title="Accounts" sub={`${users.length} user account${users.length!==1?'s':''} across the platform`}
+      <SectionHead icon="address-book" title="Accounts" sub={truncated ? `The first ${users.length.toLocaleString()} user accounts — the platform has more` : `${users.length} user account${users.length!==1?'s':''} across the platform`}
         action={<div className="flex items-center gap-2">
           {source === 'auth' && (
-            <Btn kind="soft" size="md" icon={verifying ? 'spinner' : 'envelope-circle-check'} onClick={sendAllVerification}
-              disabled={loading || !!verifying || !unverified.length}
-              title={unverified.length ? 'Email every unverified account a link to confirm their address' : 'Every account with an email address is verified'}>
-              {verifying ? `Sending… ${verifying.done}/${verifying.total}` : `Send verification emails (${unverified.length})`}
+            <Btn kind="soft" size="md" icon={run.running ? 'spinner' : 'envelope-circle-check'} onClick={sendAllVerification}
+              disabled={loading || run.running || !unverified.length}
+              title={run.running ? 'A send is already running' : unverified.length ? 'Email every unverified account a link to confirm their address' : 'Every account with an email address is verified'}>
+              {run.running ? `Sending… ${run.done}/${run.total}` : `Send verification emails (${unverified.length})`}
             </Btn>
           )}
           <Btn kind="ghost" size="md" icon="file-arrow-down" onClick={()=>exportCsv(`accounts-${new Date().toISOString().slice(0,10)}`, columns, rows)} disabled={!rows.length}>Export</Btn>
           <Btn kind="soft" size="md" icon={loading ? 'spinner' : 'rotate'} onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Btn>
         </div>} />
       {msg && <div className="text-sm flex items-center gap-2" style={{ color: msg.ok ? 'var(--green)' : 'var(--red)' }}><Icon name={msg.ok ? 'circle-check' : 'circle-exclamation'} />{msg.text}</div>}
+      {run.summary && !run.running && (
+        <div className="text-sm flex items-start gap-2" style={{ color: run.summary.ok ? 'var(--green)' : 'var(--red)' }}>
+          <Icon name={run.summary.ok ? 'envelope-circle-check' : 'circle-exclamation'} className="mt-0.5" /><span>{run.summary.text}</span>
+        </div>
+      )}
+      {!loading && truncated && <div className="text-xs flex items-center gap-2" style={{ background:'var(--amber-bg)', color:'var(--amber)', padding:'8px 12px', borderRadius:10 }}><Icon name="triangle-exclamation" />Auth has more accounts than the 5,000 listed here. The Unverified count and “Send verification emails” cover only these.</div>}
       {!loading && source === 'firestore' && <div className="text-xs t3 flex items-center gap-2" style={{ background:'var(--amber-bg)', color:'var(--amber)', padding:'8px 12px', borderRadius:10 }}><Icon name="triangle-exclamation" />Limited directory — the functions service account can't list Auth users, so this is built from Firestore (merchants, riders, staff, profiles). Grant it the "Firebase Authentication Admin" role for the full list + email lookups.</div>}
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -126,7 +179,7 @@ export function Accounts(){
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by email, name or uid…" className="ym-input pl-9" style={{ width:'100%' }} />
         </div>
         <div className="inline-flex rounded-lg p-1 flex-wrap gap-1" style={{ background:'var(--surface2)', border:'1px solid var(--line)' }}>
-          {FILTERS.map(([k,l]) => (
+          {filters.map(([k,l]) => (
             <button key={k} onClick={()=>setFilter(k)} className="px-3 py-1.5 rounded-md text-sm font-semibold transition"
               style={filter===k?{ background:'var(--surface)', color:'var(--pri)', boxShadow:'var(--shadow)' }:{ color:'var(--t3)' }}>{l} <span className="num t3">{count(k)}</span></button>
           ))}
@@ -277,11 +330,22 @@ function UserConsole({ row, onClose, onChanged }){
     try {
       const r = await sendVerificationEmails([uid]);
       const out = (r && r.results && r.results[0]) || {};
-      if (out.outcome === 'sent') toast({ tone:'ok', title:`Verification email sent to ${who}.` });
-      else if (out.outcome === 'recently_sent') toast({ tone:'info', title:`Not sent — ${who} was sent one in the last 24 hours.` });
-      else if (out.outcome === 'already_verified') { toast({ tone:'ok', title:`${who} has already verified their address.` }); reload(); }
-      else if (out.outcome === 'failed') toast({ tone:'error', title:`The email didn’t go${out.error ? `: ${out.error}` : '.'}` });
-      else toast({ tone:'info', title:`Not sent (${String(out.outcome || 'no answer').replace(/_/g, ' ')}).` });
+      const why = out.error ? ` (${out.error})` : '';
+      switch (out.outcome) {
+        case 'sent': toast({ tone:'ok', title:`Verification email sent to ${who}.` }); break;
+        case 'recently_sent': toast({ tone:'info', title:`Not sent — ${who} was sent one in the last 24 hours.` }); break;
+        case 'new_account': toast({ tone:'info', title:`Not sent — ${who} signed up in the last day, so their sign-up email is still fresh.` }); break;
+        case 'in_progress': toast({ tone:'info', title:`Not sent — another admin is sending ${who} one right now.` }); break;
+        case 'unknown': toast({ tone:'info', title:`Couldn’t confirm the email went${why} — it may have. ${who} won’t be emailed again for 24 hours.` }); break;
+        case 'failed': toast({ tone:'error', title:`The email didn’t go${out.error ? `: ${out.error}` : '.'}` }); break;
+        case 'already_verified':
+          toast({ tone:'ok', title:`${who} has already verified their address.` });
+          reload(); onChanged && onChanged();   // the directory row still says unverified
+          break;
+        default:   // disabled | no_email | not_found — the account changed under us
+          toast({ tone:'info', title:`Not sent (${String(out.outcome || 'no answer').replace(/_/g, ' ')}).` });
+          reload(); onChanged && onChanged();
+      }
     } catch (e) { toast({ tone:'error', title: describeCallError(e) }); }
     finally { setBusy(null); }
   };

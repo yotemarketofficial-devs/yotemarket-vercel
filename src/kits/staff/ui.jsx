@@ -25,7 +25,9 @@ export const Card = ({ children, className='', style, onClick }) => (
   <div onClick={onClick} className={`card ${className}`} style={style}>{children}</div>
 );
 
-export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, children, onClick, disabled, type='button', className='', style }){
+// `title` is forwarded: callers were passing tooltips (why a button is disabled, what
+// "Sign out" revokes) that never reached the DOM.
+export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, children, onClick, disabled, type='button', className='', style, title }){
   const sizes = { sm:'text-sm px-3 py-1.5', md:'text-sm px-4 py-2', lg:'text-base px-5 py-2.5' };
   const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-lg cursor-pointer transition-all border-0 disabled:opacity-50 disabled:cursor-not-allowed';
   const st = { ...style };
@@ -39,7 +41,7 @@ export function Btn({ kind='primary', size='md', icon, brandIcon, iconRight, chi
   if (kind==='danger'){ st.background='var(--red)'; st.color='var(--on-accent)'; }
   const hov = kind==='soft'||kind==='ghost' ? 'hover:brightness-95' : 'hover:brightness-110';
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={st} className={`${base} ${sizes[size]} ${hov} ${className}`}>
+    <button type={type} onClick={onClick} disabled={disabled} title={title} style={st} className={`${base} ${sizes[size]} ${hov} ${className}`}>
       {icon && <Icon name={icon}/>}{brandIcon && <Icon name={brandIcon} brand/>}{children}{iconRight && <Icon name={iconRight}/>}
     </button>
   );

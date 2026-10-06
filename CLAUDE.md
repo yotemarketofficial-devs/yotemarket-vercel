@@ -11,7 +11,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 306 tests, all passing as of 2026-10-06
+npm test           # vitest — 313 tests, all passing as of 2026-10-06
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 
@@ -242,7 +242,9 @@ account's drawer) calls `staffSendVerificationEmails`, which is **not deployed y
 ([`docs/verify-email-backend.patch`](docs/verify-email-backend.patch)). The console only
 decides whom to ask about (`lib/verify-emails.js`). The server re-checks each account
 against Auth and sends only to that account's own address, never to the same address
-twice within 24 hours.
+twice within 24 hours. The bulk run lives in a module-level store in `accounts.jsx`, not
+component state, because the staff shell unmounts a screen when you leave it — and a run
+that outlives its screen must still report what happened.
 
 ## Gotchas worth remembering
 

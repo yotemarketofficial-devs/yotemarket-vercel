@@ -2,7 +2,7 @@
  * split, and what the admin is told. The rule throughout is that nothing reads as sent
  * unless the server said so, and an account in an unknown state is never counted. */
 import { describe, it, expect } from 'vitest';
-import { needsVerification, chunk, tally, describeTally, describeCallError, VERIFY_BATCH } from './verify-emails.js';
+import { needsVerification, chunk, tally, describeTally, tallyIsError, describeCallError, refusedBeforeSending, VERIFY_BATCH } from './verify-emails.js';
 
 const acct = (over = {}) => ({ uid: 'u', email: 'a@example.com', verified: false, disabled: false, ...over });
 
@@ -78,5 +78,55 @@ describe('describeCallError', () => {
 
   it('falls back to the server’s own message', () => {
     expect(describeCallError({ code: 'functions/invalid-argument', message: 'At most 25 accounts per request.' })).toBe('At most 25 accounts per request.');
+  });
+});
+
+describe('tally — the outcomes added after review', () => {
+  it('says a fresh sign-up, a send in flight and an unconfirmed send for what they are', () => {
+    const t = tally([{ outcome: 'new_account' }, { outcome: 'in_progress' }, { outcome: 'unknown' }, { outcome: 'unknown' }]);
+    expect(t).toMatchObject({ newAcct: 1, busy: 1, unknown: 2, sent: 0 });
+    const s = describeTally(t);
+    expect(s).toMatch(/^No verification emails were sent\./);
+    expect(s).toMatch(/signed up in the last day/);
+    expect(s).toMatch(/being sent one by another admin/);
+    expect(s).toMatch(/2 sends couldn’t be confirmed — they may have gone/);
+  });
+
+  it('separates accounts nobody can vouch for from accounts never tried', () => {
+    const t = tally([{ outcome: 'sent' }], { lost: 25, notAttempted: 10 });
+    const s = describeTally(t);
+    expect(s).toMatch(/For 25 accounts the server didn’t answer/);
+    expect(s).toMatch(/10 accounts were not attempted/);
+    expect(tallyIsError(t)).toBe(true);
+  });
+
+  it('is not an error when everyone was deliberately skipped', () => {
+    expect(tallyIsError(tally([{ outcome: 'recently_sent' }, { outcome: 'new_account' }]))).toBe(false);
+    expect(tallyIsError(tally([{ outcome: 'failed' }]))).toBe(true);
+  });
+});
+
+describe('describeCallError / refusedBeforeSending — after review', () => {
+  it('passes on the server’s own “another admin is sending” message', () => {
+    const e = { code: 'functions/aborted', message: 'Another admin is sending verification emails right now. Try again in a minute.' };
+    expect(describeCallError(e)).toMatch(/Another admin/);
+    expect(refusedBeforeSending(e)).toBe(true);
+  });
+
+  it('treats a timeout as unanswered, not as refused', () => {
+    const e = { code: 'functions/deadline-exceeded', message: 'deadline-exceeded' };
+    expect(describeCallError(e)).toBe('The server took too long to answer.');
+    expect(refusedBeforeSending(e)).toBe(false);
+  });
+
+  it('knows an undeployed or unauthorised call never reached anyone', () => {
+    expect(refusedBeforeSending({ code: 'functions/not-found' })).toBe(true);
+    expect(refusedBeforeSending({ code: 'functions/permission-denied' })).toBe(true);
+    expect(refusedBeforeSending({ message: 'Backend not configured' })).toBe(true);
+  });
+
+  it('does not assume an `internal` failure reached nobody', () => {
+    // An undeployed callable and a crash mid-send both surface as `internal`.
+    expect(refusedBeforeSending({ code: 'functions/internal', message: 'internal' })).toBe(false);
   });
 });

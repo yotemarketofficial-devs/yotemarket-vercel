@@ -778,7 +778,11 @@ export async function setUserRole(uid, role) {
  *  mailed in the last 24h) and caps a request at 25 — see lib/verify-emails.js.
  *  { uids } -> { results: [{ uid, outcome, error? }], sent, skipped, failed } */
 export async function sendVerificationEmails(uids) {
-  return call('staffSendVerificationEmails')({ uids });
+  if (!functions) throw new Error('Backend not configured');
+  // The SDK gives up after 70 s by default; the function may run 120 s. Waiting less than
+  // the server meant a slow batch read as "not attempted" while it was still sending.
+  const res = await httpsCallable(functions, 'staffSendVerificationEmails', { timeout: 130000 })({ uids });
+  return res.data;
 }
 /** `send: true` asks the server to email the branded reset message itself → { sent }.
  *  A server from before that ignores the flag and returns the raw { link } as it always
