@@ -123,6 +123,42 @@ now. If any notice is still showing, that is the bug to chase, not this list.
 
 ---
 
+## P2 — communication: messages that reached nobody (2026-10-06)
+
+Staff could write to marketers, merchants and shoppers, but the message often went nowhere
+useful. A tap on it opened a screen with no messages on it, nothing was emailed, and the
+console's "Email" buttons opened the agent's own mail app with nothing logged.
+`CLAUDE.md` → *Communication* has the full picture.
+
+- [x] **`[web]` A message from staff opens that conversation, in every bell.** Scout app →
+  new **Messages** screen (read, reply, message the team, unread badge). Storefront and
+  dashboard → `/help?thread=<id>#requests`, which opens the thread directly. Done when: a
+  tap on a support notification shows the thread with a reply box, in all three apps.
+- [x] **`[web]` Broadcasts can carry a link, and every bell follows it.** Checked by
+  `safeNotifLink` (site path or https, nothing else), with tests.
+- [x] **`[web]` The staff "Email" buttons are gone.** Merchant drawer, Accounts and the
+  marketer page now have **Message** (a logged thread, plus an email copy once the server
+  sends one). The Support drawer reports how each reply was delivered. Reset password asks
+  first, and asks the server to send the email.
+- [ ] **`[fn]` Apply and deploy [`comms-backend.patch`](./comms-backend.patch).**
+  **needs-credentials** (deploy). Checked against `5ae318b`: applies cleanly, tests and
+  lint pass, all exports present. Emails support replies and outreach, sends staff password
+  resets, replaces `noreply@`, keeps a merchant thread in the merchant bell, and shows
+  *Everyone* broadcasts in the merchant bell too. Steps and post-deploy checks:
+  [`comms-backend.md`](./comms-backend.md).
+  **Done when:** Staff → Comms → Message someone reports *"… and by email"*, and a reply
+  to a signed-out Help Center request shows a green *"Emailed to …"* in the Support drawer.
+- [ ] **Confirm `support@yotemarket.com` is read by a person.** **needs-a-human.** The
+  patch makes it the reply-to on every email the platform sends.
+- [ ] **`[fn]` Email replies land on the thread.** Today a reply to one of these emails
+  reaches the support inbox, not the ticket. Needs receiving enabled in Resend and an
+  inbound webhook matching `[YM-…]`. Proposal only. See `comms-backend.md`.
+- [ ] **`[fn]` Marketer broadcast segments.** `BROADCAST_FILTERS.marketers` is `["all"]`.
+  Segments by county, "no activation in 30 days" and "payout pending" would let Growth
+  speak to the scouts a message is actually about. Proposal only.
+
+---
+
 ## P3 — standing items, older than this session
 
 - [ ] **`[web]` No Uptodown listing URL yet.** Paste it into Admin → App releases when

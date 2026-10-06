@@ -8,7 +8,7 @@ import { useStaffResource, fetchSupportTickets, replySupportTicket, deleteSuppor
 import { useDialogs } from './dialogs.jsx';
 const { useState, useEffect } = React;
 
-const CAT_LABEL = { order:'Order', payment:'Payment', delivery:'Delivery', account:'Account', selling:'Selling', feed:'YoteFeed', refund:'Refund', other:'Other' };
+const CAT_LABEL = { order:'Order', payment:'Payment', delivery:'Delivery', account:'Account', selling:'Selling', feed:'YoteFeed', refund:'Refund', marketer:'Marketer', other:'Other' };
 const STATUS_TONE = { open:'amber', pending:'blue', resolved:'ok', closed:'red' };
 const STATUS_LABEL = { open:'Open', pending:'In progress', resolved:'Resolved', closed:'Closed' };
 const FILTERS = ['open', 'pending', 'resolved', 'all'];
@@ -107,19 +107,54 @@ export function Support({ isAdmin }){ // eslint-disable-line no-unused-vars
   );
 }
 
+/* How a reply actually reaches the person, as the server reports it.
+
+   This drawer had an "Email" button that was a bare mailto: — it opened whatever mail
+   app was on the agent's computer, from their own address, with a blank message and
+   nothing recorded on the ticket. Meanwhile the Help Center tells everyone "we'll get
+   back to you by email", and the server never emailed a reply: someone who wrote in
+   without signing in had no way to see the answer at all.
+
+   The reply composer is the one way to answer now. The server says whether it emailed
+   (`emailed`); a server from before email delivery says nothing, and then the drawer
+   says so instead of implying it was sent. Only in the one case where the reply would
+   otherwise reach nobody — not signed in, not emailed — does it offer the agent's mail
+   app, prefilled with the reference and the reply, which is already on the thread. */
+function deliveryOf(t, r, text) {
+  const emailed = r && typeof r.emailed === 'boolean' ? r.emailed : null;
+  if (emailed) return { tone:'ok', text:`Emailed to ${t.email}${t.userId ? ' and posted in their requests' : ''}.` };
+  if (t.userId) {
+    return emailed === false
+      ? { tone:'amber', text:`Posted in their requests with a notification. The email copy didn’t go${r.emailError ? ` (${r.emailError})` : ''}.` }
+      : { tone:'info', text:'Posted in their requests with a notification. Not emailed — email delivery isn’t switched on yet.' };
+  }
+  const subject = `Re: ${t.subject} [${t.ref}]`;
+  return {
+    tone:'red',
+    text:'They wrote in without signing in, so email is the only way this reaches them — and it wasn’t emailed.',
+    mailto: t.email ? `mailto:${t.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}` : null,
+  };
+}
+const DELIVERY_TONE = { ok:'var(--green)', amber:'var(--amber)', red:'var(--red)', info:'var(--t3)' };
+
 function TicketThread({ t, onClose, reload, live }){
   const { confirm } = useDialogs();
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [delivery, setDelivery] = useState(null);
 
   const act = async (extra = {}) => {
     setBusy(true); setErr('');
+    const text = reply.trim();
     try {
-      await replySupportTicket({ id: t.id, ...(reply.trim() ? { message: reply.trim() } : {}), ...extra });
+      const r = await replySupportTicket({ id: t.id, ...(text ? { message: text } : {}), ...extra });
       setReply('');
+      if (text) setDelivery(deliveryOf(t, r, text));
       reload();
-      if (extra.status === 'resolved' || extra.status === 'closed') onClose();
+      // Closing on resolve would hide the one case that still needs the agent's hand.
+      const stranded = text && !t.userId && !(r && r.emailed);
+      if ((extra.status === 'resolved' || extra.status === 'closed') && !stranded) onClose();
     } catch (e) {
       setErr(live ? (e.message || 'Action failed.') : 'Connect the backend to reply to live tickets.');
     } finally { setBusy(false); }
@@ -165,9 +200,9 @@ function TicketThread({ t, onClose, reload, live }){
           <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background:'var(--pri-soft)', color:'var(--pri)' }}><Icon name="user"/></div>
           <div className="min-w-0 flex-1">
             <div className="font-semibold t1 text-sm truncate">{t.name || 'Customer'}</div>
-            <a href={`mailto:${t.email}`} className="text-xs t3 truncate hover:underline">{t.email}</a>
+            <div className="text-xs t3 truncate">{t.email}</div>
           </div>
-          {t.email && <a href={`mailto:${t.email}`}><Btn kind="soft" size="sm" icon="envelope">Email</Btn></a>}
+          <Pill tone={t.userId ? 'ok' : 'amber'}>{t.userId ? 'Has an account' : 'Not signed in'}</Pill>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs">
           <div><div className="t3">Opened</div><div className="t1 font-semibold">{fmtAgo(t.createdAt)} ago</div></div>
@@ -220,7 +255,17 @@ function TicketThread({ t, onClose, reload, live }){
       </div>
 
       {/* Reply box */}
-      <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={3} placeholder="Type your reply… (goes to the customer + notifies them)" className="ym-input" style={{ resize:'vertical' }} />
+      <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={3}
+        placeholder={t.userId ? 'Type your reply… (saved on the thread, and they’re notified)' : 'Type your reply… (saved on the thread — they can only get it by email)'}
+        className="ym-input" style={{ resize:'vertical' }} />
+      {delivery && (
+        <div className="text-sm mt-2 flex items-start gap-2" style={{ color: DELIVERY_TONE[delivery.tone] }}>
+          <Icon name={delivery.tone === 'ok' ? 'circle-check' : delivery.tone === 'red' ? 'triangle-exclamation' : 'circle-info'} className="mt-0.5" />
+          <span className="flex-1">{delivery.text}
+            {delivery.mailto && <> <a href={delivery.mailto} className="font-semibold underline" style={{ color:'var(--pri)' }}>Send it from your mail app</a> — the subject carries {t.ref}, so their answer can be matched.</>}
+          </span>
+        </div>
+      )}
       {err && <div className="text-sm mt-2 flex items-center gap-2" style={{ color:'var(--red)' }}><Icon name="circle-exclamation"/> {err}</div>}
     </Modal>
   );

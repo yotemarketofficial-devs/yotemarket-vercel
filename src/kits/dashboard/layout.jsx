@@ -8,6 +8,8 @@ import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 import SubscriptionMark from '../../components/SubscriptionMark.jsx';
 import NotificationBell from '../../components/NotificationBell.jsx';
+import { notifLink } from '../../lib/notifications.js';
+import { useFollowLink } from '../../lib/useFollowLink.js';
 import { useAuth } from '../../lib/useAuth.jsx';
 
 // `roles` = which store roles see the item. owner = all; manager = everything except
@@ -118,6 +120,7 @@ export function Sidebar({ active, onChange, onClose }){
 export function TopBar({ onMenu, onChange, onHelp }){
   const shop = useShop();
   const { user: authUser } = useAuth();
+  const followLink = useFollowLink();
   return (
     <header style={{ position:'sticky', top:0, zIndex:40, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
       <div className="wrap" style={{ height:64, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
@@ -138,11 +141,16 @@ export function TopBar({ onMenu, onChange, onHelp }){
               STORE notifications only — the owner's own shopping stays in the
               storefront bell, so running a shop doesn't bury it. */}
           <NotificationBell user={authUser} audience="merchant" onOpenNotification={(n)=>{
-            if (!onChange) return;
-            if (n.type === 'chat') { onChange('chat'); return; }
-            if (n.type === 'order') { onChange('sales'); return; }
-            if (n.type === 'dispute') { onChange('refunds'); return; }
-            if (n.type === 'post_comment') { onChange('followers'); return; }
+            if (onChange) {
+              if (n.type === 'chat') { onChange('chat'); return; }
+              if (n.type === 'order') { onChange('sales'); return; }
+              if (n.type === 'dispute') { onChange('refunds'); return; }
+              if (n.type === 'post_comment') { onChange('followers'); return; }
+            }
+            // A message from staff used to do nothing here at all: the bell marked it
+            // read and stayed put, so a merchant could not read the rest or answer it.
+            // It opens the thread in the Help Center now; broadcasts follow their link.
+            followLink(notifLink(n));
           }} />
           <ThemeToggle />
           <div style={{ display:'flex', alignItems:'center', gap:9 }}>

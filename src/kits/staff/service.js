@@ -773,8 +773,11 @@ export async function setUserRole(uid, role) {
 }
 
 /** Staff: generate a password-reset link to send the customer → { email, link }. */
-export async function sendPasswordReset(uid) {
-  return call('staffSendPasswordReset')({ uid });
+/** `send: true` asks the server to email the branded reset message itself → { sent }.
+ *  A server from before that ignores the flag and returns the raw { link } as it always
+ *  did, so callers must handle both. */
+export async function sendPasswordReset(uid, { send = false } = {}) {
+  return call('staffSendPasswordReset')({ uid, ...(send ? { send: true } : {}) });
 }
 
 /** Admin: force sign-out (revoke all refresh tokens) on a user. */

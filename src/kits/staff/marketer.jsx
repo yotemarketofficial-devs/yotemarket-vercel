@@ -17,6 +17,8 @@ import {
   KE_COUNTY_NAMES, useStaffClaims, useStaffResource, fetchMarketers,
 } from './service.js';
 import { MerchantCoverage } from './coverage.jsx';
+import { MessageButton } from './comms.jsx';
+import { whatsappLink, telLink } from '../../lib/phone.js';
 
 const { useState, useEffect, useCallback } = React;
 
@@ -118,11 +120,19 @@ export function MarketerRecord({ uid, onBack }) {
               <Icon name="map-location-dot" /> {territoryLabel}
               {t.code ? <span className="t3"> · county {t.code}</span> : null}
             </div>
-            <div className="text-xs t3 mt-1">
-              {m.email}{m.phone ? ` · ${m.phone}` : ''}{m.joined ? ` · joined ${fmtDate(m.joined)}` : ''}
+            {/* The number was plain text, so reaching a scout on the channel they work
+                in meant retyping it into a phone. */}
+            <div className="text-xs t3 mt-1 flex items-center gap-x-2 gap-y-1 flex-wrap">
+              {m.email && <span>{m.email}</span>}
+              {m.phone && <a href={telLink(m.phone)} className="num font-semibold" style={{ color:'var(--pri)' }}>{m.phone}</a>}
+              {whatsappLink(m.phone) && <a href={whatsappLink(m.phone)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold" style={{ color:'#128C7E' }}><i className="fab fa-whatsapp" aria-hidden="true" /> WhatsApp</a>}
+              {m.joined && <span>joined {fmtDate(m.joined)}</span>}
             </div>
           </div>
-          {canEdit && <Btn kind="ghost" size="sm" icon="map-location-dot" onClick={() => setEditing(true)}>Set territory</Btn>}
+          <div className="flex items-center gap-2 flex-wrap">
+            <MessageButton person={{ uid: m.uid || uid, name: m.name, email: m.email, roles: ['marketer'] }} />
+            {canEdit && <Btn kind="ghost" size="sm" icon="map-location-dot" onClick={() => setEditing(true)}>Set territory</Btn>}
+          </div>
         </div>
 
         {/* Two different problems, said differently: nobody filled it in, versus somebody
@@ -155,7 +165,8 @@ export function MarketerRecord({ uid, onBack }) {
       {cov.referred > 0 && cov.inTerritory === 0 && t.county && (
         <Card className="p-4 text-sm" style={{ borderColor:'var(--amber)' }}>
           <Icon name="circle-info" /> None of their {cov.referred} merchants are in {t.county}.
-          Worth asking where they are actually working before chasing the numbers.
+          Worth asking where they are actually working before chasing the numbers — Message
+          above has a territory check-in ready to send.
         </Card>
       )}
 

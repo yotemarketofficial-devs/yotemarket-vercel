@@ -10,6 +10,8 @@ import { useMerchantAccess } from '../../lib/merchantAccess.js';
 import YoteAiMark from '../../components/YoteAiMark.jsx';
 import YoteFeedMark from '../../components/YoteFeedMark.jsx';
 import NotificationBell from '../../components/NotificationBell.jsx';
+import { notifLink } from '../../lib/notifications.js';
+import { useFollowLink } from '../../lib/useFollowLink.js';
 const { useState: useSC } = React;
 
 /* One row in the account menu. Either moves around inside the storefront (onClick) or
@@ -29,6 +31,7 @@ function AcctRow({ icon, label, sub, href, onClick, style, className }){
 export function Header(){
   const { nav, reset, cartCount, theme, setTheme, openCart, account, openAuth, signOut, startTour } = useYM();
   const { user } = useAuth();
+  const followLink = useFollowLink();
   const unread = useUnreadCount(user, 'shopper');
   const merchant = useMerchantAccess(user);
   const [acct, setAcct] = useSC(false);
@@ -68,7 +71,10 @@ export function Header(){
             if (n.type === 'chat' && d.convId) { nav('messages'); return; }
             if (n.type === 'order' || n.type === 'dispute') { nav('orders'); return; }
             if (n.type === 'post_comment') { nav('following'); return; }
-            if (n.type === 'support') { nav('profile'); return; }
+            // Support threads open in the Help Center, where they can be read in full
+            // and answered — the profile screen this used to open has no messages on it.
+            // Broadcasts go wherever staff pointed them. See notifLink().
+            followLink(notifLink(n));
           }} />
         )}
         {/* Signed in, the phone header hands theme over to the account menu row below.

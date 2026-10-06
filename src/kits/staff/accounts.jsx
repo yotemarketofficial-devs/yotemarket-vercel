@@ -8,6 +8,7 @@ import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, expo
 import { staffListUsers } from '../../lib/firebase.js';
 import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
 import { useDialogs } from './dialogs.jsx';
+import { MessageButton } from './comms.jsx';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
@@ -160,14 +161,34 @@ function UserConsole({ row, onClose, onChanged }){
     catch (e) { toast({ tone:'error', title: e.message || 'Could not add note.' }); }
     finally { setBusy(null); }
   };
+  /* Reset password used to fire on one click, with no confirmation, and put a raw
+     firebaseapp.com action link on the agent's clipboard (behind a red "error" toast)
+     for them to paste into a personal email — a stranger's address sending a bare
+     auth link, which is exactly what phishing looks like and what the branded auth
+     email exists to avoid. It now asks first, and asks the SERVER to send the same
+     branded reset email the self-service flow sends. Only if the server can't send
+     does the link come back, and then the toast says plainly what to do with it. */
   const resetPassword = async () => {
+    const who = p.email || row.email || 'this account';
+    if (!await confirm({
+      title: `Email ${who} a password-reset link?`, icon: 'key',
+      body: 'It comes from YoteMarket, like the reset email they would get by asking for one themselves. Their current password keeps working until they choose a new one.',
+      confirmLabel: 'Send reset email', confirmIcon: 'paper-plane',
+    })) return;
     setBusy('reset');
     try {
-      const r = await sendPasswordReset(uid);
-      const link = r && r.link;
-      if (link && navigator.clipboard) await navigator.clipboard.writeText(link).catch(()=>{});
-      toast({ tone:'error', title: `Password-reset link generated for ${(r && r.email) || p.email}.${link ? '\n\nIt’s been copied to your clipboard — send it to the customer.' : ''}` });
-    } catch (e) { toast({ tone:'error', title: e.message || 'Could not generate a reset link.' }); }
+      const r = await sendPasswordReset(uid, { send: true });
+      const email = (r && r.email) || who;
+      if (r && r.sent) {
+        toast({ tone:'ok', title: `Reset email sent to ${email}.` });
+      } else if (r && r.link) {
+        if (navigator.clipboard) await navigator.clipboard.writeText(r.link).catch(()=>{});
+        toast({ tone:'info', title: `The server didn’t send it${r.sendError ? ` (${r.sendError})` : ''}. A reset link for ${email} is on your clipboard.`,
+          body: 'Send it from the support mailbox, not a personal address — a bare sign-in link from an unknown sender reads as phishing and gets ignored.' });
+      } else {
+        toast({ tone:'error', title: 'The server answered without sending an email or returning a link.' });
+      }
+    } catch (e) { toast({ tone:'error', title: e.message || 'Could not send a reset email.' }); }
     finally { setBusy(null); }
   };
   const forceSignOut = async () => {
@@ -202,7 +223,7 @@ function UserConsole({ row, onClose, onChanged }){
             {isStaff && <Btn kind="ghost" size="sm" icon="user-slash" onClick={()=>changeRole('none')} disabled={busy==='role'}>Revoke staff</Btn>}
             {(roles.includes('merchant') || roles.includes('rider')) && <Btn kind="soft" size="sm" icon={busy==='shopper'?'spinner':'user-tag'} onClick={resetToShopper} disabled={busy==='shopper'} title="Fix a wrong role — reset to a plain shopper">Reset to shopper</Btn>}
             <Btn kind="danger" size="sm" icon={busy==='delete'?'spinner':'trash'} onClick={eraseAccount} disabled={busy==='delete'} className="ml-auto" title="Permanently delete this account and its personal data">Delete account</Btn>
-            {p.email && <a href={`mailto:${p.email}`} className="ml-auto"><Btn kind="ghost" size="sm" icon="envelope">Email</Btn></a>}
+            <MessageButton person={{ uid, name: p.name, email: p.email, roles }} kind="ghost" className="ml-auto" />
           </>}
         </div>
       }>

@@ -36,6 +36,7 @@ const COPY = {
   referrals:   { title: 'My referrals 🏪', body: 'Every shop you have signed up. A merchant only counts once they make their first paid sale — their free month does not count.' },
   leaderboard: { title: 'Leaderboard 🏆', body: 'How you rank against other scouts across Kenya this month. Top scouts get invited to interview for full-time roles.' },
   payouts:     { title: 'Payouts 💸', body: 'Cash out to M-Pesa once your balance reaches the minimum, and track every withdrawal you have made.' },
+  messages:    { title: 'Messages 💬', body: 'You and the YoteMarket team. When staff write to you it lands here, and you can reply or ask us anything — payouts, a merchant, your territory.' },
   simulator:   { title: 'Simulator 🧮', body: 'Try the numbers before you chase them — see exactly what a given number of activated merchants pays.' },
   profile:     { title: 'Your profile 👤', body: 'Your details, county and M-Pesa number. Keep the payout number correct, it is where your money goes.' },
 };
