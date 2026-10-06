@@ -8,12 +8,16 @@ import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, expo
 import { staffListUsers } from '../../lib/firebase.js';
 import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
 import { useDialogs } from './dialogs.jsx';
+import { toMillis, fmtDay } from '../../lib/dates.js';
 import { MessageButton } from './comms.jsx';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
 const FILTERS = [['all','All'],['merchant','Merchants'],['shopper','Shoppers'],['rider','Riders'],['staff','Staff']];
-const fmtDate = (s) => s ? new Date(s).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }) : '—';
+// Auth sends `created` as an RFC-1123 string ("Tue, 06 Oct 2026 13:00:00 GMT"), which the
+// table would sort as TEXT — by weekday name. Dates go through lib/dates.js for both the
+// sort key and the cell.
+const fmtDate = fmtDay;
 
 export function Accounts(){
   const [users, setUsers] = useState([]);
@@ -50,7 +54,7 @@ export function Accounts(){
         </div>) },
     { key:'roles', header:'Roles', csvValue:(u)=>(u.roles||[]).join(' '), render:(u)=>(<div className="flex gap-1 flex-wrap">{u.roles.map(r => <Pill key={r} tone={ROLE_TONE[r]||'ok'}>{r}</Pill>)}</div>) },
     { key:'provider', header:'Provider', sort:true, render:(u)=><span className="t2">{u.provider}</span> },
-    { key:'created', header:'Joined', sortValue:(u)=>u.created||0, csvValue:(u)=>fmtDate(u.created), render:(u)=><span className="t3">{fmtDate(u.created)}</span> },
+    { key:'created', header:'Joined', sortValue:(u)=>toMillis(u.created), csvValue:(u)=>fmtDate(u.created), render:(u)=><span className="t3">{fmtDate(u.created)}</span> },
   ];
 
   return (
@@ -89,7 +93,7 @@ export function Accounts(){
 
 const ROLE_TONE_U = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
 const OSTATUS_TONE = { delivered:'ok', paid:'ok', cancelled:'red', placed:'amber' };
-const uFmt = (ms) => ms ? new Date(ms).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' }) : '—';
+const uFmt = fmtDay;
 
 function UTile({ label, value, sub, tone='pri' }){
   const c = { pri:'var(--pri)', green:'var(--green)', blue:'var(--blue)', amber:'var(--amber)', red:'var(--red)' }[tone];
