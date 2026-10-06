@@ -773,6 +773,13 @@ export async function setUserRole(uid, role) {
 }
 
 /** Staff: generate a password-reset link to send the customer → { email, link }. */
+/** Email the branded "confirm your email" to accounts that haven't verified. The server
+ *  re-checks each one (address on the Auth record only; never verified, disabled or
+ *  mailed in the last 24h) and caps a request at 25 — see lib/verify-emails.js.
+ *  { uids } -> { results: [{ uid, outcome, error? }], sent, skipped, failed } */
+export async function sendVerificationEmails(uids) {
+  return call('staffSendVerificationEmails')({ uids });
+}
 /** `send: true` asks the server to email the branded reset message itself → { sent }.
  *  A server from before that ignores the flag and returns the raw { link } as it always
  *  did, so callers must handle both. */

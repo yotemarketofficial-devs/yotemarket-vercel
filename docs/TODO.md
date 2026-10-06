@@ -159,6 +159,22 @@ console's "Email" buttons opened the agent's own mail app with nothing logged.
 
 ---
 
+## P2 — staff can resend email verification (2026-10-06)
+
+- [x] **`[web]` Admin → Accounts: "Send verification emails (N)", an "Unverified" filter,
+  and "Send verification email" in each unverified account's drawer.** Done when: all three
+  show on an Auth-sourced directory, and none of them claims a send unless the server said
+  `sent`. Until the callable below is deployed, both buttons say it isn't deployed.
+- [ ] **`[fn]` Apply and deploy [`verify-email-backend.patch`](./verify-email-backend.patch).**
+  **needs-credentials** (deploy). Adds `staffSendVerificationEmails`: admin only, sends only to
+  the address on the Auth record, skips anything sent in the last 24 h, paced for Resend.
+  Independent of `comms-backend.patch`. Steps and checks:
+  [`verify-email-backend.md`](./verify-email-backend.md).
+  **Done when:** the drawer button on a test account reports *sent* and the email arrives,
+  and pressing it again reports *in the last 24 hours*.
+
+---
+
 ## P3 — standing items, older than this session
 
 - [ ] **`[web]` No Uptodown listing URL yet.** Paste it into Admin → App releases when

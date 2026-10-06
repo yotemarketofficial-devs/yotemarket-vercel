@@ -11,7 +11,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 285 tests, all passing as of 2026-10-06
+npm test           # vitest — 306 tests, all passing as of 2026-10-06
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 
@@ -236,6 +236,13 @@ dead-ended:
 
 WhatsApp is how scouts work, so phone numbers in the console now carry a wa.me link
 (`lib/phone.js`, Kenyan formats only unless written with a `+`).
+
+**Resending email verification** (Admin → Accounts, a bulk button plus one in each
+account's drawer) calls `staffSendVerificationEmails`, which is **not deployed yet**
+([`docs/verify-email-backend.patch`](docs/verify-email-backend.patch)). The console only
+decides whom to ask about (`lib/verify-emails.js`). The server re-checks each account
+against Auth and sends only to that account's own address, never to the same address
+twice within 24 hours.
 
 ## Gotchas worth remembering
 

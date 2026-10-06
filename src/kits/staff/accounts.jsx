@@ -6,21 +6,27 @@
 import React from 'react';
 import { Card, SectionHead, Btn, Pill, Avatar, Icon, DataTable, EmptyState, exportCsv, Modal, kes } from './ui.jsx';
 import { staffListUsers } from '../../lib/firebase.js';
-import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount } from './service.js';
+import { fetchUserDetail, setUserDisabled, addStaffNote, setStaffRole, setUserRole, sendPasswordReset, revokeUserSessions, deleteUserAccount, sendVerificationEmails } from './service.js';
 import { useDialogs } from './dialogs.jsx';
 import { toMillis, fmtDay } from '../../lib/dates.js';
+import { needsVerification, chunk, tally, describeTally, describeCallError } from '../../lib/verify-emails.js';
 import { MessageButton } from './comms.jsx';
 const { useState, useEffect, useCallback } = React;
 
 const ROLE_TONE = { admin:'red', staff:'amber', merchant:'blue', rider:'ok', shopper:'ok' };
-const FILTERS = [['all','All'],['merchant','Merchants'],['shopper','Shoppers'],['rider','Riders'],['staff','Staff']];
+// 'unverified' is not a role: it is the accounts the verification button would email
+// (an address, not verified, not disabled — see lib/verify-emails.js).
+const FILTERS = [['all','All'],['merchant','Merchants'],['shopper','Shoppers'],['rider','Riders'],['staff','Staff'],['unverified','Unverified']];
+const inFilter = (u, f) => f === 'all' || (f === 'unverified' ? needsVerification(u) : u.roles.includes(f));
 // Auth sends `created` as an RFC-1123 string ("Tue, 06 Oct 2026 13:00:00 GMT"), which the
 // table would sort as TEXT — by weekday name. Dates go through lib/dates.js for both the
 // sort key and the cell.
 const fmtDate = fmtDay;
 
 export function Accounts(){
+  const { confirm } = useDialogs();
   const [users, setUsers] = useState([]);
+  const [verifying, setVerifying] = useState(null);   // { done, total } while sending
   const [source, setSource] = useState('auth');
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState(null);
@@ -38,9 +44,49 @@ export function Accounts(){
 
   const ql = q.trim().toLowerCase();
   const rows = users.filter(u =>
-    (filter === 'all' || u.roles.includes(filter)) &&
+    inFilter(u, filter) &&
     (!ql || (u.email||'').toLowerCase().includes(ql) || (u.name||'').toLowerCase().includes(ql) || (u.uid||'').toLowerCase().includes(ql)));
-  const count = (role) => role === 'all' ? users.length : users.filter(u => u.roles.includes(role)).length;
+  const count = (f) => users.filter((u) => inFilter(u, f)).length;
+
+  /* Email every unverified account a fresh "confirm your email". The list only decides
+     who to ASK about — the server re-checks each account against Auth and skips anyone
+     verified, disabled, address-less or already sent one in the last 24 hours. Sent in
+     requests of 25 so a long list shows progress and one failed request doesn't lose the
+     rest; a request that fails outright stops the run and says why. */
+  const unverified = source === 'auth' ? users.filter(needsVerification) : [];
+  const sendAllVerification = async () => {
+    const list = unverified.map((u) => u.uid);
+    if (!list.length) return;
+    const ok = await confirm({
+      title: `Email ${list.length} account${list.length === 1 ? '' : 's'} a link to confirm their address?`,
+      icon: 'envelope-circle-check',
+      body: 'Each gets the same “Confirm your email” message YoteMarket sends at sign-up. The server checks every account first: anyone verified, disabled, or already sent one in the last 24 hours is skipped.',
+      facts: [
+        { label: 'Accounts', value: list.length.toLocaleString() },
+        { label: 'Sent as', value: 'YoteMarket’s branded verification email' },
+      ],
+      ...(list.length > 1 ? { confirmPhrase: 'SEND' } : {}),
+      confirmLabel: 'Send', confirmIcon: 'paper-plane',
+    });
+    if (!ok) return;
+    setMsg(null);
+    const results = [];
+    let stopped = '';
+    const batches = chunk(list);
+    setVerifying({ done: 0, total: list.length });
+    for (const batch of batches) {
+      try { const r = await sendVerificationEmails(batch); results.push(...((r && r.results) || [])); }
+      catch (e) { stopped = describeCallError(e); break; }
+      setVerifying({ done: Math.min(list.length, results.length), total: list.length });
+    }
+    setVerifying(null);
+    const t = tally(results);
+    const left = list.length - results.length;
+    const text = [results.length ? describeTally(t) : '', stopped, stopped && left && results.length ? `${left} account${left === 1 ? ' was' : 's were'} not attempted.` : '']
+      .filter(Boolean).join(' ');
+    // Red only for a failure; "everyone was skipped" is the server doing its job.
+    setMsg({ ok: !stopped && !t.failed, text });
+  };
 
   const columns = [
     { key:'user', header:'User', sortValue:(u)=>(u.name||u.email||'').toLowerCase(), csvValue:(u)=> u.name || (u.email||'').split('@')[0] || u.uid,
@@ -61,6 +107,13 @@ export function Accounts(){
     <div className="fadeup space-y-6">
       <SectionHead icon="address-book" title="Accounts" sub={`${users.length} user account${users.length!==1?'s':''} across the platform`}
         action={<div className="flex items-center gap-2">
+          {source === 'auth' && (
+            <Btn kind="soft" size="md" icon={verifying ? 'spinner' : 'envelope-circle-check'} onClick={sendAllVerification}
+              disabled={loading || !!verifying || !unverified.length}
+              title={unverified.length ? 'Email every unverified account a link to confirm their address' : 'Every account with an email address is verified'}>
+              {verifying ? `Sending… ${verifying.done}/${verifying.total}` : `Send verification emails (${unverified.length})`}
+            </Btn>
+          )}
           <Btn kind="ghost" size="md" icon="file-arrow-down" onClick={()=>exportCsv(`accounts-${new Date().toISOString().slice(0,10)}`, columns, rows)} disabled={!rows.length}>Export</Btn>
           <Btn kind="soft" size="md" icon={loading ? 'spinner' : 'rotate'} onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Btn>
         </div>} />
@@ -213,6 +266,26 @@ function UserConsole({ row, onClose, onChanged }){
     catch (e) { toast({ tone:'error', title: e.message || 'Could not delete the account.' }); setBusy(null); }
   };
 
+  // One account's own "send verification email". Same callable as the bulk button, so
+  // the same server-side checks; the toast says what the server actually did.
+  const canVerify = !auth.error && auth.verified === false && !!auth.email && !disabled;
+  const sendVerification = async () => {
+    const who = auth.email || p.email || uid;
+    if (!await confirm({ title: `Email ${who} a link to confirm their address?`, icon: 'envelope-circle-check',
+      body: 'The same “Confirm your email” message YoteMarket sends at sign-up.', confirmLabel: 'Send', confirmIcon: 'paper-plane' })) return;
+    setBusy('verify');
+    try {
+      const r = await sendVerificationEmails([uid]);
+      const out = (r && r.results && r.results[0]) || {};
+      if (out.outcome === 'sent') toast({ tone:'ok', title:`Verification email sent to ${who}.` });
+      else if (out.outcome === 'recently_sent') toast({ tone:'info', title:`Not sent — ${who} was sent one in the last 24 hours.` });
+      else if (out.outcome === 'already_verified') { toast({ tone:'ok', title:`${who} has already verified their address.` }); reload(); }
+      else if (out.outcome === 'failed') toast({ tone:'error', title:`The email didn’t go${out.error ? `: ${out.error}` : '.'}` });
+      else toast({ tone:'info', title:`Not sent (${String(out.outcome || 'no answer').replace(/_/g, ' ')}).` });
+    } catch (e) { toast({ tone:'error', title: describeCallError(e) }); }
+    finally { setBusy(null); }
+  };
+
   const isStaff = roles.includes('admin') || roles.includes('staff');
   return (
     <Modal title={p.name || row.name || (p.email||'').split('@')[0] || 'User'} subtitle={p.email || row.email || uid} icon="user" onClose={onClose} maxWidth={820}
@@ -220,6 +293,7 @@ function UserConsole({ row, onClose, onChanged }){
         <div className="flex items-center gap-2 flex-wrap w-full">
           {d && <>
             <Btn kind={disabled?'success':'danger'} size="sm" icon={disabled?'unlock':'ban'} onClick={toggleDisable} disabled={busy==='disable'}>{disabled?'Enable sign-in':'Disable'}</Btn>
+            {canVerify && <Btn kind="soft" size="sm" icon={busy==='verify'?'spinner':'envelope-circle-check'} onClick={sendVerification} disabled={busy==='verify'} title="Email them a fresh link to confirm their address">Send verification email</Btn>}
             <Btn kind="soft" size="sm" icon={busy==='reset'?'spinner':'key'} onClick={resetPassword} disabled={busy==='reset'}>Reset password</Btn>
             <Btn kind="soft" size="sm" icon={busy==='revoke'?'spinner':'right-from-bracket'} onClick={forceSignOut} disabled={busy==='revoke'} title="Revoke all sessions">Sign out</Btn>
             {!isStaff && <Btn kind="soft" size="sm" icon="user-shield" onClick={()=>changeRole('moderator')} disabled={busy==='role'}>Make staff</Btn>}
