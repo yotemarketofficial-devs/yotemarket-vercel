@@ -78,12 +78,54 @@ export const NOTIF_META = {
   order:        { icon: 'fa-box',            tone: 'primary', screen: 'orders' },
   chat:         { icon: 'fa-comments',       tone: 'primary', screen: 'messages' },
   dispute:      { icon: 'fa-rotate-left',    tone: 'warn',    screen: 'orders' },
-  support:      { icon: 'fa-headset',        tone: 'primary', screen: 'profile' },
+  support:      { icon: 'fa-headset',        tone: 'primary', screen: null },   // routed by notifLink()
   post_comment: { icon: 'fa-comment-dots',   tone: 'primary', screen: 'following' },
   payout:       { icon: 'fa-money-bill-wave', tone: 'ok',     screen: 'payouts' },
   general:      { icon: 'fa-bell',           tone: 'muted',   screen: null },
 };
 export const notifMeta = (type) => NOTIF_META[type] || NOTIF_META.general;
+
+/* ── Where a tap goes when it isn't a screen in the current app ────────────────
+   Two kinds of notification used to be dead ends in every bell:
+
+   • `support` — a staff message or a reply to someone's request. The thread lives in
+     the Help Center, but the storefront and scout bells sent the tap to a Profile
+     screen that has no messages on it, and the merchant bell did nothing at all. So
+     a person could see that staff had written to them and have no way to read the
+     rest or answer. The server puts the thread id on the notification
+     (`data.ticketId`), which is enough to open that exact conversation.
+   • broadcasts — staffBroadcast has always accepted a `link`, but no bell followed
+     it, so an announcement could say "renew now" and offer nowhere to go.
+
+   Returns `{ href, external }` or null. `external` means another site: open it in a
+   new tab rather than inside the app. */
+export const helpThreadPath = (ticketId) => `/help?thread=${encodeURIComponent(String(ticketId))}#requests`;
+
+export function notifLink(n) {
+  const d = (n && n.data) || {};
+  if (n && n.type === 'support' && d.ticketId) return { href: helpThreadPath(d.ticketId), external: false };
+  return safeNotifLink(d.link);
+}
+
+const SITE_HOSTS = ['www.yotemarket.co.ke', 'yotemarket.co.ke'];
+
+/** A broadcast link is typed by staff, so it is checked rather than trusted: a path on
+ *  this site, or an https address. Nothing else — no `javascript:`, no `http:`, and no
+ *  `//host` or `/\host`, which browsers read as another site despite the leading slash.
+ *  Whitespace and control characters are refused outright because browsers strip them
+ *  before parsing, which turns `/\t/evil.example` into `//evil.example`. */
+export function safeNotifLink(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return null;
+  if (/[\s\u0000-\u001f\u007f\\]/.test(s)) return null;
+  if (s.startsWith('/')) return s.startsWith('//') ? null : { href: s, external: false };
+  let u;
+  try { u = new URL(s); } catch { return null; }
+  if (u.protocol !== 'https:' || u.username || u.password) return null;
+  // Our own address, written out in full, stays inside the app.
+  if (SITE_HOSTS.includes(u.hostname)) return { href: `${u.pathname}${u.search}${u.hash}`, external: false };
+  return { href: u.href, external: true };
+}
 
 /** Live subscription to a user's newest notifications. Returns an unsubscribe fn. */
 export function subscribeNotifications(uid, cb, onError) {

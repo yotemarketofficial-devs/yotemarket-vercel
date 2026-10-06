@@ -9,6 +9,8 @@ import { Dashboard, Referrals, Leaderboard, Payouts, Simulator, Profile } from '
 import { MarketingKit } from './kit.jsx';
 import { MarketerTour, isTourDone, markTourDone } from './Tour.jsx';
 import { ScoutBell } from './Bell.jsx';
+import { Messages, unreadSupport } from './messages.jsx';
+import { useNotifications } from '../../lib/notifications.js';
 import { ME, VERIFIED_COUNT, PENDING_COUNT, applyMarketer } from './data.js';
 import { calcEarnings, ksh } from './econ.js';
 import { useAuth } from '../../lib/useAuth.jsx';
@@ -35,13 +37,14 @@ const NAV = [
   { key:'referrals',  icon:'users',       label:'My referrals', badge: PENDING_COUNT },
   { key:'leaderboard',icon:'trophy',      label:'Leaderboard' },
   { key:'payouts',    icon:'wallet',      label:'Payouts' },
+  { key:'messages',   icon:'comments',    label:'Messages' },
   { key:'simulator',  icon:'calculator',  label:'Simulator' },
   { key:'profile',    icon:'user-gear',   label:'Profile' },
 ];
-const SCREENS = { dashboard:Dashboard, kit:MarketingKit, referrals:Referrals, leaderboard:Leaderboard, payouts:Payouts, simulator:Simulator, profile:Profile };
+const SCREENS = { dashboard:Dashboard, kit:MarketingKit, referrals:Referrals, leaderboard:Leaderboard, payouts:Payouts, messages:Messages, simulator:Simulator, profile:Profile };
 const LABELS = Object.fromEntries(NAV.map(n=>[n.key,n.label]));
 
-function Sidebar({ active, go, onClose, onSignOut }){
+function Sidebar({ active, go, onClose, onSignOut, badges = {} }){
   const earn = calcEarnings(VERIFIED_COUNT);
   return (
     <div className="flex flex-col h-full">
@@ -59,13 +62,14 @@ function Sidebar({ active, go, onClose, onSignOut }){
       <nav className="px-3 flex flex-col gap-1 flex-1">
         {NAV.map(n=>{
           const on = active===n.key;
+          const badge = badges[n.key] ?? n.badge;
           return (
             <button key={n.key} data-tour={n.key} onClick={()=>{go(n.key); onClose&&onClose();}}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
               style={ on?{background:'var(--purple-soft)',color:'var(--purple)'}:{color:'var(--t2)'}}>
               <Icon name={n.icon} className="w-5 text-center" style={{color: on?'var(--purple)':'var(--t3)'}} />
               <span className="flex-1 text-left">{n.label}</span>
-              {n.badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--gold)',color:'var(--on-accent)'}}>{n.badge}</span>}
+              {badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[20px] text-center" style={{background:'var(--gold)',color:'var(--on-accent)'}}>{badge}</span>}
             </button>
           );
         })}
@@ -85,10 +89,20 @@ function Sidebar({ active, go, onClose, onSignOut }){
 function App(){
   const { user, hasAccount, loading, signOutUser } = useAuth();
   const [active, setActive] = useSApp('dashboard');
+  /* Screens can be opened WITH something — a notification about one conversation opens
+     Messages on that conversation. Lives above the keyed tree so a refresh remount
+     doesn't drop it. */
+  const [params, setParams] = useSApp(null);
+  const go = useCbApp((key, p) => { setActive(key); setParams(p || null); }, []);
   const [menu, setMenu] = useSApp(false);
   const [profile, setProfile] = useSApp(undefined); // undefined=unknown · null=none · obj=registered
   const [ver, setVer] = useSApp(0);
   const [tour, setTour] = useSApp(false);
+  /* One live notification listener for the whole app: the bell reads it, Messages
+     reads it (to refresh, and to clear a thread's notifications when it's opened) and
+     the nav badge counts from it. Only for an approved scout — nobody else gets this far. */
+  const notif = useNotifications(profile && profile.status === 'active' ? user : null);
+  const badges = { messages: unreadSupport(notif) };
 
   const loadSig = useRefApp('');
   const loadAll = useCbApp(async (uid) => {
@@ -165,13 +179,13 @@ function App(){
       <div className="flex">
         {/* desktop sidebar */}
         <aside className="mk-aside hidden lg:block w-[260px] flex-shrink-0 sticky top-0 h-screen" style={{background:'var(--surface)', borderRight:'1px solid var(--line)'}}>
-          <Sidebar active={active} go={setActive} onSignOut={signOutUser} />
+          <Sidebar active={active} go={go} onSignOut={signOutUser} badges={badges} />
         </aside>
 
         {/* mobile drawer */}
         {menu && (<div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0" style={{background:'rgba(20,8,37,.5)'}} onClick={()=>setMenu(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={setActive} onClose={()=>setMenu(false)} onSignOut={signOutUser} /></div>
+          <div className="absolute left-0 top-0 bottom-0 w-[280px]" style={{background:'var(--surface)'}}><Sidebar active={active} go={go} onClose={()=>setMenu(false)} onSignOut={signOutUser} badges={badges} /></div>
         </div>)}
 
         <div className="flex-1 min-w-0">
@@ -188,7 +202,7 @@ function App(){
               <button onClick={()=>setTour(true)} className="w-9 h-9 rounded-full flex items-center justify-center t2" style={{background:'var(--surface2)',border:'1px solid var(--line)'}} aria-label="Replay the tour" title="Replay the tour">
                 <Icon name="question"/>
               </button>
-              <ScoutBell user={user} go={setActive} />
+              <ScoutBell notif={notif} go={go} />
               <ThemeToggle />
               <div className="flex items-center gap-2 pl-1">
                 <Avatar src={ME.photo} name={ME.name} size={34} />
@@ -208,19 +222,20 @@ function App(){
             aria-label="Sections">
             {NAV.map((n)=>{
               const on = active===n.key;
+              const badge = badges[n.key] ?? n.badge;
               return (
-                <button key={n.key} data-tour={n.key} onClick={()=>setActive(n.key)} aria-current={on?'page':undefined}
+                <button key={n.key} data-tour={n.key} onClick={()=>go(n.key)} aria-current={on?'page':undefined}
                   className="flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap flex-shrink-0 transition-colors"
                   style={ on?{background:'var(--grad)',color:'#fff'}:{background:'var(--surface2)',color:'var(--t2)',border:'1px solid var(--line)'}}>
                   <Icon name={n.icon} className="text-sm" style={{color: on?'#fff':'var(--t3)'}} /> {n.label}
-                  {n.badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[18px] text-center"
-                    style={{background: on?'rgba(255,255,255,.25)':'var(--gold)', color: on?'#fff':'var(--on-accent)'}}>{n.badge}</span>}
+                  {badge>0 && <span className="num text-xs font-bold rounded-full px-1.5 min-w-[18px] text-center"
+                    style={{background: on?'rgba(255,255,255,.25)':'var(--gold)', color: on?'#fff':'var(--on-accent)'}}>{badge}</span>}
                 </button>
               );
             })}
           </nav>
 
-          <main className="p-4 sm:p-7 max-w-[1180px] mx-auto"><Screen go={setActive} /></main>
+          <main className="p-4 sm:p-7 max-w-[1180px] mx-auto"><Screen go={go} params={active === 'messages' ? params : null} user={user} notif={notif} /></main>
 
           <footer className="px-7 py-6 text-xs t3 flex flex-col sm:flex-row justify-between gap-2 max-w-[1180px] mx-auto">
             <span>© 2026 YoteMarket — Marketer Program · Founding cohort</span>

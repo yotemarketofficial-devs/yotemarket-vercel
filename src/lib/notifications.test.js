@@ -7,7 +7,7 @@
  * can't prove is shown in BOTH.
  */
 import { describe, it, expect } from 'vitest';
-import { notifAudienceOf, notifInAudience } from './notifications.js';
+import { notifAudienceOf, notifInAudience, notifLink, safeNotifLink, helpThreadPath } from './notifications.js';
 
 const ME = 'uid_merchant_1';
 const n = (over = {}) => ({ type: 'general', data: {}, ...over });
@@ -72,4 +72,63 @@ describe('notifInAudience — what each bell shows', () => {
   it('shows everything on a surface that asks for no audience (the scout app)', () => {
     [storeChat, myOrder, oldDispute].forEach((x) => expect(notifInAudience(x, ME, undefined)).toBe(true));
   });
+});
+
+/* A tap on a notification is a navigation, and a broadcast link is typed by staff — so
+ * the link rules are a security boundary as much as a routing table. */
+
+describe('notifLink — where a tap goes', () => {
+  it('opens the exact support thread in the Help Center', () => {
+    expect(notifLink(n({ type: 'support', data: { ticketId: 'abc123' } })))
+      .toEqual({ href: '/help?thread=abc123#requests', external: false });
+  });
+
+  it('encodes a thread id rather than splicing it into the URL', () => {
+    expect(helpThreadPath('a/b?c#d')).toBe('/help?thread=a%2Fb%3Fc%23d#requests');
+  });
+
+  it('has nowhere to go for a support notification without a thread id', () => {
+    expect(notifLink(n({ type: 'support' }))).toBeNull();
+  });
+
+  it('follows a broadcast link', () => {
+    expect(notifLink(n({ data: { kind: 'broadcast', link: '/pricing' } })))
+      .toEqual({ href: '/pricing', external: false });
+  });
+
+  it('returns null for a plain notification', () => {
+    expect(notifLink(n())).toBeNull();
+    expect(notifLink(null)).toBeNull();
+  });
+});
+
+describe('safeNotifLink — what a staff-typed link may be', () => {
+  it('keeps site paths, with query and hash', () => {
+    expect(safeNotifLink('/marketers/app')).toEqual({ href: '/marketers/app', external: false });
+    expect(safeNotifLink(' /help?topic=selling#faqs ')).toEqual({ href: '/help?topic=selling#faqs', external: false });
+  });
+
+  it('brings our own full address back inside the app', () => {
+    expect(safeNotifLink('https://www.yotemarket.co.ke/pricing?x=1#y')).toEqual({ href: '/pricing?x=1#y', external: false });
+    expect(safeNotifLink('https://yotemarket.co.ke/')).toEqual({ href: '/', external: false });
+  });
+
+  it('marks another https site as external', () => {
+    expect(safeNotifLink('https://www.uptodown.com/android')).toEqual({ href: 'https://www.uptodown.com/android', external: true });
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'http://www.yotemarket.co.ke/pricing',     // not https
+    '//evil.example/path',                      // protocol-relative: another site
+    '/\\evil.example',                          // read as //evil.example by browsers
+    '/\t/evil.example',                         // tab stripped → //evil.example
+    '/\n/evil.example',
+    'https://user:pass@evil.example/',
+    'pricing',                                  // relative, no leading slash
+    '',
+    null,
+  ])('refuses %j', (raw) => expect(safeNotifLink(raw)).toBeNull());
 });

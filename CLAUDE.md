@@ -11,7 +11,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 210 tests, all passing as of 2026-09-15
+npm test           # vitest — 285 tests, all passing as of 2026-10-06
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 
@@ -206,6 +206,36 @@ Everything above ships and degrades honestly without the backend. `docs/staff-po
 is the other half — exact diffs for `yotemarket-flutter/firebase/` (the callables, four
 composite indexes, a Storage rule and two new careers callables), written against commit
 `f7e71fb` and applyable as-is.
+
+## Communication — where a message from staff lands (2026-10-06)
+
+The complaint was that the company communicates badly with marketers and everyone else.
+The tooling existed (Comms → Message someone, Broadcasts, Support), but the messages
+dead-ended:
+
+- **A support notification led nowhere.** Staff outreach is a support ticket, readable
+  only on `/help`. The scout and storefront bells sent the tap to a Profile screen with no
+  messages on it, and the merchant bell did nothing. Now `notifLink()` in
+  `lib/notifications.js` resolves it: scouts get their own **Messages** screen
+  (`kits/marketers/messages.jsx`), and everyone else gets `/help?thread=<id>#requests`,
+  which opens the thread.
+- **Broadcast links were dropped.** The server always accepted `link`; the composer never
+  sent one and no bell followed it. It's sent now, and it's validated by `safeNotifLink()`,
+  a security boundary with tests: site paths and https only.
+- **The staff "Email" buttons were bare `mailto:`** — the agent's own mail app and
+  address, with nothing on the record. They're replaced by `MessageButton`
+  (`kits/staff/comms.jsx`), which is shown only to staff that `staffMessageUser` accepts
+  (admin, or the comms department).
+- **Nothing was emailed.** Support replies, outreach and staff password resets weren't
+  emailed, and the only automated mail came from `noreply@` with no reply-to. That's
+  backend work: **[`docs/comms-backend.patch`](docs/comms-backend.patch)**, not deployed.
+  Until it is, every screen reports what the server says it did. An old server says
+  nothing about email, which reads as "not emailed", never as sent. The one case that
+  would reach nobody gets a prefilled mail-app fallback in the Support drawer: a reply to
+  someone who wrote in signed out.
+
+WhatsApp is how scouts work, so phone numbers in the console now carry a wa.me link
+(`lib/phone.js`, Kenyan formats only unless written with a `+`).
 
 ## Gotchas worth remembering
 

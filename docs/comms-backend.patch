@@ -1,0 +1,516 @@
+diff --git a/firebase/functions/.env.example b/firebase/functions/.env.example
+index ece0eee..33d2d53 100644
+--- a/firebase/functions/.env.example
++++ b/firebase/functions/.env.example
+@@ -28,6 +28,9 @@ MPESA_PAYOUT_STATUS_URL=
+ 
+ # ── Transactional email (Resend) ──────────────────────────────────────────────
+ # RESEND_API_KEY is a secret — `firebase functions:secrets:set RESEND_API_KEY`.
+-EMAIL_FROM=YoteMarket <noreply@yotemarket.co.ke>
+-EMAIL_REPLY_TO=
++# Staff messages and support replies are emailed too, so people must be able to answer:
++# send from a real-looking address on the verified domain, and point replies at the
++# support inbox the Help Center publishes (receiving is not enabled on yotemarket.co.ke).
++EMAIL_FROM=YoteMarket Support <support@yotemarket.co.ke>
++EMAIL_REPLY_TO=support@yotemarket.com
+ EMAIL_CONTINUE_URL=https://www.yotemarket.co.ke/
+diff --git a/firebase/functions/email.js b/firebase/functions/email.js
+index 131e45c..f60b8c8 100644
+--- a/firebase/functions/email.js
++++ b/firebase/functions/email.js
+@@ -53,6 +53,48 @@ const COPY = {
+ /** Kinds this module can render. */
+ const KINDS = Object.keys(COPY);
+ 
++const FONT = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
++
++/**
++ * The branded frame every message shares: header bar, content, footer. `content` is
++ * already-escaped HTML rows; `preheader` is plain text.
++ */
++function shell({title, preheader, content}) {
++  return `<!doctype html>
++<html lang="en">
++<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
++<title>${esc(title)}</title></head>
++<body style="margin:0;padding:0;background:#F4F4F7;">
++  <!-- Preheader: the grey line shown next to the subject in most inboxes. -->
++  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</div>
++  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F4F7;padding:24px 12px;">
++    <tr><td align="center">
++      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">
++        <tr><td style="background:${BRAND.purple};padding:22px 28px;">
++          <img src="${BRAND.logo}" width="132" alt="${BRAND.name}" style="display:block;border:0;height:auto;max-width:132px;" />
++        </td></tr>
++${content}
++        <tr><td style="padding:18px 28px 24px 28px;border-top:1px solid #ECECF2;font-family:${FONT};">
++          <p style="margin:0 0 4px 0;font-size:12px;line-height:1.6;color:${BRAND.muted};">
++            ${BRAND.name} — Kenya's virtual mall. Need a hand? <a href="${BRAND.help}" style="color:${BRAND.purple};text-decoration:underline;">Help centre</a>
++          </p>
++          <p style="margin:0;font-size:12px;line-height:1.6;color:${BRAND.muted};">© ${new Date().getFullYear()} Yote Market Limited, Nairobi, Kenya</p>
++        </td></tr>
++      </table>
++    </td></tr>
++  </table>
++</body></html>`;
++}
++
++/** A purple call-to-action button. `url` must already be escaped. */
++const button = (url, label) => `        <tr><td align="center" style="padding:0 28px 24px 28px;">
++          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
++            <td style="border-radius:12px;background:${BRAND.purple};">
++              <a href="${url}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:12px;">${esc(label)}</a>
++            </td>
++          </tr></table>
++        </td></tr>`;
++
+ /**
+  * Render a branded auth email.
+  * @param {{kind: string, actionUrl: string, name?: string}} opts
+@@ -68,46 +110,21 @@ function renderAuthEmail({kind, actionUrl, name} = {}) {
+   const greeting = name ? `Hi ${esc(String(name).trim().slice(0, 60))},` : "Hi,";
+   const url = esc(actionUrl);
+ 
+-  const html = `<!doctype html>
+-<html lang="en">
+-<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+-<title>${esc(copy.subject)}</title></head>
+-<body style="margin:0;padding:0;background:#F4F4F7;">
+-  <!-- Preheader: the grey line shown next to the subject in most inboxes. -->
+-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(copy.lead)}</div>
+-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F4F7;padding:24px 12px;">
+-    <tr><td align="center">
+-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">
+-        <tr><td style="background:${BRAND.purple};padding:22px 28px;">
+-          <img src="${BRAND.logo}" width="132" alt="${BRAND.name}" style="display:block;border:0;height:auto;max-width:132px;" />
+-        </td></tr>
+-        <tr><td style="padding:30px 28px 8px 28px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
++  const html = shell({
++    title: copy.subject,
++    preheader: copy.lead,
++    content: `        <tr><td style="padding:30px 28px 8px 28px;font-family:${FONT};">
+           <h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.3;color:${BRAND.ink};font-weight:700;">${esc(copy.heading)}</h1>
+           <p style="margin:0 0 6px 0;font-size:15px;line-height:1.6;color:${BRAND.ink};">${greeting}</p>
+           <p style="margin:0 0 22px 0;font-size:15px;line-height:1.6;color:${BRAND.ink};">${esc(copy.lead)}</p>
+         </td></tr>
+-        <tr><td align="center" style="padding:0 28px 24px 28px;">
+-          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+-            <td style="border-radius:12px;background:${BRAND.purple};">
+-              <a href="${url}" style="display:inline-block;padding:14px 28px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:12px;">${esc(copy.cta)}</a>
+-            </td>
+-          </tr></table>
+-        </td></tr>
+-        <tr><td style="padding:0 28px 26px 28px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
++${button(url, copy.cta)}
++        <tr><td style="padding:0 28px 26px 28px;font-family:${FONT};">
+           <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:${BRAND.muted};">Button not working? Paste this into your browser:</p>
+           <p style="margin:0 0 18px 0;font-size:12px;line-height:1.5;word-break:break-all;"><a href="${url}" style="color:${BRAND.purple};text-decoration:underline;">${url}</a></p>
+           <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.muted};">This link expires in about an hour. ${esc(copy.ignore)}</p>
+-        </td></tr>
+-        <tr><td style="padding:18px 28px 24px 28px;border-top:1px solid #ECECF2;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+-          <p style="margin:0 0 4px 0;font-size:12px;line-height:1.6;color:${BRAND.muted};">
+-            ${BRAND.name} — Kenya's virtual mall. Need a hand? <a href="${BRAND.help}" style="color:${BRAND.purple};text-decoration:underline;">Help centre</a>
+-          </p>
+-          <p style="margin:0;font-size:12px;line-height:1.6;color:${BRAND.muted};">© ${new Date().getFullYear()} Yote Market Limited, Nairobi, Kenya</p>
+-        </td></tr>
+-      </table>
+-    </td></tr>
+-  </table>
+-</body></html>`;
++        </td></tr>`,
++  });
+ 
+   const text = [
+     copy.heading,
+@@ -127,6 +144,78 @@ function renderAuthEmail({kind, actionUrl, name} = {}) {
+   return {subject: copy.subject, html, text};
+ }
+ 
++/**
++ * A person-to-person message from the YoteMarket team: an outreach message, or a reply to
++ * somebody's support request.
++ *
++ * Why this exists: staff reached people by email through bare mailto: buttons in the
++ * console — the agent's own mail client, the agent's own address, nothing recorded on
++ * the ticket — and the Help Center promised "we'll get back to you by email" while no
++ * reply was ever emailed. Someone who wrote in without signing in never saw an answer.
++ *
++ * The message itself is in the email, in full, so it can be read without a sign-in.
++ * `ctaUrl` (optional) links to the thread; `ref` goes in the subject so a reply sent from
++ * a mail client can be matched to the ticket by whoever reads the reply-to inbox.
++ *
++ * @param {{subject: string, message: string, intro?: string, name?: string,
++ *          ref?: string, ctaUrl?: string, ctaLabel?: string, canReply?: boolean}} opts
++ * @return {{subject: string, html: string, text: string}}
++ */
++function renderMessageEmail({subject, message, intro, name, ref, ctaUrl, ctaLabel, canReply} = {}) {
++  const subj = String(subject || "").trim().slice(0, 160);
++  const body = String(message || "").trim().slice(0, 4000);
++  if (!subj) throw new Error("subject is required");
++  if (!body) throw new Error("message is required");
++  // Same rule as the auth links: a button only ever points somewhere we can vouch for.
++  if (ctaUrl && !/^https:\/\//.test(String(ctaUrl))) throw new Error("ctaUrl must be an https url");
++
++  const tag = ref ? ` [${String(ref).slice(0, 20)}]` : "";
++  const fullSubject = `${subj}${tag}`;
++  const who = name ? String(name).trim().slice(0, 60) : "";
++  const lead = String(intro || "The YoteMarket team sent you a message.").slice(0, 200);
++  const label = ctaLabel || "Read and reply";
++  const replyNote = canReply ?
++    `You can also reply to this email — it reaches our support team${ref ? `; keep ${ref} in the subject` : ""}.` :
++    "";
++  // Newlines are the author's paragraphs; keep them. Escape first, then break.
++  const bodyHtml = esc(body).replace(/\r?\n/g, "<br />");
++
++  const html = shell({
++    title: fullSubject,
++    preheader: body.slice(0, 120),
++    content: `        <tr><td style="padding:30px 28px 8px 28px;font-family:${FONT};">
++          <h1 style="margin:0 0 12px 0;font-size:22px;line-height:1.3;color:${BRAND.ink};font-weight:700;">${esc(subj)}</h1>
++          <p style="margin:0 0 6px 0;font-size:15px;line-height:1.6;color:${BRAND.ink};">${who ? `Hi ${esc(who)},` : "Hi,"}</p>
++          <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:${BRAND.ink};">${esc(lead)}</p>
++          <div style="margin:0 0 22px 0;padding:14px 16px;background:#F6F1FD;border-left:4px solid ${BRAND.purple};border-radius:8px;font-size:15px;line-height:1.6;color:${BRAND.ink};">${bodyHtml}</div>
++        </td></tr>
++${ctaUrl ? button(esc(ctaUrl), label) : ""}
++        <tr><td style="padding:0 28px 26px 28px;font-family:${FONT};">
++          ${ref ? `<p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:${BRAND.muted};">Reference: <b>${esc(ref)}</b></p>` : ""}
++          ${replyNote ? `<p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.muted};">${esc(replyNote)}</p>` : ""}
++        </td></tr>`,
++  });
++
++  const text = [
++    subj,
++    "",
++    who ? `Hi ${who},` : "Hi,",
++    "",
++    lead,
++    "",
++    body,
++    "",
++    ...(ctaUrl ? [`${label}: ${ctaUrl}`, ""] : []),
++    ...(ref ? [`Reference: ${ref}`] : []),
++    ...(replyNote ? [replyNote] : []),
++    "",
++    `${BRAND.name} — Kenya's virtual mall`,
++    `Help: ${BRAND.help}`,
++  ].join("\n");
++
++  return {subject: fullSubject, html, text};
++}
++
+ /**
+  * Deliver one message through Resend's REST API.
+  *
+@@ -154,4 +243,4 @@ async function sendViaResend({apiKey, from, to, subject, html, text, replyTo}) {
+   return {id: (body && body.id) || null};
+ }
+ 
+-module.exports = {BRAND, KINDS, renderAuthEmail, sendViaResend, esc};
++module.exports = {BRAND, KINDS, renderAuthEmail, renderMessageEmail, sendViaResend, esc};
+diff --git a/firebase/functions/index.js b/firebase/functions/index.js
+index 2d6a794..4a5dd01 100644
+--- a/firebase/functions/index.js
++++ b/firebase/functions/index.js
+@@ -177,7 +177,7 @@ function catalogOrThrow(fn) {
+   }
+ }
+ // Branded transactional email — rendering is pure and unit-tested in email.test.js.
+-const {renderAuthEmail, sendViaResend} = require("./email.js");
++const {renderAuthEmail, renderMessageEmail, sendViaResend} = require("./email.js");
+ 
+ admin.initializeApp();
+ const db = admin.firestore();
+@@ -202,8 +202,13 @@ const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+ const VALHALLA_URL = defineString("VALHALLA_URL", {default: ""});
+ // Sender identity for transactional email. Params (not secrets) so the address can change
+ // without a code edit; the domain must be verified in Resend or delivery fails.
+-const EMAIL_FROM = defineString("EMAIL_FROM", {default: "YoteMarket <noreply@yotemarket.co.ke>"});
+-const EMAIL_REPLY_TO = defineString("EMAIL_REPLY_TO", {default: ""});
++// The defaults used to be a `noreply@` sender with no reply-to, so every email we sent
++// read as automated and a reply went nowhere. Staff messages and support replies are
++// email now too, and a person must be able to answer one: the reply-to is the support
++// address the Help Center already publishes. yotemarket.co.ke is the verified sending
++// domain; receiving is not enabled on it, which is why replies go to the .com inbox.
++const EMAIL_FROM = defineString("EMAIL_FROM", {default: "YoteMarket Support <support@yotemarket.co.ke>"});
++const EMAIL_REPLY_TO = defineString("EMAIL_REPLY_TO", {default: "support@yotemarket.com"});
+ // Where the action link returns the user once Firebase has applied the code.
+ const EMAIL_CONTINUE_URL = defineString("EMAIL_CONTINUE_URL", {default: "https://www.yotemarket.co.ke/"});
+ 
+@@ -3061,9 +3066,47 @@ exports.staffListAuditLog = onCall({region: REGION}, async (request) => {
+ // ════════════════════════════════════════════════════════════════════════════
+ //  Customer support — help-desk tickets (Help Center create, staff triage)
+ // ════════════════════════════════════════════════════════════════════════════
+-const SUPPORT_CATEGORIES = ["order", "payment", "delivery", "account", "selling", "feed", "refund", "other"];
++// `marketer`: a scout writing from the Messages screen in the scout app — so the queue
++// can tell the Marketer Program's questions from a shopper's.
++const SUPPORT_CATEGORIES = ["order", "payment", "delivery", "account", "selling", "feed", "refund", "marketer", "other"];
+ const TICKET_STATUSES = ["open", "pending", "resolved", "closed"];
+ 
++/** Where a support thread can be read in full and answered: the Help Center, which
++ *  opens straight onto the thread from this link. */
++const helpThreadUrl = (ticketId) =>
++  `https://www.yotemarket.co.ke/help?thread=${encodeURIComponent(String(ticketId))}#requests`;
++
++/**
++ * Email one person a message from the team — an outreach message or a support reply.
++ *
++ * NEVER THROWS. The thread is the record and it is already written by the time this
++ * runs; an email provider outage must not turn a sent message into an error on the
++ * agent's screen. The caller gets `{emailed, emailError}` and passes it back so the
++ * console can say what happened instead of implying it.
++ *
++ * Callers must declare `secrets: [RESEND_API_KEY]` or `.value()` reads empty.
++ */
++async function emailPerson({to, name, subject, message, intro, ref, ctaUrl, ctaLabel}) {
++  const email = String(to || "").trim();
++  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return {emailed: false, emailError: "no email address on record"};
++  try {
++    const replyTo = EMAIL_REPLY_TO.value() || "";
++    const out = renderMessageEmail({subject, message, intro, name, ref, ctaUrl, ctaLabel, canReply: Boolean(replyTo)});
++    const res = await sendViaResend({
++      apiKey: RESEND_API_KEY.value(),
++      from: EMAIL_FROM.value(),
++      to: email, subject: out.subject, html: out.html, text: out.text,
++      ...(replyTo ? {replyTo} : {}),
++    });
++    logger.info("[email] message sent", {ref: ref || null, id: res.id || null});
++    return {emailed: true};
++  } catch (e) {
++    logger.warn("[email] message failed", {ref: ref || null, msg: e && e.message});
++    // Staff-facing only. Resend's own wording ("domain is not verified") is the useful part.
++    return {emailed: false, emailError: String((e && e.message) || "send failed").slice(0, 140)};
++  }
++}
++
+ // Human-friendly reference, e.g. YM-7F3K9Q (unambiguous alphabet).
+ function ticketRef() {
+   const s = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+@@ -3624,7 +3667,7 @@ exports.staffListSupportTickets = onCall({region: REGION}, async (request) => {
+ 
+ /** Callable (staff): reply to a ticket and/or change status; notifies the owner.
+  *  { id, message?, status?, priority?, assignToMe? } -> { ok } */
+-exports.staffReplySupportTicket = onCall({region: REGION}, async (request) => {
++exports.staffReplySupportTicket = onCall({region: REGION, secrets: [RESEND_API_KEY]}, async (request) => {
+   await assertDept(request, "support");
+   const d = request.data || {};
+   const id = String(d.id || "");
+@@ -3653,11 +3696,30 @@ exports.staffReplySupportTicket = onCall({region: REGION}, async (request) => {
+   if (message && t.userId) {
+     // notifyUser persists the in-app record as well as pushing, so a reply is still
+     // discoverable when the customer had push disabled or was offline.
++    // The thread's own audience, when staff opened it as "Store business": a merchant's
++    // conversation used to start in the dashboard bell and then hop to the storefront
++    // bell on the first reply, because this was hard-coded to "shopper".
+     await notifyUser(t.userId,
+         {title: `Support · ${t.ref || "reply"}`, body: message.slice(0, 140)},
+-        {type: "support", ticketId: String(id)}, "shopper");
++        {type: "support", ticketId: String(id)}, t.audience === "merchant" ? "merchant" : "shopper");
+   }
+-  return {ok: true};
++
++  // And by email. The Help Center has always told people "we'll get back to you by
++  // email", and nothing ever emailed a reply — someone who wrote in without signing in
++  // had no way at all to see the answer. Signed-in or not, the reply goes to the
++  // address on the ticket; only a signed-in requester gets the link to the thread,
++  // because the Help Center can only show a thread to its owner.
++  let delivery = {};
++  if (message) {
++    delivery = await emailPerson({
++      to: t.email, name: t.name, ref: t.ref,
++      subject: `Re: ${t.subject || "your request"}`,
++      intro: "We've replied to your request:",
++      message,
++      ...(t.userId ? {ctaUrl: helpThreadUrl(id), ctaLabel: "Read the conversation and reply"} : {}),
++    });
++  }
++  return {ok: true, ...delivery};
+ });
+ 
+ /**
+@@ -11412,10 +11474,16 @@ exports.staffSetUserRole = onCall({region: REGION}, async (request) => {
+   return {ok: true, role: "shopper"};
+ });
+ 
+-/** Callable (staff): generate a password-reset link for a user (staff copy/send it
+- *  to the customer — Admin SDK generates but does not email). Needs Auth-admin.
+- *  { uid } -> { ok, email, link }. */
+-exports.staffSendPasswordReset = onCall({region: REGION}, async (request) => {
++/** Callable (staff): a password reset for a user.
++ *  { uid, send: true } -> emails the branded reset message itself -> { ok, email, sent: true }.
++ *  Without `send` (an older console), or when delivery fails, it returns the raw link
++ *  as before: { ok, email, link, sent: false, sendError? }. Needs Auth-admin.
++ *
++ *  Why send: the console used to put a raw firebaseapp.com action link on the agent's
++ *  clipboard to paste into an email from their own address — a stranger sending a bare
++ *  auth link, which is the shape of phishing and exactly what deliverAuthEmail exists to
++ *  avoid for the self-service reset. */
++exports.staffSendPasswordReset = onCall({region: REGION, secrets: [RESEND_API_KEY]}, async (request) => {
+   await assertStaff(request);
+   const uid = String((request.data && request.data.uid) || "");
+   if (!uid) throw new HttpsError("invalid-argument", "uid is required.");
+@@ -11427,13 +11495,29 @@ exports.staffSendPasswordReset = onCall({region: REGION}, async (request) => {
+     email = u.email || (s && s.exists && s.data().email) || null;
+   }
+   if (!email) throw new HttpsError("failed-precondition", "This account has no email on record.");
++
++  let sendError = null;
++  if (request.data && request.data.send === true) {
++    // The same per-address cap as self-service, so a console can't flood an inbox.
++    await throttleAuthEmail(email, "reset", 5);
++    try {
++      await deliverAuthEmail("reset", email, null);
++      await logAudit(request, "user.password_reset", {type: "user", id: uid}, {email, sent: true});
++      return {ok: true, email, sent: true};
++    } catch (e) {
++      // Fall through to the link: the agent still needs a way to help this person.
++      logger.warn("staff reset email failed — returning the link", {uid, msg: e && e.message});
++      sendError = String((e && e.message) || "send failed").slice(0, 140);
++    }
++  }
++
+   let link;
+   try { link = await admin.auth().generatePasswordResetLink(email); } catch (e) {
+     logger.warn("generatePasswordResetLink failed", {uid, msg: e.message});
+     throw new HttpsError("failed-precondition", "Couldn't generate a reset link — the service account needs the Firebase Authentication Admin role.");
+   }
+-  await logAudit(request, "user.password_reset", {type: "user", id: uid}, {email});
+-  return {ok: true, email, link};
++  await logAudit(request, "user.password_reset", {type: "user", id: uid}, {email, sent: false});
++  return {ok: true, email, link, sent: false, ...(sendError ? {sendError} : {})};
+ });
+ 
+ /** Callable (admin): revoke all of a user's refresh tokens → signs them out
+@@ -11959,7 +12043,7 @@ async function resolveBroadcastAudience(audience, filter) {
+  * or marketer. Creates a support thread they can reply to, and notifies them.
+  * { uid, subject, message, category?, priority?, audience? } -> { id, ref }
+  */
+-exports.staffMessageUser = onCall({region: REGION}, async (request) => {
++exports.staffMessageUser = onCall({region: REGION, secrets: [RESEND_API_KEY]}, async (request) => {
+   await assertDept(request, "comms");
+   const d = request.data || {};
+   const uid = String(d.uid || "").trim();
+@@ -12001,6 +12085,8 @@ exports.staffMessageUser = onCall({region: REGION}, async (request) => {
+     source: "staff",
+     // The one field that tells the thread renderer the OPENING message is ours.
+     direction: "outbound",
++    // Remembered so staffReplySupportTicket notifies the same bell this thread began in.
++    audience,
+     openedBy: request.auth.uid, openedByEmail: agentEmail,
+     assignedTo: request.auth.uid, assignedEmail: agentEmail,
+     replies: [], lastActor: "staff",
+@@ -12010,9 +12096,18 @@ exports.staffMessageUser = onCall({region: REGION}, async (request) => {
+   await notifyUser(uid,
+       {title: subject, body: message.slice(0, 140)},
+       {type: "support", ticketId: written.id, ref}, audience);
+-  await logAudit(request, "comms.message", {type: "user", id: uid, label: name}, {ref, subject});
+-  logger.info("staff outreach sent", {uid, ref, by: request.auth.uid});
+-  return {id: written.id, ref};
++  // In-app and push reach only someone who opens the app or allowed notifications — a
++  // marketer who hasn't opened the scout app this week never saw it. An email copy
++  // goes unless the agent unticked it (`email: false`).
++  const delivery = d.email === false ? {emailed: false, emailSkipped: true} :
++    await emailPerson({
++      to: email, name, ref, subject, message,
++      intro: "The YoteMarket team sent you a message:",
++      ctaUrl: helpThreadUrl(written.id), ctaLabel: "Read and reply",
++    });
++  await logAudit(request, "comms.message", {type: "user", id: uid, label: name}, {ref, subject, emailed: delivery.emailed === true});
++  logger.info("staff outreach sent", {uid, ref, by: request.auth.uid, emailed: delivery.emailed === true});
++  return {id: written.id, ref, ...delivery};
+ });
+ 
+ /**
+@@ -12059,9 +12154,12 @@ exports.staffBroadcast = onCall({region: REGION, timeoutSeconds: 300}, async (re
+   for (let i = 0; i < list.length; i += 400) {
+     const batch = db.batch();
+     list.slice(i, i + 400).forEach((t) => {
++      // "Everyone" carries no audience, so the web shows it in BOTH a store owner's
++      // bells — stamping it "shopper" kept it out of the merchant dashboard entirely.
++      // (The mobile apps don't filter on audience, so they are unaffected.)
+       batch.set(db.collection("notifications").doc(), {
+         uid: t.uid, title, body, type: "general",
+-        audience: audience === "merchants" ? "merchant" : "shopper",
++        ...(audience === "all" ? {} : {audience: audience === "merchants" ? "merchant" : "shopper"}),
+         data, read: false, createdAt: FV.serverTimestamp(),
+       });
+       delivered += 1;
+diff --git a/firebase/tests/email.test.js b/firebase/tests/email.test.js
+index f9df6a9..9131b60 100644
+--- a/firebase/tests/email.test.js
++++ b/firebase/tests/email.test.js
+@@ -11,7 +11,7 @@ import {describe, it, expect} from "vitest";
+ import {createRequire} from "module";
+ 
+ const require = createRequire(import.meta.url);
+-const {renderAuthEmail, KINDS, BRAND} = require("../functions/email.js");
++const {renderAuthEmail, renderMessageEmail, KINDS, BRAND} = require("../functions/email.js");
+ 
+ const LINK = "https://yotemarket-app.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=abc123";
+ 
+@@ -112,3 +112,66 @@ describe("html that survives a real mail client", () => {
+     expect(html).toMatch(/display:none;max-height:0/);
+   });
+ });
++
++/* renderMessageEmail — a person-to-person message from the team (outreach, or a reply
++ * to a support request). It replaced agents emailing from their own mail apps, so the
++ * cases are: the whole message is in the email, a reply can be matched to its ticket,
++ * and staff-typed text can never become markup. */
++describe("renderMessageEmail", () => {
++  const THREAD = "https://www.yotemarket.co.ke/help?thread=abc&x=1#requests";
++  const base = {subject: "Your payout", message: "Sent to your M-Pesa.\nCheck it arrived.", ref: "YM-7F3K9Q"};
++
++  it("puts the reference in the subject so a reply can be matched to the ticket", () => {
++    expect(renderMessageEmail(base).subject).toBe("Your payout [YM-7F3K9Q]");
++    expect(renderMessageEmail({...base, ref: undefined}).subject).toBe("Your payout");
++  });
++
++  it("carries the whole message in both parts, keeping the author's line breaks", () => {
++    const {html, text} = renderMessageEmail(base);
++    expect(text).toContain("Sent to your M-Pesa.\nCheck it arrived.");
++    expect(html).toContain("Sent to your M-Pesa.<br />Check it arrived.");
++  });
++
++  it("escapes what staff typed — a message is text, never markup", () => {
++    const {html} = renderMessageEmail({...base, subject: "<b>hi</b>", message: '<img src=x onerror="alert(1)">', name: "<i>A</i>"});
++    expect(html).not.toContain("<img src=x");
++    expect(html).not.toContain("<b>hi</b>");
++    expect(html).toContain("&lt;img src=x");
++    expect(html).toContain("&lt;i&gt;A&lt;/i&gt;");
++  });
++
++  it("links to the thread in both parts when there is one", () => {
++    const {html, text} = renderMessageEmail({...base, ctaUrl: THREAD, ctaLabel: "Read and reply"});
++    expect(html).toContain(THREAD.replace(/&/g, "&amp;"));
++    expect(text).toContain(`Read and reply: ${THREAD}`);
++  });
++
++  it("renders no button at all without a thread link (someone who wrote in signed out)", () => {
++    const {html} = renderMessageEmail(base);
++    expect(html).not.toMatch(/<a href="[^"]*"[^>]*font-weight:700/);
++  });
++
++  it("refuses a non-https button link", () => {
++    for (const bad of ["http://evil.example", "javascript:alert(1)", "//evil.example"]) {
++      expect(() => renderMessageEmail({...base, ctaUrl: bad}), bad).toThrow(/https/);
++    }
++  });
++
++  it("says a reply reaches support only when there is somewhere for it to go", () => {
++    expect(renderMessageEmail({...base, canReply: true}).text).toMatch(/reply to this email/i);
++    expect(renderMessageEmail({...base, canReply: false}).text).not.toMatch(/reply to this email/i);
++  });
++
++  it("refuses to send an empty message", () => {
++    expect(() => renderMessageEmail({...base, message: "  "})).toThrow(/message/);
++    expect(() => renderMessageEmail({...base, subject: ""})).toThrow(/subject/);
++  });
++
++  it("follows the same mail-client rules as the auth mail", () => {
++    const {html} = renderMessageEmail({...base, ctaUrl: THREAD});
++    expect(html).toContain("<table");
++    expect(html).not.toMatch(/display:\s*(flex|grid)/);
++    expect(html).not.toMatch(/<style[\s>]/i);
++    expect(html.replace(/<img[^>]*>/g, "")).toContain(BRAND.name);
++  });
++});

@@ -32,7 +32,7 @@ function FaqItem({ item, open, onToggle }) {
 }
 
 export default function HelpCenter() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [query, setQuery] = useState('');
   // Deep-link support: /help?topic=selling opens on the seller FAQs, etc., so each
   // audience's footer can land on the version of the Help Center they need.
@@ -111,7 +111,7 @@ export default function HelpCenter() {
         <div className="help-grid">
           <TicketForm user={user} />
           <aside className="help-side">
-            <MyRequests user={user} />
+            <MyRequests user={user} authLoading={authLoading} />
             <div className="help-contact-card">
               <h3>Prefer to talk?</h3>
               <a href={`mailto:${SUPPORT_EMAIL}`}><i className="fas fa-envelope" /> {SUPPORT_EMAIL}</a>
@@ -215,24 +215,61 @@ function TicketForm({ user }) {
 }
 
 /* ── My requests (signed-in tracker) ──────────────────────────────────────── */
-function MyRequests({ user }) {
-  const [state, setState] = useState({ loading: false, loaded: false, tickets: [] });
+
+/* Every bell in the product sends a support notification here —
+   /help?thread=<id>#requests — because this is the one place a thread can be read in
+   full and answered. Before that link existed the tap went to a Profile screen with no
+   messages on it, so somebody staff had written to could see THAT they'd been written
+   to and nothing else. Arriving by that link loads the list straight away and opens
+   the thread; arriving any other way keeps the button, as before. */
+function linkedThreadId() {
+  try { return new URLSearchParams(window.location.search).get('thread') || ''; } catch { return ''; }
+}
+function arrivedForRequests() {
+  try { return window.location.hash === '#requests' || Boolean(linkedThreadId()); } catch { return false; }
+}
+
+function MyRequests({ user, authLoading }) {
+  const [threadId] = useState(linkedThreadId);
+  const [deepLinked] = useState(arrivedForRequests);
+  const [state, setState] = useState({ loading: false, loaded: false, tickets: [], failed: false });
   const load = async () => {
     setState((s) => ({ ...s, loading: true }));
-    try { const r = await listMySupportTickets(); setState({ loading: false, loaded: true, tickets: r.tickets || [] }); }
-    catch { setState({ loading: false, loaded: true, tickets: [] }); }
+    try { const r = await listMySupportTickets(); setState({ loading: false, loaded: true, tickets: r.tickets || [], failed: false }); }
+    catch { setState({ loading: false, loaded: true, tickets: [], failed: true }); }
   };
-  if (!user) return null;
+  const uid = user && user.uid;
+  useEffect(() => { if (uid && deepLinked) load(); }, [uid, deepLinked]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!deepLinked || !(state.loaded || (!authLoading && !uid))) return;
+    const el = document.getElementById('requests');
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+  }, [deepLinked, state.loaded, authLoading, uid]);
+
+  if (!user) {
+    // Signed out but sent here by a notification: say why the thread isn't showing
+    // rather than rendering nothing and leaving them to guess.
+    if (!deepLinked || authLoading) return null;
+    return (
+      <div className="help-mine" id="requests">
+        <div className="help-mine-head"><h3><i className="fas fa-inbox" /> My requests</h3></div>
+        <p className="help-mine-empty">This conversation belongs to a YoteMarket account. Sign in with that account to read it and reply — it will open here.</p>
+      </div>
+    );
+  }
+  const missing = state.loaded && !state.failed && threadId && !state.tickets.some((t) => t.id === threadId);
   return (
-    <div className="help-mine">
+    <div className="help-mine" id="requests">
       <div className="help-mine-head">
         <h3><i className="fas fa-inbox" /> My requests</h3>
         {!state.loaded && <button className="help-link-btn" onClick={load} disabled={state.loading}>{state.loading ? 'Loading…' : 'View'}</button>}
       </div>
-      {state.loaded && (state.tickets.length === 0
+      {state.failed && <p className="help-mine-empty">Your requests couldn’t be loaded just now. <button className="help-link-btn" onClick={load}>Try again</button></p>}
+      {missing && <p className="help-mine-empty">That conversation isn’t on this account. If we wrote to you at another address, sign in with that account to see it.</p>}
+      {state.loaded && !state.failed && (state.tickets.length === 0
         ? <p className="help-mine-empty">You haven’t opened any requests yet.</p>
         : <ul className="help-mine-list">
-            {state.tickets.map((t) => <MyRequest key={t.id} t={t} onReplied={load} />)}
+            {state.tickets.map((t) => <MyRequest key={t.id} t={t} onReplied={load} defaultOpen={t.id === threadId} />)}
           </ul>)}
     </div>
   );
@@ -244,8 +281,8 @@ function MyRequests({ user }) {
    staff can now START a thread (Comms → Message someone), where the FIRST message
    is ours — rendering only "the last staff reply" would have shown that thread
    with no body at all. So: show the whole exchange, attributed by direction. */
-function MyRequest({ t, onReplied }) {
-  const [open, setOpen] = useState(false);
+function MyRequest({ t, onReplied, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');

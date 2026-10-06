@@ -7,16 +7,19 @@
    Presentation is local because the scout kit has its own tokens (--purple/--gold, .card,
    .t1/.t2/.t3) rather than the --m-* system the storefront and dashboard share — but the
    DATA comes from the same useNotifications hook, so counts and mark-read behaviour stay
-   identical across all three apps. */
+   identical across all three apps. The app shell owns that hook and passes its state in
+   (`notif`), because the Messages screen and its nav badge read the same feed. */
 import React from 'react';
 import { Icon } from './ui.jsx';
-import { useNotifications, notifMeta, shortAge } from '../../lib/notifications.js';
+import { notifMeta, shortAge, notifLink } from '../../lib/notifications.js';
+import { useFollowLink } from '../../lib/useFollowLink.js';
 const { useState, useRef, useEffect } = React;
 
 const TONE = { primary: 'var(--purple)', ok: 'var(--green)', warn: 'var(--gold)', muted: 'var(--t3)' };
 
-export function ScoutBell({ user, go }) {
-  const { items, unread, enabled, markRead, markAllRead, dismiss } = useNotifications(user);
+export function ScoutBell({ notif, go }) {
+  const { items, unread, enabled, markRead, markAllRead, dismiss } = notif;
+  const followLink = useFollowLink();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -34,11 +37,16 @@ export function ScoutBell({ user, go }) {
   const activate = (n) => {
     if (!n.read) markRead(n.id);
     setOpen(false);
-    // Scout-relevant destinations; anything else just marks read where it sits.
-    if (!go) return;
-    if (n.type === 'payout') { go('payouts'); return; }
-    if (n.type === 'chat' || n.type === 'support') { go('profile'); return; }
-    if (n.type === 'order') { go('referrals'); return; }
+    // Scout-relevant destinations first. A message from the team opens that very
+    // conversation in Messages — it used to open Profile, which has no messages on it.
+    if (go) {
+      if (n.type === 'support') { go('messages', n.data && n.data.ticketId ? { thread: n.data.ticketId } : null); return; }
+      if (n.type === 'payout') { go('payouts'); return; }
+      if (n.type === 'chat') { go('profile'); return; }
+      if (n.type === 'order') { go('referrals'); return; }
+    }
+    // A broadcast goes wherever staff pointed it (see notifLink).
+    followLink(notifLink(n));
   };
 
   return (
@@ -70,7 +78,7 @@ export function ScoutBell({ user, go }) {
             {items.length === 0 ? (
               <div className="px-4 py-8 text-center">
                 <Icon name="bell-slash" style={{ fontSize: 20, color: 'var(--t3)' }} />
-                <div className="text-xs t3 mt-2">Nothing yet. Payout and referral updates land here.</div>
+                <div className="text-xs t3 mt-2">Nothing yet. Messages from the team, payouts and referral updates land here.</div>
               </div>
             ) : items.map((n) => {
               const meta = notifMeta(n.type);

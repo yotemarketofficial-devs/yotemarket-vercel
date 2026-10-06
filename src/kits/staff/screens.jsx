@@ -31,6 +31,7 @@ const YOTE_SOCIALS = {
   youtube: 'https://www.youtube.com/@yotemarket',
 };
 import { useDialogs } from './dialogs.jsx';
+import { MessageButton } from './comms.jsx';
 // The payout-method formatter lives with the billing screen that owns the approvals queue;
 // the merchant record below prints the same label, so it is imported rather than re-written.
 import { payoutLabelStaff } from './billing.jsx';
@@ -131,7 +132,8 @@ function MerchantConsole({ row, onClose, onChanged, onRaw, onEnterprise }){
         {suspended
           ? <Btn kind="soft" size="sm" icon="rotate-left" onClick={()=>act('reinstate')} disabled={busy==='reinstate'}>Reinstate</Btn>
           : <Btn kind="danger" size="sm" icon="ban" onClick={()=>act('suspend')} disabled={busy==='suspend'}>Suspend</Btn>}
-        {owner.email && <a href={`mailto:${owner.email}`} className="ml-auto"><Btn kind="ghost" size="sm" icon="envelope">Email</Btn></a>}
+        {/* Was a bare mailto: — the agent's own mail app, nothing logged. See MessageButton. */}
+        <MessageButton person={owner.uid ? { uid: owner.uid, name: owner.name, email: owner.email, roles: ['merchant'] } : null} kind="ghost" className="ml-auto" />
         {onRaw && <Btn kind="ghost" size="sm" icon="fingerprint" onClick={()=>{ onClose(); onRaw(row); }}>Raw</Btn>}
       </>}
     </div>
