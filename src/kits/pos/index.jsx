@@ -5,7 +5,7 @@
    Cashiers are routed straight here (they can't use the store dashboard). */
 import React from 'react';
 import '../dashboard/dashboard.css';
-import { ThemeCtx, FA } from '../dashboard/primitives.jsx';
+import { ThemeCtx, FA, ThemeToggle } from '../dashboard/primitives.jsx';
 import { MerchantProvider, useShop, useMerchant } from '../dashboard/merchant.jsx';
 import MerchantGate from '../dashboard/MerchantGate.jsx';
 import { Pos } from '../dashboard/pos.jsx';
@@ -94,7 +94,6 @@ function PosSettings({ onClose }){
 function PosShell(){
   const shop = useShop();
   const { role } = useMerchant();
-  const { theme, setTheme } = useContext(ThemeCtx);
   const { signOutUser } = useAuth();
   const [toast, setToastS] = useState(null);
   const [settings, setSettings] = useState(false);
@@ -106,7 +105,7 @@ function PosShell(){
   return (
     <div style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', background:'var(--m-bg)' }}>
       <header style={{ position:'sticky', top:0, zIndex:40, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
-        <div style={{ maxWidth:1120, margin:'0 auto', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', gap:12 }}>
+        <div className="pos-hdr" style={{ maxWidth:1120, margin:'0 auto', height:60, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 16px', gap:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
             <span style={{ width:36, height:36, borderRadius:10, overflow:'hidden', background: shop.logo ? 'var(--m-surface-2)' : 'var(--m-grad)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: shop.logo ? 'none' : 'var(--m-glow)', flexShrink:0, border: shop.logo ? '1px solid var(--m-border)' : 'none' }}>
               {shop.logo ? <img src={shop.logo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <FA i="fa-store" />}
@@ -116,14 +115,29 @@ function PosShell(){
               <div className="ym-cap">{roleLbl}</div>
             </div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="icon-btn" aria-label="Toggle light / dark" title="Light / dark"><FA i={theme === 'dark' ? 'fa-sun' : 'fa-moon'} /></button>
+          <div className="pos-actions" style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+            {/* The day/night switch shared with the rest of YoteMarket. */}
+            <ThemeToggle />
             <button onClick={() => setSettings(true)} className="icon-btn" aria-label="Terminal settings" title="Settings"><FA i="fa-gear" /></button>
             {/* Cashiers are terminal-only — no route back into the store dashboard. */}
-            {!isCashier && <a href="/dashboard" className="ym-btn ym-btn-ghost ym-btn-sm"><FA i="fa-gauge-high" /> Dashboard</a>}
+            {!isCashier && <a href="/dashboard" className="ym-btn ym-btn-ghost ym-btn-sm pos-dash" aria-label="Dashboard"><FA i="fa-gauge-high" /> <span className="pos-dash-label">Dashboard</span></a>}
             <button onClick={signOutUser} className="icon-btn" aria-label="Sign out" title="Sign out"><FA i="fa-arrow-right-from-bracket" /></button>
           </div>
         </div>
+        {/* Phones: the shop's name used to be squeezed out (and the row overflowed at
+            320px). Dashboard goes icon-only and the controls step down a size, so the
+            name keeps room to show. */}
+        <style>{`
+          @media (max-width:560px){
+            .pos-dash{ padding:0 !important; width:38px; min-width:38px; justify-content:center; gap:0 !important; }
+            .pos-dash-label{ display:none; }
+            .pos-hdr .tt{ --tt-w:52px; --tt-h:28px; }
+          }
+          @media (max-width:400px){
+            .pos-actions{ gap:6px !important; }
+            .pos-actions .icon-btn, .pos-dash{ width:36px !important; min-width:36px; height:36px; }
+            .pos-hdr .tt{ --tt-w:44px; --tt-h:24px; }
+          }`}</style>
       </header>
       <main style={{ flex:1, padding:'20px 16px' }}>
         <div style={{ maxWidth:1120, margin:'0 auto' }}><Pos toast={toastFn} /></div>

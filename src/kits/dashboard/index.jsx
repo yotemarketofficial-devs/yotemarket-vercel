@@ -105,7 +105,8 @@ export default function DashboardApp(){
             <div style={{ position:'absolute', inset:0, background:'rgba(8,10,24,.5)' }} />
             <div style={{ position:'absolute', left:0, top:0, bottom:0, width:300, background:'var(--m-bg)', padding:16, overflowY:'auto' }}>
               <button onClick={()=>setMenu(false)} className="icon-btn" aria-label="Close menu" style={{ marginBottom:12 }}><FA i="fa-xmark" /></button>
-              <Sidebar active={active} onChange={k=>{ go(k); setMenu(false); }} onClose={()=>setMenu(false)} />
+              <Sidebar active={active} onChange={k=>{ go(k); setMenu(false); }} onClose={()=>setMenu(false)}
+                onTour={()=>{ setMenu(false); setTourOpen(true); }} />
             </div>
           </div>
         )}
@@ -115,7 +116,9 @@ export default function DashboardApp(){
         <TourController open={tourOpen} setOpen={setTourOpen} setActive={setActive} />
         <Toast toast={toast} />
       </div>
-      <style>{`@media (max-width:900px){ .dash-shell{ grid-template-columns:minmax(0,1fr) !important; } .dash-aside{ display:none !important; } }`}</style>
+      <style>{`@media (max-width:900px){ .dash-shell{ grid-template-columns:minmax(0,1fr) !important; } .dash-aside{ display:none !important; } }
+        /* The menu's "Take a tour" is for phones, where the top bar drops its "?". */
+        @media (min-width:561px){ .sb-tour{ display:none !important; } }`}</style>
     </ThemeCtx.Provider>
     </MerchantProvider>
   );

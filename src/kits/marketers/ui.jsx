@@ -1,5 +1,6 @@
 /* ui.jsx — Marketers app theme + shared primitives. Purple+gold, light/dark. */
 import React from 'react';
+import DayNightSwitch from '../../components/ThemeToggle.jsx';
 import { ksh } from './econ.js';
 const { useState, useEffect, createContext, useContext } = React;
 
@@ -142,13 +143,8 @@ export const Medal = ({ rank }) => {
     style={{ background:c[0], color:c[1] }}>{rank}</span>;
 };
 
+/* The day/night switch shared with the rest of YoteMarket (top bar + sign-in screen). */
 export const ThemeToggle = () => {
   const { dark, toggle } = useTheme();
-  return (
-    <button onClick={toggle} title="Toggle theme" aria-label="Toggle theme"
-      className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-      style={{ background:'var(--surface2)', color:'var(--t2)', border:'1px solid var(--line)' }}>
-      <Icon name={dark?'sun':'moon'} />
-    </button>
-  );
+  return <DayNightSwitch dark={dark} onToggle={toggle} />;
 };
