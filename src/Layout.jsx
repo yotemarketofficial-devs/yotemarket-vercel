@@ -84,7 +84,7 @@ function Layout() {
             </button>
             {/* The storefront opens to guests and offers sign-in itself. */}
             <Link to="/storefront" className="nav-login">Login</Link>
-            <Link to="/storefront" className="nav-start">Get Started</Link>
+            <Link to="/mobile" className="nav-start">Get App</Link>
             <button
               className="nav-burger"
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -102,7 +102,7 @@ function Layout() {
             {navItems.map((item) => <NavItem key={item.path} item={item} activeClass={activeClass} />)}
             <div className="nav-mobile-cta">
               <Link className="nav-login" to="/storefront" onClick={() => setMenuOpen(false)}>Login</Link>
-              <Link className="nav-start" to="/storefront" onClick={() => setMenuOpen(false)}>Get Started</Link>
+              <Link className="nav-start" to="/mobile" onClick={() => setMenuOpen(false)}>Get App</Link>
             </div>
           </nav>
         </div>
