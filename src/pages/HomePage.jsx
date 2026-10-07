@@ -23,7 +23,7 @@ const SHOPPER_FEATURES = [
   { icon: 'fa-shield-halved', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'M-Pesa wallet & escrow', desc: 'Top up, pay with M-Pesa, and your money stays in escrow until your order arrives.' },
   { icon: 'fa-warehouse', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Pickup hubs near you', desc: 'Collect at your nearest neighbourhood hub, or have it delivered to your door.' },
   { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'Ask YoteAI', desc: 'Your shopping assistant — find products, compare options, and track orders just by asking.' },
-  { icon: 'fa-truck-fast', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Track every order', desc: 'Live rider tracking from the store to your hub or door, with verified-buyer reviews you can trust.' },
+  { mark: 'feed', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'Watch & shop on YoteFeed', desc: 'Short videos from real local stores — see products in action and tap to buy the exact item on screen.' },
 ];
 
 // The YoteAI / YoteFeed brand marks (not generic icons) wherever the brand appears.
@@ -130,12 +130,6 @@ const HX_ICONS = {
       <path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" strokeWidth="2.6" />
     </>
   ),
-  pin: (
-    <>
-      <path d="M19.5 10c0 5-5.6 10.2-7.1 11.5a.6.6 0 0 1-.8 0C10.1 20.2 4.5 15 4.5 10a7.5 7.5 0 0 1 15 0z" />
-      <circle cx="12" cy="10" r="2.8" />
-    </>
-  ),
   arrow: <path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5" />,
 };
 
@@ -153,7 +147,7 @@ const HERO_FEATURES = [
   { icon: 'truck', top: 'Nationwide', bottom: 'Delivery' },
   { icon: 'mpesa', top: 'M-Pesa', bottom: 'Checkout' },
   { icon: 'chat', top: 'Chat &', bottom: 'Negotiate' },
-  { icon: 'pin', top: 'Live', bottom: 'Tracking' },
+  { icon: 'feed', top: 'YoteFeed', bottom: 'Videos' },
   { icon: 'ai', top: 'YoteAI', bottom: 'Assistant' },
 ];
 
@@ -214,7 +208,7 @@ function HomePage() {
     <main>
       {/* Hero — laid out to the brand mockup, worded in the brand's own voice ("Shop
           local. Delivered fast."). The copy, feature row and buttons are live HTML;
-          the right-hand composition (phone, store/M-Pesa/tracking/YoteAI cards,
+          the right-hand composition (phone, store/M-Pesa/YoteFeed/YoteAI cards,
           ribbon, rider, Nairobi skyline) is ONE image cut from that mockup, because
           its pieces overlap each other and the photo too much to rebuild as layers
           without it drifting from the design. Swap the file to update the art. */}
@@ -233,8 +227,8 @@ function HomePage() {
             <ul className="hx-feats">
               {HERO_FEATURES.map((f) => (
                 <li key={f.icon}>
-                  {/* YoteAI gets its brand mark, never a generic icon (see FeatureIcon). */}
-                  {f.icon === 'ai' ? <YoteAiMark size={31} /> : <HxIcon name={f.icon} />}
+                  {/* YoteAI and YoteFeed get their brand marks, never generic icons (see FeatureIcon). */}
+                  {f.icon === 'ai' ? <YoteAiMark size={31} /> : f.icon === 'feed' ? <YoteFeedMark size={24} /> : <HxIcon name={f.icon} />}
                   <span>{f.top}<br />{f.bottom}</span>
                 </li>
               ))}
@@ -255,7 +249,7 @@ function HomePage() {
               height={dark ? 1024 : 744}
               fetchPriority="high"
               decoding="async"
-              alt="The YoteMarket app open on a phone, with 200+ local stores, an M-Pesa payment confirmation, live order tracking, the YoteAI assistant and a YoteMarket delivery rider in Nairobi"
+              alt="The YoteMarket app open on a phone, with 200+ local stores, an M-Pesa payment confirmation, YoteFeed shoppable videos, the YoteAI assistant and a YoteMarket delivery rider in Nairobi"
             />
           </div>
         </div>

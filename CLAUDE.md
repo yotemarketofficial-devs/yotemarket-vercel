@@ -241,13 +241,15 @@ WhatsApp is how scouts work, so phone numbers in the console now carry a wa.me l
 
 The hero and the shared header (`Layout.jsx`) match a 1536px brand mockup. The copy, the
 six-up feature row and both buttons are live HTML (`src/styles/home-hero.css`, sizes scaled
-in `vw` from the artboard). The right-hand art (phone, the 200+ stores / M-Pesa / tracking /
+in `vw` from the artboard). The right-hand art (phone, the 200+ stores / M-Pesa / YoteFeed /
 YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `src/assets/hero/hero-art.webp`
 (906×744), cut from that mockup. Its branding was then swapped for the real assets:
 `logo.png` on the phone, `logo-white.png` on the delivery box, the YoteAI badge (as
 `.ai-badge` draws it) in place of the mockup's robot on the YoteAI card, the supplied M-Pesa
 logo on the payment card, and the supplied shopper photo in the phone's banner. The night art
-carries the same swaps. Its pieces overlap each other and the photo, so rebuilding
+carries the same swaps. **YoteMarket does not offer live order tracking**, so the mockup's
+"Order on the way · Track live" card shows YoteFeed instead, and nothing on the homepage
+promises live tracking. Keep it that way until the feature exists. Its pieces overlap each other and the photo, so rebuilding
 them as layers would drift from the design. To change the art, replace that file and keep
 the 906:744 ratio, or update `width`/`height` on the `<img>`. A 2× export would sharpen it
 on retina screens. Both files are imported in `HomePage.jsx` rather than served from `public/`, so
