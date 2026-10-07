@@ -11,7 +11,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 285 tests, all passing as of 2026-10-06
+npm test           # vitest — 294 tests, all passing as of 2026-10-07
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 
@@ -236,6 +236,18 @@ dead-ended:
 
 WhatsApp is how scouts work, so phone numbers in the console now carry a wa.me link
 (`lib/phone.js`, Kenyan formats only unless written with a `+`).
+
+## The homepage hero is built to a mockup (2026-10-07)
+
+The hero and the shared header (`Layout.jsx`) match a 1536px brand mockup. The copy, the
+six-up feature row and both buttons are live HTML (`src/styles/home-hero.css`, sizes scaled
+in `vw` from the artboard). The right-hand art (phone, the 200+ stores / M-Pesa / tracking /
+YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `public/assets/hero/hero-art.webp`
+(906×744), cut from that mockup. Its pieces overlap each other and the photo, so rebuilding
+them as layers would drift from the design. To change the art, replace that file and keep
+the 906:744 ratio, or update `width`/`height` on the `<img>`. A 2× export would sharpen it
+on retina screens. The hero stays light in dark mode on purpose, and the theme switch moved
+from the desktop header into the mobile menu and the homepage footer.
 
 ## Gotchas worth remembering
 

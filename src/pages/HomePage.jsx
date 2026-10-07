@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useOutletContext } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
 import PhoneMockup from '../components/PhoneMockup.jsx';
 import { APPS } from '../lib/apk-releases.mjs';
 import { SOCIAL_LINKS } from '../lib/socials.js';
+import '../styles/home-hero.css';
 
 // Names, subtitles and launcher icons come from the same entries /apk publishes.
 const SHOPPER_APP = APPS.find((a) => a.slug === 'shopper');
@@ -93,6 +94,71 @@ function FeedDemo({ clips, videoUrl }) {
   );
 }
 
+/* Hero line icons, 24-unit grid, drawn with currentColor so CSS sets the purple. */
+const HX_ICONS = {
+  spark: <path d="M11.5 2.8 13.6 9a2.2 2.2 0 0 0 1.4 1.4l6.2 2.1-6.2 2.1a2.2 2.2 0 0 0-1.4 1.4l-2.1 6.2-2.1-6.2A2.2 2.2 0 0 0 8 14.6l-6.2-2.1L8 10.4A2.2 2.2 0 0 0 9.4 9z" />,
+  store: (
+    <>
+      <path d="M3 9.5V7.6L5.2 3h13.6L21 7.6v1.9a2.6 2.6 0 0 1-4.5 1.7 2.6 2.6 0 0 1-4.5 0 2.6 2.6 0 0 1-4.5 0A2.6 2.6 0 0 1 3 9.5z" />
+      <path d="M8 3.2 7 7.8M12 3v4.8M16 3.2l1 4.6M3.4 7.8h17.2" />
+      <path d="M4.5 12v8.5h15V12" />
+      <path d="M9.5 20.5v-5h5v5" />
+    </>
+  ),
+  truck: (
+    <>
+      <path d="M14 17.5V6.5a1.5 1.5 0 0 0-1.5-1.5h-9A1.5 1.5 0 0 0 2 6.5v9.5a1.5 1.5 0 0 0 1.5 1.5H5" />
+      <path d="M14 8.5h3.6a1.5 1.5 0 0 1 1.2.6l2.9 3.8a1.5 1.5 0 0 1 .3.9v2.2a1.5 1.5 0 0 1-1.5 1.5H19M9.5 17.5H14" />
+      <circle cx="7.2" cy="17.6" r="2.2" />
+      <circle cx="16.8" cy="17.6" r="2.2" />
+    </>
+  ),
+  mpesa: (
+    <>
+      <rect x="5.5" y="2" width="13" height="20" rx="2.6" />
+      <path d="M10.5 18.5h3" />
+      <path d="M14.4 8.6a3 3 0 1 0 0 4.2M10.4 10.7h5" />
+    </>
+  ),
+  chat: (
+    <>
+      <path d="M20.5 15.5a2 2 0 0 1-2 2H8l-4.5 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />
+      <path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" strokeWidth="2.6" />
+    </>
+  ),
+  pin: (
+    <>
+      <path d="M19.5 10c0 5-5.6 10.2-7.1 11.5a.6.6 0 0 1-.8 0C10.1 20.2 4.5 15 4.5 10a7.5 7.5 0 0 1 15 0z" />
+      <circle cx="12" cy="10" r="2.8" />
+    </>
+  ),
+  arrow: <path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5" />,
+  phone: (
+    <>
+      <rect x="6" y="2.5" width="12" height="19" rx="2.4" />
+      <path d="M11 18h2" />
+    </>
+  ),
+};
+
+function HxIcon({ name }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+      strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {HX_ICONS[name]}
+    </svg>
+  );
+}
+
+const HERO_FEATURES = [
+  { icon: 'store', top: '200+', bottom: 'Local Stores' },
+  { icon: 'truck', top: 'Nationwide', bottom: 'Delivery' },
+  { icon: 'mpesa', top: 'M-Pesa', bottom: 'Checkout' },
+  { icon: 'chat', top: 'Chat &', bottom: 'Negotiate' },
+  { icon: 'pin', top: 'Live', bottom: 'Tracking' },
+  { icon: 'spark', top: 'YoteAI', bottom: 'Assistant' },
+];
+
 function HomePage() {
   // Real YoteFeed clips for the landing demo (was three blank gradient mockups).
   // Only the newest few; egress is the real cost on KE mobile data — see FeedDemo.
@@ -127,77 +193,82 @@ function HomePage() {
     return () => io.disconnect();
   }, []);
 
+  // The header's "Features" link is /#roles. The router doesn't scroll to hashes, and
+  // ScrollToTop sends a cross-page visit to the top first — this effect runs after it.
+  // location.key changes on every click, so a second click on the same link still scrolls.
+  const location = useLocation();
+  useEffect(() => {
+    if (!location.hash) return undefined;
+    const el = document.getElementById(location.hash.slice(1));
+    if (!el) return undefined;
+    const go = () => el.scrollIntoView({ block: 'start' });
+    go();
+    // Tapped from the mobile menu, the menu is still collapsing (.28s) and shrinking the
+    // sticky header above us, which moves the target — land on it again once it's shut.
+    const t = setTimeout(go, 320);
+    return () => clearTimeout(t);
+  }, [location.key, location.hash]);
+
+  // Layout owns the theme; the footer carries the switch now the desktop header doesn't.
+  const theme = useOutletContext();
+
   return (
     <main>
-      <header id="top" className="hero">
-        <div className="wrap hero-grid">
-          <div>
-            <span className="eyebrow">
-              <i className="fas fa-location-dot"></i>
-              Kenya's Virtual Mall
-            </span>
-            <h1>
-              Shop local.<br />
-              <span className="g">Delivered</span> fast.
+      {/* Hero — built to the brand mockup. The copy, feature row and buttons are live
+          HTML; the right-hand composition (phone, store/M-Pesa/tracking/YoteAI cards,
+          ribbon, rider, Nairobi skyline) is ONE image cut from that mockup, because
+          its pieces overlap each other and the photo too much to rebuild as layers
+          without it drifting from the design. Swap the file to update the art. */}
+      <header id="top" className="hx">
+        <div className="hx-in">
+          <div className="hx-copy">
+            <span className="hx-eyebrow"><HxIcon name="spark" />Kenya&rsquo;s Virtual Mall</span>
+            <h1 className="hx-title">
+              Shop Local.<br />
+              <span>Live Better.</span>
             </h1>
-            <p className="lead">
-              YoteMarket combines a virtual mall, merchant tools, and last-mile delivery into one ecosystem.
-              Buy, sell, chat &amp; negotiate in the app messenger, and pay with M-Pesa.
+            <p className="hx-lead">
+              Discover 200+ local stores, get your favourite products delivered across 47 counties,
+              and enjoy a seamless shopping experience — all in one place.
             </p>
-            <div className="hero-cta">
-              <Link className="btn btn-primary btn-lg" to="/storefront">
-                Start shopping <i className="fas fa-arrow-right"></i>
+            <ul className="hx-feats">
+              {HERO_FEATURES.map((f) => (
+                <li key={f.icon}>
+                  <HxIcon name={f.icon} />
+                  <span>{f.top}<br />{f.bottom}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="hx-cta">
+              <Link className="hx-btn hx-btn-primary" to="/storefront">
+                Start Shopping <HxIcon name="arrow" />
               </Link>
-              <Link className="btn btn-outline btn-lg" to="/dashboard">
-                Become a seller
+              <Link className="hx-btn hx-btn-ghost" to="/mobile">
+                <HxIcon name="phone" />Download App
               </Link>
-            </div>
-            <div className="trust">
-              <span>Easy Ordering</span>
-              <span className="dot"></span>
-              <span>Secure Payments</span>
-              <span className="dot"></span>
-              <span>Fast Deliveries</span>
             </div>
           </div>
-          <div className="hero-art float-a">
-            <img src="/assets/hero-bg.png" alt="YoteMarket delivery in a Kenyan city at golden hour" />
-            <div className="ov"></div>
-            <div className="hero-badge">
-              <span className="mini">
-                <i className="fas fa-store"></i>
-                200+ local stores
-              </span>
-              <span className="mini">
-                <i className="fas fa-comments"></i>
-                Chat in the app
-              </span>
-              <span className="mini">
-                <i className="fas fa-mobile-alt"></i>
-                M-Pesa checkout
-              </span>
-            </div>
+          <div className="hx-art">
+            <img
+              src="/assets/hero/hero-art.webp"
+              width="906"
+              height="744"
+              fetchPriority="high"
+              decoding="async"
+              alt="The YoteMarket app open on a phone, with 200+ local stores, an M-Pesa payment confirmation, live order tracking, the YoteAI assistant and a YoteMarket delivery rider in Nairobi"
+            />
           </div>
         </div>
       </header>
 
-      {/* trust metrics strip */}
-      <div className="trust-strip">
-        <div className="wrap trust-strip-in">
-          <div className="ts"><b>200+</b><span>Local stores</span></div>
-          <div className="ts"><b>47</b><span>Counties served</span></div>
-          <div className="ts"><b>1,200+</b><span>Active merchants</span></div>
-          <div className="ts"><b>M-Pesa</b><span>Instant checkout</span></div>
-        </div>
-      </div>
-
       <section className="pad" id="roles">
         <div className="wrap">
-          <div className="sec-head reveal">
-            <div className="kicker">One platform · every role</div>
-            <h2>Whoever you are, there's a place for you</h2>
+          <div className="sec-head hx-why reveal">
+            <div className="kicker">Why YoteMarket?</div>
+            <h2>Everything you need <span>in one place</span></h2>
             <p>
-              Shoppers, merchants, marketers and riders each get a dedicated space — built on one shared design system.
+              From shopping to selling, YoteMarket brings together the best of local business,
+              technology and convenience — built for Kenya.
             </p>
           </div>
           <div className="cards">
@@ -544,7 +615,14 @@ function HomePage() {
                 <a key={s.label} href={s.url} target="_blank" rel="noreferrer" aria-label={s.label}><i className={`fab ${s.icon}`}></i></a>
               ))}
             </div>
-            <Link className="staff-btn" to="/staff"><i className="fas fa-lock"></i> Staff login</Link>
+            <div className="foot-actions">
+              {theme && (
+                <button type="button" className="staff-btn" onClick={() => theme.setDark((d) => !d)}>
+                  <i className={theme.dark ? 'fas fa-sun' : 'fas fa-moon'}></i> {theme.dark ? 'Light mode' : 'Dark mode'}
+                </button>
+              )}
+              <Link className="staff-btn" to="/staff"><i className="fas fa-lock"></i> Staff login</Link>
+            </div>
           </div>
         </div>
       </footer>
