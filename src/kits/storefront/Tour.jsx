@@ -23,18 +23,18 @@ export const markTourDone = (uid) => { try { localStorage.setItem(keyFor(uid), '
 const CARD_W = 300;
 
 /* Header anchors, in the order a new shopper meets them. `mobileNote` is appended when
-   the anchor is hidden (feed + following collapse into the account menu on phones), so
-   the copy stays true to what's actually on their screen. */
+   the anchor is hidden (messages and the bell collapse into the account menu on phones),
+   so the copy stays true to what's actually on their screen. */
 const STEPS = [
   { anchor: 'search', title: 'Find anything 🔎',
     body: 'Search hundreds of local stores by product, brand or shop name — or browse by category from the home page.' },
   { anchor: 'feed', title: 'YoteFeed 🎬',
-    body: 'Short, shoppable clips from real shops. Watch, tap a product, and buy it on the spot.',
-    mobileNote: 'Find it in your account menu, top right.' },
+    body: 'Short, shoppable clips from real shops. Watch, tap a product, and buy it on the spot.' },
   { anchor: 'ai', title: 'Ask YoteAI ✨',
     body: 'Your shopping assistant. Describe what you need and it finds it across the mall, compares options and answers questions.' },
   { anchor: 'messages', title: 'Chat with sellers 💬',
-    body: 'Message any shop before you buy. Ask about sizes or condition, and negotiate a price — sellers can send you an offer you accept in one tap.' },
+    body: 'Message any shop before you buy. Ask about sizes or condition, and negotiate a price — sellers can send you an offer you accept in one tap.',
+    mobileNote: 'Find Messages in your account menu, top right.' },
   { anchor: 'cart', title: 'Cart & checkout 🛒',
     body: 'Pay with M-Pesa, then book a delivery slot — we match you to the collection point nearest you and map it — or collect from the store. Your order is tracked end to end.' },
   { anchor: 'account', title: 'Your account 👤',
