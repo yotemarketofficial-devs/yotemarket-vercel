@@ -1,25 +1,63 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState, Suspense } from 'react';
 import { useEscape } from './lib/useEscape.js';
 
+// `hash` items point at a section of the homepage. They render as a plain Link:
+// a NavLink to "/#roles" would light up together with Home on every visit to "/".
 const navItems = [
-  { label: 'Shop', path: '/storefront' },
-  { label: 'Sell', path: '/dashboard' },
-  { label: 'Earn', path: '/marketers' },
-  { label: 'Get the app', path: '/mobile' },
+  { label: 'Home', path: '/', end: true },
+  { label: 'Shops', path: '/storefront' },
+  { label: 'For Merchants', path: '/dashboard' },
+  { label: 'Delivery', path: '/rider' },
+  { label: 'Features', path: '/#roles', hash: true },
+  { label: 'About', path: '/about' },
 ];
 
+function NavItem({ item, activeClass }) {
+  if (item.hash) return <Link to={item.path}>{item.label}</Link>;
+  return <NavLink to={item.path} end={item.end} className={activeClass}>{item.label}</NavLink>;
+}
+
+function ThemeIcon({ dark }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {dark ? (
+        <>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
+        </>
+      ) : (
+        <path d="M20.5 14.1A8.5 8.5 0 1 1 9.9 3.5a6.6 6.6 0 0 0 10.6 10.6z" />
+      )}
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="11" cy="11" r="7.5" />
+      <path d="m20.5 20.5-4.2-4.2" />
+    </svg>
+  );
+}
+
 function Layout() {
-  const [dark, setDark] = useState(false);
+  // Read the saved theme up front rather than after mount: the homepage picks its hero
+  // art from this on the first render, and starting light would fetch both images.
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ym_platform_theme');
+      if (saved) return saved === 'dark';
+      return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+    } catch {
+      return false;
+    }
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const saved = localStorage.getItem('ym_platform_theme');
-    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-    setDark(saved ? saved === 'dark' : prefersDark);
-  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -43,21 +81,27 @@ function Layout() {
             <img className="logo" src={logoSrc} alt="YoteMarket" />
           </NavLink>
 
-          <nav className="links">
-            {navItems.map((item) => (
-              <NavLink key={item.path} to={item.path} className={activeClass}>
-                {item.label}
-              </NavLink>
-            ))}
+          <nav className="links" aria-label="Main">
+            {navItems.map((item) => <NavItem key={item.path} item={item} activeClass={activeClass} />)}
           </nav>
 
           <div className="nav-cta">
-            <button className="toggle" onClick={() => setDark((prev) => !prev)} title="Toggle theme" aria-label="Toggle theme">
-              <i className={dark ? 'fas fa-sun' : 'fas fa-moon'}></i>
+            {/* The mall's search lives on the storefront home screen. */}
+            <Link to="/storefront" className="nav-search" aria-label="Search the mall" title="Search the mall">
+              <SearchIcon />
+            </Link>
+            <button
+              type="button"
+              className="nav-theme"
+              onClick={() => setDark((prev) => !prev)}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={dark ? 'Light mode' : 'Dark mode'}
+            >
+              <ThemeIcon dark={dark} />
             </button>
-            <button className="btn btn-primary nav-signin" onClick={() => navigate('/storefront')}>
-              Sign in
-            </button>
+            {/* The storefront opens to guests and offers sign-in itself. */}
+            <Link to="/storefront" className="nav-login">Login</Link>
+            <Link to="/storefront" className="nav-start">Get Started</Link>
             <button
               className="nav-burger"
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -71,19 +115,12 @@ function Layout() {
 
         {/* Mobile slide-down menu */}
         <div className={`nav-mobile ${menuOpen ? 'open' : ''}`}>
-          <nav className="nav-mobile-links">
-            {navItems.map((item) => (
-              <NavLink key={item.path} to={item.path} className={activeClass}>
-                {item.label}
-              </NavLink>
-            ))}
-            <button
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
-              onClick={() => { setMenuOpen(false); navigate('/storefront'); }}
-            >
-              Sign in
-            </button>
+          <nav className="nav-mobile-links" aria-label="Main">
+            {navItems.map((item) => <NavItem key={item.path} item={item} activeClass={activeClass} />)}
+            <div className="nav-mobile-cta">
+              <Link className="nav-login" to="/storefront" onClick={() => setMenuOpen(false)}>Login</Link>
+              <Link className="nav-start" to="/storefront" onClick={() => setMenuOpen(false)}>Get Started</Link>
+            </div>
           </nav>
         </div>
       </header>
@@ -92,7 +129,7 @@ function Layout() {
         {/* Lazy marketing pages (rider, careers, help) suspend here rather than at the
             app root, so the header and footer stay painted while one loads. */}
         <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
-          <Outlet />
+          <Outlet context={{ dark }} />
         </Suspense>
       </div>
 

@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useOutletContext } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
 import PhoneMockup from '../components/PhoneMockup.jsx';
 import { APPS } from '../lib/apk-releases.mjs';
 import { SOCIAL_LINKS } from '../lib/socials.js';
+import '../styles/home-hero.css';
+// Imported, not referenced from public/, so Vite fingerprints the file names: every
+// change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
+// hour (plus a week of stale-while-revalidate, see vercel.json), so edits didn't show.
+import heroArtLight from '../assets/hero/hero-art.webp';
+import heroArtDark from '../assets/hero/hero-art-dark.webp';
 
 // Names, subtitles and launcher icons come from the same entries /apk publishes.
 const SHOPPER_APP = APPS.find((a) => a.slug === 'shopper');
@@ -17,7 +23,7 @@ const SHOPPER_FEATURES = [
   { icon: 'fa-shield-halved', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'M-Pesa wallet & escrow', desc: 'Top up, pay with M-Pesa, and your money stays in escrow until your order arrives.' },
   { icon: 'fa-warehouse', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Pickup hubs near you', desc: 'Collect at your nearest neighbourhood hub, or have it delivered to your door.' },
   { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'Ask YoteAI', desc: 'Your shopping assistant — find products, compare options, and track orders just by asking.' },
-  { icon: 'fa-truck-fast', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Track every order', desc: 'Live rider tracking from the store to your hub or door, with verified-buyer reviews you can trust.' },
+  { mark: 'feed', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'Watch & shop on YoteFeed', desc: 'Short videos from real local stores — see products in action and tap to buy the exact item on screen.' },
 ];
 
 // The YoteAI / YoteFeed brand marks (not generic icons) wherever the brand appears.
@@ -93,6 +99,58 @@ function FeedDemo({ clips, videoUrl }) {
   );
 }
 
+/* Hero line icons, 24-unit grid, drawn with currentColor so CSS sets the purple. */
+const HX_ICONS = {
+  store: (
+    <>
+      <path d="M3 9.5V7.6L5.2 3h13.6L21 7.6v1.9a2.6 2.6 0 0 1-4.5 1.7 2.6 2.6 0 0 1-4.5 0 2.6 2.6 0 0 1-4.5 0A2.6 2.6 0 0 1 3 9.5z" />
+      <path d="M8 3.2 7 7.8M12 3v4.8M16 3.2l1 4.6M3.4 7.8h17.2" />
+      <path d="M4.5 12v8.5h15V12" />
+      <path d="M9.5 20.5v-5h5v5" />
+    </>
+  ),
+  truck: (
+    <>
+      <path d="M14 17.5V6.5a1.5 1.5 0 0 0-1.5-1.5h-9A1.5 1.5 0 0 0 2 6.5v9.5a1.5 1.5 0 0 0 1.5 1.5H5" />
+      <path d="M14 8.5h3.6a1.5 1.5 0 0 1 1.2.6l2.9 3.8a1.5 1.5 0 0 1 .3.9v2.2a1.5 1.5 0 0 1-1.5 1.5H19M9.5 17.5H14" />
+      <circle cx="7.2" cy="17.6" r="2.2" />
+      <circle cx="16.8" cy="17.6" r="2.2" />
+    </>
+  ),
+  mpesa: (
+    <>
+      <rect x="5.5" y="2" width="13" height="20" rx="2.6" />
+      <path d="M10.5 18.5h3" />
+      <path d="M14.4 8.6a3 3 0 1 0 0 4.2M10.4 10.7h5" />
+    </>
+  ),
+  chat: (
+    <>
+      <path d="M20.5 15.5a2 2 0 0 1-2 2H8l-4.5 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z" />
+      <path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01" strokeWidth="2.6" />
+    </>
+  ),
+  arrow: <path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5" />,
+};
+
+function HxIcon({ name }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+      strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {HX_ICONS[name]}
+    </svg>
+  );
+}
+
+const HERO_FEATURES = [
+  { icon: 'store', top: '200+', bottom: 'Local Stores' },
+  { icon: 'truck', top: 'Nationwide', bottom: 'Delivery' },
+  { icon: 'mpesa', top: 'M-Pesa', bottom: 'Checkout' },
+  { icon: 'chat', top: 'Chat &', bottom: 'Negotiate' },
+  { icon: 'feed', top: 'YoteFeed', bottom: 'Videos' },
+  { icon: 'ai', top: 'YoteAI', bottom: 'Assistant' },
+];
+
 function HomePage() {
   // Real YoteFeed clips for the landing demo (was three blank gradient mockups).
   // Only the newest few; egress is the real cost on KE mobile data — see FeedDemo.
@@ -127,73 +185,79 @@ function HomePage() {
     return () => io.disconnect();
   }, []);
 
+  // The header's "Features" link is /#roles. The router doesn't scroll to hashes, and
+  // ScrollToTop sends a cross-page visit to the top first — this effect runs after it.
+  // location.key changes on every click, so a second click on the same link still scrolls.
+  const location = useLocation();
+  useEffect(() => {
+    if (!location.hash) return undefined;
+    const el = document.getElementById(location.hash.slice(1));
+    if (!el) return undefined;
+    const go = () => el.scrollIntoView({ block: 'start' });
+    go();
+    // Tapped from the mobile menu, the menu is still collapsing (.28s) and shrinking the
+    // sticky header above us, which moves the target — land on it again once it's shut.
+    const t = setTimeout(go, 320);
+    return () => clearTimeout(t);
+  }, [location.key, location.hash]);
+
+  // Layout owns the theme. Dark mode has its own hero art, a night scene (see home-hero.css).
+  const { dark } = useOutletContext() || {};
+
   return (
     <main>
-      <header id="top" className="hero">
-        <div className="wrap hero-grid">
-          <div>
-            <span className="eyebrow">
-              <i className="fas fa-location-dot"></i>
-              Kenya's Virtual Mall
-            </span>
-            <h1>
+      {/* Hero — laid out to the brand mockup, worded in the brand's own voice ("Shop
+          local. Delivered fast."). The copy, feature row and buttons are live HTML;
+          the right-hand composition (phone, store/M-Pesa/YoteFeed/YoteAI cards,
+          ribbon, rider, Nairobi skyline) is ONE image cut from that mockup, because
+          its pieces overlap each other and the photo too much to rebuild as layers
+          without it drifting from the design. Swap the file to update the art. */}
+      <header id="top" className="hx">
+        <div className="hx-in">
+          <div className="hx-copy">
+            <span className="hx-eyebrow">Kenya&rsquo;s Virtual Mall</span>
+            <h1 className="hx-title">
               Shop local.<br />
               <span className="g">Delivered</span> fast.
             </h1>
-            <p className="lead">
+            <p className="hx-lead">
               YoteMarket combines a virtual mall, merchant tools, and last-mile delivery into one ecosystem.
               Buy, sell, chat &amp; negotiate in the app messenger, and pay with M-Pesa.
             </p>
-            <div className="hero-cta">
-              <Link className="btn btn-primary btn-lg" to="/storefront">
-                Start shopping <i className="fas fa-arrow-right"></i>
+            <ul className="hx-feats">
+              {HERO_FEATURES.map((f) => (
+                <li key={f.icon}>
+                  {/* YoteAI and YoteFeed get their brand marks, never generic icons (see FeatureIcon). */}
+                  {f.icon === 'ai' ? <YoteAiMark size={31} /> : f.icon === 'feed' ? <YoteFeedMark size={24} /> : <HxIcon name={f.icon} />}
+                  <span>{f.top}<br />{f.bottom}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="hx-cta">
+              <Link className="hx-btn hx-btn-primary" to="/storefront">
+                Start shopping <HxIcon name="arrow" />
               </Link>
-              <Link className="btn btn-outline btn-lg" to="/dashboard">
+              <Link className="hx-btn hx-btn-ghost" to="/dashboard">
                 Become a seller
               </Link>
             </div>
-            <div className="trust">
-              <span>Easy Ordering</span>
-              <span className="dot"></span>
-              <span>Secure Payments</span>
-              <span className="dot"></span>
-              <span>Fast Deliveries</span>
-            </div>
           </div>
-          <div className="hero-art float-a">
-            <img src="/assets/hero-bg.png" alt="YoteMarket delivery in a Kenyan city at golden hour" />
-            <div className="ov"></div>
-            <div className="hero-badge">
-              <span className="mini">
-                <i className="fas fa-store"></i>
-                200+ local stores
-              </span>
-              <span className="mini">
-                <i className="fas fa-comments"></i>
-                Chat in the app
-              </span>
-              <span className="mini">
-                <i className="fas fa-mobile-alt"></i>
-                M-Pesa checkout
-              </span>
-            </div>
+          <div className="hx-art">
+            <img
+              src={dark ? heroArtDark : heroArtLight}
+              width={dark ? 1536 : 906}
+              height={dark ? 1024 : 744}
+              fetchPriority="high"
+              decoding="async"
+              alt="The YoteMarket app open on a phone, with 200+ local stores, an M-Pesa payment confirmation, YoteFeed shoppable videos, the YoteAI assistant and a YoteMarket delivery rider in Nairobi"
+            />
           </div>
         </div>
       </header>
 
-      {/* trust metrics strip */}
-      <div className="trust-strip">
-        <div className="wrap trust-strip-in">
-          <div className="ts"><b>200+</b><span>Local stores</span></div>
-          <div className="ts"><b>47</b><span>Counties served</span></div>
-          <div className="ts"><b>1,200+</b><span>Active merchants</span></div>
-          <div className="ts"><b>M-Pesa</b><span>Instant checkout</span></div>
-        </div>
-      </div>
-
       <section className="pad" id="roles">
         <div className="wrap">
-          <div className="sec-head reveal">
+          <div className="sec-head hx-why reveal">
             <div className="kicker">One platform · every role</div>
             <h2>Whoever you are, there's a place for you</h2>
             <p>

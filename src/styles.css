@@ -599,3 +599,60 @@ h1{font-size:clamp(40px,6vw,68px); letter-spacing:-.02em;}
   background:#f3ecff; border:1px solid #e4d5ff; padding:5px 10px 5px 5px; border-radius:9999px;}
 .ai-chip .dot{width:22px; height:22px; border-radius:7px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px;}
 @media (max-width:860px){ .ai-demo{max-width:none;} }
+
+/* ============ header — brand mockup (Layout.jsx) ============ */
+html:not(.dark){--nav-bg:#F6F4FE;}
+.nav{background:color-mix(in srgb, var(--nav-bg, var(--bg)) 88%, transparent); border-bottom-color:color-mix(in srgb, var(--line) 55%, transparent);}
+.nav .nav-in{max-width:1536px; height:76px; padding:0 clamp(16px,4.95vw,76px); gap:24px;}
+/* The logo slot keeps the mockup's 266px lockup width so the links start where the
+   design puts them (x=478 at 1536px), whatever the logo file's own proportions. */
+.logo-link{display:flex; align-items:center; flex:none; min-width:clamp(0px,17.3vw,266px);}
+.nav .logo{height:50px; width:auto;}
+/* starts 136px after the logo at 1536px (the mockup's spacing), less the row gap */
+.nav .links{gap:33px; margin:0 auto 0 clamp(0px,calc(8.85vw - 24px),112px); font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif;}
+.nav .links a{position:relative; padding:27px 0; font-size:13.75px; font-weight:500; color:#1F1A4D; white-space:nowrap;}
+html.dark .nav .links a{color:var(--t2);}
+.nav .links a:hover, .nav .links a.active-link{color:#6A1FD6;}
+html.dark .nav .links a:hover, html.dark .nav .links a.active-link{color:var(--purple);}
+.nav .links a.active-link{font-weight:600;}
+.nav .links a.active-link::after{content:""; position:absolute; left:0; right:0; bottom:11px; height:3px; border-radius:3px; background:currentColor;}
+.nav .nav-cta{gap:13px;}
+.nav-search, .nav-theme{width:42px; height:42px; display:grid; place-items:center; border:0; border-radius:999px; background:transparent;
+  color:#1F1A4D; cursor:pointer; transition:color .15s, background .15s;}
+.nav-theme{margin-right:6px;}
+.nav-search:hover, .nav-theme:hover{color:#6A1FD6; background:rgba(106,31,214,.08);}
+.nav-search:focus-visible, .nav-theme:focus-visible{outline:3px solid rgba(106,31,214,.35); outline-offset:2px;}
+html.dark .nav-search, html.dark .nav-theme{color:var(--t1);}
+html.dark .nav-search:hover, html.dark .nav-theme:hover{color:var(--purple); background:rgba(185,123,255,.12);}
+.nav-login, .nav-start{display:inline-flex; align-items:center; justify-content:center; height:42px; border-radius:999px;
+  font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif; font-size:15px; font-weight:600; white-space:nowrap;
+  transition:transform .15s, box-shadow .2s, background .15s, color .15s;}
+.nav-login{padding:0 28px; border:1.5px solid #6A1FD6; color:#5414C2; background:transparent;}
+.nav-login:hover{background:rgba(106,31,214,.07);}
+html.dark .nav-login{border-color:var(--purple); color:var(--purple);}
+.nav-start{padding:0 20px; background:linear-gradient(135deg,#5A12C8,#7424DA); color:#fff; box-shadow:0 8px 18px -12px rgba(90,18,200,.7);}
+.nav-start:hover{transform:translateY(-1px); box-shadow:0 14px 26px -12px rgba(90,18,200,.9);}
+.nav-mobile.open{max-height:640px;}
+.nav-mobile-cta{display:flex; gap:10px; margin-top:8px;}
+.nav-mobile-links .nav-mobile-cta a{flex:1; height:46px; padding:0 16px;}
+.nav-mobile-links .nav-mobile-cta .nav-login{color:#5414C2; background:transparent;}
+html.dark .nav-mobile-links .nav-mobile-cta .nav-login{color:var(--purple);}
+.nav-mobile-links .nav-mobile-cta .nav-start, .nav-mobile-links .nav-mobile-cta .nav-start:hover{color:#fff; background:linear-gradient(135deg,#5A12C8,#7424DA);}
+@media (max-width:1360px){
+  .logo-link{min-width:0;}
+  .nav .logo{height:42px;}
+  .nav .links{gap:24px; margin:0 auto;}
+  .nav-theme{margin-right:0;}
+}
+/* Below this the six links + three actions no longer fit on one row. */
+@media (max-width:1180px){
+  .nav .links{display:none;}
+  .nav-burger{display:inline-flex;}
+  .nav-mobile{display:block;}
+}
+@media (max-width:640px){
+  .nav .nav-in{height:64px;}
+  .nav .nav-cta .nav-login, .nav .nav-cta .nav-start{display:none;}
+  .nav .nav-cta{gap:8px;}
+  .nav .logo{height:36px;}
+}
