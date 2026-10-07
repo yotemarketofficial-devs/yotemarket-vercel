@@ -156,7 +156,7 @@ const HERO_FEATURES = [
   { icon: 'mpesa', top: 'M-Pesa', bottom: 'Checkout' },
   { icon: 'chat', top: 'Chat &', bottom: 'Negotiate' },
   { icon: 'pin', top: 'Live', bottom: 'Tracking' },
-  { icon: 'spark', top: 'YoteAI', bottom: 'Assistant' },
+  { icon: 'ai', top: 'YoteAI', bottom: 'Assistant' },
 ];
 
 function HomePage() {
@@ -234,7 +234,8 @@ function HomePage() {
             <ul className="hx-feats">
               {HERO_FEATURES.map((f) => (
                 <li key={f.icon}>
-                  <HxIcon name={f.icon} />
+                  {/* YoteAI gets its brand mark, never a generic icon (see FeatureIcon). */}
+                  {f.icon === 'ai' ? <YoteAiMark size={31} /> : <HxIcon name={f.icon} />}
                   <span>{f.top}<br />{f.bottom}</span>
                 </li>
               ))}
