@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useOutletContext } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
@@ -133,12 +133,6 @@ const HX_ICONS = {
     </>
   ),
   arrow: <path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5" />,
-  phone: (
-    <>
-      <rect x="6" y="2.5" width="12" height="19" rx="2.4" />
-      <path d="M11 18h2" />
-    </>
-  ),
 };
 
 function HxIcon({ name }) {
@@ -209,13 +203,11 @@ function HomePage() {
     return () => clearTimeout(t);
   }, [location.key, location.hash]);
 
-  // Layout owns the theme; the footer carries the switch now the desktop header doesn't.
-  const theme = useOutletContext();
-
   return (
     <main>
-      {/* Hero — built to the brand mockup. The copy, feature row and buttons are live
-          HTML; the right-hand composition (phone, store/M-Pesa/tracking/YoteAI cards,
+      {/* Hero — laid out to the brand mockup, worded in the brand's own voice ("Shop
+          local. Delivered fast."). The copy, feature row and buttons are live HTML;
+          the right-hand composition (phone, store/M-Pesa/tracking/YoteAI cards,
           ribbon, rider, Nairobi skyline) is ONE image cut from that mockup, because
           its pieces overlap each other and the photo too much to rebuild as layers
           without it drifting from the design. Swap the file to update the art. */}
@@ -224,12 +216,12 @@ function HomePage() {
           <div className="hx-copy">
             <span className="hx-eyebrow"><HxIcon name="spark" />Kenya&rsquo;s Virtual Mall</span>
             <h1 className="hx-title">
-              Shop Local.<br />
-              <span>Live Better.</span>
+              Shop local.<br />
+              <span className="g">Delivered</span> fast.
             </h1>
             <p className="hx-lead">
-              Discover 200+ local stores, get your favourite products delivered across 47 counties,
-              and enjoy a seamless shopping experience — all in one place.
+              YoteMarket combines a virtual mall, merchant tools, and last-mile delivery into one ecosystem.
+              Buy, sell, chat &amp; negotiate in the app messenger, and pay with M-Pesa.
             </p>
             <ul className="hx-feats">
               {HERO_FEATURES.map((f) => (
@@ -242,10 +234,10 @@ function HomePage() {
             </ul>
             <div className="hx-cta">
               <Link className="hx-btn hx-btn-primary" to="/storefront">
-                Start Shopping <HxIcon name="arrow" />
+                Start shopping <HxIcon name="arrow" />
               </Link>
-              <Link className="hx-btn hx-btn-ghost" to="/mobile">
-                <HxIcon name="phone" />Download App
+              <Link className="hx-btn hx-btn-ghost" to="/dashboard">
+                Become a seller
               </Link>
             </div>
           </div>
@@ -265,11 +257,10 @@ function HomePage() {
       <section className="pad" id="roles">
         <div className="wrap">
           <div className="sec-head hx-why reveal">
-            <div className="kicker">Why YoteMarket?</div>
-            <h2>Everything you need <span>in one place</span></h2>
+            <div className="kicker">One platform · every role</div>
+            <h2>Whoever you are, there's a place for you</h2>
             <p>
-              From shopping to selling, YoteMarket brings together the best of local business,
-              technology and convenience — built for Kenya.
+              Shoppers, merchants, marketers and riders each get a dedicated space — built on one shared design system.
             </p>
           </div>
           <div className="cards">
@@ -616,14 +607,7 @@ function HomePage() {
                 <a key={s.label} href={s.url} target="_blank" rel="noreferrer" aria-label={s.label}><i className={`fab ${s.icon}`}></i></a>
               ))}
             </div>
-            <div className="foot-actions">
-              {theme && (
-                <button type="button" className="staff-btn" onClick={() => theme.setDark((d) => !d)}>
-                  <i className={theme.dark ? 'fas fa-sun' : 'fas fa-moon'}></i> {theme.dark ? 'Light mode' : 'Dark mode'}
-                </button>
-              )}
-              <Link className="staff-btn" to="/staff"><i className="fas fa-lock"></i> Staff login</Link>
-            </div>
+            <Link className="staff-btn" to="/staff"><i className="fas fa-lock"></i> Staff login</Link>
           </div>
         </div>
       </footer>

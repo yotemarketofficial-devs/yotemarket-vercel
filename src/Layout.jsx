@@ -18,6 +18,22 @@ function NavItem({ item, activeClass }) {
   return <NavLink to={item.path} end={item.end} className={activeClass}>{item.label}</NavLink>;
 }
 
+function ThemeIcon({ dark }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {dark ? (
+        <>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
+        </>
+      ) : (
+        <path d="M20.5 14.1A8.5 8.5 0 1 1 9.9 3.5a6.6 6.6 0 0 0 10.6 10.6z" />
+      )}
+    </svg>
+  );
+}
+
 function SearchIcon() {
   return (
     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -70,6 +86,15 @@ function Layout() {
             <Link to="/storefront" className="nav-search" aria-label="Search the mall" title="Search the mall">
               <SearchIcon />
             </Link>
+            <button
+              type="button"
+              className="nav-theme"
+              onClick={() => setDark((prev) => !prev)}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={dark ? 'Light mode' : 'Dark mode'}
+            >
+              <ThemeIcon dark={dark} />
+            </button>
             {/* The storefront opens to guests and offers sign-in itself. */}
             <Link to="/storefront" className="nav-login">Login</Link>
             <Link to="/storefront" className="nav-start">Get Started</Link>
@@ -88,12 +113,6 @@ function Layout() {
         <div className={`nav-mobile ${menuOpen ? 'open' : ''}`}>
           <nav className="nav-mobile-links" aria-label="Main">
             {navItems.map((item) => <NavItem key={item.path} item={item} activeClass={activeClass} />)}
-            {/* The desktop header has no room for the theme switch (it matches the brand
-                mockup); it lives here and in the homepage footer instead. */}
-            <button type="button" className="nav-mobile-theme" onClick={() => setDark((prev) => !prev)}>
-              <i className={dark ? 'fas fa-sun' : 'fas fa-moon'}></i>
-              {dark ? 'Light mode' : 'Dark mode'}
-            </button>
             <div className="nav-mobile-cta">
               <Link className="nav-login" to="/storefront" onClick={() => setMenuOpen(false)}>Login</Link>
               <Link className="nav-start" to="/storefront" onClick={() => setMenuOpen(false)}>Get Started</Link>
@@ -106,7 +125,7 @@ function Layout() {
         {/* Lazy marketing pages (rider, careers, help) suspend here rather than at the
             app root, so the header and footer stay painted while one loads. */}
         <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
-          <Outlet context={{ dark, setDark }} />
+          <Outlet />
         </Suspense>
       </div>
 

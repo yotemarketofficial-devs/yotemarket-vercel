@@ -248,8 +248,12 @@ YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `public/assets/h
 `.ai-badge` draws it) in place of the mockup's robot on the YoteAI card. Its pieces overlap each other and the photo, so rebuilding
 them as layers would drift from the design. To change the art, replace that file and keep
 the 906:744 ratio, or update `width`/`height` on the `<img>`. A 2× export would sharpen it
-on retina screens. The hero stays light in dark mode on purpose, and the theme switch moved
-from the desktop header into the mobile menu and the homepage footer.
+on retina screens. The hero stays light in dark mode on purpose.
+
+The layout follows the mockup, but **the words are the brand's own**: "Shop local. *Delivered*
+fast." (gradient on "Delivered"), the original lead, "Start shopping" / "Become a seller", and
+"One platform · every role" below. The mockup's copy ("Live Better.", "Download App",
+"Everything you need in one place") was tried and rejected; don't bring it back.
 
 ## Gotchas worth remembering
 

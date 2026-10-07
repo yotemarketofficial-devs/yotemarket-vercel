@@ -25,10 +25,12 @@
 .hx-eyebrow svg{width:18px; height:18px; flex:none;}
 
 .hx-title{
-  margin:8px 0 0; font-size:clamp(44px,5.47vw,84px); line-height:1; font-weight:700; letter-spacing:-.035em;
+  margin:8px 0 0; font-size:clamp(44px,5.3vw,81px); line-height:1; font-weight:700; letter-spacing:-.035em;
   color:var(--hx-ink);
 }
-.hx-title span{color:var(--hx-purple);}
+/* "Delivered" keeps the brand gradient (the global .g); the hero is always light, so pin
+   the light-theme stops rather than letting dark mode's lighter purple in. */
+.hx{--purple:#7C2BD4; --gold-bright:#F4B530;}
 
 .hx-lead{margin:26px 0 0; max-width:510px; font-size:clamp(16px,1.27vw,19.5px); line-height:1.6; font-weight:400; color:var(--hx-text);}
 
@@ -53,7 +55,7 @@
 .hx-btn-primary:hover{transform:translateY(-2px); box-shadow:0 20px 36px -14px rgba(90,18,200,.85);}
 .hx-btn-primary:hover svg{transform:translateX(3px);}
 .hx-btn-primary svg{transition:transform .2s;}
-.hx-btn-ghost{padding:0 21px; gap:10px; border:1.5px solid var(--hx-purple); color:#4F14BC; background:rgba(255,255,255,.55);}
+.hx-btn-ghost{padding:0 30px; border:1.5px solid var(--hx-purple); color:#4F14BC; background:rgba(255,255,255,.55);}
 .hx-btn-ghost:hover{background:#fff; transform:translateY(-2px);}
 .hx-btn:focus-visible{outline:3px solid rgba(106,31,214,.35); outline-offset:3px;}
 
@@ -114,12 +116,10 @@ html:not(.dark) #roles{background:#F6F4FE;}
 .sec-head.hx-why{max-width:720px; margin-bottom:44px; font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif;}
 .sec-head.hx-why .kicker{font-size:15px; letter-spacing:.12em; font-weight:700;}
 html:not(.dark) .sec-head.hx-why .kicker{background:none; -webkit-text-fill-color:#5414C2; color:#5414C2;}
-.sec-head.hx-why h2{font-size:clamp(30px,2.8vw,43px); font-weight:800; letter-spacing:-.03em; line-height:1.15; margin:8px 0 0; color:var(--t1);}
+.sec-head.hx-why h2{font-size:clamp(30px,2.8vw,43px); font-weight:800; letter-spacing:-.03em; line-height:1.15; margin:8px 0 0; color:var(--t1); text-wrap:balance;}
 html:not(.dark) .sec-head.hx-why h2{color:#15114A;}
 .sec-head.hx-why h2 span{color:var(--purple);}
 html:not(.dark) .sec-head.hx-why h2 span{color:#6A1FD6;}
 .sec-head.hx-why p{font-size:17px; line-height:1.75; margin:12px auto 0; max-width:640px;}
 html:not(.dark) .sec-head.hx-why p{color:#24204D;}
 
-.foot-actions{display:flex; gap:10px; flex-wrap:wrap;}
-button.staff-btn{font-family:inherit; cursor:pointer;}
