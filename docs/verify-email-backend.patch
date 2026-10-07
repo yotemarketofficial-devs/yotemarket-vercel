@@ -1,8 +1,8 @@
 diff --git a/firebase/functions/email.js b/firebase/functions/email.js
-index 131e45c..a102503 100644
+index 131e45c..008bf75 100644
 --- a/firebase/functions/email.js
 +++ b/firebase/functions/email.js
-@@ -138,14 +138,25 @@ function renderAuthEmail({kind, actionUrl, name} = {}) {
+@@ -138,15 +138,29 @@ function renderAuthEmail({kind, actionUrl, name} = {}) {
   */
  async function sendViaResend({apiKey, from, to, subject, html, text, replyTo}) {
    if (!apiKey) throw new Error("RESEND_API_KEY is not set");
@@ -14,12 +14,14 @@ index 131e45c..a102503 100644
 -      ...(replyTo ? {reply_to: replyTo} : {}),
 -    }),
 -  });
+-  const body = await res.json().catch(() => ({}));
 +  // Never wait on the provider for longer than this. Without it a stalled connection held
 +  // the call open until the function itself was killed, mid-batch, with nothing reported.
 +  // An abort here is NOT proof the mail didn't go — callers that care treat it as unknown.
 +  const ctl = new AbortController();
 +  const timer = setTimeout(() => ctl.abort(), 15000);
 +  let res;
++  let body;
 +  try {
 +    res = await fetch("https://api.resend.com/emails", {
 +      method: "POST",
@@ -30,12 +32,15 @@ index 131e45c..a102503 100644
 +      }),
 +      signal: ctl.signal,
 +    });
++    // Inside the deadline too: headers can arrive and the body stall. A body that can't
++    // be read is not a failure — the status line already said whether it was accepted.
++    body = await res.json().catch(() => ({}));
 +  } finally {
 +    clearTimeout(timer);
 +  }
-   const body = await res.json().catch(() => ({}));
    if (!res.ok) {
      // Surface Resend's own message — "domain not verified" is the failure people hit.
+     throw new Error(`resend ${res.status}: ${body && body.message ? body.message : "send failed"}`);
 diff --git a/firebase/functions/exports.snapshot.json b/firebase/functions/exports.snapshot.json
 index c72f87b..395e288 100644
 --- a/firebase/functions/exports.snapshot.json
@@ -49,7 +54,7 @@ index c72f87b..395e288 100644
    "staffSetComplianceFlags",
    "staffSetEmployeeDetails",
 diff --git a/firebase/functions/index.js b/firebase/functions/index.js
-index 2d6a794..345c149 100644
+index 2d6a794..9ae6d99 100644
 --- a/firebase/functions/index.js
 +++ b/firebase/functions/index.js
 @@ -9843,7 +9843,9 @@ exports.staffListUsers = onCall({region: REGION}, async (request) => {
@@ -63,9 +68,45 @@ index 2d6a794..345c149 100644
    } catch (e) {
      // Fallback: build from Firestore (merchants/staff/riders + user profiles) when
      // the runtime service account can't list Auth users. Enough to run payouts +
-@@ -16136,6 +16138,13 @@ async function deliverAuthEmail(kind, email, name) {
-     ...(replyTo ? {replyTo} : {}),
-   });
+@@ -16118,6 +16120,11 @@ async function throttleAuthEmail(email, kind, maxPerHour) {
+   await db.collection("auth_emails").add({
+     email, kind, createdAt: FV.serverTimestamp(),
+   }).catch(() => null); // logging must not block the send
++  // The person asked for a verification mail. Whatever happens next — ours goes, or the
++  // app falls back to Firebase's own — staff shouldn't add another today.
++  if (kind === "verify") {
++    await verifyMarkerRef(email).set({kind: "verify-marker", requestedAt: FV.serverTimestamp()}, {merge: true}).catch(() => {});
++  }
+ }
+ 
+ /** Build the link, render it and hand it to Resend. Shared by both callables. */
+@@ -16129,13 +16136,31 @@ async function deliverAuthEmail(kind, email, name) {
+ 
+   const {subject, html, text} = renderAuthEmail({kind, actionUrl, name});
+   const replyTo = EMAIL_REPLY_TO.value() || "";
+-  const res = await sendViaResend({
+-    apiKey: RESEND_API_KEY.value(),
+-    from: EMAIL_FROM.value(),
+-    to: email, subject, html, text,
+-    ...(replyTo ? {replyTo} : {}),
+-  });
++  let res;
++  try {
++    res = await sendViaResend({
++      apiKey: RESEND_API_KEY.value(),
++      from: EMAIL_FROM.value(),
++      to: email, subject, html, text,
++      ...(replyTo ? {replyTo} : {}),
++    });
++  } catch (e) {
++    // A verify send that may have gone (dropped connection, timeout, 5xx) rests the
++    // address for a day, self-service or staff, so a staff send can't add a second mail.
++    if (kind === "verify" && !verifyLib.definitelyNotSent(e)) {
++      await verifyMarkerRef(email).set({kind: "verify-marker", unconfirmedAt: FV.serverTimestamp(), pendingUntil: null}, {merge: true})
++          .catch(() => {});
++    }
++    throw e;
++  }
    logger.info(`[email] ${kind} sent to ${email} (${res.id || "no id"})`);
 +  // Record that a verification mail WENT to this address — self-service or staff — so
 +  // staffSendVerificationEmails can tell with one keyed read. Best effort: a failed stamp
@@ -77,7 +118,7 @@ index 2d6a794..345c149 100644
    return res;
  }
  
-@@ -16171,3 +16180,158 @@ exports.sendPasswordResetEmail = onCall({region: REGION, secrets: [RESEND_API_KE
+@@ -16171,3 +16196,173 @@ exports.sendPasswordResetEmail = onCall({region: REGION, secrets: [RESEND_API_KE
    }
    return {ok: true};
  });
@@ -101,16 +142,19 @@ index 2d6a794..345c149 100644
 +}
 +
 +/** Lease the address for one staff send. A transaction, so two admins can't both send.
-+ *  Returns null when it may go, or the reason it may not (recently_sent | in_progress). */
++ *  Returns null when it may go, or why not (see markerDecision in verify.js). */
 +async function leaseVerifySend(email, byUid) {
 +  const ref = verifyMarkerRef(email);
 +  return db.runTransaction(async (tx) => {
 +    const snap = await tx.get(ref);
 +    const d = snap.exists ? snap.data() : {};
 +    const now = Date.now();
-+    const why = verifyLib.markerDecision({at: msOf(d.at) || 0, pendingUntil: Number(d.pendingUntil) || 0}, now);
++    const why = verifyLib.markerDecision({
++      at: msOf(d.at) || 0, unconfirmedAt: msOf(d.unconfirmedAt) || 0, requestedAt: msOf(d.requestedAt) || 0,
++      pendingUntil: Number(d.pendingUntil) || 0, leasedAt: Number(d.leasedAt) || 0,
++    }, now);
 +    if (why) return why;
-+    tx.set(ref, {kind: "verify-marker", pendingUntil: now + verifyLib.VERIFY_LEASE_MS, by: byUid || null}, {merge: true});
++    tx.set(ref, {kind: "verify-marker", pendingUntil: now + verifyLib.VERIFY_LEASE_MS, leasedAt: now, by: byUid || null}, {merge: true});
 +    return null;
 +  });
 +}
@@ -162,7 +206,9 @@ index 2d6a794..345c149 100644
 +      }
 +      const releaseRun = await leaseVerifyRun(request.auth.uid);
 +      if (!releaseRun) {
-+        throw new HttpsError("aborted", "Another admin is sending verification emails right now. Try again in a minute.");
++        // Neutral on purpose: the holder may be another admin, another tab, or this admin's
++        // own previous call that died — the lease can't tell, so the message doesn't guess.
++        throw new HttpsError("aborted", "A verification send is already running. Try again in a couple of minutes.");
 +      }
 +
 +      const started = Date.now();
@@ -185,10 +231,15 @@ index 2d6a794..345c149 100644
 +          if (skip) { results.push({uid, outcome: skip}); continue; }
 +          const email = user.email;
 +
-+          // Sends logged before the marker existed. Secondary — the marker is the rule.
-+          const logSnap = await db.collection("auth_emails").where("email", "==", email).limit(25).get().catch(() => null);
-+          const rows = logSnap ? logSnap.docs.map((d) => ({kind: d.data().kind, at: msOf(d.data().createdAt)})) : [];
-+          if (verifyLib.sentRecently(rows, Date.now())) { results.push({uid, outcome: "recently_sent"}); continue; }
++          // Requests logged before the marker existed (it covers everything since). A
++          // sample, so it can only add skips — and if it can't be read, nothing is sent.
++          let logSnap;
++          try { logSnap = await db.collection("auth_emails").where("email", "==", email).limit(25).get(); } catch (e) {
++            results.push({uid, outcome: "failed", error: "could not check recent sends — try again"});
++            continue;
++          }
++          const rows = logSnap.docs.map((d) => ({kind: d.data().kind, at: msOf(d.data().createdAt)}));
++          if (verifyLib.sentRecently(rows, Date.now())) { results.push({uid, outcome: "recently_requested"}); continue; }
 +
 +          let held;
 +          try { held = await leaseVerifySend(email, request.auth.uid); } catch (e) {
@@ -201,7 +252,9 @@ index 2d6a794..345c149 100644
 +          if (wait > 0) await pause(wait);
 +          try {
 +            try { await deliverAuthEmail("verify", email, user.displayName || null); } catch (e) {
-+              if (!verifyLib.isRateLimited(e)) throw e;
++              // One retry on a 429, and only while the budget lasts — a second full send
++              // past it could push the call beyond the function timeout.
++              if (!verifyLib.isRateLimited(e) || Date.now() - started > verifyLib.VERIFY_CALL_BUDGET_MS) throw e;
 +              await pause(1100);
 +              await deliverAuthEmail("verify", email, user.displayName || null);
 +            }
@@ -217,8 +270,10 @@ index 2d6a794..345c149 100644
 +              await verifyMarkerRef(email).set({pendingUntil: null}, {merge: true}).catch(() => {});
 +              results.push({uid, outcome: "failed", error});
 +            } else {
-+              // It may have gone. Count it as sent for the window so nobody gets two.
-+              await verifyMarkerRef(email).set({at: FV.serverTimestamp(), pendingUntil: null}, {merge: true}).catch(() => {});
++              // It may have gone. deliverAuthEmail recorded it as unconfirmed (not as sent),
++              // which rests the address for the window; restated here in case that write
++              // failed, since nobody may get two.
++              await verifyMarkerRef(email).set({unconfirmedAt: FV.serverTimestamp(), pendingUntil: null}, {merge: true}).catch(() => {});
 +              results.push({uid, outcome: "unknown", error});
 +            }
 +          } finally {
@@ -231,17 +286,18 @@ index 2d6a794..345c149 100644
 +
 +      const totals = verifyLib.summarise(results);
 +      const sentUids = results.filter((r) => r.outcome === "sent").map((r) => r.uid);
++      const unknownUids = results.filter((r) => r.outcome === "unknown").map((r) => r.uid);
 +      await logAudit(request, "user.verify_email",
 +          {type: "user", id: uids.length === 1 ? uids[0] : "bulk", label: uids.length === 1 ? uids[0] : `${uids.length} accounts`},
-+          {...totals, sentUids, notAttempted: notAttempted.length});
++          {...totals, sentUids, unknownUids, notAttempted: notAttempted.length});
 +      return {results, ...totals, notAttempted};
 +    });
 diff --git a/firebase/functions/verify.js b/firebase/functions/verify.js
 new file mode 100644
-index 0000000..8297f14
+index 0000000..e168f59
 --- /dev/null
 +++ b/firebase/functions/verify.js
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,177 @@
 +/* Staff-sent email verification — the decisions, kept pure so they can be unit-tested
 + * (tests/verify.test.js). index.js does the I/O: Auth lookups, the send, the audit row.
 + *
@@ -272,17 +328,23 @@ index 0000000..8297f14
 + *  send, short enough that an instance killed mid-send doesn't lock the address for a day. */
 +const VERIFY_LEASE_MS = 3 * 60 * 1000;
 +
-+/** Stop taking new accounts once a call has run this long, and hand the rest back. Keeps
-+ *  every call well inside the 120 s function timeout and the console's own wait. */
-+const VERIFY_CALL_BUDGET_MS = 55 * 1000;
++/** Stop taking new accounts once a call has run this long, and hand the rest back. One
++ *  account can still take ~66 s at worst (getUser and the link at firebase-admin's 25 s
++ *  each, the pace, Resend's 15 s), so 40 s keeps every call inside the 120 s function
++ *  timeout — and a 429 is only retried while the budget lasts. */
++const VERIFY_CALL_BUDGET_MS = 40 * 1000;
 +
 +/** One bulk send at a time across all admins and tabs, so runs can't stack up against
-+ *  the provider's rate limit. Expires by itself if an instance dies holding it. */
-+const VERIFY_RUN_LEASE_MS = 90 * 1000;
++ *  the provider's rate limit. Longer than the 120 s function timeout, so a live call
++ *  always still holds it; expires by itself if an instance dies holding it. */
++const VERIFY_RUN_LEASE_MS = 130 * 1000;
 +
-+/** Per-account outcomes. Only `sent`, `failed` and `unknown` involve a send attempt. */
++/** Per-account outcomes. Only `sent`, `failed` and `unknown` involve a send attempt.
++ *  The three `recently_*` say WHY an address is resting, because they mean different things
++ *  to the person reading them: a mail that went, one that may have gone, or one the person
++ *  asked for themselves. */
 +const VERIFY_OUTCOMES = ["sent", "failed", "unknown", "already_verified", "no_email", "disabled",
-+  "new_account", "recently_sent", "in_progress", "not_found"];
++  "new_account", "recently_sent", "recently_unconfirmed", "recently_requested", "in_progress", "not_found"];
 +
 +/**
 + * The uids to process: trimmed, de-duplicated, non-empty. Throws a plain Error with a
@@ -322,20 +384,33 @@ index 0000000..8297f14
 +}
 +
 +/**
-+ * Read an address's marker ({at, pendingUntil}, epoch ms or null) and say whether a staff
-+ * send may go now. `recently_sent` only ever comes from a send that WENT (`at`); a staff
-+ * send still in flight — or one whose instance died — is `in_progress`, which expires on
-+ * its own, so nobody is told an email went when it didn't.
-+ * @param {{at?: number|null, pendingUntil?: number|null}|null} marker
++ * Read an address's marker and say whether a staff send may go now. Fields are epoch ms
++ * (or null):
++ *   at             — a verification mail that WENT (stamped after Resend accepted it)
++ *   unconfirmedAt  — a send that may have gone (the connection dropped, or Resend timed out)
++ *   requestedAt    — the person asked for one themselves (self-service, any outcome — the
++ *                    apps fall back to Firebase's own mail if ours fails)
++ *   pendingUntil / leasedAt — a staff send in flight. Every send that FINISHES clears
++ *                    pendingUntil; one still set after it expired belongs to a send whose
++ *                    instance died mid-way, which may have gone — so it rests the address
++ *                    for a day from when it started, and says it couldn't be confirmed.
++ * Only `at` ever yields recently_sent, so nobody is told a mail went when it may not have.
++ * @param {object|null} marker
 + * @param {number} now
-+ * @return {null|"recently_sent"|"in_progress"}
++ * @return {null|"recently_sent"|"recently_unconfirmed"|"recently_requested"|"in_progress"}
 + */
 +function markerDecision(marker, now) {
 +  const m = marker || {};
-+  const at = Number(m.at) || 0;
-+  if (at && now - at < VERIFY_RESEND_GAP_MS) return "recently_sent";
++  const within = (t) => {
++    const v = Number(t) || 0;
++    return v > 0 && now - v < VERIFY_RESEND_GAP_MS;
++  };
++  if (within(m.at)) return "recently_sent";
++  if (within(m.unconfirmedAt)) return "recently_unconfirmed";
++  if (within(m.requestedAt)) return "recently_requested";
 +  const pending = Number(m.pendingUntil) || 0;
 +  if (pending > now) return "in_progress";
++  if (pending && within(m.leasedAt)) return "recently_unconfirmed";   // abandoned mid-send
 +  return null;
 +}
 +
@@ -353,19 +428,30 @@ index 0000000..8297f14
 +  return (rows || []).some((r) => r && r.kind === "verify" && Number(r.at) > cutoff);
 +}
 +
++/** Network failures that mean the request never reached Resend at all. */
++const NEVER_CONNECTED = new Set(["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT"]);
++
 +/**
-+ * Did a failed send definitely NOT go out? True for anything that failed before or at the
-+ * provider's door: an HTTP refusal from Resend ("resend 4xx/5xx: …", from sendViaResend),
-+ * a missing API key, or an Auth error while generating the link. Anything else — a dropped
-+ * connection, a timeout waiting for the answer — may have been delivered, and is treated
-+ * as `unknown` so it is never re-sent inside the window.
++ * Did a failed send definitely NOT go out?
++ *   yes — Resend answered 4xx (it refused it), the API key is missing, generating the link
++ *         failed (an `auth/` or `app/` error from firebase-admin, which runs before the
++ *         send), or the connection was never made (DNS, refused, connect timeout — undici
++ *         puts these on `err.cause`).
++ *   no  — anything else: a 5xx (a gateway that gave up may have passed it on), a dropped
++ *         connection, a timeout after connecting. Those are `unknown`, and rest the address
++ *         for a day so nobody gets two.
 + * @param {*} err
 + * @return {boolean}
 + */
 +function definitelyNotSent(err) {
-+  const msg = String((err && err.message) || "");
-+  const code = String((err && err.code) || "");
-+  return /^resend \d{3}\b/.test(msg) || /RESEND_API_KEY is not set/.test(msg) || code.startsWith("auth/");
++  if (!err) return false;
++  const msg = String(err.message || "");
++  const code = String(err.code || "");
++  const cause = String((err.cause && err.cause.code) || "");
++  if (/^resend 4\d\d\b/.test(msg)) return true;
++  if (/RESEND_API_KEY is not set/.test(msg)) return true;
++  if (code.startsWith("auth/") || code.startsWith("app/")) return true;
++  return NEVER_CONNECTED.has(code) || NEVER_CONNECTED.has(cause);
 +}
 +
 +/** Totals for the console. */
@@ -391,10 +477,10 @@ index 0000000..8297f14
 +};
 diff --git a/firebase/tests/verify.test.js b/firebase/tests/verify.test.js
 new file mode 100644
-index 0000000..d114a95
+index 0000000..6c839eb
 --- /dev/null
 +++ b/firebase/tests/verify.test.js
-@@ -0,0 +1,153 @@
+@@ -0,0 +1,186 @@
 +/**
 + * verify.test.js — the decisions behind staff-sent email verification.
 + *
@@ -481,18 +567,31 @@ index 0000000..d114a95
 +    expect(markerDecision({at: NOW - VERIFY_RESEND_GAP_MS - 1}, NOW)).toBeNull();
 +  });
 +
++  it("keeps a send that may have gone apart from one that went", () => {
++    // Both rest the address; only one may be described to an admin as "sent".
++    expect(markerDecision({unconfirmedAt: NOW - 3600e3}, NOW)).toBe("recently_unconfirmed");
++    expect(markerDecision({unconfirmedAt: NOW - VERIFY_RESEND_GAP_MS - 1}, NOW)).toBeNull();
++  });
++
++  it("rests the address when the person asked for one themselves", () => {
++    expect(markerDecision({requestedAt: NOW - 60e3}, NOW)).toBe("recently_requested");
++  });
++
 +  it("calls a staff send still in flight in_progress — never 'sent'", () => {
-+    expect(markerDecision({pendingUntil: NOW + 1000}, NOW)).toBe("in_progress");
++    expect(markerDecision({pendingUntil: NOW + 1000, leasedAt: NOW - 1000}, NOW)).toBe("in_progress");
 +  });
 +
-+  it("lets an abandoned lease expire instead of locking the address for a day", () => {
-+    // An instance killed mid-send never clears its lease; it must not read as a send.
-+    expect(markerDecision({pendingUntil: NOW - 1}, NOW)).toBeNull();
-+    expect(VERIFY_LEASE_MS).toBeLessThan(10 * 60 * 1000);
++  it("treats a lease nobody finished as a send that may have gone, for a day from its start", () => {
++    // Every finished send clears pendingUntil, so one still set after expiry means the
++    // instance died mid-send — maybe after Resend accepted it.
++    expect(markerDecision({pendingUntil: NOW - 1, leasedAt: NOW - VERIFY_LEASE_MS - 1}, NOW)).toBe("recently_unconfirmed");
++    expect(markerDecision({pendingUntil: NOW - 1, leasedAt: NOW - VERIFY_RESEND_GAP_MS - 1}, NOW)).toBeNull();
++    expect(markerDecision({pendingUntil: null, leasedAt: NOW - 60e3}, NOW)).toBeNull();   // finished cleanly
 +  });
 +
-+  it("prefers 'sent' to 'in progress' when both are recorded", () => {
-+    expect(markerDecision({at: NOW - 60e3, pendingUntil: NOW + 60e3}, NOW)).toBe("recently_sent");
++  it("names the strongest reason when several apply", () => {
++    expect(markerDecision({at: NOW - 60e3, unconfirmedAt: NOW - 60e3, requestedAt: NOW - 60e3}, NOW)).toBe("recently_sent");
++    expect(markerDecision({unconfirmedAt: NOW - 60e3, requestedAt: NOW - 60e3}, NOW)).toBe("recently_unconfirmed");
 +  });
 +});
 +
@@ -513,14 +612,33 @@ index 0000000..d114a95
 +});
 +
 +describe("definitelyNotSent — failed, or maybe delivered?", () => {
-+  it("is sure for a refusal from Resend, a missing key, or a link that couldn't be made", () => {
++  const withCause = (code) => Object.assign(new TypeError("fetch failed"), {cause: {code}});
++
++  it("is sure when Resend refused it with a 4xx", () => {
 +    expect(definitelyNotSent(new Error("resend 403: domain is not verified"))).toBe(true);
++    expect(definitelyNotSent(new Error("resend 422: invalid to"))).toBe(true);
 +    expect(definitelyNotSent(new Error("resend 429: Too many requests"))).toBe(true);
-+    expect(definitelyNotSent(new Error("RESEND_API_KEY is not set"))).toBe(true);
-+    expect(definitelyNotSent(Object.assign(new Error("x"), {code: "auth/user-not-found"}))).toBe(true);
 +  });
 +
-+  it("is NOT sure for a dropped connection or a timeout — the mail may have gone", () => {
++  it("is NOT sure for a 5xx — a gateway that gave up may have passed it on", () => {
++    for (const s of [500, 502, 503, 504]) expect(definitelyNotSent(new Error(`resend ${s}: send failed`)), String(s)).toBe(false);
++  });
++
++  it("is sure when nothing could have left: no key, or the link failed before the send", () => {
++    expect(definitelyNotSent(new Error("RESEND_API_KEY is not set"))).toBe(true);
++    expect(definitelyNotSent(Object.assign(new Error("x"), {code: "auth/user-not-found"}))).toBe(true);
++    expect(definitelyNotSent(Object.assign(new Error("x"), {code: "app/network-timeout"}))).toBe(true);
++  });
++
++  it("is sure when the connection was never made", () => {
++    for (const c of ["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "UND_ERR_CONNECT_TIMEOUT"]) {
++      expect(definitelyNotSent(withCause(c)), c).toBe(true);
++    }
++  });
++
++  it("is NOT sure once the request may have been sent", () => {
++    expect(definitelyNotSent(withCause("ECONNRESET"))).toBe(false);
++    expect(definitelyNotSent(withCause("UND_ERR_SOCKET"))).toBe(false);
 +    expect(definitelyNotSent(new TypeError("fetch failed"))).toBe(false);
 +    expect(definitelyNotSent(Object.assign(new Error("This operation was aborted"), {name: "AbortError"}))).toBe(false);
 +    expect(definitelyNotSent(null)).toBe(false);
@@ -531,8 +649,9 @@ index 0000000..d114a95
 +  it("separates sent, failed, unknown and deliberately skipped", () => {
 +    expect(summarise([
 +      {outcome: "sent"}, {outcome: "sent"}, {outcome: "failed"}, {outcome: "unknown"},
-+      {outcome: "recently_sent"}, {outcome: "in_progress"}, {outcome: "new_account"}, {outcome: "no_email"},
-+    ])).toEqual({sent: 2, failed: 1, unknown: 1, skipped: 4});
++      {outcome: "recently_sent"}, {outcome: "recently_unconfirmed"}, {outcome: "recently_requested"},
++      {outcome: "in_progress"}, {outcome: "new_account"}, {outcome: "no_email"},
++    ])).toEqual({sent: 2, failed: 1, unknown: 1, skipped: 6});
 +  });
 +});
 +

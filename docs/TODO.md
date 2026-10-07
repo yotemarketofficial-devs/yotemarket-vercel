@@ -168,8 +168,8 @@ console's "Email" buttons opened the agent's own mail app with nothing logged.
 - [ ] **`[fn]` Apply and deploy [`verify-email-backend.patch`](./verify-email-backend.patch).**
   **needs-credentials** (deploy). Adds `staffSendVerificationEmails`: admin only, sends only to
   the address on the Auth record, never twice to one address within 24 h (a per-address
-  marker that every verify send stamps), one run at a time, paced for Resend, and hands back
-  whatever it ran out of time for. Also adds `truncated` to `staffListUsers` and a 15 s
+  marker that every send path stamps, recording whether a send went, may have gone, or was
+  requested), one run at a time, paced for Resend, and hands back whatever it ran out of time for. Also adds `truncated` to `staffListUsers` and a 15 s
   timeout to Resend calls. Independent of `comms-backend.patch`, in either order. Steps and checks:
   [`verify-email-backend.md`](./verify-email-backend.md).
   **Done when:** the drawer button on a test account reports *sent* and the email arrives,

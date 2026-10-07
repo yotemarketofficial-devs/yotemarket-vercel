@@ -47,7 +47,15 @@ async function runVerification(uids) {
   while (queue.length) {
     const batch = queue.shift();
     try {
-      const r = await sendVerificationEmails(batch);
+      // The run lease is per call. If it's held for a moment (a single send from a
+      // drawer, a call just finishing) wait and retry rather than abandoning the run.
+      let r;
+      for (let attempt = 0; ; attempt++) {
+        try { r = await sendVerificationEmails(batch); break; } catch (e) {
+          if (!/aborted/.test(String((e && e.code) || '')) || attempt >= 3) throw e;
+          await new Promise((res) => setTimeout(res, 5000));
+        }
+      }
       results.push(...((r && r.results) || []));
       const back = (r && Array.isArray(r.notAttempted)) ? r.notAttempted : [];
       if (back.length) queue.unshift(...chunk(back));
@@ -157,7 +165,9 @@ export function Accounts(){
           {source === 'auth' && (
             <Btn kind="soft" size="md" icon={run.running ? 'spinner' : 'envelope-circle-check'} onClick={sendAllVerification}
               disabled={loading || run.running || !unverified.length}
-              title={run.running ? 'A send is already running' : unverified.length ? 'Email every unverified account a link to confirm their address' : 'Every account with an email address is verified'}>
+              title={run.running ? 'A send is already running'
+                : truncated ? `Covers only the first ${users.length.toLocaleString()} accounts listed — Auth has more`
+                : unverified.length ? 'Email every unverified account a link to confirm their address' : 'Every listed account with an email address is verified'}>
               {run.running ? `Sending… ${run.done}/${run.total}` : `Send verification emails (${unverified.length})`}
             </Btn>
           )}
@@ -322,6 +332,7 @@ function UserConsole({ row, onClose, onChanged }){
   // One account's own "send verification email". Same callable as the bulk button, so
   // the same server-side checks; the toast says what the server actually did.
   const canVerify = !auth.error && auth.verified === false && !!auth.email && !disabled;
+  const runningAll = useVerifyRun().running;   // the server runs one send at a time
   const sendVerification = async () => {
     const who = auth.email || p.email || uid;
     if (!await confirm({ title: `Email ${who} a link to confirm their address?`, icon: 'envelope-circle-check',
@@ -334,8 +345,10 @@ function UserConsole({ row, onClose, onChanged }){
       switch (out.outcome) {
         case 'sent': toast({ tone:'ok', title:`Verification email sent to ${who}.` }); break;
         case 'recently_sent': toast({ tone:'info', title:`Not sent — ${who} was sent one in the last 24 hours.` }); break;
+        case 'recently_requested': toast({ tone:'info', title:`Not sent — ${who} asked for one themselves in the last 24 hours.` }); break;
+        case 'recently_unconfirmed': toast({ tone:'info', title:`Not sent — a send to ${who} in the last 24 hours couldn’t be confirmed, so it won’t be repeated until a day has passed.` }); break;
         case 'new_account': toast({ tone:'info', title:`Not sent — ${who} signed up in the last day, so their sign-up email is still fresh.` }); break;
-        case 'in_progress': toast({ tone:'info', title:`Not sent — another admin is sending ${who} one right now.` }); break;
+        case 'in_progress': toast({ tone:'info', title:`Not sent — a send to ${who} is still in progress. Try again in a few minutes.` }); break;
         case 'unknown': toast({ tone:'info', title:`Couldn’t confirm the email went${why} — it may have. ${who} won’t be emailed again for 24 hours.` }); break;
         case 'failed': toast({ tone:'error', title:`The email didn’t go${out.error ? `: ${out.error}` : '.'}` }); break;
         case 'already_verified':
@@ -357,7 +370,8 @@ function UserConsole({ row, onClose, onChanged }){
         <div className="flex items-center gap-2 flex-wrap w-full">
           {d && <>
             <Btn kind={disabled?'success':'danger'} size="sm" icon={disabled?'unlock':'ban'} onClick={toggleDisable} disabled={busy==='disable'}>{disabled?'Enable sign-in':'Disable'}</Btn>
-            {canVerify && <Btn kind="soft" size="sm" icon={busy==='verify'?'spinner':'envelope-circle-check'} onClick={sendVerification} disabled={busy==='verify'} title="Email them a fresh link to confirm their address">Send verification email</Btn>}
+            {canVerify && <Btn kind="soft" size="sm" icon={busy==='verify'?'spinner':'envelope-circle-check'} onClick={sendVerification} disabled={busy==='verify' || runningAll}
+              title={runningAll ? 'Wait for the bulk send to finish — one send runs at a time' : 'Email them a fresh link to confirm their address'}>Send verification email</Btn>}
             <Btn kind="soft" size="sm" icon={busy==='reset'?'spinner':'key'} onClick={resetPassword} disabled={busy==='reset'}>Reset password</Btn>
             <Btn kind="soft" size="sm" icon={busy==='revoke'?'spinner':'right-from-bracket'} onClick={forceSignOut} disabled={busy==='revoke'} title="Revoke all sessions">Sign out</Btn>
             {!isStaff && <Btn kind="soft" size="sm" icon="user-shield" onClick={()=>changeRole('moderator')} disabled={busy==='role'}>Make staff</Btn>}

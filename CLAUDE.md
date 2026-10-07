@@ -11,7 +11,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 313 tests, all passing as of 2026-10-06
+npm test           # vitest — 316 tests, all passing as of 2026-10-07
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 

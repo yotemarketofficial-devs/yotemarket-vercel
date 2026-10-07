@@ -27,7 +27,7 @@ export function chunk(list, size = VERIFY_BATCH) {
  *  `lost` counts accounts whose request failed outright, so their outcome is unknown;
  *  `notAttempted` counts accounts never sent to the server. */
 export function tally(results, { lost = 0, notAttempted = 0 } = {}) {
-  const t = { sent: 0, failed: 0, unknown: 0, recent: 0, newAcct: 0, busy: 0, verified: 0, other: 0, lost, notAttempted, firstError: '' };
+  const t = { sent: 0, failed: 0, unknown: 0, recent: 0, unconfirmed: 0, requested: 0, newAcct: 0, busy: 0, verified: 0, other: 0, lost, notAttempted, firstError: '' };
   (results || []).forEach((r) => {
     if (!r) return;
     switch (r.outcome) {
@@ -35,6 +35,8 @@ export function tally(results, { lost = 0, notAttempted = 0 } = {}) {
       case 'failed': t.failed++; if (!t.firstError && r.error) t.firstError = r.error; break;
       case 'unknown': t.unknown++; break;
       case 'recently_sent': t.recent++; break;
+      case 'recently_unconfirmed': t.unconfirmed++; break;
+      case 'recently_requested': t.requested++; break;
       case 'new_account': t.newAcct++; break;
       case 'in_progress': t.busy++; break;
       case 'already_verified': t.verified++; break;
@@ -47,14 +49,18 @@ export function tally(results, { lost = 0, notAttempted = 0 } = {}) {
 const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
 const was = (k) => (k === 1 ? 'was' : 'were');
 
-/** The summary for the console. Nothing reads as sent unless the server said `sent`;
- *  "may have gone" and "we don't know" are said as such. */
+/** The summary for the console. Nothing reads as sent unless the server said `sent`, and
+ *  each reason an address is resting is said as what it is: a mail that went, one that may
+ *  have gone, or one the person asked for themselves. */
 export function describeTally(t) {
   const parts = [];
-  parts.push(t.sent ? `Sent ${n(t.sent, 'verification email', 'verification emails')}.` : 'No verification emails were sent.');
-  if (t.recent) parts.push(`${n(t.recent, 'account', 'accounts')} ${was(t.recent)} skipped — already sent one in the last 24 hours.`);
+  if (t.sent) parts.push(`Sent ${n(t.sent, 'verification email', 'verification emails')}.`);
+  else parts.push(t.unknown || t.lost ? 'No verification emails were confirmed sent.' : 'No verification emails were sent.');
+  if (t.recent) parts.push(`${n(t.recent, 'account', 'accounts')} ${was(t.recent)} skipped — sent one in the last 24 hours.`);
+  if (t.requested) parts.push(`${n(t.requested, 'account', 'accounts')} ${was(t.requested)} skipped — asked for one themselves in the last 24 hours.`);
+  if (t.unconfirmed) parts.push(`${n(t.unconfirmed, 'account', 'accounts')} ${was(t.unconfirmed)} skipped — a send in the last 24 hours couldn’t be confirmed, so ${t.unconfirmed === 1 ? 'it isn’t' : 'they aren’t'} emailed again until a day has passed.`);
   if (t.newAcct) parts.push(`${n(t.newAcct, 'account', 'accounts')} signed up in the last day and ${t.newAcct === 1 ? 'has' : 'have'} a fresh sign-up email, so ${t.newAcct === 1 ? 'it was' : 'they were'} skipped.`);
-  if (t.busy) parts.push(`${n(t.busy, 'account', 'accounts')} ${t.busy === 1 ? 'is' : 'are'} being sent one by another admin right now.`);
+  if (t.busy) parts.push(`${n(t.busy, 'account', 'accounts')} ${was(t.busy)} skipped — a send to ${t.busy === 1 ? 'it' : 'them'} is still in progress.`);
   if (t.verified) parts.push(`${n(t.verified, 'account has', 'accounts have')} verified since the list loaded.`);
   if (t.other) parts.push(`${n(t.other, 'account', 'accounts')} changed since the list loaded (disabled, deleted or no address) and ${was(t.other)} skipped.`);
   if (t.unknown) parts.push(`${n(t.unknown, 'send', 'sends')} couldn’t be confirmed — ${t.unknown === 1 ? 'it' : 'they'} may have gone, so ${t.unknown === 1 ? 'that address' : 'those addresses'} won’t be emailed again for 24 hours.`);
@@ -64,9 +70,9 @@ export function describeTally(t) {
   return parts.join(' ');
 }
 
-/** Red, or not: only a failure or an unanswered request is an error. Everyone skipped is
- *  the server doing its job. */
-export const tallyIsError = (t) => Boolean(t.failed || t.lost || t.notAttempted);
+/** Not shown as success when anything failed, went unanswered, wasn't attempted, or
+ *  couldn't be confirmed. Everyone deliberately skipped is the server doing its job. */
+export const tallyIsError = (t) => Boolean(t.failed || t.lost || t.notAttempted || t.unknown);
 
 /** What to tell an admin when the request itself fails, rather than an account in it.
  *  A callable that isn't deployed answers 404 with no CORS headers, which the Firebase
@@ -81,7 +87,7 @@ export function describeCallError(e) {
   if (/internal/.test(code) || msg === 'internal') {
     return 'The server didn’t answer. If staffSendVerificationEmails hasn’t been deployed yet, that is why — see docs/verify-email-backend.md.';
   }
-  if (/aborted/.test(code)) return msg || 'Another admin is sending verification emails right now. Try again in a minute.';
+  if (/aborted/.test(code)) return msg || 'A verification send is already running. Try again in a couple of minutes.';
   if (/deadline-exceeded/.test(code)) return 'The server took too long to answer.';
   if (/permission-denied/.test(code)) return 'Only an admin can send verification emails.';
   if (/Backend not configured/.test(msg)) return 'Sending needs a live backend.';

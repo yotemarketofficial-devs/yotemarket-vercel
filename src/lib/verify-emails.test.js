@@ -48,7 +48,7 @@ describe('tally + describeTally', () => {
     expect(t).toMatchObject({ sent: 2, failed: 2, recent: 1, verified: 1, other: 1 });
     const s = describeTally(t);
     expect(s).toMatch(/^Sent 2 verification emails\./);
-    expect(s).toMatch(/1 account was skipped — already sent one in the last 24 hours/);
+    expect(s).toMatch(/1 account was skipped — sent one in the last 24 hours/);
     expect(s).toMatch(/1 account has verified since/);
     expect(s).toMatch(/2 sends failed: resend 403: domain is not verified/);
   });
@@ -86,9 +86,9 @@ describe('tally — the outcomes added after review', () => {
     const t = tally([{ outcome: 'new_account' }, { outcome: 'in_progress' }, { outcome: 'unknown' }, { outcome: 'unknown' }]);
     expect(t).toMatchObject({ newAcct: 1, busy: 1, unknown: 2, sent: 0 });
     const s = describeTally(t);
-    expect(s).toMatch(/^No verification emails were sent\./);
+    expect(s).toMatch(/^No verification emails were confirmed sent\./);
     expect(s).toMatch(/signed up in the last day/);
-    expect(s).toMatch(/being sent one by another admin/);
+    expect(s).toMatch(/a send to it is still in progress/);
     expect(s).toMatch(/2 sends couldn’t be confirmed — they may have gone/);
   });
 
@@ -108,8 +108,8 @@ describe('tally — the outcomes added after review', () => {
 
 describe('describeCallError / refusedBeforeSending — after review', () => {
   it('passes on the server’s own “another admin is sending” message', () => {
-    const e = { code: 'functions/aborted', message: 'Another admin is sending verification emails right now. Try again in a minute.' };
-    expect(describeCallError(e)).toMatch(/Another admin/);
+    const e = { code: 'functions/aborted', message: 'A verification send is already running. Try again in a couple of minutes.' };
+    expect(describeCallError(e)).toMatch(/already running/);
     expect(refusedBeforeSending(e)).toBe(true);
   });
 
@@ -128,5 +128,22 @@ describe('describeCallError / refusedBeforeSending — after review', () => {
   it('does not assume an `internal` failure reached nobody', () => {
     // An undeployed callable and a crash mid-send both surface as `internal`.
     expect(refusedBeforeSending({ code: 'functions/internal', message: 'internal' })).toBe(false);
+  });
+});
+
+describe('describeTally — three different reasons to rest an address', () => {
+  it('never describes a send that may not have gone as one that did', () => {
+    const s = describeTally(tally([{ outcome: 'recently_unconfirmed' }, { outcome: 'recently_requested' }]));
+    expect(s).toMatch(/couldn’t be confirmed/);
+    expect(s).toMatch(/asked for one themselves/);
+    expect(s).not.toMatch(/sent one in the last 24 hours/);
+  });
+
+  it('does not show an all-unconfirmed run as a success', () => {
+    expect(tallyIsError(tally([{ outcome: 'unknown' }]))).toBe(true);
+  });
+
+  it('says nothing was CONFIRMED sent when the server went quiet, rather than that nothing went', () => {
+    expect(describeTally(tally([], { lost: 25 }))).toMatch(/^No verification emails were confirmed sent\./);
   });
 });
