@@ -242,7 +242,7 @@ WhatsApp is how scouts work, so phone numbers in the console now carry a wa.me l
 The hero and the shared header (`Layout.jsx`) match a 1536px brand mockup. The copy, the
 six-up feature row and both buttons are live HTML (`src/styles/home-hero.css`, sizes scaled
 in `vw` from the artboard). The right-hand art (phone, the 200+ stores / M-Pesa / tracking /
-YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `public/assets/hero/hero-art.webp`
+YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `src/assets/hero/hero-art.webp`
 (906×744), cut from that mockup. Its branding was then swapped for the real assets:
 `logo.png` on the phone, `logo-white.png` on the delivery box, the YoteAI badge (as
 `.ai-badge` draws it) in place of the mockup's robot on the YoteAI card, the supplied M-Pesa
@@ -250,7 +250,10 @@ logo on the payment card, and the supplied shopper photo in the phone's banner. 
 carries the same swaps. Its pieces overlap each other and the photo, so rebuilding
 them as layers would drift from the design. To change the art, replace that file and keep
 the 906:744 ratio, or update `width`/`height` on the `<img>`. A 2× export would sharpen it
-on retina screens. Dark mode swaps in `hero-art-dark.webp` (1536×1024), the designer's night
+on retina screens. Both files are imported in `HomePage.jsx` rather than served from `public/`, so
+Vite gives them hashed names and a replaced image shows up on the next load. With a fixed name,
+the `/assets/*.webp` cache rule in `vercel.json` kept the old art on screen for up to an hour.
+Dark mode swaps in `hero-art-dark.webp` (1536×1024), the designer's night
 scene, with the same logo/YoteAI swap applied. It is a full photograph in a different frame from
 the light art, so the hero shows it whole, centred against the copy, and fades its edges into the
 page (`html.dark .hx-art img` masks in `home-hero.css`).

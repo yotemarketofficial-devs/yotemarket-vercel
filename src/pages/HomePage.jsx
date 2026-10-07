@@ -7,6 +7,11 @@ import PhoneMockup from '../components/PhoneMockup.jsx';
 import { APPS } from '../lib/apk-releases.mjs';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 import '../styles/home-hero.css';
+// Imported, not referenced from public/, so Vite fingerprints the file names: every
+// change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
+// hour (plus a week of stale-while-revalidate, see vercel.json), so edits didn't show.
+import heroArtLight from '../assets/hero/hero-art.webp';
+import heroArtDark from '../assets/hero/hero-art-dark.webp';
 
 // Names, subtitles and launcher icons come from the same entries /apk publishes.
 const SHOPPER_APP = APPS.find((a) => a.slug === 'shopper');
@@ -245,7 +250,7 @@ function HomePage() {
           </div>
           <div className="hx-art">
             <img
-              src={dark ? '/assets/hero/hero-art-dark.webp' : '/assets/hero/hero-art.webp'}
+              src={dark ? heroArtDark : heroArtLight}
               width={dark ? 1536 : 906}
               height={dark ? 1024 : 744}
               fetchPriority="high"
