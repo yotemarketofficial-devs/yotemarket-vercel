@@ -202,7 +202,7 @@ function HomePage() {
     return () => clearTimeout(t);
   }, [location.key, location.hash]);
 
-  // Layout owns the theme. Dark mode gets its own copy of the hero art (see home-hero.css).
+  // Layout owns the theme. Dark mode has its own hero art, a night scene (see home-hero.css).
   const { dark } = useOutletContext() || {};
 
   return (
@@ -246,8 +246,8 @@ function HomePage() {
           <div className="hx-art">
             <img
               src={dark ? '/assets/hero/hero-art-dark.webp' : '/assets/hero/hero-art.webp'}
-              width="906"
-              height="744"
+              width={dark ? 1536 : 906}
+              height={dark ? 1024 : 744}
               fetchPriority="high"
               decoding="async"
               alt="The YoteMarket app open on a phone, with 200+ local stores, an M-Pesa payment confirmation, live order tracking, the YoteAI assistant and a YoteMarket delivery rider in Nairobi"

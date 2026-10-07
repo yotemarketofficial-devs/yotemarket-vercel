@@ -3,9 +3,9 @@
    Every size below is the mockup's pixel value at 1536px, scaled with the
    viewport (value / 1536 × 100vw) so the copy and the art shrink together, with
    a floor where text would stop being readable.
-   Dark mode swaps in hero-art-dark.webp: the same composition with the lavender
-   ground recoloured to the page and the skyline photo graded to dusk (clouds kept,
-   lit in the brand purple-to-gold), so the art dissolves into the dark page.
+   Dark mode swaps in hero-art-dark.webp, the designer's night scene: a different
+   frame (1536×1024, a full photograph rather than objects on the page colour), so
+   it is shown whole, centred against the copy, with its edges dissolved into the page.
    ========================================================================== */
 
 .hx{
@@ -68,7 +68,13 @@ html:not(.dark) .hx{--purple:#7C2BD4; --gold-bright:#F4B530;}
   mask-image:linear-gradient(90deg,transparent 0,#000 3%),linear-gradient(0deg,transparent 0,#000 4%);
   mask-composite:intersect;
 }
-/* Dark mode: the copy follows the page; the art is swapped in HomePage.jsx. */
+/* Dark mode: the copy follows the page; the art is swapped in HomePage.jsx. The night
+   art is a full scene, so it fades out wider on its free edges than the light art. */
+html.dark .hx-in{align-items:center;}
+html.dark .hx-art img{
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16%),linear-gradient(0deg,transparent 0,#000 12%,#000 93%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 16%),linear-gradient(0deg,transparent 0,#000 12%,#000 93%,transparent 100%);
+}
 html.dark .hx{--hx-ink:var(--t1); --hx-text:var(--t2); --hx-purple:#B97BFF; --hx-bg:var(--bg);}
 html.dark .hx-eyebrow{background:rgba(185,123,255,.14); color:#D2B4FF;}
 html.dark .hx-feats li{color:var(--t2); border-left-color:rgba(255,255,255,.12);}
@@ -81,6 +87,10 @@ html.dark .hx-btn:focus-visible{outline-color:rgba(185,123,255,.5);}
   .hx-art img{
     -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 3%,#000 94%,transparent 100%),linear-gradient(0deg,transparent 0,#000 4%);
     mask-image:linear-gradient(90deg,transparent 0,#000 3%,#000 94%,transparent 100%),linear-gradient(0deg,transparent 0,#000 4%);
+  }
+  html.dark .hx-art img{
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 88%,transparent 100%),linear-gradient(0deg,transparent 0,#000 12%,#000 93%,transparent 100%);
+    mask-image:linear-gradient(90deg,transparent 0,#000 16%,#000 88%,transparent 100%),linear-gradient(0deg,transparent 0,#000 12%,#000 93%,transparent 100%);
   }
 }
 
@@ -100,6 +110,10 @@ html.dark .hx-btn:focus-visible{outline-color:rgba(185,123,255,.5);}
   .hx-art img{
     -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 6%,#000 96%,transparent 100%);
     mask-image:linear-gradient(180deg,transparent 0,#000 6%,#000 96%,transparent 100%);
+  }
+  html.dark .hx-art img{
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 12%,#000 86%,transparent 100%);
+    mask-image:linear-gradient(180deg,transparent 0,#000 12%,#000 86%,transparent 100%);
   }
 }
 @media (max-width:640px){

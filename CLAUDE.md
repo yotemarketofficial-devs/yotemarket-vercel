@@ -248,10 +248,10 @@ YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `public/assets/h
 `.ai-badge` draws it) in place of the mockup's robot on the YoteAI card. Its pieces overlap each other and the photo, so rebuilding
 them as layers would drift from the design. To change the art, replace that file and keep
 the 906:744 ratio, or update `width`/`height` on the `<img>`. A 2× export would sharpen it
-on retina screens. Dark mode swaps in `hero-art-dark.webp`: the same art with the lavender
-background recoloured to the page and the skyline photo graded to dusk (the clouds are kept,
-lit in the brand purple-to-gold). It was made by colour-grading the light file, so if the light
-art is replaced, the dark copy has to be replaced with it (ask the designer for both).
+on retina screens. Dark mode swaps in `hero-art-dark.webp` (1536×1024), the designer's night
+scene, with the same logo/YoteAI swap applied. It is a full photograph in a different frame from
+the light art, so the hero shows it whole, centred against the copy, and fades its edges into the
+page (`html.dark .hx-art img` masks in `home-hero.css`).
 
 The layout follows the mockup, but **the words are the brand's own**: "Shop local. *Delivered*
 fast." (gradient on "Delivered"), the original lead, "Start shopping" / "Become a seller", and
