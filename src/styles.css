@@ -617,12 +617,7 @@ html.dark .nav .links a:hover, html.dark .nav .links a.active-link{color:var(--p
 .nav .links a.active-link{font-weight:600;}
 .nav .links a.active-link::after{content:""; position:absolute; left:0; right:0; bottom:11px; height:3px; border-radius:3px; background:currentColor;}
 .nav .nav-cta{gap:13px;}
-.nav-theme{width:42px; height:42px; margin-right:6px; display:grid; place-items:center; border:0; border-radius:999px; background:transparent;
-  color:#1F1A4D; cursor:pointer; transition:color .15s, background .15s;}
-.nav-theme:hover{color:#6A1FD6; background:rgba(106,31,214,.08);}
-.nav-theme:focus-visible{outline:3px solid rgba(106,31,214,.35); outline-offset:2px;}
-html.dark .nav-theme{color:var(--t1);}
-html.dark .nav-theme:hover{color:var(--purple); background:rgba(185,123,255,.12);}
+.nav-theme{margin-right:8px;}
 .nav-login, .nav-start{display:inline-flex; align-items:center; justify-content:center; height:42px; border-radius:999px;
   font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif; font-size:15px; font-weight:600; white-space:nowrap;
   transition:transform .15s, box-shadow .2s, background .15s, color .15s;}
@@ -641,7 +636,7 @@ html.dark .nav-mobile-links .nav-mobile-cta .nav-login{color:var(--purple);}
   .logo-link{min-width:0;}
   .nav .logo{height:42px;}
   .nav .links{gap:24px; margin:0 auto;}
-  .nav-theme{margin-right:0;}
+  .nav-theme{margin-right:2px;}
 }
 /* Below this the six links + three actions no longer fit on one row. */
 @media (max-width:1180px){
@@ -654,4 +649,51 @@ html.dark .nav-mobile-links .nav-mobile-cta .nav-login{color:var(--purple);}
   .nav .nav-cta .nav-login, .nav .nav-cta .nav-start{display:none;}
   .nav .nav-cta{gap:8px;}
   .nav .logo{height:36px;}
+}
+
+/* ============ theme toggle — components/ThemeToggle.jsx ============
+   A 64×32 pill: day sky with clouds and a sun, sliding to a purple night with stars
+   and a moon. Colours are fixed (it pictures day and night itself), not theme tokens. */
+.tt{--tt-w:64px; --tt-h:32px; --tt-pad:3px; --tt-k:calc(var(--tt-h) - var(--tt-pad) * 2);
+  --tt-ease:cubic-bezier(.45,.05,.25,1.2); --tt-dur:.5s;
+  position:relative; flex:none; width:var(--tt-w); height:var(--tt-h); padding:0; border:0; border-radius:999px;
+  background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; isolation:isolate;}
+.tt-track{position:absolute; inset:0; border-radius:inherit; overflow:hidden;
+  background:linear-gradient(180deg,#9ADCF6 0%,#6CC3EA 100%);
+  box-shadow:inset 0 2px 5px rgba(9,40,77,.28), inset 0 -1px 0 rgba(255,255,255,.35);}
+/* A faint rim drawn over the scene, so the pill keeps its outline where white clouds
+   meet a white page, or the night sky meets a dark one. */
+.tt-track::after{content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(16,64,110,.22); transition:box-shadow var(--tt-dur) ease;}
+.tt.is-dark .tt-track::after{box-shadow:inset 0 0 0 1px rgba(185,140,255,.38);}
+.tt-night{position:absolute; inset:0; opacity:0; transition:opacity var(--tt-dur) ease;
+  background:linear-gradient(160deg,#1E0C4D 0%,#3E1A8C 55%,#6A34BE 100%);}
+.tt-day-scene, .tt-night-scene{position:absolute; inset:0; width:100%; height:100%;
+  transition:transform var(--tt-dur) var(--tt-ease), opacity var(--tt-dur) ease;}
+.tt-night-scene{opacity:0; transform:translateY(-6px);}
+.tt-knob{position:absolute; top:var(--tt-pad); left:var(--tt-pad); width:var(--tt-k); height:var(--tt-k); border-radius:50%;
+  transition:transform var(--tt-dur) var(--tt-ease);}
+.tt-sun, .tt-moon{position:absolute; inset:0; border-radius:50%; transition:opacity var(--tt-dur) ease, transform var(--tt-dur) var(--tt-ease);}
+.tt-sun{background:radial-gradient(circle at 34% 30%,#FFF6A3 0%,#FFD72E 42%,#F5A50F 100%);
+  box-shadow:inset 0 -2px 3px rgba(214,120,0,.35), 0 0 6px rgba(255,196,40,.45), 0 1px 3px rgba(120,70,0,.3);}
+.tt-moon{opacity:0; transform:rotate(-70deg) scale(.6);
+  background:radial-gradient(circle at 34% 30%,#FFFDF6 0%,#EEE8D8 55%,#CFC6B0 100%);
+  box-shadow:inset 0 -2px 3px rgba(120,108,84,.3), 0 0 8px 1px rgba(236,228,255,.45), 0 1px 3px rgba(10,0,40,.4);}
+.tt-moon svg{display:block; width:100%; height:100%; fill:rgba(150,138,112,.38);}
+.tt.is-dark .tt-night{opacity:1;}
+.tt.is-dark .tt-day-scene{opacity:0; transform:translateY(8px);}
+.tt.is-dark .tt-night-scene{opacity:1; transform:none;}
+.tt.is-dark .tt-knob{transform:translateX(calc(var(--tt-w) - var(--tt-k) - var(--tt-pad) * 2));}
+.tt.is-dark .tt-sun{opacity:0; transform:rotate(70deg) scale(.6);}
+.tt.is-dark .tt-moon{opacity:1; transform:none;}
+.tt-star{animation:tt-twinkle 2.4s ease-in-out infinite;}
+.tt-star.s2{animation-delay:.8s;} .tt-star.s3{animation-delay:1.6s;}
+.tt:not(.is-dark) .tt-star{animation-play-state:paused;}
+@keyframes tt-twinkle{0%,100%{opacity:1;} 50%{opacity:.35;}}
+.tt:hover .tt-knob{filter:brightness(1.05);}
+.tt:active .tt-knob{transition-duration:.15s;}
+.tt:focus-visible{outline:3px solid rgba(106,31,214,.45); outline-offset:3px;}
+html.dark .tt:focus-visible{outline-color:rgba(185,123,255,.6);}
+@media (prefers-reduced-motion:reduce){
+  .tt, .tt *{transition:none !important; animation:none !important;}
 }

@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState, Suspense } from 'react';
 import { useEscape } from './lib/useEscape.js';
+import ThemeToggle from './components/ThemeToggle.jsx';
 
 const navItems = [
   { label: 'Home', path: '/', end: true },
@@ -13,22 +14,6 @@ const navItems = [
 
 function NavItem({ item, activeClass }) {
   return <NavLink to={item.path} end={item.end} className={activeClass}>{item.label}</NavLink>;
-}
-
-function ThemeIcon({ dark }) {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      {dark ? (
-        <>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4" />
-        </>
-      ) : (
-        <path d="M20.5 14.1A8.5 8.5 0 1 1 9.9 3.5a6.6 6.6 0 0 0 10.6 10.6z" />
-      )}
-    </svg>
-  );
 }
 
 function Layout() {
@@ -73,15 +58,7 @@ function Layout() {
           </nav>
 
           <div className="nav-cta">
-            <button
-              type="button"
-              className="nav-theme"
-              onClick={() => setDark((prev) => !prev)}
-              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={dark ? 'Light mode' : 'Dark mode'}
-            >
-              <ThemeIcon dark={dark} />
-            </button>
+            <ThemeToggle dark={dark} onToggle={() => setDark((prev) => !prev)} className="nav-theme" />
             {/* The storefront opens to guests and offers sign-in itself. */}
             <Link to="/storefront" className="nav-login">Login</Link>
             <Link to="/mobile" className="nav-start">Get App</Link>
