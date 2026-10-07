@@ -185,9 +185,9 @@ function HomePage() {
     return () => io.disconnect();
   }, []);
 
-  // The header's "Features" link is /#roles. The router doesn't scroll to hashes, and
-  // ScrollToTop sends a cross-page visit to the top first — this effect runs after it.
-  // location.key changes on every click, so a second click on the same link still scrolls.
+  // Links to a homepage section (/#roles, /#download, …) land on it. The router doesn't
+  // scroll to hashes, and ScrollToTop sends a cross-page visit to the top first — this
+  // effect runs after it. location.key changes on every click, so a repeat click still scrolls.
   const location = useLocation();
   useEffect(() => {
     if (!location.hash) return undefined;
@@ -195,8 +195,8 @@ function HomePage() {
     if (!el) return undefined;
     const go = () => el.scrollIntoView({ block: 'start' });
     go();
-    // Tapped from the mobile menu, the menu is still collapsing (.28s) and shrinking the
-    // sticky header above us, which moves the target — land on it again once it's shut.
+    // If the link was tapped in the mobile menu, the menu is still collapsing (.28s) and
+    // shrinking the sticky header above us, which moves the target — land on it again.
     const t = setTimeout(go, 320);
     return () => clearTimeout(t);
   }, [location.key, location.hash]);
