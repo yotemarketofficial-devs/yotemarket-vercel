@@ -3,8 +3,9 @@
    Every size below is the mockup's pixel value at 1536px, scaled with the
    viewport (value / 1536 × 100vw) so the copy and the art shrink together, with
    a floor where text would stop being readable.
-   The hero stays light in dark mode on purpose: the art is one photograph-like
-   image on a lavender ground, and on a dark page it would read as a pasted-in box.
+   Dark mode swaps in hero-art-dark.webp: the same composition with the lavender
+   ground recoloured to the page and the skyline photo graded to dusk (clouds kept,
+   lit in the brand purple-to-gold), so the art dissolves into the dark page.
    ========================================================================== */
 
 .hx{
@@ -19,18 +20,17 @@
 .hx-copy{position:relative; z-index:1; padding:clamp(40px,4.17vw,64px) 0 48px clamp(16px,4.95vw,76px);}
 
 .hx-eyebrow{
-  display:inline-flex; align-items:center; gap:9px; height:33px; padding:0 16px 0 14px; border-radius:999px;
+  display:inline-flex; align-items:center; height:33px; padding:0 16px; border-radius:999px;
   background:#EEE8FD; color:#5216BF; font-size:16px; font-weight:600; letter-spacing:-.01em; white-space:nowrap;
 }
-.hx-eyebrow svg{width:18px; height:18px; flex:none;}
 
 .hx-title{
   margin:8px 0 0; font-size:clamp(44px,5.3vw,81px); line-height:1; font-weight:700; letter-spacing:-.035em;
   color:var(--hx-ink);
 }
-/* "Delivered" keeps the brand gradient (the global .g); the hero is always light, so pin
-   the light-theme stops rather than letting dark mode's lighter purple in. */
-.hx{--purple:#7C2BD4; --gold-bright:#F4B530;}
+/* "Delivered" keeps the brand gradient (the global .g). In light mode pin its light-theme
+   stops; in dark mode the page's brighter purple and gold read better on the dark ground. */
+html:not(.dark) .hx{--purple:#7C2BD4; --gold-bright:#F4B530;}
 
 .hx-lead{margin:26px 0 0; max-width:510px; font-size:clamp(16px,1.27vw,19.5px); line-height:1.6; font-weight:400; color:var(--hx-text);}
 
@@ -60,7 +60,7 @@
 .hx-btn:focus-visible{outline:3px solid rgba(106,31,214,.35); outline-offset:3px;}
 
 /* The art meets the header along its top edge (as in the mockup) and fades into the
-   lavender on the other sides, so the cut never shows as a seam. */
+   hero's ground on the other sides, so the cut never shows as a seam. */
 .hx-art img{
   display:block; width:100%; height:auto;
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 3%),linear-gradient(0deg,transparent 0,#000 4%);
@@ -68,9 +68,13 @@
   mask-image:linear-gradient(90deg,transparent 0,#000 3%),linear-gradient(0deg,transparent 0,#000 4%);
   mask-composite:intersect;
 }
-/* On a dark page, let the light hero melt into it instead of ending on a hard line. */
-html.dark .hx::after{content:""; position:absolute; left:0; right:0; bottom:0; height:56px; pointer-events:none;
-  background:linear-gradient(180deg, transparent, var(--bg));}
+/* Dark mode: the copy follows the page; the art is swapped in HomePage.jsx. */
+html.dark .hx{--hx-ink:var(--t1); --hx-text:var(--t2); --hx-purple:#B97BFF; --hx-bg:var(--bg);}
+html.dark .hx-eyebrow{background:rgba(185,123,255,.14); color:#D2B4FF;}
+html.dark .hx-feats li{color:var(--t2); border-left-color:rgba(255,255,255,.12);}
+html.dark .hx-btn-ghost{border-color:#B97BFF; color:#E2CCFF; background:transparent;}
+html.dark .hx-btn-ghost:hover{background:rgba(185,123,255,.12);}
+html.dark .hx-btn:focus-visible{outline-color:rgba(185,123,255,.5);}
 
 /* Past the artboard width the art stops at 1536px; fade its right edge too. */
 @media (min-width:1537px){

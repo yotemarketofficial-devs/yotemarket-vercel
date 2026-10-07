@@ -45,15 +45,19 @@ function SearchIcon() {
 }
 
 function Layout() {
-  const [dark, setDark] = useState(false);
+  // Read the saved theme up front rather than after mount: the homepage picks its hero
+  // art from this on the first render, and starting light would fetch both images.
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ym_platform_theme');
+      if (saved) return saved === 'dark';
+      return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+    } catch {
+      return false;
+    }
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-
-  useEffect(() => {
-    const saved = localStorage.getItem('ym_platform_theme');
-    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-    setDark(saved ? saved === 'dark' : prefersDark);
-  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -125,7 +129,7 @@ function Layout() {
         {/* Lazy marketing pages (rider, careers, help) suspend here rather than at the
             app root, so the header and footer stay painted while one loads. */}
         <Suspense fallback={<div style={{ minHeight: '60vh' }} />}>
-          <Outlet />
+          <Outlet context={{ dark }} />
         </Suspense>
       </div>
 

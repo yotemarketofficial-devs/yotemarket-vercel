@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useOutletContext } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
@@ -96,7 +96,6 @@ function FeedDemo({ clips, videoUrl }) {
 
 /* Hero line icons, 24-unit grid, drawn with currentColor so CSS sets the purple. */
 const HX_ICONS = {
-  spark: <path d="M11.5 2.8 13.6 9a2.2 2.2 0 0 0 1.4 1.4l6.2 2.1-6.2 2.1a2.2 2.2 0 0 0-1.4 1.4l-2.1 6.2-2.1-6.2A2.2 2.2 0 0 0 8 14.6l-6.2-2.1L8 10.4A2.2 2.2 0 0 0 9.4 9z" />,
   store: (
     <>
       <path d="M3 9.5V7.6L5.2 3h13.6L21 7.6v1.9a2.6 2.6 0 0 1-4.5 1.7 2.6 2.6 0 0 1-4.5 0 2.6 2.6 0 0 1-4.5 0A2.6 2.6 0 0 1 3 9.5z" />
@@ -203,6 +202,9 @@ function HomePage() {
     return () => clearTimeout(t);
   }, [location.key, location.hash]);
 
+  // Layout owns the theme. Dark mode gets its own copy of the hero art (see home-hero.css).
+  const { dark } = useOutletContext() || {};
+
   return (
     <main>
       {/* Hero — laid out to the brand mockup, worded in the brand's own voice ("Shop
@@ -214,7 +216,7 @@ function HomePage() {
       <header id="top" className="hx">
         <div className="hx-in">
           <div className="hx-copy">
-            <span className="hx-eyebrow"><HxIcon name="spark" />Kenya&rsquo;s Virtual Mall</span>
+            <span className="hx-eyebrow">Kenya&rsquo;s Virtual Mall</span>
             <h1 className="hx-title">
               Shop local.<br />
               <span className="g">Delivered</span> fast.
@@ -243,7 +245,7 @@ function HomePage() {
           </div>
           <div className="hx-art">
             <img
-              src="/assets/hero/hero-art.webp"
+              src={dark ? '/assets/hero/hero-art-dark.webp' : '/assets/hero/hero-art.webp'}
               width="906"
               height="744"
               fetchPriority="high"
