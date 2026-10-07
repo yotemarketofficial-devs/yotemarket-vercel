@@ -2,19 +2,16 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useState, Suspense } from 'react';
 import { useEscape } from './lib/useEscape.js';
 
-// `hash` items point at a section of the homepage. They render as a plain Link:
-// a NavLink to "/#roles" would light up together with Home on every visit to "/".
 const navItems = [
   { label: 'Home', path: '/', end: true },
   { label: 'Shops', path: '/storefront' },
   { label: 'For Merchants', path: '/dashboard' },
   { label: 'Delivery', path: '/rider' },
-  { label: 'Features', path: '/#roles', hash: true },
+  { label: 'Marketers', path: '/marketers' },
   { label: 'About', path: '/about' },
 ];
 
 function NavItem({ item, activeClass }) {
-  if (item.hash) return <Link to={item.path}>{item.label}</Link>;
   return <NavLink to={item.path} end={item.end} className={activeClass}>{item.label}</NavLink>;
 }
 
@@ -30,16 +27,6 @@ function ThemeIcon({ dark }) {
       ) : (
         <path d="M20.5 14.1A8.5 8.5 0 1 1 9.9 3.5a6.6 6.6 0 0 0 10.6 10.6z" />
       )}
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <circle cx="11" cy="11" r="7.5" />
-      <path d="m20.5 20.5-4.2-4.2" />
     </svg>
   );
 }
@@ -86,10 +73,6 @@ function Layout() {
           </nav>
 
           <div className="nav-cta">
-            {/* The mall's search lives on the storefront home screen. */}
-            <Link to="/storefront" className="nav-search" aria-label="Search the mall" title="Search the mall">
-              <SearchIcon />
-            </Link>
             <button
               type="button"
               className="nav-theme"

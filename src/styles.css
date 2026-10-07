@@ -617,13 +617,12 @@ html.dark .nav .links a:hover, html.dark .nav .links a.active-link{color:var(--p
 .nav .links a.active-link{font-weight:600;}
 .nav .links a.active-link::after{content:""; position:absolute; left:0; right:0; bottom:11px; height:3px; border-radius:3px; background:currentColor;}
 .nav .nav-cta{gap:13px;}
-.nav-search, .nav-theme{width:42px; height:42px; display:grid; place-items:center; border:0; border-radius:999px; background:transparent;
+.nav-theme{width:42px; height:42px; margin-right:6px; display:grid; place-items:center; border:0; border-radius:999px; background:transparent;
   color:#1F1A4D; cursor:pointer; transition:color .15s, background .15s;}
-.nav-theme{margin-right:6px;}
-.nav-search:hover, .nav-theme:hover{color:#6A1FD6; background:rgba(106,31,214,.08);}
-.nav-search:focus-visible, .nav-theme:focus-visible{outline:3px solid rgba(106,31,214,.35); outline-offset:2px;}
-html.dark .nav-search, html.dark .nav-theme{color:var(--t1);}
-html.dark .nav-search:hover, html.dark .nav-theme:hover{color:var(--purple); background:rgba(185,123,255,.12);}
+.nav-theme:hover{color:#6A1FD6; background:rgba(106,31,214,.08);}
+.nav-theme:focus-visible{outline:3px solid rgba(106,31,214,.35); outline-offset:2px;}
+html.dark .nav-theme{color:var(--t1);}
+html.dark .nav-theme:hover{color:var(--purple); background:rgba(185,123,255,.12);}
 .nav-login, .nav-start{display:inline-flex; align-items:center; justify-content:center; height:42px; border-radius:999px;
   font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif; font-size:15px; font-weight:600; white-space:nowrap;
   transition:transform .15s, box-shadow .2s, background .15s, color .15s;}
