@@ -67,7 +67,7 @@ export function MobileNav({ active, onChange }){
   );
 }
 
-export function Sidebar({ active, onChange, onClose }){
+export function Sidebar({ active, onChange, onClose, onTour }){
   const shop = useShop();
   const subc = useSubCard();
   const { role } = useMerchant();
@@ -100,6 +100,9 @@ export function Sidebar({ active, onChange, onClose }){
           })}
         </nav>
         <a href="/" className="ym-btn ym-btn-ghost" style={{ width:'100%', marginTop:12 }}><FA i="fa-house" /> Home</a>
+        {/* Phones only: the top bar's "?" moves in here (see TopBar), so the tour is
+            still one tap away from the menu. */}
+        {onTour && <button onClick={onTour} className="ym-btn ym-btn-ghost sb-tour" style={{ width:'100%', marginTop:6 }}><FA i="fa-circle-question" /> Take a tour</button>}
       </div>
 
       {/* subscription card — brand gradient */}
@@ -123,18 +126,20 @@ export function TopBar({ onMenu, onChange, onHelp }){
   const followLink = useFollowLink();
   return (
     <header style={{ position:'sticky', top:0, zIndex:40, background:'var(--m-nav-bg)', backdropFilter:'saturate(180%) blur(12px)', borderBottom:'1px solid var(--m-border)' }}>
-      <div className="wrap" style={{ height:64, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <button onClick={onMenu} className="icon-btn" aria-label="Menu" style={{ display:'none' }} data-menu><FA i="fa-bars" /></button>
-          <button onClick={()=>onChange&&onChange('overview')} aria-label="Go to overview" style={{ border:'none', background:'none', cursor:'pointer', padding:0, display:'flex' }}><Logo size={28} /></button>
-          <span className="ym-cap" style={{ borderLeft:'1px solid var(--m-border)', paddingLeft:12, fontWeight:600 }}>Merchant</span>
+      <div className="wrap tb" style={{ height:64, display:'flex', alignItems:'center', justifyContent:'space-between', gap:16 }}>
+        {/* flexShrink:0 — this group used to give way first, squashing the menu button
+            and the logo to ~21px wide on phones. */}
+        <div className="tb-left" style={{ display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          <button onClick={onMenu} className="icon-btn" aria-label="Menu" style={{ display:'none', flexShrink:0 }} data-menu><FA i="fa-bars" /></button>
+          <button className="tb-logo" onClick={()=>onChange&&onChange('overview')} aria-label="Go to overview" style={{ border:'none', background:'none', cursor:'pointer', padding:0, display:'flex', flexShrink:0 }}><Logo size={28} /></button>
+          <span className="ym-cap tb-role" style={{ borderLeft:'1px solid var(--m-border)', paddingLeft:12, fontWeight:600 }}>Merchant</span>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div className="tb-actions" style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
           {/* Switches this tab over to the mall (it used to force a second tab, which
               piled up duplicates over a shift). A real link, so ctrl/cmd-click still
               opens it in a new tab when that's what the merchant actually wants. */}
           <a href="/storefront" className="ym-btn ym-btn-ghost ym-btn-sm view-shop" style={{ textDecoration:'none' }} title="View storefront" aria-label="View storefront"><FA i="fa-store" /> <span className="view-shop-label">View storefront</span></a>
-          {onHelp && <button onClick={onHelp} className="icon-btn" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
+          {onHelp && <button onClick={onHelp} className="icon-btn tb-help" aria-label="Take a tour" title="Take a tour"><FA i="fa-circle-question" /></button>}
           {/* Was a bell that just opened chat (and was labelled "Messages"). It is now a
               real notification bell: order updates, refund requests, comments and
               support replies, each routing to the screen it concerns.
@@ -161,14 +166,29 @@ export function TopBar({ onMenu, onChange, onHelp }){
       </div>
       <style>{`
         @media (max-width:900px){ header [data-menu]{ display:flex !important; } }
-        @media (max-width:560px){
+        /* Small tablets: with the menu button showing, the full-width "View storefront"
+           and the name beside the avatar no longer fit, and the row overflowed. */
+        @media (max-width:700px){
           .acct{ display:none !important; }
           /* "View storefront" is how a merchant checks their own shop — it used to be
              hidden outright on phones, which is where most of them work. It keeps its
              place as an icon-only button instead of disappearing. */
           .view-shop{ padding:0 !important; width:38px; min-width:38px; gap:0 !important; }
           .view-shop-label{ display:none; }
-        }`}</style>
+        }
+        /* Phones: menu · logo, then View storefront · bell · day/night switch · avatar.
+           The "Merchant" label hides and the tour moves into the menu (Sidebar onTour),
+           so the row fits down to 320px without squashing anything. */
+        @media (max-width:560px){
+          header .wrap.tb{ padding-left:14px; padding-right:14px; gap:10px; }
+          .tb-left, .tb-actions{ gap:8px !important; }
+          .tb-role, .tb-help{ display:none !important; }
+          .tb .icon-btn, .tb .view-shop{ width:36px !important; min-width:36px; height:36px; }
+          .tb-logo img{ height:24px !important; }
+          .tb .tt{ --tt-w:52px; --tt-h:28px; }
+        }
+        @media (max-width:400px){ .tb .tt{ --tt-w:44px; --tt-h:24px; } }
+        @media (max-width:350px){ .tb .tt{ --tt-w:40px; } }`}</style>
     </header>
   );
 }

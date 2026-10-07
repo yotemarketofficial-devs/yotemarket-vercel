@@ -24,8 +24,16 @@ const TONE = {
   muted: 'var(--m-fg3)',
 };
 
-export default function NotificationBell({ user, onOpenNotification, className = 'icon-btn', audience }) {
-  const { items, unread, enabled, markRead, markAllRead, dismiss } = useNotifications(user, audience);
+export default function NotificationBell({ user, audience, ...rest }) {
+  return <NotificationBellView notif={useNotifications(user, audience)} {...rest} />;
+}
+
+/* The bell without its own subscription, for a surface that shows it in two places
+   (the storefront: header on desktop, account menu on phones) and must not run the
+   Firestore listener twice. Pass the result of ONE useNotifications() call as `notif`.
+   variant="row" draws the trigger as an account-menu row instead of an icon button. */
+export function NotificationBellView({ notif, onOpenNotification, className = 'icon-btn', variant = 'icon' }) {
+  const { items, unread, enabled, markRead, markAllRead, dismiss } = notif;
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -47,10 +55,25 @@ export default function NotificationBell({ user, onOpenNotification, className =
     onOpenNotification && onOpenNotification(n);
   };
 
+  const label = unread ? `Notifications (${unread} unread)` : 'Notifications';
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
+      {variant === 'row' ? (
+        <button onClick={() => setOpen((o) => !o)} aria-label={label} aria-expanded={open} aria-haspopup="true"
+          style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 12px', border: 'none',
+            background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: 'var(--m-fg2)',
+            borderRadius: 10, textAlign: 'left', boxSizing: 'border-box' }}>
+          <FA i="fa-bell" style={{ width: 18, color: 'var(--m-fg3)' }} />
+          <span style={{ flex: 1, minWidth: 0 }}>Notifications</span>
+          {unread > 0 && (
+            <span style={{ minWidth: 20, height: 20, borderRadius: 9999, background: 'var(--m-secondary, var(--m-primary))',
+              color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0 6px' }}>{unread > 9 ? '9+' : unread}</span>
+          )}
+        </button>
+      ) : (
       <button onClick={() => setOpen((o) => !o)} className={className}
-        aria-label={unread ? `Notifications (${unread} unread)` : 'Notifications'}
+        aria-label={label}
         aria-expanded={open} aria-haspopup="true">
         <FA i="fa-bell" />
         {unread > 0 && (
@@ -60,10 +83,11 @@ export default function NotificationBell({ user, onOpenNotification, className =
             border: '2px solid var(--m-bg)' }}>{unread > 9 ? '9+' : unread}</span>
         )}
       </button>
+      )}
 
       {open && (
         <div className="ym-card" role="dialog" aria-label="Notifications"
-          style={{ position: 'absolute', right: 0, top: 46, width: 'min(340px, calc(100vw - 24px))',
+          style={{ position: 'absolute', right: 0, top: variant === 'row' ? 'calc(100% + 4px)' : 46, width: 'min(340px, calc(100vw - 24px))',
             zIndex: 200, padding: 0, overflow: 'hidden', boxShadow: 'var(--m-shadow-float)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '12px 14px', borderBottom: '1px solid var(--m-border)' }}>

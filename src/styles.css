@@ -668,13 +668,18 @@ html.dark .nav-mobile-links .nav-mobile-cta .nav-login{color:var(--purple);}
 .tt.is-dark .tt-track::after{box-shadow:inset 0 0 0 1px rgba(185,140,255,.38);}
 .tt-night{position:absolute; inset:0; opacity:0; transition:opacity var(--tt-dur) ease;
   background:linear-gradient(160deg,#1E0C4D 0%,#3E1A8C 55%,#6A34BE 100%);}
-.tt-day-scene, .tt-night-scene{position:absolute; inset:0; width:100%; height:100%;
+/* overflow:visible: an inline SVG clips to its own box by default, which cut the night
+   clouds off in a hard line while they slid in. Only the track's rounded edge clips. */
+.tt-day-scene, .tt-night-scene{position:absolute; inset:0; width:100%; height:100%; overflow:visible;
   transition:transform var(--tt-dur) var(--tt-ease), opacity var(--tt-dur) ease;}
 .tt-night-scene{opacity:0; transform:translateY(-6px);}
 .tt-knob{position:absolute; top:var(--tt-pad); left:var(--tt-pad); width:var(--tt-k); height:var(--tt-k); border-radius:50%;
   transition:transform var(--tt-dur) var(--tt-ease);}
 .tt-sun, .tt-moon{position:absolute; inset:0; border-radius:50%; transition:opacity var(--tt-dur) ease, transform var(--tt-dur) var(--tt-ease);}
-.tt-sun{background:radial-gradient(circle at 34% 30%,#FFF6A3 0%,#FFD72E 42%,#F5A50F 100%);
+/* The moon grows and fades in OVER a sun that stays full and opaque, and the sun only
+   drops out once covered; a two-way crossfade left the knob see-through mid-slide. */
+.tt-sun{transition:transform var(--tt-dur) var(--tt-ease), opacity 0s;
+  background:radial-gradient(circle at 34% 30%,#FFF6A3 0%,#FFD72E 42%,#F5A50F 100%);
   box-shadow:inset 0 -2px 3px rgba(214,120,0,.35), 0 0 6px rgba(255,196,40,.45), 0 1px 3px rgba(120,70,0,.3);}
 .tt-moon{opacity:0; transform:rotate(-70deg) scale(.6);
   background:radial-gradient(circle at 34% 30%,#FFFDF6 0%,#EEE8D8 55%,#CFC6B0 100%);
@@ -684,7 +689,8 @@ html.dark .nav-mobile-links .nav-mobile-cta .nav-login{color:var(--purple);}
 .tt.is-dark .tt-day-scene{opacity:0; transform:translateY(8px);}
 .tt.is-dark .tt-night-scene{opacity:1; transform:none;}
 .tt.is-dark .tt-knob{transform:translateX(calc(var(--tt-w) - var(--tt-k) - var(--tt-pad) * 2));}
-.tt.is-dark .tt-sun{opacity:0; transform:rotate(70deg) scale(.6);}
+.tt.is-dark .tt-sun{opacity:0; transform:rotate(70deg);
+  transition:transform var(--tt-dur) var(--tt-ease), opacity 0s linear var(--tt-dur);}
 .tt.is-dark .tt-moon{opacity:1; transform:none;}
 .tt-star{animation:tt-twinkle 2.4s ease-in-out infinite;}
 .tt-star.s2{animation-delay:.8s;} .tt-star.s3{animation-delay:1.6s;}
@@ -692,8 +698,15 @@ html.dark .nav-mobile-links .nav-mobile-cta .nav-login{color:var(--purple);}
 @keyframes tt-twinkle{0%,100%{opacity:1;} 50%{opacity:.35;}}
 .tt:hover .tt-knob{filter:brightness(1.05);}
 .tt:active .tt-knob{transition-duration:.15s;}
-.tt:focus-visible{outline:3px solid rgba(106,31,214,.45); outline-offset:3px;}
-html.dark .tt:focus-visible{outline-color:rgba(185,123,255,.6);}
+.tt:focus-visible{outline:3px solid rgba(106,31,214,.75); outline-offset:3px;}
+html.dark .tt:focus-visible, [data-theme="dark"] .tt:focus-visible{outline-color:rgba(185,123,255,.6);}
 @media (prefers-reduced-motion:reduce){
-  .tt, .tt *{transition:none !important; animation:none !important;}
+  .tt, .tt *, .tt *::after{transition:none !important; animation:none !important;}
+}
+/* Windows High Contrast strips gradients and shadows, which is all the sky, sun and moon
+   are drawn with, so the switch vanished. Keep its picture (it shows day and night
+   itself) and outline it in the system's button colour. */
+@media (forced-colors:active){
+  .tt-track, .tt-knob{forced-color-adjust:none;}
+  .tt-track{border:1px solid ButtonText;}
 }

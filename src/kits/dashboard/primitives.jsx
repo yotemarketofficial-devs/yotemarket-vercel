@@ -1,5 +1,6 @@
 /* primitives.jsx — Merchant dashboard primitives + theme context (shared YoteMarket look). */
 import React from 'react';
+import DayNightSwitch from '../../components/ThemeToggle.jsx';
 const { createContext, useContext, useState } = React;
 
 export const ThemeCtx = createContext({ theme:'light', setTheme:()=>{} });
@@ -94,7 +95,8 @@ export function SectionCard({ title, sub, action, onAction, children, ...rest })
   );
 }
 
-export const ThemeToggle = () => { const { theme, setTheme } = useTheme(); return <button className="icon-btn" onClick={()=>setTheme(theme==='dark'?'light':'dark')} aria-label="Toggle theme"><FA i={theme==='dark'?'fa-sun':'fa-moon'} /></button>; };
+/* The day/night switch shared with the marketing site and the storefront. */
+export const ThemeToggle = () => { const { theme, setTheme } = useTheme(); return <DayNightSwitch dark={theme==='dark'} onToggle={()=>setTheme(theme==='dark'?'light':'dark')} />; };
 
 export const Logo = ({ size=28 }) => { const { theme } = useTheme(); return <img src={theme==='dark'?'/assets/logo-white.png':'/assets/logo.png'} alt="YoteMarket" style={{ height:size }} />; };
 
