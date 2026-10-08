@@ -1,23 +1,34 @@
-// The homepage's YoteAI, YoteFeed and "Get the apps" bands, laid out to the brand
-// reference board of 2026-10-08: a pill tag, a two-tone headline, a product-window card
-// with a result card over it, icon-card lists, numbered steps, a fan of phones, a "Have
-// a store?" card, handwritten notes, a feature list and the shopper photo. The board is
+// The homepage's brand bands: "For shoppers" and "For merchants" (laid out to the brand
+// board of 2026-10-08, second sheet), and YoteAI, YoteFeed and "Get the apps" (first
+// sheet). Pill tags, two-tone headlines, product windows with cards over them, icon-card
+// lists, numbered steps, a fan of phones, handwritten notes and photos. The boards are
 // green and orange; the site's purple and gold replace them, in light and dark.
 //
-// The board's words were NOT carried over where the product doesn't back them: YoteAI
-// does not write listings from a photo, write SEO titles or track orders; YoteFeed checkout
-// is the normal cart; there is no iOS app and no door delivery. Every line below is one
-// the product makes good on (storefront engage.jsx, feed.jsx, commerce.jsx; dashboard
-// extras.jsx, feedmgr.jsx). Keep it that way when editing the copy.
+// The boards' words were NOT carried over where the product doesn't back them: YoteAI
+// does not write listings from a photo, write SEO titles or track orders; there is no
+// "demand"/trending data for sellers (Insight reports on the store's own sales, prices and
+// stock); YoteFeed checkout is the normal cart and its button says Buy; POS invoices carry
+// the KRA PIN but are not eTIMS; there is no door delivery. Every line below
+// is one the product makes good on (storefront engage.jsx, feed.jsx, commerce.jsx,
+// profile.jsx; dashboard extras.jsx, feedmgr.jsx, pos.jsx, pricing.js; lib/entitlements.js).
+// Keep it that way when editing the copy.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
+import SubscriptionMark from '../components/SubscriptionMark.jsx';
 import PhoneMockup from '../components/PhoneMockup.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
 import { APPS } from '../lib/apk-releases.mjs';
-// Cut from the reference board, recoloured to the brand and upscaled (see CLAUDE.md).
+// The shopper and merchant photos were supplied (recoloured to the brand, the real logo
+// printed on the bags, apron and boxes); the YoteFeed stills were cut from the boards.
+// See CLAUDE.md.
 import shopperArt from '../assets/home/shopper.webp';
+import forShoppers from '../assets/home/for-shoppers.webp';
+import forShoppers2x from '../assets/home/for-shoppers@2x.webp';
+import forMerchants from '../assets/home/for-merchants.webp';
+import forMerchants2x from '../assets/home/for-merchants@2x.webp';
+import stillHandbag from '../assets/home/feed-handbag.webp';
 import stillSneaker from '../assets/home/feed-sneaker.webp';
 import stillKitchen from '../assets/home/feed-kitchen.webp';
 import stillBackpack from '../assets/home/feed-backpack.webp';
@@ -44,7 +55,37 @@ const ICONS = {
   arrow: <path d="M4.5 12h15M13 5.5l6.5 6.5-6.5 6.5" />,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z" />,
+  user: <><circle cx="12" cy="8" r="3.6" /><path d="M5 20.5c.6-3.9 3.4-6 7-6s6.4 2.1 7 6" /></>,
+  wallet: <><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H17v2.5" /><rect x="3.5" y="7.5" width="17" height="12" rx="2.5" /><path d="M16 13.5h.01" strokeWidth="2.8" /></>,
+  key: <><circle cx="8" cy="15.5" r="4" /><path d="m10.9 12.6 8.6-8.6M16.5 7l2.5 2.5M14.2 9.3l2 2" /></>,
+  bulb: <><path d="M9.3 17.5h5.4M10.3 20.5h3.4" /><path d="M12 3.5a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2v1.2h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.5z" /></>,
+  receipt: <><path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z" /><path d="M9 8h6M9 11.5h6M9 15h3.5" /></>,
+  gauge: <><path d="M4.5 16.5a7.5 7.5 0 1 1 15 0" /><path d="m12 16.5 3.6-4.6" /><circle cx="12" cy="16.5" r="1.1" /></>,
+  box: <><path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z" /><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9" /></>,
+  crown: <path d="M4 17.5 3 7.5l5 4 4-6 4 6 5-4-1 10z" />,
+  sparks: <><path d="M5 9.5 2.5 7M6.5 5 6 2M10 6.5 12 4.5" /></>,
 };
+
+// The two stores' own marks for their badges, drawn inline so they show even when the icon
+// font is slow or blocked: Google Play's four-colour triangle and Apple's logo.
+function GooglePlayIcon() {
+  return (
+    <svg className="hs-store-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="#00D7FE" d="M3.6 2.2c-.3.3-.4.8-.4 1.4v16.8c0 .6.2 1.1.4 1.4l.1.1 9.4-9.4v-.2L3.7 2.1z" />
+      <path fill="#FFCE00" d="m16.2 15.6-3.1-3.1v-.2l3.1-3.1.1.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 2.1z" />
+      <path fill="#FF3A44" d="m16.3 15.5-3.2-3.2-9.5 9.5c.4.4.9.4 1.6.1z" />
+      <path fill="#00F076" d="M16.3 9.1 5.2 2.8c-.7-.4-1.2-.3-1.6.1l9.5 9.4z" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg className="hs-store-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M12.15 6.9c-.95 0-2.42-1.08-3.96-1.04-2.04.03-3.91 1.18-4.96 3.01-2.12 3.68-.55 9.1 1.52 12.09 1.01 1.45 2.2 3.09 3.79 3.04 1.52-.07 2.09-.99 3.94-.99 1.83 0 2.35.99 3.96.95 1.64-.03 2.68-1.48 3.68-2.95 1.16-1.69 1.64-3.33 1.66-3.42-.04-.01-3.18-1.22-3.22-4.86-.03-3.04 2.48-4.49 2.6-4.56-1.43-2.09-3.62-2.32-4.39-2.38-2-.16-3.68 1.09-4.62 1.09zm3.38-3.07c.84-1.01 1.4-2.43 1.25-3.83-1.21.05-2.66.8-3.53 1.82-.78.9-1.45 2.34-1.27 3.71 1.34.1 2.71-.69 3.55-1.7z" />
+    </svg>
+  );
+}
 
 function Icon({ name, className }) {
   return (
@@ -70,6 +111,219 @@ function useMedia(query) {
     return () => m.removeEventListener('change', fn);
   }, [query]);
   return on;
+}
+
+/* ── For shoppers ───────────────────────────────────────────────────────────────── */
+
+// What a shopper can do today. Store pickup with a one-time code is always offered; the
+// board's "pickup or delivery" is not (there is no door delivery, and hub carriage can be
+// paused), and YoteAI finds products but does not follow orders.
+const SHOP_ROWS = [
+  { icon: 'store', title: 'Shop local stores', desc: 'Browse local stores by category. Verified sellers carry a badge.' },
+  { icon: 'chat', title: 'Chat & negotiate', desc: 'Ask the seller, make an offer, and pay the price you agree.' },
+  { icon: 'wallet', title: `${MPESA} & YoteWallet`, desc: `Pay by ${MPESA}, or from a wallet you top up with ${MPESA}.` },
+  { icon: 'key', title: 'Collect with a code', desc: 'Pick up your order with a one-time collection code.' },
+  { mark: 'ai', title: 'Ask YoteAI', desc: 'Describe what you need and get matching products and stores.' },
+];
+
+// The two photo widths, mirroring home-sections.css (the stage's column, and the photo's
+// share of it), so a 1x screen never fetches the 2x file.
+const SHOP_PHOTO_SIZES = '(max-width: 640px) 62vw, (max-width: 1199px) 280px, 240px';
+const SELL_PHOTO_SIZES = '(max-width: 860px) 88vw, (max-width: 1199px) 52vw, 430px';
+
+export function ShoppersSection() {
+  return (
+    <section className="pad hs-sec" id="shop" aria-labelledby="hs-shop-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-shop reveal">
+          <div className="hs-shop-grid">
+            <div className="hs-copy">
+              <span className="hs-pill hs-pill-ic"><Icon name="user" />For shoppers</span>
+              <h2 className="hs-title" id="hs-shop-title">A whole mall <span className="hs-accent">in your pocket.</span></h2>
+              <p className="hs-lead">
+                Discover local stores and their products in one place. Chat with the seller, agree a price,
+                pay with {MPESA} and collect your order.
+              </p>
+              <Link className="hs-btn" to="/storefront">Start shopping <Icon name="arrow" /></Link>
+            </div>
+
+            <div className="hs-shop-stage">
+              <span className="hs-blob" aria-hidden="true" />
+              <span className="hs-blob is-soft" aria-hidden="true" />
+              <img className="hs-shop-photo" src={forShoppers} srcSet={`${forShoppers} 329w, ${forShoppers2x} 658w`}
+                sizes={SHOP_PHOTO_SIZES} width="658" height="968" loading="lazy" decoding="async"
+                alt="A smiling shopper browsing YoteMarket on her phone, carrying YoteMarket shopping bags" />
+              <svg className="hs-sparks is-shop" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{ICONS.sparks}</svg>
+              <p className="hs-note is-shop">
+                Local stores.<br />Real people.<br />Make an offer.<Icon name="heart" className="hs-heart" />
+              </p>
+              <div className="hs-shop-phone">
+                {/* The shopper app as it actually looks — see components/PhoneMockup.jsx. */}
+                <PhoneMockup app="shopper" />
+              </div>
+            </div>
+
+            <ul className="hs-rows">
+              {SHOP_ROWS.map((r) => (
+                <li key={r.title}>
+                  <span className="hs-ic is-solid tone-purple">
+                    {r.mark === 'ai' ? <YoteAiMark size={20} color="#fff" /> : <Icon name={r.icon} />}
+                  </span>
+                  <div><b>{r.title}</b><span>{r.desc}</span></div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hs-feedcard">
+              <div className="hs-feedcard-head">
+                <span className="feed-badge hs-mark"><YoteFeedMark size={18} /></span>
+                <div><b>YoteFeed</b><span>Discover. Watch. Shop.</span></div>
+              </div>
+              {/* An illustrative clip (a supplied photo), so it opens the feed rather than a product.
+                  The real overlay's button says Buy and adds the tagged product to the cart. */}
+              <FeedPhone cls="is-card" href="/feed" label="Watch shoppable clips from local stores on YoteFeed"
+                name="Leather handbag" price={2999} cta="Buy"
+                media={<img className="hs-fp-media" src={stillHandbag} alt="" width="400" height="850" loading="lazy" decoding="async" />} />
+              <p className="hs-note is-feedcard">Short videos.<br />Real products.<br />Tap Buy.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── For merchants ──────────────────────────────────────────────────────────────── */
+
+// Plan gates as lib/entitlements.js has them: POS and Insight are Growth and up; YoteAI
+// chat, YoteFeed, the wallet and chat are on every plan. Prices from dashboard/pricing.js.
+const SELL_CARDS = [
+  { icon: 'store', title: 'Branded storefront', desc: 'Your name, logo, cover and products.' },
+  { sub: true, title: 'Subscriptions, no commission', desc: `Flat plans from ${ksh(500)} a month.` },
+  { mark: 'ai', title: 'YoteAI merchant tools', desc: 'Drafts listing copy from your products.' },
+  { icon: 'chat', title: 'In-app messenger', desc: 'Chat with buyers and agree a price.' },
+  { icon: 'wallet', title: `Wallet & ${MPESA} payouts`, desc: `Withdraw to ${MPESA} whenever you like.` },
+  { icon: 'bulb', title: 'YoteMarket Insight', plan: 'Growth+', desc: 'Sales, pricing and restock reports.' },
+  { icon: 'receipt', title: 'POS & stock', plan: 'Growth+', desc: 'One stock in-store and online, with receipts.' },
+  { mark: 'feed', title: 'YoteFeed shoppable video', desc: 'Post clips and tag your products.' },
+];
+
+// The merchant dashboard as it ships (kits/dashboard/layout.jsx NAV, overview.jsx), with
+// its own demo store and figures from dashboard/data.js. A picture of the screen, not a
+// claim about anyone's sales, so it is hidden from assistive tech like the phones are.
+const DASH_NAV = [
+  { icon: 'gauge', label: 'Dashboard' },
+  { icon: 'store', label: 'Point of sale' },
+  { mark: 'ai', label: 'YoteAI' },
+  { icon: 'bulb', label: 'YoteMarket Insight' },
+  { icon: 'receipt', label: 'Sales' },
+  { icon: 'box', label: 'My Products' },
+];
+const DASH_WEEK = [12, 18, 14, 22, 28, 31, 26];
+
+function DashWindow() {
+  return (
+    <div className="hs-dash" aria-hidden="true">
+      <div className="hs-dash-top">
+        <span className="hs-dash-ava">MK</span>
+        <span className="hs-dash-who"><b>Tamasha Electronics</b><small>Owner · Nairobi CBD</small></span>
+        <span className="hs-dash-view"><Icon name="store" />View storefront</span>
+      </div>
+      <div className="hs-dash-body">
+        <ul className="hs-dash-nav">
+          {DASH_NAV.map((n, i) => (
+            <li key={n.label} className={i === 0 ? 'is-on' : undefined}>
+              {n.mark === 'ai' ? <YoteAiMark size={11} /> : <Icon name={n.icon} />}<span>{n.label}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="hs-dash-main">
+          <div className="hs-dash-stat"><small>Revenue</small><b>{'Ksh\u00a0348K'}</b></div>
+          <div className="hs-dash-chart">
+            <small>Orders this week</small>
+            <span className="hs-dash-bars">
+              {DASH_WEEK.map((v, i) => <i key={i} style={{ height: `${Math.round((v / 31) * 100)}%` }} />)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The board's card turned a product photo into a listing; YoteAI doesn't. What it does:
+// the dashboard's YoteAI chat writes listing copy from the merchant's own products.
+function AiCopyCard() {
+  return (
+    <div className="hs-aicard" aria-hidden="true">
+      <div className="hs-aicard-top">
+        <span className="hs-aicard-mark"><YoteAiMark size={13} color="#fff" /></span>
+        <b>YoteAI</b>
+        <span className="hs-aicard-chip">AI</span>
+      </div>
+      <h5>Write a product description</h5>
+      <p>Ask in chat. YoteAI reads your products and store stats.</p>
+      <div className="hs-aicard-prod">
+        <span className="hs-aicard-shot"><Icon name="box" /></span>
+        <div>
+          <b>Wireless Bluetooth Headphones</b>
+          <ul>
+            <li><Icon name="check" />Catchy description</li>
+            <li><Icon name="check" />From your real product</li>
+            <li><Icon name="check" />Paste it into your listing</li>
+          </ul>
+        </div>
+      </div>
+      <span className="hs-aicard-btn">Ask YoteAI</span>
+    </div>
+  );
+}
+
+export function MerchantsSection() {
+  return (
+    <section className="pad hs-sec" id="sell" aria-labelledby="hs-sell-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-sell reveal">
+          <div className="hs-sell-grid">
+            <div className="hs-copy">
+              <span className="hs-pill hs-pill-ic is-line"><Icon name="store" />For merchants</span>
+              <h2 className="hs-title" id="hs-sell-title">Everything you need <span className="hs-accent">to sell &amp; grow.</span></h2>
+              <p className="hs-lead">
+                Get your own branded storefront, {MPESA} checkout and YoteAI, all on a flat monthly plan
+                with no commission. Built for Kenyan businesses.
+              </p>
+              <Link className="hs-btn is-gold" to="/dashboard">Start selling <Icon name="arrow" /></Link>
+              <Link className="hs-price" to="/pricing"><Icon name="crown" />From {ksh(500)}/mo · no commission</Link>
+            </div>
+
+            <div className="hs-sell-stage">
+              <img className="hs-sell-photo" src={forMerchants} srcSet={`${forMerchants} 550w, ${forMerchants2x} 1100w`}
+                sizes={SELL_PHOTO_SIZES} width="1100" height="819" loading="lazy" decoding="async"
+                alt="A YoteMarket merchant at his counter, holding a YoteMarket parcel and checking his phone" />
+              <DashWindow />
+              <AiCopyCard />
+            </div>
+
+            <ul className="hs-sell-cards">
+              {SELL_CARDS.map((c) => (
+                <li key={c.title}>
+                  <span className={c.mark === 'feed' ? 'hs-sell-ic is-feed' : 'hs-sell-ic'}>
+                    {c.mark === 'ai' ? <YoteAiMark size={20} color="#2E1D03" />
+                      : c.mark === 'feed' ? <YoteFeedMark size={17} />
+                        : c.sub ? <SubscriptionMark size={20} color="#2E1D03" /> : <Icon name={c.icon} />}
+                  </span>
+                  <div>
+                    <b>{c.title}{c.plan ? <em>{c.plan}</em> : null}</b>
+                    <span>{c.desc}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 /* ── YoteAI ─────────────────────────────────────────────────────────────────────── */
@@ -337,14 +591,24 @@ export function AppsSection() {
                 brings more stops and more earnings.
               </p>
               <div className="badges hs-badges">
-                {/* No App Store badge: there is no iOS app. Google Play shows once the listing
-                    exists (playUrl in apk-releases.mjs); until then the APK badge is the way in. */}
+                {/* Both store badges, as the owner wants them (2026-10-08). Google Play goes
+                    straight to the listing once playUrl is set in apk-releases.mjs; until then,
+                    and for the App Store, they lead to /mobile, as before the redesign. */}
                 {SHOPPER_APP.playUrl ? (
                   <a className="store" href={SHOPPER_APP.playUrl} target="_blank" rel="noreferrer">
-                    <i className="fab fa-google-play"></i>
+                    <GooglePlayIcon />
                     <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
                   </a>
-                ) : null}
+                ) : (
+                  <Link className="store" to="/mobile">
+                    <GooglePlayIcon />
+                    <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
+                  </Link>
+                )}
+                <Link className="store" to="/mobile">
+                  <AppleIcon />
+                  <span className="st"><small>Download on the</small><b>App Store</b></span>
+                </Link>
                 <UptodownBadge />
               </div>
               <ul className="hs-appchips">
@@ -371,8 +635,12 @@ export function AppsSection() {
               ))}
             </ul>
             <figure className="hs-apps-photo">
-              <img src={shopperArt} alt="A smiling shopper browsing YoteMarket on her phone, carrying shopping bags"
-                width="640" height="786" loading="lazy" decoding="async" />
+              {/* The backdrop blocks are drawn behind the cut-out (home-sections.css), so they
+                  take the theme's colours. */}
+              <span className="hs-apps-shot">
+                <img src={shopperArt} alt="A smiling shopper checking YoteMarket on her phone, carrying YoteMarket shopping bags"
+                  width="600" height="853" loading="lazy" decoding="async" />
+              </span>
               <figcaption className="hs-note is-apps">
                 More than a<br />marketplace.
                 <Icon name="heart" className="hs-heart" />

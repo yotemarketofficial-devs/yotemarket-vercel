@@ -159,6 +159,22 @@ console's "Email" buttons opened the agent's own mail app with nothing logged.
 
 ---
 
+## P2 — homepage figures the catalogue doesn't back (found 2026-10-08)
+
+Checking the board's copy for the For shoppers / For merchants bands turned these up elsewhere on
+the homepage. They are outside those bands, and the hero's words were approved by the owner, so they
+were left alone and need a decision. Live today: 15 stores in 6 counties, 1 pickup point, and the
+Terms say delivery is suspended.
+
+- [ ] **`[web]` "200+ Local Stores", "Nationwide Delivery"** in the hero feature row, the "200+
+  stores" card baked into the hero art, and the stats band's **200+ / 47 counties / 1,200+ active
+  merchants**. **needs-a-human** (which figures, or computed at build time like the sitemap).
+  **Done when:** every figure on the homepage is either true today or computed from the catalogue.
+- [ ] **`[web]` The rider card's "Real-time routes to your nearest hubs"** and "Pick up delivery
+  runs, drop at hubs", while carriage is paused. Same decision.
+
+---
+
 ## P3 — standing items, older than this session
 
 - [ ] **`[web]` No Uptodown listing URL yet.** Paste it into Admin → App releases when
