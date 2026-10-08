@@ -11,7 +11,15 @@ import '../styles/home-hero.css';
 // change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
 // hour (plus a week of stale-while-revalidate, see vercel.json), so edits didn't show.
 import heroArtLight from '../assets/hero/hero-art.webp';
+import heroArtLight2x from '../assets/hero/hero-art-2x.webp';
 import heroArtDark from '../assets/hero/hero-art-dark.webp';
+
+// The art's width on screen, mirroring home-hero.css: the art column is 59% of the hero
+// (which stops at 1536px) and, once the hero stacks at 1100px, the full width up to 820px.
+// The browser uses it to pick the 906px or the 1812px light file for the screen's density.
+// 1535, not 1536: at 1536 59vw is 906.24px, a hair over the 906px file, which would send
+// every 1x desktop at that width to the 2x file.
+const HERO_ART_SIZES = '(max-width: 820px) 100vw, (max-width: 1100px) 820px, (max-width: 1535px) 59vw, 906px';
 
 // Names, subtitles and launcher icons come from the same entries /apk publishes.
 const SHOPPER_APP = APPS.find((a) => a.slug === 'shopper');
@@ -245,6 +253,8 @@ function HomePage() {
           <div className="hx-art">
             <img
               src={dark ? heroArtDark : heroArtLight}
+              srcSet={dark ? `${heroArtDark} 1536w` : `${heroArtLight} 906w, ${heroArtLight2x} 1812w`}
+              sizes={HERO_ART_SIZES}
               width={dark ? 1536 : 906}
               height={dark ? 1024 : 744}
               fetchPriority="high"
