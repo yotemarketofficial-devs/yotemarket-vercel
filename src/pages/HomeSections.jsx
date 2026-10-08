@@ -29,6 +29,14 @@ import forShoppers2x from '../assets/home/for-shoppers@2x.webp';
 import forMerchants from '../assets/home/for-merchants.webp';
 import forMerchants2x from '../assets/home/for-merchants@2x.webp';
 import stillHandbag from '../assets/home/feed-handbag.webp';
+// The eight supplied models (images/20.webp), branded the same way (see CLAUDE.md).
+import roleShop from '../assets/home/role-shop.webp';
+import roleSell from '../assets/home/role-sell.webp';
+import roleEarn from '../assets/home/role-earn.webp';
+import roleRide from '../assets/home/role-ride.webp';
+import earnScout from '../assets/home/earn-scout.webp';
+import earnRider from '../assets/home/earn-rider.webp';
+import ctaGroup from '../assets/home/cta-group.webp';
 import stillSneaker from '../assets/home/feed-sneaker.webp';
 import stillKitchen from '../assets/home/feed-kitchen.webp';
 import stillBackpack from '../assets/home/feed-backpack.webp';
@@ -63,6 +71,16 @@ const ICONS = {
   gauge: <><path d="M4.5 16.5a7.5 7.5 0 1 1 15 0" /><path d="m12 16.5 3.6-4.6" /><circle cx="12" cy="16.5" r="1.1" /></>,
   box: <><path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z" /><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9" /></>,
   crown: <path d="M4 17.5 3 7.5l5 4 4-6 4 6 5-4-1 10z" />,
+  users: <><circle cx="9" cy="8.5" r="3.2" /><path d="M3.5 19.5c.5-3.4 2.7-5.3 5.5-5.3s5 1.9 5.5 5.3" /><circle cx="16.8" cy="9.3" r="2.5" /><path d="M16.2 14.3c2.4.1 4 1.7 4.4 4.6" /></>,
+  cart: <><path d="M3 4h2.2l2.2 10.6a1.6 1.6 0 0 0 1.6 1.3h8.1a1.6 1.6 0 0 0 1.6-1.2L20.5 8H6.1" /><circle cx="9.5" cy="19.6" r="1.3" /><circle cx="17" cy="19.6" r="1.3" /></>,
+  megaphone: <><path d="M4 10v4a1 1 0 0 0 1 1h2.5l7.5 4.5V4.5L7.5 9H5a1 1 0 0 0-1 1z" /><path d="M8 15l1.2 4.5h2.3L10.6 15M18 9.5a3.5 3.5 0 0 1 0 5" /></>,
+  scooter: <><circle cx="6" cy="17" r="2.6" /><circle cx="18" cy="17" r="2.6" /><path d="M8.6 17h6.8l2-6.5H20M17.4 10.5 16 5.5h-2.5M8.6 17 7 11.5h5.5l2 5.5" /></>,
+  coins: <><ellipse cx="9" cy="7" rx="5.5" ry="2.5" /><path d="M3.5 7v4c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V7" /><path d="M9.5 16.3c.9 1.3 3.2 2.2 5.5 2.2 3 0 5.5-1.1 5.5-2.5v-4c0-1.2-1.8-2.2-4.3-2.4" /></>,
+  climb: <><path d="M4 20.5h16" /><path d="M6.5 16.5v-3M11 16.5v-6M15.5 16.5v-9" /><path d="m14 5.5 3.5-2 1.8 3.6" /></>,
+  briefcase: <><rect x="3.5" y="7.5" width="17" height="12" rx="2" /><path d="M9 7.5V5.8A1.3 1.3 0 0 1 10.3 4.5h3.4A1.3 1.3 0 0 1 15 5.8v1.7M3.5 12.5h17M12 11.5v2" /></>,
+  truck: <><path d="M14 17.5V6.5a1.5 1.5 0 0 0-1.5-1.5h-9A1.5 1.5 0 0 0 2 6.5v9.5a1.5 1.5 0 0 0 1.5 1.5H5" /><path d="M14 8.5h3.6a1.5 1.5 0 0 1 1.2.6l2.9 3.8a1.5 1.5 0 0 1 .3.9v2.2a1.5 1.5 0 0 1-1.5 1.5H19M9.5 17.5H14" /><circle cx="7.2" cy="17.6" r="2.2" /><circle cx="16.8" cy="17.6" r="2.2" /></>,
+  star: <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" />,
+  form: <><rect x="5" y="3.5" width="14" height="17" rx="2" /><path d="M9 3.5V5h6V3.5M8.5 10h7M8.5 13.5h7M8.5 17h4" /></>,
   sparks: <><path d="M5 9.5 2.5 7M6.5 5 6 2M10 6.5 12 4.5" /></>,
 };
 
@@ -111,6 +129,168 @@ function useMedia(query) {
     return () => m.removeEventListener('change', fn);
   }, [query]);
   return on;
+}
+
+/* ── One platform ───────────────────────────────────────────────────────────────── */
+
+// The four ways in. Each card is one link to that role's own space.
+const ROLES = [
+  { key: 'shop', icon: 'cart', title: 'Shop', to: '/storefront', img: roleShop, alt: 'A shopper with a YoteMarket bag, browsing on her phone',
+    desc: 'Discover local stores, chat with sellers and pay with ' + MPESA + '.' },
+  { key: 'sell', icon: 'store', title: 'Sell', to: '/dashboard', img: roleSell, alt: 'A merchant in a YoteMarket apron, working on his laptop',
+    desc: 'Open your store and sell on a flat monthly plan.' },
+  { key: 'earn', icon: 'megaphone', title: 'Earn', to: '/marketers', img: roleEarn, alt: 'A YoteMarket scout with a megaphone and her phone',
+    desc: 'Bring merchants on board and get paid for each one.' },
+  { key: 'ride', icon: 'scooter', title: 'Ride', to: '/rider', img: roleRide, alt: 'A YoteMarket rider with his delivery box, giving a thumbs up',
+    desc: 'Apply to deliver with YoteMarket on your own time.' },
+];
+
+export function RolesSection() {
+  return (
+    <section className="pad hs-sec" id="roles" aria-labelledby="hs-roles-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-roles reveal">
+          <div className="hs-roles-grid">
+            <div className="hs-copy">
+              <span className="hs-pill hs-pill-ic"><Icon name="users" />One platform</span>
+              <h2 className="hs-title" id="hs-roles-title">Every role. <span className="hs-accent">One platform.</span></h2>
+              <p className="hs-lead">
+                Shop, sell, promote and deliver, all in one place. YoteMarket connects shoppers, merchants,
+                marketers and riders in one ecosystem.
+              </p>
+            </div>
+            <ul className="hs-roles">
+              {ROLES.map((r) => (
+                <li key={r.key}>
+                  <Link className={`hs-role is-${r.key}`} to={r.to}>
+                    <span className="hs-role-photo">
+                      <img src={r.img} alt={r.alt} loading="lazy" decoding="async" />
+                    </span>
+                    <span className="hs-role-ic" aria-hidden="true"><Icon name={r.icon} /></span>
+                    <span className="hs-role-body">
+                      <b>{r.title}</b>
+                      <span>{r.desc}</span>
+                    </span>
+                    <span className="hs-role-go" aria-hidden="true"><Icon name="arrow" /></span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Earn with YoteMarket ───────────────────────────────────────────────────────── */
+
+function Steps({ steps, label }) {
+  return (
+    <ol className="hs-psteps" aria-label={label}>
+      {steps.map((st, i) => (
+        <li key={st.label}>
+          {i > 0 ? <Icon name="arrow" className="hs-psteps-arrow" /> : null}
+          <span className="hs-psteps-ic"><Icon name={st.icon} /></span>
+          <span className="hs-psteps-l">{st.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+const SCOUT_STEPS = [
+  { icon: 'user', label: 'Refer' },
+  { icon: 'coins', label: 'Earn' },
+  { icon: 'climb', label: 'Climb' },
+  { icon: 'briefcase', label: 'Interview' },
+];
+const RIDER_STEPS = [
+  { icon: 'form', label: 'Apply' },
+  { icon: 'shield', label: 'Get verified' },
+  { icon: 'box', label: 'Deliver' },
+  { icon: 'coins', label: 'Earn' },
+];
+
+export function EarnSection() {
+  return (
+    <section className="pad hs-sec" id="earn" aria-labelledby="hs-earn-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-earn reveal">
+          <div className="hs-earn-grid">
+            <div className="hs-copy">
+              <span className="hs-pill hs-pill-ic is-outline"><Icon name="coins" />Earn with YoteMarket</span>
+              <h2 className="hs-title" id="hs-earn-title">More ways<br />to earn with <span className="hs-accent">YoteMarket.</span></h2>
+              <p className="hs-lead">
+                Turn your network and your time into income. Join the marketer or rider program and get
+                paid to {MPESA}.
+              </p>
+              <Link className="hs-btn" to="/marketers#calculator">Earnings calculator <Icon name="arrow" /></Link>
+            </div>
+
+            <article className="hs-prog is-scout">
+              <img className="hs-prog-photo" src={earnScout} alt="A YoteMarket scout checking her phone"
+                loading="lazy" decoding="async" />
+              <div className="hs-prog-body">
+                <span className="hs-tag"><Icon name="star" />Marketer program</span>
+                <h3>Become a YoteMarket Scout</h3>
+                <p>Refer merchants. Get paid for each one you bring.</p>
+                <Steps steps={SCOUT_STEPS} label="How the marketer program works" />
+                <Link className="hs-btn" to="/marketers">Join the program <Icon name="arrow" /></Link>
+              </div>
+            </article>
+
+            <article className="hs-prog is-rider">
+              <div className="hs-prog-body">
+                <span className="hs-tag"><Icon name="star" />Rider program</span>
+                <h3>Ride with YoteMarket</h3>
+                <p>Deliver on your schedule. Get paid per run.</p>
+                <Steps steps={RIDER_STEPS} label="How the rider program works" />
+                <Link className="hs-btn" to="/rider">Ride with us <Icon name="arrow" /></Link>
+              </div>
+              <img className="hs-prog-photo" src={earnRider} alt="A YoteMarket rider on his motorbike with a delivery box"
+                loading="lazy" decoding="async" />
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── The final call to action ───────────────────────────────────────────────────── */
+
+export function CtaSection() {
+  return (
+    <section className="pad hs-sec" id="ready" aria-labelledby="hs-cta-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-cta reveal">
+          <div className="hs-cta-grid">
+            <div className="hs-copy">
+              <img className="hs-cta-logo" src="/assets/logo-white.png" alt="YoteMarket" width="953" height="368" loading="lazy" />
+              <h2 className="hs-title" id="hs-cta-title">Ready when you are.</h2>
+              <p className="hs-lead">Shop the mall. Open your store.<br />Earn with YoteMarket.</p>
+              <div className="hs-cta-acts">
+                <Link className="hs-btn is-gold" to="/storefront">Start shopping <Icon name="arrow" /></Link>
+                <Link className="hs-btn is-line" to="/dashboard">Start selling <Icon name="arrow" /></Link>
+                <Link className="hs-btn is-line" to="/#earn">Earn with us <Icon name="arrow" /></Link>
+              </div>
+            </div>
+            <div className="hs-cta-stage">
+              <span className="hs-cta-sun" aria-hidden="true" />
+              <img className="hs-cta-group" src={ctaGroup}
+                alt="A shopper, a merchant with a parcel, a seller on his phone and a rider: the people of YoteMarket"
+                loading="lazy" decoding="async" />
+              <svg className="hs-sparks is-cta-l" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{ICONS.sparks}</svg>
+              <p className="hs-note is-cta">
+                Local businesses.<br />Real people.<br />Fair prices.<Icon name="heart" className="hs-heart" />
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 /* ── For shoppers ───────────────────────────────────────────────────────────────── */
@@ -300,6 +480,16 @@ export function MerchantsSection() {
               <img className="hs-sell-photo" src={forMerchants} srcSet={`${forMerchants} 550w, ${forMerchants2x} 1100w`}
                 sizes={SELL_PHOTO_SIZES} width="1100" height="819" loading="lazy" decoding="async"
                 alt="A YoteMarket merchant at his counter, holding a YoteMarket parcel and checking his phone" />
+              <p className="hs-note is-sell">
+                <svg className="hs-scribble" viewBox="0 0 70 44" aria-hidden="true" focusable="false">
+                  <path d="M4 40C10 24 28 10 58 8" />
+                  <path d="M49 2.5 59 8l-8.5 7.5" />
+                </svg>
+                Save time.<br />Sell more.
+                <svg className="hs-swash" viewBox="0 0 120 14" aria-hidden="true" focusable="false">
+                  <path d="M4 11C34 4 72 2 116 5" />
+                </svg>
+              </p>
               <DashWindow />
               <AiCopyCard />
             </div>
@@ -308,9 +498,9 @@ export function MerchantsSection() {
               {SELL_CARDS.map((c) => (
                 <li key={c.title}>
                   <span className={c.mark === 'feed' ? 'hs-sell-ic is-feed' : 'hs-sell-ic'}>
-                    {c.mark === 'ai' ? <YoteAiMark size={20} color="#2E1D03" />
+                    {c.mark === 'ai' ? <YoteAiMark size={20} color="#1A1205" />
                       : c.mark === 'feed' ? <YoteFeedMark size={17} />
-                        : c.sub ? <SubscriptionMark size={20} color="#2E1D03" /> : <Icon name={c.icon} />}
+                        : c.sub ? <SubscriptionMark size={20} color="#1A1205" /> : <Icon name={c.icon} />}
                   </span>
                   <div>
                     <b>{c.title}{c.plan ? <em>{c.plan}</em> : null}</b>

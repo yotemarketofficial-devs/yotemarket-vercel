@@ -4,7 +4,9 @@ import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 import '../styles/home-hero.css';
-import { ShoppersSection, MerchantsSection, YoteAiSection, YoteFeedSection, AppsSection } from './HomeSections.jsx';
+import {
+  RolesSection, ShoppersSection, MerchantsSection, YoteAiSection, YoteFeedSection, EarnSection, AppsSection, CtaSection,
+} from './HomeSections.jsx';
 // Imported, not referenced from public/, so Vite fingerprints the file names: every
 // change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
 // hour (plus a week of stale-while-revalidate, see vercel.json), so edits didn't show.
@@ -177,49 +179,8 @@ function HomePage() {
         </div>
       </header>
 
-      <section className="pad" id="roles">
-        <div className="wrap">
-          <div className="sec-head hx-why reveal">
-            <div className="kicker">One platform · every role</div>
-            <h2>Whoever you are, there's a place for you</h2>
-            <p>
-              Shoppers, merchants, marketers and riders each get a dedicated space — built on one shared design system.
-            </p>
-          </div>
-          <div className="cards">
-            <Link className="card reveal" style={{ '--rd': '0ms' }} to="/storefront">
-              <div className="tile" style={{ background: 'linear-gradient(135deg,#7C2BD4,#A020F0)' }}>
-                <i className="fas fa-bag-shopping"></i>
-              </div>
-              <h3>Shop the mall</h3>
-              <p>
-                Browse hundreds of local stores like a physical mall, chat with sellers in the app messenger, and check out with M-Pesa.
-              </p>
-              <span className="go">Enter storefront <i className="fas fa-arrow-right arrow"></i></span>
-            </Link>
-            <Link className="card reveal" style={{ '--rd': '90ms' }} to="/dashboard">
-              <div className="tile" style={{ background: '#4338CA' }}>
-                <i className="fas fa-store"></i>
-              </div>
-              <h3>Sell &amp; grow</h3>
-              <p>
-                A branded storefront, product management, AI tools, demand insights, wallet and subscriptions — no sales commission.
-              </p>
-              <span className="go">Open seller dashboard <i className="fas fa-arrow-right arrow"></i></span>
-            </Link>
-            <Link className="card reveal" style={{ '--rd': '180ms' }} to="/marketers">
-              <div className="tile" style={{ background: 'linear-gradient(135deg,#E89B0C,#F4B530)' }}>
-                <i className="fas fa-bullhorn"></i>
-              </div>
-              <h3>Refer &amp; earn</h3>
-              <p>
-                Refer merchants, stack checkpoints, climb the leaderboard, and cash out to M-Pesa. Top scouts get hired.
-              </p>
-              <span className="go">Open marketer program <i className="fas fa-arrow-right arrow"></i></span>
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* One platform, Earn and the final CTA follow the third brand board — see HomeSections.jsx. */}
+      <RolesSection />
 
       {/* For shoppers and For merchants, laid out to the brand board — see HomeSections.jsx. */}
       <ShoppersSection />
@@ -230,46 +191,7 @@ function HomePage() {
 
       <MerchantsSection />
 
-      {/* earn with YoteMarket — marketers + riders */}
-      <section className="pad" id="earn" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="sec-head reveal">
-            <div className="kicker">Earn with YoteMarket</div>
-            <h2>Two ways to make money with us</h2>
-            <p>Bring merchants on board, or deliver across town — both pay out to M-Pesa.</p>
-          </div>
-          <div className="earn-grid">
-            <article className="earn-card reveal" style={{ '--rd': '0ms' }}>
-              <div className="earn-ic" style={{ background: 'linear-gradient(135deg,#E89B0C,#F4B530)' }}>
-                <i className="fas fa-bullhorn"></i>
-              </div>
-              <h3>Marketer Program</h3>
-              <p>Become a YoteMarket scout. Sign up merchants with your referral link and earn as they grow.</p>
-              <ul className="feats">
-                <li><i className="fas fa-check"></i> Unique referral link &amp; QR</li>
-                <li><i className="fas fa-check"></i> Milestone checkpoint payouts</li>
-                <li><i className="fas fa-check"></i> Leaderboard, badges &amp; streaks</li>
-                <li><i className="fas fa-check"></i> Cash out to M-Pesa — top scouts get hired</li>
-              </ul>
-              <Link className="btn btn-gold" to="/marketers">Join the program <i className="fas fa-arrow-right"></i></Link>
-            </article>
-            <article className="earn-card reveal" style={{ '--rd': '110ms' }}>
-              <div className="earn-ic" style={{ background: 'linear-gradient(135deg,#3b82f6,#2563eb)' }}>
-                <i className="fas fa-motorcycle"></i>
-              </div>
-              <h3>Rider Program</h3>
-              <p>Deliver on your own schedule. Pick up delivery runs, drop at hubs, and grow your earnings.</p>
-              <ul className="feats">
-                <li><i className="fas fa-check"></i> Flexible runs — work your own hours</li>
-                <li><i className="fas fa-check"></i> Get paid per run, straight to M-Pesa</li>
-                <li><i className="fas fa-check"></i> Unlock higher delivery tiers with badges</li>
-                <li><i className="fas fa-check"></i> Real-time routes to your nearest hubs</li>
-              </ul>
-              <Link className="btn btn-outline" to="/rider">Ride with us <i className="fas fa-arrow-right"></i></Link>
-            </article>
-          </div>
-        </div>
-      </section>
+      <EarnSection />
 
       <AppsSection />
 
@@ -282,22 +204,7 @@ function HomePage() {
         </div>
       </section>
 
-      {/* final CTA band */}
-      <section className="pad" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="cta-band reveal">
-            <div className="cta-glow"></div>
-            <div className="cta-inner">
-              <h2>Ready when you are.</h2>
-              <p>Shop the mall, open your store, or earn with us — it all starts here.</p>
-              <div className="cta-actions">
-                <Link className="btn btn-gold btn-lg" to="/storefront">Start shopping <i className="fas fa-arrow-right"></i></Link>
-                <Link className="btn btn-ghost-line btn-lg" to="/dashboard">Become a seller</Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <CtaSection />
 
       <footer>
         <div className="wrap">

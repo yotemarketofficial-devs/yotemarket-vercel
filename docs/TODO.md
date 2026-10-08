@@ -175,6 +175,18 @@ Terms say delivery is suspended.
 
 ---
 
+## P2 — check the One platform / Earn / CTA copy against the code (2026-10-08)
+
+- [ ] **`[web]` Fact-check the three bands from the third brand board.** They were merged before the
+  check finished. Verify against `kits/marketers/*`, `kits/earn/*`, `RiderPage.jsx`, `Terms.jsx`:
+  how scouts are paid (per verified merchant? checkpoints?), whether "Interview" is right, what a
+  rider can do while carriage is paused ("Deliver on your schedule. Get paid per run."), "paid to
+  M-Pesa" for both programs, and the CTA note "Local businesses. Real people. Fair prices."
+  **Done when:** every line on `RolesSection`, `EarnSection` and `CtaSection` is backed by product
+  code, and `CLAUDE.md` says so.
+
+---
+
 ## P3 — standing items, older than this session
 
 - [ ] **`[web]` No Uptodown listing URL yet.** Paste it into Admin → App releases when

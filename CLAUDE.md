@@ -355,6 +355,24 @@ the code, 2026-10-08):
   starts each withdrawal. → "Withdraw to M-Pesa whenever you like".
 - Plan gates are shown where they apply (POS and Insight say Growth+).
 
+## One platform, Earn with YoteMarket and the final CTA (2026-10-08)
+
+`RolesSection`, `EarnSection` and `CtaSection` in `src/pages/HomeSections.jsx` (styles at the very end
+of `home-sections.css`) replace the old roles cards, the earn cards and the `cta-band`, laid out to the
+third brand board. The people are the eight supplied models (one sheet, already cut out), branded like
+the others: greens to purple in LCh, the real logo printed back on every bag, box, apron and delivery
+case, nothing else touched. Who goes where: Shop = the yellow-top shopper, Sell = the apron + laptop
+merchant, Earn = the megaphone scout, Ride = the standing rider; the Scout card = the blazer woman (she
+is the narrowest figure, and the card is narrow); the Rider card = the rider on his bike, behind a
+copy panel as on the board. `cta-group.webp` is one composite: the shopper MIRRORED to face out (the
+owner asked; her bag's logo was re-printed the right way round after the flip), the merchant with
+the parcel, the man with his phone, the rider. The figures' heads rise past their panels' tops: the
+panels clip their sides only (`clip-path: inset(-N% 0 0 0)`).
+
+**The copy on these bands has not been fact-checked yet** — see `docs/TODO.md`. In particular the
+rider band says "Get paid per run" while carriage is paused, and the marketer steps end in
+"Interview" (the earn landing says top scouts are invited to interview, not hired).
+
 ## Gotchas worth remembering
 
 - **The prerender `<noscript>` swap is position-sensitive.** A head comment mentions
