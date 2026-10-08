@@ -298,9 +298,9 @@ one plays, as before), and links each phone to `/feed/:id`.
 not claim these: YoteAI writing listings from a photo, SEO titles or order tracking (YoteMarket
 Insight's sales, pricing and stock reports are real, Growth plan and up); checkout inside a
 YoteFeed clip (Buy adds a TAGGED product to the cart, so untagged clips say "Watch", not "Shop
-now"; payment is the normal checkout); an iOS app, an App Store badge or "available on Android &
-iOS" (the Google Play badge appears only once `playUrl` is set in `apk-releases.mjs`; until then
-the APK badge is the way in); door delivery (collection is a pickup point or the store); and,
+now"; payment is the normal checkout); "available on Android & iOS" (the Google Play and App Store
+badges were put back at the owner's request on 2026-10-08: they lead to /mobile, as they did before,
+and Google Play goes to its listing once `playUrl` is set in `apk-releases.mjs`); door delivery (collection is a pickup point or the store); and,
 for signed-out visitors who get canned replies, that every YoteAI answer is a real listing. The board's YoteAI was a seller tool; the band stays shopper-first and its last card says
 what sellers really get (YoteAI chat in the dashboard writes listings, drafts replies, advises on
 stock and price). The unsourced 4.7★ rating was dropped with the old apps band.
@@ -319,8 +319,9 @@ every bag, box and the apron, shaded by the surface under it. The fruit logo on 
 was retouched off, like the board's sneaker swoosh. The merchant's wall was NOT replaced by a flat
 fill: it is the photo's own wall, repainted deep purple with every shadow the shelves, rail and he
 cast on it kept, a pool of light behind him and the photo's grain, so it reads as a real room and
-fades into the band (`#2C1260` at its edges). `feed-handbag.webp` is the board's YoteFeed clip, its
-grey-green bag turned to the tan of the product card.
+fades into the band (`#2C1260` at its edges). `feed-handbag.webp`, the YoteFeed card's clip, is a
+supplied photo too: the bag's hanging maker's monogram charm was retouched off (a trademark) and the
+phone case turned purple.
 
 **The stages are sized in `cqw`** (container units of the stage), so photo, phone, dashboard window
 and YoteAI card scale as one picture. On wide screens both photos stand on the band's bottom edge

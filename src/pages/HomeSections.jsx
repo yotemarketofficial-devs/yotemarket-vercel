@@ -8,7 +8,7 @@
 // does not write listings from a photo, write SEO titles or track orders; there is no
 // "demand"/trending data for sellers (Insight reports on the store's own sales, prices and
 // stock); YoteFeed checkout is the normal cart and its button says Buy; POS invoices carry
-// the KRA PIN but are not eTIMS; there is no iOS app and no door delivery. Every line below
+// the KRA PIN but are not eTIMS; there is no door delivery. Every line below
 // is one the product makes good on (storefront engage.jsx, feed.jsx, commerce.jsx,
 // profile.jsx; dashboard extras.jsx, feedmgr.jsx, pos.jsx, pricing.js; lib/entitlements.js).
 // Keep it that way when editing the copy.
@@ -158,11 +158,11 @@ export function ShoppersSection() {
                 <span className="feed-badge hs-mark"><YoteFeedMark size={18} /></span>
                 <div><b>YoteFeed</b><span>Discover. Watch. Shop.</span></div>
               </div>
-              {/* An illustrative clip (the board's), so it opens the feed rather than a product.
+              {/* An illustrative clip (a supplied photo), so it opens the feed rather than a product.
                   The real overlay's button says Buy and adds the tagged product to the cart. */}
               <FeedPhone cls="is-card" href="/feed" label="Watch shoppable clips from local stores on YoteFeed"
                 name="Leather handbag" price={2999} cta="Buy"
-                media={<img className="hs-fp-media" src={stillHandbag} alt="" width="392" height="592" loading="lazy" decoding="async" />} />
+                media={<img className="hs-fp-media" src={stillHandbag} alt="" width="400" height="850" loading="lazy" decoding="async" />} />
               <p className="hs-note is-feedcard">Short videos.<br />Real products.<br />Tap Buy.</p>
             </div>
           </div>
@@ -570,14 +570,24 @@ export function AppsSection() {
                 brings more stops and more earnings.
               </p>
               <div className="badges hs-badges">
-                {/* No App Store badge: there is no iOS app. Google Play shows once the listing
-                    exists (playUrl in apk-releases.mjs); until then the APK badge is the way in. */}
+                {/* Both store badges, as the owner wants them (2026-10-08). Google Play goes
+                    straight to the listing once playUrl is set in apk-releases.mjs; until then,
+                    and for the App Store, they lead to /mobile, as before the redesign. */}
                 {SHOPPER_APP.playUrl ? (
                   <a className="store" href={SHOPPER_APP.playUrl} target="_blank" rel="noreferrer">
                     <i className="fab fa-google-play"></i>
                     <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
                   </a>
-                ) : null}
+                ) : (
+                  <Link className="store" to="/mobile">
+                    <i className="fab fa-google-play"></i>
+                    <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
+                  </Link>
+                )}
+                <Link className="store" to="/mobile">
+                  <i className="fab fa-apple"></i>
+                  <span className="st"><small>Download on the</small><b>App Store</b></span>
+                </Link>
                 <UptodownBadge />
               </div>
               <ul className="hs-appchips">
