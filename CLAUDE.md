@@ -260,8 +260,9 @@ The mockup has no larger original, so its pixels were upscaled by models: Real-C
 (the only one that kept the phone's small text spelled right), Real-ESRGAN x4plus over the
 skyline and trees (Real-CUGAN paints foliage flat), and EDSR for colour (Real-CUGAN over-saturates
 thin navy text). Every brand swap above was then redrawn at 2× from its full-size source. **Change
-both files together**, or drop the `srcSet` until the 2× is redone: a retina screen shows only
-the 2× file, so an edit to the 906px one alone would never reach it. The art files are imported in `HomePage.jsx` rather than served from `public/`, so
+both files together**, or drop the `srcSet` until the 2× is redone: high-density laptops and
+desktops, and 3× phones, are served only the 2× file (2× phones still get the 906px one), so an
+edit to the 906px file alone would never reach them. The art files are imported in `HomePage.jsx` rather than served from `public/`, so
 Vite gives them hashed names and a replaced image shows up on the next load. With a fixed name,
 the `/assets/*.webp` cache rule in `vercel.json` kept the old art on screen for up to an hour.
 Dark mode swaps in `hero-art-dark.webp` (1536×1024), the designer's night
