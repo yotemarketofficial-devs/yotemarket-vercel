@@ -285,9 +285,12 @@ a feature list, a shopper photo and an ecosystem strip. The board was green and 
 green is the brand purple and its orange the gold, with pale bands in light mode and deep purple
 ones in dark mode.
 
-**The assets in `src/assets/home/` were cut from that board**: `shopper.webp` (backdrop and greens
-recoloured to purple in LCh, page wash removed, Real-CUGAN 4× then 640px) and four YoteFeed stills
-(the board's phone UI cropped away, the sneaker's maker's swoosh retouched off). The stills are
+**The YoteFeed stills in `src/assets/home/` were cut from that board** (the board's phone UI
+cropped away, the sneaker's maker's swoosh retouched off). `shopper.webp`, the apps band's photo, is
+a supplied picture (the yellow-top shopper): greens turned purple in LCh, `logo-white.png` printed
+on her bag. Its purple and gold backdrop blocks are CSS (`.hs-apps-shot`), so they follow the theme.
+A Dreamstime preview was offered for this slot twice, once with its watermark painted out by an AI
+tool (the file's own XMP said so); neither was used. Don't use a stock image without its licence. The stills are
 only the fallback: the fan shows merchants' newest clips once `lib/feed.js` loads (only the front
 one plays, as before), and links each phone to `/feed/:id`.
 
@@ -301,6 +304,55 @@ the APK badge is the way in); door delivery (collection is a pickup point or the
 for signed-out visitors who get canned replies, that every YoteAI answer is a real listing. The board's YoteAI was a seller tool; the band stays shopper-first and its last card says
 what sellers really get (YoteAI chat in the dashboard writes listings, drafts replies, advises on
 stock and price). The unsourced 4.7★ rating was dropped with the old apps band.
+
+## The For shoppers / For merchants bands (2026-10-08)
+
+`ShoppersSection` and `MerchantsSection` in `src/pages/HomeSections.jsx` (styles at the end of
+`src/styles/home-sections.css`) replace the old six- and eleven-card grids, laid out to the second
+brand board: pill, two-tone headline, CTA; a photo with the app over it; icon-card lists; the YoteFeed
+card; and, for merchants, the board's dark band (deep purple in both themes) with a 2×4 card grid.
+
+**The photos were supplied, then branded.** `for-shoppers*.webp` (sweater, braids) came cut out on
+transparency; `for-merchants*.webp` (the seller at his counter) came on a white studio wall. Both had
+greens turned to the brand purple in LCh (the plants stay green), and the real logo printed back on
+every bag, box and the apron, shaded by the surface under it. The fruit logo on the merchant's laptop
+was retouched off, like the board's sneaker swoosh. The merchant's wall was NOT replaced by a flat
+fill: it is the photo's own wall, repainted deep purple with every shadow the shelves, rail and he
+cast on it kept, a pool of light behind him and the photo's grain, so it reads as a real room and
+fades into the band (`#2C1260` at its edges). `feed-handbag.webp` is the board's YoteFeed clip, its
+grey-green bag turned to the tan of the product card.
+
+**The stages are sized in `cqw`** (container units of the stage), so photo, phone, dashboard window
+and YoteAI card scale as one picture. On wide screens both photos stand on the band's bottom edge
+(the stage bleeds through the band's padding), and the merchant stage reaches back under the copy
+column on a fade, as the board's photo does. **The overlay positions are tied to the merchant photo**:
+the window sits right of his head, the YoteAI card right of the phone in his hand. Replace the photo
+and those two `left`/`top` values must be re-fitted. Under 560px the window goes and the card drops
+under the photo at a fixed size.
+
+**The dashboard window is a transcription, not an impression**: nav labels from
+`kits/dashboard/layout.jsx` (`NAV`), the Revenue figure and the week's order bars from
+`dashboard/data.js` (the dashboard's own demo store, Tamasha Electronics). There is no "Total sales"
+line chart, no store "Active" badge, and the button says "View storefront". Keep it that way.
+
+**What the boards said that the product doesn't, and what the bands say instead** (checked against
+the code, 2026-10-08):
+
+- "Hundreds of trusted stores": there are 15 live stores. → "Browse local stores by category.
+  Verified sellers carry a badge."
+- "Choose pickup or delivery" / "get it delivered": no door delivery exists; hub carriage is paused
+  (Terms). Store pickup with a one-time code always works. → "Collect with a code".
+- "Ask YoteAI / Track every order … real-time updates": YoteAI finds products; it doesn't track
+  orders. → "Ask YoteAI".
+- "Shop instantly" / "Shop Now": Buy adds a tagged product to the cart. → "Tap Buy", button "Buy".
+- "Turn your product photo into a polished listing": nothing takes a photo. YoteAI chat drafts
+  listing copy from the merchant's own products. → the card "Write a product description".
+- "Demand insights — see what's trending": there is no trending or search data. Insight (Growth+)
+  reports on the store's own sales, prices and restocking. → "YoteMarket Insight".
+- "Generate KRA invoices": POS invoices carry the merchant's KRA PIN but are not eTIMS. → "receipts".
+- "Receive payments instantly": online payments land in a pending balance first, and the merchant
+  starts each withdrawal. → "Withdraw to M-Pesa whenever you like".
+- Plan gates are shown where they apply (POS and Insight say Growth+).
 
 ## Gotchas worth remembering
 

@@ -4,7 +4,7 @@ import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 import '../styles/home-hero.css';
-import { YoteAiSection, YoteFeedSection, AppsSection } from './HomeSections.jsx';
+import { ShoppersSection, MerchantsSection, YoteAiSection, YoteFeedSection, AppsSection } from './HomeSections.jsx';
 // Imported, not referenced from public/, so Vite fingerprints the file names: every
 // change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
 // hour (plus a week of stale-while-revalidate, see vercel.json), so edits didn't show.
@@ -18,36 +18,6 @@ import heroArtDark from '../assets/hero/hero-art-dark.webp';
 // 1535, not 1536: at 1536 59vw is 906.24px, a hair over the 906px file, which would send
 // every 1x desktop at that width to the 2x file.
 const HERO_ART_SIZES = '(max-width: 820px) 100vw, (max-width: 1100px) 820px, (max-width: 1535px) 59vw, 906px';
-
-const SHOPPER_FEATURES = [
-  { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'The whole mall, by category', desc: 'Browse hundreds of local stores by category and subcategory — just like walking a real mall.' },
-  { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Chat & negotiate', desc: 'Message sellers, agree a price in the app messenger, then pay — no jumping to other apps.' },
-  { icon: 'fa-shield-halved', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'M-Pesa wallet & escrow', desc: 'Top up, pay with M-Pesa, and your money stays in escrow until your order arrives.' },
-  { icon: 'fa-warehouse', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Pickup hubs near you', desc: 'Collect at your nearest neighbourhood hub, or have it delivered to your door.' },
-  { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'Ask YoteAI', desc: 'Your shopping assistant — find products, compare options, and track orders just by asking.' },
-  { mark: 'feed', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'Watch & shop on YoteFeed', desc: 'Short videos from real local stores — see products in action and tap to buy the exact item on screen.' },
-];
-
-// The YoteAI / YoteFeed brand marks (not generic icons) wherever the brand appears.
-function FeatureIcon({ f }) {
-  if (f.mark === 'ai') return <div className="mfeat-ic" style={{ background: f.tint }}><YoteAiMark size={24} color="#fff" /></div>;
-  if (f.mark === 'feed') return <div className="mfeat-ic mfeat-ic-brand"><YoteFeedMark size={22} /></div>;
-  return <div className="mfeat-ic" style={{ background: f.tint }}><i className={`fas ${f.icon}`}></i></div>;
-}
-
-const MERCHANT_FEATURES = [
-  { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Branded storefront', desc: 'Your own shopfront in the mall — products, photos and reviews, live in minutes.' },
-  { icon: 'fa-id-card', tint: 'linear-gradient(135deg,#5B16A8,#7C2BD4)', title: 'Subscriptions, no commission', desc: 'Flat monthly plans from Ksh 500 — software only, or add hub deliveries. Keep 100% of every sale — we never take a cut.' },
-  { mark: 'ai', tint: 'linear-gradient(135deg,#A020F0,#E89B0C)', title: 'YoteAI merchant tools', desc: 'AI writes your product listings, surfaces demand insights, and answers shopper questions for you.' },
-  { icon: 'fa-comments', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'In-app messenger', desc: 'Chat and negotiate with buyers inside the app — agree a price, then get paid through escrow.' },
-  { icon: 'fa-wallet', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Wallet & M-Pesa payouts', desc: 'Track earnings and withdraw to M-Pesa or your Paybill on demand. Funds are escrow-protected.' },
-  { icon: 'fa-chart-line', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Demand insights', desc: 'See what shoppers search for and which products trend in your area — and stock the winners.' },
-  { icon: 'fa-cash-register', tint: 'linear-gradient(135deg,#0d9488,#14b8a6)', title: 'Point of sale (POS)', desc: 'Sell in-store and online from one till — stock, receipts and KRA invoices stay in sync.' },
-  { mark: 'feed', tint: 'linear-gradient(135deg,#ec4899,#f43f5e)', title: 'YoteFeed shoppable video', desc: 'Post short clips to your store and the feed — shoppers watch and tap to buy on the spot.' },
-  { icon: 'fa-handshake', tint: 'linear-gradient(135deg,#0ea5e9,#6366f1)', title: 'AI Deal Assist', desc: 'In chat, YoteAI sees what a shopper has in their cart from your store and suggests the right price to close the sale.' },
-  { icon: 'fa-layer-group', tint: 'linear-gradient(135deg,#5B16A8,#A020F0)', title: 'Manage multiple stores', desc: 'Enterprise businesses run several storefronts from one account — manage your whole portfolio in one place.' },
-  { icon: 'fa-crown', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Grow to a Top Brand', desc: 'Enterprise storefronts earn premium “Top brands” placement across the mall and search.' },
-];
 
 /* Hero line icons, 24-unit grid, drawn with currentColor so CSS sets the purple. */
 const HX_ICONS = {
@@ -177,7 +147,7 @@ function HomePage() {
             <ul className="hx-feats">
               {HERO_FEATURES.map((f) => (
                 <li key={f.icon}>
-                  {/* YoteAI and YoteFeed get their brand marks, never generic icons (see FeatureIcon). */}
+                  {/* YoteAI and YoteFeed get their brand marks, never generic icons. */}
                   {f.icon === 'ai' ? <YoteAiMark size={31} /> : f.icon === 'feed' ? <YoteFeedMark size={24} /> : <HxIcon name={f.icon} />}
                   <span>{f.top}<br />{f.bottom}</span>
                 </li>
@@ -251,59 +221,14 @@ function HomePage() {
         </div>
       </section>
 
-      {/* shopper features — the new consumer experience */}
-      <section className="pad" id="shop" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="sec-head reveal">
-            <div className="kicker">For shoppers</div>
-            <h2>A whole mall in your pocket</h2>
-            <p>Discover local stores, buy safely with M-Pesa, and collect nearby — all in a few taps.</p>
-          </div>
-          <div className="mfeat-grid">
-            {SHOPPER_FEATURES.map((f, i) => (
-              <article className="mfeat-card reveal" key={f.title} style={{ '--rd': `${i * 60}ms` }}>
-                <FeatureIcon f={f} />
-                <h4>{f.title}</h4>
-                <p>{f.desc}</p>
-              </article>
-            ))}
-          </div>
-          <div className="sec-cta">
-            <Link className="btn btn-primary btn-lg" to="/storefront">Start shopping <i className="fas fa-arrow-right"></i></Link>
-            <span className="sec-cta-note">200+ stores · M-Pesa escrow · pickup hubs across 47 counties</span>
-          </div>
-        </div>
-      </section>
+      {/* For shoppers and For merchants, laid out to the brand board — see HomeSections.jsx. */}
+      <ShoppersSection />
 
       {/* YoteAI and YoteFeed, laid out to the 2026-10-08 brand board — see HomeSections.jsx. */}
       <YoteAiSection />
       <YoteFeedSection clips={feedMod ? clips : []} videoUrl={feedMod?.feedVideoUrl} />
 
-      {/* merchant features — AI tools + subscription benefits */}
-      <section className="pad" id="sell" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="sec-head reveal">
-            <div className="kicker">For merchants</div>
-            <h2>Everything you need to sell &amp; grow</h2>
-            <p>
-              Launch a storefront, reach shoppers across 47 counties, and let AI do the heavy lifting — on a flat monthly plan with no commission.
-            </p>
-          </div>
-          <div className="mfeat-grid">
-            {MERCHANT_FEATURES.map((f, i) => (
-              <article className="mfeat-card reveal" key={f.title} style={{ '--rd': `${i * 55}ms` }}>
-                <FeatureIcon f={f} />
-                <h4>{f.title}</h4>
-                <p>{f.desc}</p>
-              </article>
-            ))}
-          </div>
-          <div className="sec-cta">
-            <Link className="btn btn-primary btn-lg" to="/dashboard">Start selling <i className="fas fa-arrow-right"></i></Link>
-            <span className="sec-cta-note">From Ksh 500/mo · optional hub deliveries · no commission</span>
-          </div>
-        </div>
-      </section>
+      <MerchantsSection />
 
       {/* earn with YoteMarket — marketers + riders */}
       <section className="pad" id="earn" style={{ paddingTop: '8px' }}>
