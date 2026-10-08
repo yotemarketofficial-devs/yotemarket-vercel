@@ -66,6 +66,27 @@ const ICONS = {
   sparks: <><path d="M5 9.5 2.5 7M6.5 5 6 2M10 6.5 12 4.5" /></>,
 };
 
+// The two stores' own marks for their badges, drawn inline so they show even when the icon
+// font is slow or blocked: Google Play's four-colour triangle and Apple's logo.
+function GooglePlayIcon() {
+  return (
+    <svg className="hs-store-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="#00D7FE" d="M3.6 2.2c-.3.3-.4.8-.4 1.4v16.8c0 .6.2 1.1.4 1.4l.1.1 9.4-9.4v-.2L3.7 2.1z" />
+      <path fill="#FFCE00" d="m16.2 15.6-3.1-3.1v-.2l3.1-3.1.1.1 3.7 2.1c1.1.6 1.1 1.6 0 2.2l-3.7 2.1z" />
+      <path fill="#FF3A44" d="m16.3 15.5-3.2-3.2-9.5 9.5c.4.4.9.4 1.6.1z" />
+      <path fill="#00F076" d="M16.3 9.1 5.2 2.8c-.7-.4-1.2-.3-1.6.1l9.5 9.4z" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg className="hs-store-ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M12.15 6.9c-.95 0-2.42-1.08-3.96-1.04-2.04.03-3.91 1.18-4.96 3.01-2.12 3.68-.55 9.1 1.52 12.09 1.01 1.45 2.2 3.09 3.79 3.04 1.52-.07 2.09-.99 3.94-.99 1.83 0 2.35.99 3.96.95 1.64-.03 2.68-1.48 3.68-2.95 1.16-1.69 1.64-3.33 1.66-3.42-.04-.01-3.18-1.22-3.22-4.86-.03-3.04 2.48-4.49 2.6-4.56-1.43-2.09-3.62-2.32-4.39-2.38-2-.16-3.68 1.09-4.62 1.09zm3.38-3.07c.84-1.01 1.4-2.43 1.25-3.83-1.21.05-2.66.8-3.53 1.82-.78.9-1.45 2.34-1.27 3.71 1.34.1 2.71-.69 3.55-1.7z" />
+    </svg>
+  );
+}
+
 function Icon({ name, className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -575,17 +596,17 @@ export function AppsSection() {
                     and for the App Store, they lead to /mobile, as before the redesign. */}
                 {SHOPPER_APP.playUrl ? (
                   <a className="store" href={SHOPPER_APP.playUrl} target="_blank" rel="noreferrer">
-                    <i className="fab fa-google-play"></i>
+                    <GooglePlayIcon />
                     <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
                   </a>
                 ) : (
                   <Link className="store" to="/mobile">
-                    <i className="fab fa-google-play"></i>
+                    <GooglePlayIcon />
                     <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
                   </Link>
                 )}
                 <Link className="store" to="/mobile">
-                  <i className="fab fa-apple"></i>
+                  <AppleIcon />
                   <span className="st"><small>Download on the</small><b>App Store</b></span>
                 </Link>
                 <UptodownBadge />
