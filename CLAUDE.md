@@ -292,10 +292,13 @@ only the fallback: the fan shows merchants' newest clips once `lib/feed.js` load
 one plays, as before), and links each phone to `/feed/:id`.
 
 **The board's words were not copied where the product doesn't back them**, and the bands must
-not claim these: YoteAI writing listings from a photo, SEO titles, demand insights or order
-tracking; checkout inside a YoteFeed clip (Buy adds to the cart; payment is the normal checkout);
-an iOS app or "available on Android & iOS"; door delivery (collection is a pickup point or the
-store). The board's YoteAI was a seller tool; the band stays shopper-first and its last card says
+not claim these: YoteAI writing listings from a photo, SEO titles or order tracking (YoteMarket
+Insight's sales, pricing and stock reports are real, Growth plan and up); checkout inside a
+YoteFeed clip (Buy adds a TAGGED product to the cart, so untagged clips say "Watch", not "Shop
+now"; payment is the normal checkout); an iOS app, an App Store badge or "available on Android &
+iOS" (the Google Play badge appears only once `playUrl` is set in `apk-releases.mjs`; until then
+the APK badge is the way in); door delivery (collection is a pickup point or the store); and,
+for signed-out visitors who get canned replies, that every YoteAI answer is a real listing. The board's YoteAI was a seller tool; the band stays shopper-first and its last card says
 what sellers really get (YoteAI chat in the dashboard writes listings, drafts replies, advises on
 stock and price). The unsourced 4.7★ rating was dropped with the old apps band.
 

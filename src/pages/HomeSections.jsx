@@ -5,10 +5,11 @@
 // green and orange; the site's purple and gold replace them, in light and dark.
 //
 // The board's words were NOT carried over where the product doesn't back them: YoteAI
-// does not write listings from a photo, track orders or read demand; YoteFeed checkout
+// does not write listings from a photo, write SEO titles or track orders; YoteFeed checkout
 // is the normal cart; there is no iOS app and no door delivery. Every line below is one
 // the product makes good on (storefront engage.jsx, feed.jsx, commerce.jsx; dashboard
 // extras.jsx, feedmgr.jsx). Keep it that way when editing the copy.
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
@@ -54,24 +55,39 @@ function Icon({ name, className }) {
   );
 }
 
-const ksh = (n) => 'Ksh ' + Number(n || 0).toLocaleString('en-KE');
+const ksh = (n) => 'Ksh\u00a0' + Number(n || 0).toLocaleString('en-KE');
+const MPESA = 'M\u2011Pesa';   // non-breaking hyphen: never "M-" / "Pesa"
+
+function useMedia(query) {
+  const read = () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(query).matches;
+  const [on, setOn] = useState(read);
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const m = window.matchMedia(query);
+    const fn = () => setOn(m.matches);
+    fn();
+    m.addEventListener('change', fn);
+    return () => m.removeEventListener('change', fn);
+  }, [query]);
+  return on;
+}
 
 /* ── YoteAI ─────────────────────────────────────────────────────────────────────── */
 
 // What YoteAI does for people, as the storefront and dashboard actually ship it.
 const AI_HELPS = [
   { icon: 'search', tone: 'purple', title: 'Find anything', desc: 'Describe it in your own words and get the right products and stores.' },
-  { icon: 'scale', tone: 'violet', title: 'Compare & decide', desc: 'Weigh your options side by side before you buy.' },
+  { icon: 'scale', tone: 'violet', title: 'Compare & decide', desc: 'Weigh up your options before you buy.' },
   { icon: 'gift', tone: 'gold', title: 'Budget & gift ideas', desc: 'Set a price or an occasion and get picks that fit it.' },
   { icon: 'store', tone: 'pink', title: 'Sellers get it too', desc: 'In the dashboard, YoteAI writes listings, drafts replies to buyers and advises on stock and pricing.' },
 ];
 
-// The assistant's own starter prompts (storefront engage.jsx), as the window's sidebar.
+// After the assistant's own starter prompts (storefront engage.jsx), as the window's sidebar.
 const AI_SIDE = [
   { icon: 'search', label: 'Find products' },
   { icon: 'tag', label: 'Best deals' },
   { icon: 'gift', label: 'Gift ideas' },
-  { icon: 'scale', label: 'Compare stores' },
+  { icon: 'store', label: 'Find a store' },
 ];
 
 function AiWindow() {
@@ -91,7 +107,7 @@ function AiWindow() {
         <div className="hs-aiw-main">
           <h4>Ask in plain words</h4>
           <p>Describe what you need and YoteAI searches the mall for you.</p>
-          <div className="hs-aiw-q">“A travel backpack under Ksh 4,000”</div>
+          <div className="hs-aiw-q">{'“A travel backpack under Ksh\u00a04,000”'}</div>
           <div className="hs-aiw-prod">
             <img src={stillBackpack} alt="" width="344" height="536" loading="lazy" decoding="async" />
             <div>
@@ -105,13 +121,12 @@ function AiWindow() {
       </div>
       <div className="hs-aiw-res">
         <h5>YoteAI found 3 picks</h5>
-        <p>Travel backpacks under Ksh 4,000 from local stores.</p>
         <ul>
-          <li><Icon name="check" />Real stores and listings</li>
-          <li><Icon name="check" />Compared on price</li>
+          <li><Icon name="check" />Matched to your words</li>
           <li><Icon name="check" />Within your budget</li>
+          <li><Icon name="check" />From local stores</li>
         </ul>
-        <div className="hs-aiw-acts"><span>Compare</span><span className="is-pri">Visit store</span></div>
+        <div className="hs-aiw-acts"><span>Ask more</span><span className="is-pri">Visit store</span></div>
       </div>
     </div>
   );
@@ -131,8 +146,7 @@ export function YoteAiSection() {
               </h2>
               <p className="hs-lead">
                 Your personal shopping assistant. Describe what you want in plain words and YoteAI points
-                you to the right products, stores and deals, grounded in real stores and listings, so every
-                answer is something you can actually buy.
+                you to the right products, stores and deals across the mall.
               </p>
               <Link className="hs-btn" to="/storefront">Ask YoteAI <Icon name="arrow" /></Link>
             </div>
@@ -160,7 +174,7 @@ export function YoteAiSection() {
 const FEED_STEPS = [
   { icon: 'play', title: 'Watch', desc: 'Clips from local stores.' },
   { icon: 'tap', title: 'Tap the product', desc: 'See its price and store.' },
-  { icon: 'bag', title: 'Buy in a tap', desc: 'Add to cart, pay with M-Pesa.' },
+  { icon: 'bag', title: 'Buy in a tap', desc: `Add to cart, pay with ${MPESA}.` },
 ];
 
 // Shown until merchants' clips load (or if they can't): stills cut from the board, the
@@ -172,13 +186,13 @@ const FALLBACK_STILLS = [
   { img: stillLiving, w: 264, h: 400, name: 'Home decor', price: 3899 },
 ];
 
-// Slot 0 is the big phone in front; the rest fan out behind it, left to right.
-const FAN = ['is-c', 'is-l', 'is-r1', 'is-r2'];
+// The fan's slots in visual (and tab) order. The lead item takes the big front slot.
+const SLOTS = [{ item: 1, cls: 'is-l' }, { item: 0, cls: 'is-c' }, { item: 2, cls: 'is-r1' }, { item: 3, cls: 'is-r2' }];
 
-function FeedPhone({ slot, href, label, media, name, price }) {
+function FeedPhone({ cls, href, label, media, name, price, cta }) {
   return (
-    <Link to={href} className={`hs-fp ${FAN[slot]}`} aria-label={label}>
-      <div className="ymp-device">
+    <Link to={href} className={`hs-fp ${cls}`} aria-label={label}>
+      <div className="ymp-device" aria-hidden="true">
         <div className="ymp-phone">
           <div className="ymp-screen hs-fp-screen">
             {media}
@@ -191,7 +205,7 @@ function FeedPhone({ slot, href, label, media, name, price }) {
             </div>
             <div className="hs-fp-card">
               <div className="hs-fp-info"><b>{name}</b>{price ? <span>{ksh(price)}</span> : null}</div>
-              <span className="hs-fp-shop">Shop now</span>
+              <span className="hs-fp-shop">{cta}</span>
             </div>
             <span className="ymp-island"></span>
             <span className="ymp-homebar"></span>
@@ -204,29 +218,41 @@ function FeedPhone({ slot, href, label, media, name, price }) {
 
 /* Merchants' newest clips when they have loaded; the board's stills until then. As
    before, only the front clip plays (muted, looped) and the rest show their first frame:
-   egress is the real cost on Kenyan mobile data. */
+   egress is the real cost on Kenyan mobile data. Phones show three, so only three load
+   there, and nothing autoplays for visitors who ask for reduced motion. Clips tagged with
+   a product come first: only those have a Buy button in the feed, so only those say
+   "Shop now". */
 function FeedFan({ clips, videoUrl }) {
+  const narrow = useMedia('(max-width: 640px)');
+  const calm = useMedia('(prefers-reduced-motion: reduce)');
   const live = clips.length > 0 && typeof videoUrl === 'function';
-  const items = live ? clips.slice(0, FAN.length) : FALLBACK_STILLS;
+  const ranked = live ? [...clips.filter((c) => c.product), ...clips.filter((c) => !c.product)] : FALLBACK_STILLS;
+  const items = ranked.slice(0, narrow ? 3 : 4);
   return (
     <div className="hs-fan">
-      {items.map((it, i) => {
+      {SLOTS.filter((s) => items[s.item]).map(({ item: i, cls }) => {
+        const it = items[i];
         if (!live) {
           return (
-            <FeedPhone key={i} slot={i} href="/feed" label={`Watch ${it.name.toLowerCase()} and more on YoteFeed`}
-              name={it.name} price={it.price}
+            <FeedPhone key={i} cls={cls} href="/feed" label="Watch clips from local stores on YoteFeed"
+              name={it.name} price={it.price} cta="Shop now"
               media={<img className="hs-fp-media" src={it.img} alt="" width={it.w} height={it.h} loading="lazy" decoding="async" />} />
           );
         }
         const lead = i === 0;
-        const name = (it.product && it.product.name) || it.storeName || 'YoteFeed clip';
+        const tagged = !!it.product;
+        const name = (tagged && it.product.name) || it.storeName || 'YoteFeed';
+        const price = tagged ? it.product.price : null;
+        const label = tagged
+          ? `${name}${price ? `, ${ksh(price)}` : ''}: watch on YoteFeed and shop now`
+          : `Watch ${it.storeName ? `${it.storeName}'s clip` : 'this clip'} on YoteFeed`;
         return (
-          <FeedPhone key={it.id} slot={i} href={`/feed/${encodeURIComponent(it.id)}`} label={`Watch ${name} on YoteFeed`}
-            name={name} price={it.product && it.product.price}
+          <FeedPhone key={it.id} cls={cls} href={`/feed/${encodeURIComponent(it.id)}`} label={label}
+            name={name} price={price} cta={tagged ? 'Shop now' : 'Watch'}
             media={(
-              <video className="hs-fp-media" src={videoUrl(it) + (lead ? '' : '#t=0.1')} poster={it.posterUrl || undefined}
-                muted playsInline autoPlay={lead} loop={lead} preload={lead ? 'auto' : 'metadata'}
-                tabIndex={-1} aria-hidden="true" />
+              <video className="hs-fp-media" src={videoUrl(it) + (lead && !calm ? '' : '#t=0.1')} poster={it.posterUrl || undefined}
+                muted playsInline autoPlay={lead && !calm} loop={lead && !calm} preload={lead && !calm ? 'auto' : 'metadata'}
+                tabIndex={-1} />
             )} />
         );
       })}
@@ -247,8 +273,8 @@ export function YoteFeedSection({ clips, videoUrl }) {
                 Watch it. Tap it. <span className="hs-accent">Buy it.</span>
               </h2>
               <p className="hs-lead">
-                Shoppable short videos from real local stores. Scroll the feed, see products in action and
-                buy the exact item on screen: one tap puts it in your cart.
+                Shoppable short videos from real local stores. Scroll the feed and see products in action.
+                When a clip is tagged with a product, one tap on Buy puts it in your cart.
               </p>
               <ol className="hs-steps">
                 {FEED_STEPS.map((s, i) => (
@@ -263,12 +289,12 @@ export function YoteFeedSection({ clips, videoUrl }) {
             </div>
             <FeedFan clips={clips} videoUrl={videoUrl} />
             <div className="hs-feed-side">
-              <aside className="hs-store" aria-labelledby="hs-store-title">
+              <div className="hs-store">
                 <span className="hs-ic tone-gold"><Icon name="store" /></span>
-                <h3 id="hs-store-title">Have a store?</h3>
-                <p>Turn your products into short videos and reach shoppers on YoteFeed. It comes with every seller plan.</p>
+                <h3>Have a store?</h3>
+                <p>Post short clips of your products, tag them, and reach shoppers on YoteFeed. It comes with every seller plan.</p>
                 <Link className="hs-btn is-gold" to="/dashboard">Post on YoteFeed <Icon name="arrow" /></Link>
-              </aside>
+              </div>
               <p className="hs-note is-feed">
                 <svg className="hs-doodle" viewBox="0 0 64 48" aria-hidden="true" focusable="false">
                   <path d="M6 14l9 4M4 25h10M6 36l9-4" />
@@ -293,7 +319,7 @@ const APP_FEATURES = [
   { icon: 'store', tone: 'purple', title: 'Shop local', desc: 'Browse Kenyan stores by category.' },
   { mark: 'feed', tone: 'pink', title: 'YoteFeed', desc: 'Discover products through video.' },
   { icon: 'chat', tone: 'violet', title: 'Chat with sellers', desc: 'Ask questions and negotiate a price.' },
-  { icon: 'shield', tone: 'gold', title: 'Pay securely', desc: 'M-Pesa, with escrow protection.' },
+  { icon: 'shield', tone: 'gold', title: 'Pay securely', desc: `${MPESA}, with escrow protection.` },
   { icon: 'pin', tone: 'rose', title: 'Collect nearby', desc: 'Pick up at a collection point or the store.' },
 ];
 
@@ -311,14 +337,14 @@ export function AppsSection() {
                 brings more stops and more earnings.
               </p>
               <div className="badges hs-badges">
-                <Link className="store" to="/mobile">
-                  <i className="fab fa-google-play"></i>
-                  <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
-                </Link>
-                <Link className="store" to="/mobile">
-                  <i className="fab fa-apple"></i>
-                  <span className="st"><small>Download on the</small><b>App Store</b></span>
-                </Link>
+                {/* No App Store badge: there is no iOS app. Google Play shows once the listing
+                    exists (playUrl in apk-releases.mjs); until then the APK badge is the way in. */}
+                {SHOPPER_APP.playUrl ? (
+                  <a className="store" href={SHOPPER_APP.playUrl} target="_blank" rel="noreferrer">
+                    <i className="fab fa-google-play"></i>
+                    <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
+                  </a>
+                ) : null}
                 <UptodownBadge />
               </div>
               <ul className="hs-appchips">
@@ -361,7 +387,7 @@ export function AppsSection() {
             <ol className="hs-eco-row">
               <li>
                 <span className="ai-badge hs-eco-ic"><YoteAiMark size={17} color="#fff" /></span>
-                <div><b>YoteAI</b><small>Ask. Compare. Decide.</small></div>
+                <div><b>YoteAI</b><small>Ask. Find. Decide.</small></div>
               </li>
               <li aria-hidden="true" className="hs-eco-arrow"><Icon name="arrow" /></li>
               <li>
