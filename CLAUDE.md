@@ -247,7 +247,8 @@ YoteAI cards, ribbon, rider, Nairobi skyline) is **one image**, `src/assets/hero
 `logo.png` on the phone, `logo-white.png` on the delivery box, the YoteAI badge (as
 `.ai-badge` draws it) in place of the mockup's robot on the YoteAI card, the supplied M-Pesa
 logo on the payment card, and the supplied shopper photo in the phone's banner. The night art
-carries the same swaps. **YoteMarket does not offer live order tracking**, so the mockup's
+carries the same swaps. The store icon on the 200+ stores card was redrawn in both: the
+generated one had a broken door that never reached the floor. **YoteMarket does not offer live order tracking**, so the mockup's
 "Order on the way · Track live" card shows YoteFeed instead, and nothing on the homepage
 promises live tracking. Keep it that way until the feature exists. Its pieces overlap each other and the photo, so rebuilding
 them as layers would drift from the design. To change the art, replace that file and keep
