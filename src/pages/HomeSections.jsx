@@ -480,6 +480,16 @@ export function MerchantsSection() {
               <img className="hs-sell-photo" src={forMerchants} srcSet={`${forMerchants} 550w, ${forMerchants2x} 1100w`}
                 sizes={SELL_PHOTO_SIZES} width="1100" height="819" loading="lazy" decoding="async"
                 alt="A YoteMarket merchant at his counter, holding a YoteMarket parcel and checking his phone" />
+              <p className="hs-note is-sell">
+                <svg className="hs-scribble" viewBox="0 0 70 44" aria-hidden="true" focusable="false">
+                  <path d="M4 40C10 24 28 10 58 8" />
+                  <path d="M49 2.5 59 8l-8.5 7.5" />
+                </svg>
+                Save time.<br />Sell more.
+                <svg className="hs-swash" viewBox="0 0 120 14" aria-hidden="true" focusable="false">
+                  <path d="M4 11C34 4 72 2 116 5" />
+                </svg>
+              </p>
               <DashWindow />
               <AiCopyCard />
             </div>

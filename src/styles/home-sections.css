@@ -410,6 +410,9 @@ html.dark .hs-feedcard{box-shadow:0 24px 50px -30px rgba(0,0,0,.7);}
   mask-image:linear-gradient(90deg,transparent 0,rgba(0,0,0,.2) 24%,#000 42%,#000 85%,transparent 100%),linear-gradient(180deg,transparent 0,#000 16%);
   mask-composite:intersect;}
 
+.hs-note.is-sell{position:absolute; z-index:3; left:28cqw; top:1cqw; font-size:clamp(17px,3.8cqw,26px); transform:rotate(-6deg); text-align:left;}
+.hs-scribble{position:absolute; left:100%; top:-.35em; width:2.6em; height:1.65em; margin-left:.1em; fill:none; stroke:currentColor; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;}
+.hs-swash{display:block; width:4.4em; height:.55em; margin:.12em 0 0 .1em; fill:none; stroke:currentColor; stroke-width:3.2; stroke-linecap:round;}
 .hs-dash, .hs-aicard{position:absolute; font-family:'Poppins','Plus Jakarta Sans',system-ui,sans-serif; color:#12151f; background:#fff;
   box-shadow:0 calc(var(--u) * 4) calc(var(--u) * 8) calc(var(--u) * -3) rgba(10,4,30,.6);}
 .hs-dash{z-index:2; left:51cqw; top:1cqw; width:48.5cqw; border-radius:calc(var(--u) * 2.2); overflow:hidden; border:calc(var(--u) * .5) solid #15102a;}
@@ -498,6 +501,9 @@ html.dark .hs-feedcard{box-shadow:0 24px 50px -30px rgba(0,0,0,.7);}
   .hs-sell-stage{aspect-ratio:auto;}
   .hs-sell-photo{position:relative; display:block; width:100%;}
   .hs-dash{display:none;}
+  /* the note keeps its place over the photo; with no window to point at, the arrow goes */
+  .hs-note.is-sell{left:auto; right:6%; top:2%; font-size:21px;}
+  .hs-scribble{display:none;}
   .hs-aicard{--u:8.4px; position:relative; left:auto; top:auto; width:auto; max-width:300px; margin:-16% 4% 0 auto;}
 }
 @media (max-width:420px){
