@@ -2,11 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useOutletContext } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
-import UptodownBadge from '../components/UptodownBadge.jsx';
-import PhoneMockup from '../components/PhoneMockup.jsx';
-import { APPS } from '../lib/apk-releases.mjs';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 import '../styles/home-hero.css';
+import { YoteAiSection, YoteFeedSection, AppsSection } from './HomeSections.jsx';
 // Imported, not referenced from public/, so Vite fingerprints the file names: every
 // change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
 // hour (plus a week of stale-while-revalidate, see vercel.json), so edits didn't show.
@@ -20,10 +18,6 @@ import heroArtDark from '../assets/hero/hero-art-dark.webp';
 // 1535, not 1536: at 1536 59vw is 906.24px, a hair over the 906px file, which would send
 // every 1x desktop at that width to the 2x file.
 const HERO_ART_SIZES = '(max-width: 820px) 100vw, (max-width: 1100px) 820px, (max-width: 1535px) 59vw, 906px';
-
-// Names, subtitles and launcher icons come from the same entries /apk publishes.
-const SHOPPER_APP = APPS.find((a) => a.slug === 'shopper');
-const RIDER_APP = APPS.find((a) => a.slug === 'rider');
 
 const SHOPPER_FEATURES = [
   { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'The whole mall, by category', desc: 'Browse hundreds of local stores by category and subcategory — just like walking a real mall.' },
@@ -54,58 +48,6 @@ const MERCHANT_FEATURES = [
   { icon: 'fa-layer-group', tint: 'linear-gradient(135deg,#5B16A8,#A020F0)', title: 'Manage multiple stores', desc: 'Enterprise businesses run several storefronts from one account — manage your whole portfolio in one place.' },
   { icon: 'fa-crown', tint: 'linear-gradient(135deg,#E89B0C,#F4B530)', title: 'Grow to a Top Brand', desc: 'Enterprise storefronts earn premium “Top brands” placement across the mall and search.' },
 ];
-
-/* The YoteFeed band's clips — REAL posts from the live feed, not mockups.
-   Deliberately data-light: only the lead clip streams (muted/looped autoplay);
-   the other two render just their first frame (`preload=metadata` + `#t=0.1`),
-   the same trick the storefront's clip rail uses. Egress is the real cost driver
-   on Kenyan mobile data, so three autoplaying videos on the homepage would be
-   expensive for us and slow for the visitor. Falls back to the original
-   placeholders until merchants have posted, so the band is never broken. */
-const FALLBACK_CLIPS = [
-  { tint: 'linear-gradient(160deg,#7C2BD4,#3b1466)' },
-  { tint: 'linear-gradient(160deg,#ec4899,#8b1e5b)' },
-  { tint: 'linear-gradient(160deg,#0d9488,#064e46)' },
-];
-
-function FeedDemo({ clips, videoUrl }) {
-  const ksh = (n) => 'Ksh ' + Number(n || 0).toLocaleString('en-KE');
-  if (!clips.length) {
-    return (
-      <div className="feed-clips float-a">
-        {FALLBACK_CLIPS.map((c, i) => (
-          <div key={i} className={`feed-clip c${i + 1}`} style={{ background: c.tint }}>
-            <span className="fc-play"><i className="fas fa-play"></i></span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div className="feed-clips float-a">
-      {clips.map((p, i) => {
-        const lead = i === 0;
-        const price = p.product && p.product.price;
-        return (
-          <Link key={p.id} to="/storefront" className={`feed-clip c${i + 1}`}
-            aria-label={`Watch ${(p.product && p.product.name) || p.storeName || 'this clip'} on YoteFeed`}>
-            <video
-              src={videoUrl(p) + (lead ? '' : '#t=0.1')}
-              poster={p.posterUrl || undefined}
-              muted playsInline
-              autoPlay={lead} loop={lead}
-              preload={lead ? 'auto' : 'metadata'}
-              tabIndex={-1} aria-hidden="true"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            {!lead && <span className="fc-play"><i className="fas fa-play"></i></span>}
-            {price ? <span className="fc-price" style={{ position: 'relative', zIndex: 1 }}>{ksh(price)}</span> : null}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
 
 /* Hero line icons, 24-unit grid, drawn with currentColor so CSS sets the purple. */
 const HX_ICONS = {
@@ -161,11 +103,11 @@ const HERO_FEATURES = [
 
 function HomePage() {
   // Real YoteFeed clips for the landing demo (was three blank gradient mockups).
-  // Only the newest few; egress is the real cost on KE mobile data — see FeedDemo.
+  // Only the newest few; egress is the real cost on KE mobile data — see FeedFan in HomeSections.jsx.
   const [clips, setClips] = useState([]);
   // lib/feed.js reaches Firestore, so importing it at the top of this page put the whole
   // 199 KB Firebase SDK on the homepage's critical path — for a decorative band far below
-  // the fold. Loaded after mount instead; FeedDemo shows FALLBACK_CLIPS until it arrives,
+  // the fold. Loaded after mount instead; the fan shows its stills until it arrives,
   // which is the same thing it already did before any merchant had posted.
   const [feedMod, setFeedMod] = useState(null);
   useEffect(() => {
@@ -174,7 +116,7 @@ function HomePage() {
     import('../lib/feed.js').then((m) => {
       if (cancelled) return;
       setFeedMod(m);
-      off = m.subscribeFeed((rows) => setClips(rows.slice(0, 3)), 12);
+      off = m.subscribeFeed((rows) => setClips(rows.slice(0, 4)), 12);
     }).catch(() => { /* band keeps its placeholders */ });
     return () => { cancelled = true; if (off) off(); };
   }, []);
@@ -333,79 +275,9 @@ function HomePage() {
         </div>
       </section>
 
-      {/* YoteAI — flagship shopping assistant */}
-      <section className="pad" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="feed-band ai-band reveal">
-            <div className="feed-glow"></div>
-            <div className="feed-grid">
-              <div>
-                <div className="ai-brandrow">
-                  <span className="ai-badge"><YoteAiMark size={22} color="#fff" /></span>
-                  <div className="kicker" style={{ margin: 0 }}>YoteAI · Shopping assistant</div>
-                </div>
-                <h2 style={{ marginTop: '16px' }}>Just ask. <span className="g">We'll find it.</span></h2>
-                <p className="fb-lead">
-                  YoteAI is your personal shopping assistant — describe what you want in plain words and it
-                  finds the products, compares your options, and tracks your orders. Grounded in real stores
-                  and live stock, so every answer is something you can actually buy.
-                </p>
-                <div className="feed-tags">
-                  <span className="feed-tag"><i className="fas fa-magnifying-glass"></i> Find anything</span>
-                  <span className="feed-tag"><i className="fas fa-scale-balanced"></i> Compare &amp; decide</span>
-                  <span className="feed-tag"><i className="fas fa-truck-fast"></i> Track orders</span>
-                </div>
-                <div className="hero-cta" style={{ marginTop: '28px' }}>
-                  <Link className="btn btn-gold btn-lg" to="/storefront">Ask YoteAI <i className="fas fa-arrow-right"></i></Link>
-                </div>
-              </div>
-              <div className="ai-demo float-a">
-                <div className="ai-msg me">Find me a birthday gift under Ksh 2,000 🎁</div>
-                <div className="ai-msg bot">
-                  Here are two picks in stock near you:
-                  <div className="ai-chips">
-                    <span className="ai-chip"><span className="dot" style={{ background: '#7C2BD4' }}><i className="fas fa-headphones"></i></span> Wireless earbuds · 1,899</span>
-                    <span className="ai-chip"><span className="dot" style={{ background: '#E89B0C' }}><i className="fas fa-mug-hot"></i></span> Gift hamper · 1,750</span>
-                  </div>
-                </div>
-                <div className="ai-msg me">Track my last order</div>
-                <div className="ai-msg bot">Out for delivery 🛵 — arriving at Kilimani hub in ~25 min.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* YoteFeed — shoppable shortform video */}
-      <section className="pad" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="feed-band reveal">
-            <div className="feed-glow"></div>
-            <div className="feed-grid">
-              <div>
-                <div className="ai-brandrow">
-                  <span className="feed-badge"><YoteFeedMark size={26} /></span>
-                  <div className="kicker" style={{ margin: 0 }}>New · YoteFeed</div>
-                </div>
-                <h2 style={{ marginTop: '16px' }}>Watch it. Tap it. <span className="g">Buy it.</span></h2>
-                <p className="fb-lead">
-                  Shoppable shortform video from real local stores. Scroll the feed, see products in action,
-                  and buy the exact item on screen — checkout with M-Pesa without leaving the clip.
-                </p>
-                <div className="feed-tags">
-                  <span className="feed-tag"><i className="fas fa-bolt"></i> Tap-to-buy</span>
-                  <span className="feed-tag"><i className="fas fa-store"></i> From local stores</span>
-                  <span className="feed-tag"><i className="fas fa-mobile-screen"></i> M-Pesa checkout</span>
-                </div>
-                <div className="hero-cta" style={{ marginTop: '28px' }}>
-                  <Link className="btn btn-gold btn-lg" to="/storefront">Open YoteFeed <i className="fas fa-arrow-right"></i></Link>
-                </div>
-              </div>
-              <FeedDemo clips={feedMod ? clips : []} videoUrl={feedMod?.feedVideoUrl} />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* YoteAI and YoteFeed, laid out to the 2026-10-08 brand board — see HomeSections.jsx. */}
+      <YoteAiSection />
+      <YoteFeedSection clips={feedMod ? clips : []} videoUrl={feedMod?.feedVideoUrl} />
 
       {/* merchant features — AI tools + subscription benefits */}
       <section className="pad" id="sell" style={{ paddingTop: '8px' }}>
@@ -474,71 +346,7 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="pad" id="download" style={{ paddingTop: '8px' }}>
-        <div className="wrap">
-          <div className="download reveal">
-            <div className="glow"></div>
-            <div className="dl-grid is-duo">
-              <div className="dl-text">
-                <div className="kicker">Get the apps</div>
-                <h2>YoteMarket in your pocket</h2>
-                <div className="dl-apps">
-                  <div className="dl-app">
-                    <img src={SHOPPER_APP.icon} alt="" width="56" height="56" loading="lazy" />
-                    <div>
-                      <div className="n">{SHOPPER_APP.name}</div>
-                      <div className="s">
-                        {SHOPPER_APP.subtitle}
-                        <span className="stars">
-                          <i className="fas fa-star"></i>
-                          <i className="fas fa-star"></i>
-                          <i className="fas fa-star"></i>
-                          <i className="fas fa-star"></i>
-                          <i className="fas fa-star-half-alt"></i>
-                          {' '}4.7
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="dl-app">
-                    <img src={RIDER_APP.icon} alt="" width="56" height="56" loading="lazy" />
-                    <div>
-                      <div className="n">{RIDER_APP.name}</div>
-                      <div className="s">{RIDER_APP.subtitle}</div>
-                    </div>
-                  </div>
-                </div>
-                <p>
-                  Shop on the go and run your store with YoteMarket. Riding with us? YoteMarket Rider
-                  brings more stops and more earnings.
-                </p>
-                <div className="badges" style={{ marginTop: '26px' }}>
-                  <Link className="store" to="/mobile">
-                    <i className="fab fa-google-play"></i>
-                    <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
-                  </Link>
-                  <Link className="store" to="/mobile">
-                    <i className="fab fa-apple"></i>
-                    <span className="st"><small>Download on the</small><b>App Store</b></span>
-                  </Link>
-                  <UptodownBadge />
-                </div>
-              </div>
-              {/* The two apps as they actually look — see components/PhoneMockup.jsx. */}
-              <div className="phone-wrap phone-duo">
-                <div className="phone-duo-item">
-                  <PhoneMockup app="shopper" />
-                  <span className="phone-duo-cap"><img src={SHOPPER_APP.icon} alt="" width="22" height="22" loading="lazy" />{SHOPPER_APP.name}</span>
-                </div>
-                <div className="phone-duo-item">
-                  <PhoneMockup app="rider" />
-                  <span className="phone-duo-cap"><img src={RIDER_APP.icon} alt="" width="22" height="22" loading="lazy" />{RIDER_APP.name}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <AppsSection />
 
       <section className="pad" style={{ paddingTop: '24px' }}>
         <div className="wrap stats">

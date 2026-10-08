@@ -275,6 +275,30 @@ fast." (gradient on "Delivered"), the original lead, "Start shopping" / "Become 
 "One platform · every role" below. The mockup's copy ("Live Better.", "Download App",
 "Everything you need in one place") was tried and rejected; don't bring it back.
 
+## The YoteAI, YoteFeed and Get-the-apps bands (2026-10-08)
+
+The three bands below the shopper features are `src/pages/HomeSections.jsx` and
+`src/styles/home-sections.css`. They are laid out to a brand reference board: pill tag, two-tone
+headline, a YoteAI product window with a result card over it, icon-card lists, numbered steps, a
+fan of four phones, a "Have a store?" card, handwritten notes (Caveat, in the Google Fonts link),
+a feature list, a shopper photo and an ecosystem strip. The board was green and orange; here its
+green is the brand purple and its orange the gold, with pale bands in light mode and deep purple
+ones in dark mode.
+
+**The assets in `src/assets/home/` were cut from that board**: `shopper.webp` (backdrop and greens
+recoloured to purple in LCh, page wash removed, Real-CUGAN 4× then 640px) and four YoteFeed stills
+(the board's phone UI cropped away, the sneaker's maker's swoosh retouched off). The stills are
+only the fallback: the fan shows merchants' newest clips once `lib/feed.js` loads (only the front
+one plays, as before), and links each phone to `/feed/:id`.
+
+**The board's words were not copied where the product doesn't back them**, and the bands must
+not claim these: YoteAI writing listings from a photo, SEO titles, demand insights or order
+tracking; checkout inside a YoteFeed clip (Buy adds to the cart; payment is the normal checkout);
+an iOS app or "available on Android & iOS"; door delivery (collection is a pickup point or the
+store). The board's YoteAI was a seller tool; the band stays shopper-first and its last card says
+what sellers really get (YoteAI chat in the dashboard writes listings, drafts replies, advises on
+stock and price). The unsourced 4.7★ rating was dropped with the old apps band.
+
 ## Gotchas worth remembering
 
 - **The prerender `<noscript>` swap is position-sensitive.** A head comment mentions
