@@ -252,8 +252,16 @@ generated one had a broken door that never reached the floor. **YoteMarket does 
 "Order on the way · Track live" card shows YoteFeed instead, and nothing on the homepage
 promises live tracking. Keep it that way until the feature exists. Its pieces overlap each other and the photo, so rebuilding
 them as layers would drift from the design. To change the art, replace that file and keep
-the 906:744 ratio, or update `width`/`height` on the `<img>`. A 2× export would sharpen it
-on retina screens. Both files are imported in `HomePage.jsx` rather than served from `public/`, so
+the 906:744 ratio, or update `width`/`height` on the `<img>`.
+
+**The light art also ships at 2×**, `hero-art-2x.webp` (1812×1488), offered through `srcSet`
+with a `sizes` that mirrors `home-hero.css`, so only screens that need the pixels download it.
+The mockup has no larger original, so its pixels were upscaled by models: Real-CUGAN for detail
+(the only one that kept the phone's small text spelled right), Real-ESRGAN x4plus over the
+skyline and trees (Real-CUGAN paints foliage flat), and EDSR for colour (Real-CUGAN over-saturates
+thin navy text). Every brand swap above was then redrawn at 2× from its full-size source. **Change
+both files together**, or drop the `srcSet` until the 2× is redone: a retina screen shows only
+the 2× file, so an edit to the 906px one alone would never reach it. The art files are imported in `HomePage.jsx` rather than served from `public/`, so
 Vite gives them hashed names and a replaced image shows up on the next load. With a fixed name,
 the `/assets/*.webp` cache rule in `vercel.json` kept the old art on screen for up to an hour.
 Dark mode swaps in `hero-art-dark.webp` (1536×1024), the designer's night
