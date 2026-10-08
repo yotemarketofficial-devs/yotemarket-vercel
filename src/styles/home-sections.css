@@ -462,13 +462,13 @@ html.dark .hs-feedcard{box-shadow:0 24px 50px -30px rgba(0,0,0,.7);}
 
 .hs-sell-cards{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; min-width:0;}
 .hs-sell-cards li{display:flex; align-items:flex-start; gap:10px; padding:14px 13px; border-radius:16px; background:var(--hs-card); border:1px solid var(--hs-card-line);}
-.hs-sell-ic{width:36px; height:36px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; background:#FACC45; color:#2E1D03;}
+.hs-sell-ic{width:36px; height:36px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; background:#FACC45; color:#1A1205;}
 .hs-sell-ic svg{width:19px; height:19px;}
 .hs-sell-ic.is-feed{background:#fff;}
 .hs-sell-cards li div{min-width:0; display:flex; flex-direction:column; gap:4px;}
 .hs-sell-cards b{display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:14px; font-weight:700; line-height:1.3; color:#fff;}
 .hs-sell-cards em{font-style:normal; font-size:10.5px; font-weight:800; letter-spacing:.03em; padding:2px 8px; border-radius:999px; background:rgba(250,204,69,.16); color:#FACC45;}
-.hs-sell-cards span{font-size:12.5px; line-height:1.5; color:rgba(236,226,255,.76);}
+.hs-sell-cards li div > span{font-size:12.5px; line-height:1.5; color:rgba(236,226,255,.76);}
 
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width:1199px){

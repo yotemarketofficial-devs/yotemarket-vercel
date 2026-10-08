@@ -498,9 +498,9 @@ export function MerchantsSection() {
               {SELL_CARDS.map((c) => (
                 <li key={c.title}>
                   <span className={c.mark === 'feed' ? 'hs-sell-ic is-feed' : 'hs-sell-ic'}>
-                    {c.mark === 'ai' ? <YoteAiMark size={20} color="#2E1D03" />
+                    {c.mark === 'ai' ? <YoteAiMark size={20} color="#1A1205" />
                       : c.mark === 'feed' ? <YoteFeedMark size={17} />
-                        : c.sub ? <SubscriptionMark size={20} color="#2E1D03" /> : <Icon name={c.icon} />}
+                        : c.sub ? <SubscriptionMark size={20} color="#1A1205" /> : <Icon name={c.icon} />}
                   </span>
                   <div>
                     <b>{c.title}{c.plan ? <em>{c.plan}</em> : null}</b>
