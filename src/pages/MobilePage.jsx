@@ -22,7 +22,7 @@ const SHOPPER = APPS.find((a) => a.slug === 'shopper');
 
 const STEPS = [
   { icon: 'search', title: 'Browse local shops', text: 'Explore Kenyan shops and their products by category, from fashion to electronics and home essentials.' },
-  { icon: 'chat', title: 'Chat & pay securely', text: 'Message sellers, agree a price, then pay with M‑Pesa — held in escrow until you collect.' },
+  { icon: 'chat', title: 'Chat & pay securely', text: 'Message sellers, agree a price, then pay with M‑Pesa, your YoteMarket wallet or cash on pickup.' },
   { icon: 'store', title: 'Collect your order', text: 'Pick it up at the store with your one-time collection code. No code, no handover.' },
 ];
 
@@ -78,10 +78,11 @@ function StoreBadges() {
           <span className="st"><small>COMING SOON TO</small><b>Google Play</b></span>
         </span>
       )}
-      <span className="store is-soon" aria-label="App Store — coming soon">
+      {/* There is no iPhone app: on an iPhone the web shop is the way in. */}
+      <Link className="store" to="/storefront" aria-label="On iPhone? Shop on the web">
         <AppleIcon />
-        <span className="st"><small>COMING SOON TO</small><b>App Store</b></span>
-      </span>
+        <span className="st"><small>ON IPHONE?</small><b>Shop on the web</b></span>
+      </Link>
     </div>
   );
 }
@@ -95,7 +96,7 @@ function MobilePage() {
         title={<>The YoteMarket<br /><span className="g">shopping app</span></>}
         lead="Discover and shop from local Kenyan stores right from your phone. Chat with sellers, negotiate prices, pay with M‑Pesa and collect your order with a one-time code — all in one app."
         actions={<>
-          <Link className="ph-btn" to="/apk"><Icon name="download" /> Get the app</Link>
+          <Link className="ph-btn" to="/apk"><Icon name="download" /> Get the Android app</Link>
           <Link className="ph-btn is-ghost" to="/storefront"><Icon name="store" /> Explore shops</Link>
         </>}
         art={{
@@ -155,7 +156,7 @@ function MobilePage() {
               <p>Support Kenyan businesses <i>•</i> Chat &amp; negotiate <i>•</i> All in one app</p>
             </div>
             <div className="mb-close-cta">
-              <Link className="pg-btn is-white" to="/apk"><Icon name="download" /> Get the app</Link>
+              <Link className="pg-btn is-white" to="/apk"><Icon name="download" /> Get the Android app</Link>
               <Link className="pg-btn is-ghost mb-ghost-light" to="/storefront">Explore shops</Link>
             </div>
           </div>

@@ -112,7 +112,7 @@ function Pricing() {
               <div className="pr-plans">
                 {PLANS.map((t) => (
                   <article key={t.name} className={'pg-card pr-plan' + (t.feat ? ' is-feat' : '')}>
-                    {t.feat && <span className="pr-badge">Popular</span>}
+                    {t.feat && <span className="pr-badge">Recommended</span>}
                     <h2>{t.name}</h2>
                     <p className="pr-tag">{t.tagline}</p>
                     <p className="pr-price"><span>Ksh</span>{Number(t.price).toLocaleString('en-KE')}<small>/month</small></p>
