@@ -180,7 +180,7 @@ function ApkPage() {
         title={<>Download the official<br /><span className="g">YoteMarket</span> APKs</>}
         lead={<>The signed APKs we publish ourselves, for the YoteMarket app and the YoteMarket Rider app. Check each file against its SHA-256 checksum below before you install it.</>}
         art={{
-          node: <img className="apk-art" src={apkPhones} width="1650" height="644" decoding="async"
+          node: <img className="apk-art" src={apkPhones} width="1200" height="644" decoding="async"
             alt="The YoteMarket shopping app and the YoteMarket Rider app, side by side on two phones" />,
         }}
         note={'Shop, sell\nor ride.'}

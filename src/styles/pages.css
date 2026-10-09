@@ -84,7 +84,8 @@ html.dark .pg-btn:focus-visible{outline-color:rgba(185,123,255,.55);}
 
 /* ── APK (/apk) ───────────────────────────────────────────────────────────── */
 /* the phones are composed art on their own purple band: shown whole, edges dissolved into ours */
-.apk-hero .ph-art{min-height:0; margin-left:0; align-self:center;}
+.apk-hero .ph-art{min-height:0; margin-left:0; align-self:center; justify-content:flex-start;}
+.apk-hero .apk-art{width:76%;}   /* the note takes the right-hand quarter */
 .apk-art{display:block; width:100%; height:auto; max-width:900px;
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14%,#000 86%,transparent 100%),linear-gradient(0deg,transparent 0,#000 12%,#000 90%,transparent 100%);
   -webkit-mask-composite:source-in;
