@@ -1,0 +1,122 @@
+/* ============================================================================
+   PageHero (src/components/PageHero.jsx) — the hero of the inner marketing pages,
+   laid out to the 2026-10-09 page boards. Sizes are the boards' at 1536px.
+   The copy column lines up with the page's content column (--pg-max); the art runs
+   from the middle of the page to the window's right edge.
+   ========================================================================== */
+
+.ph{
+  --pg-max:1380px;
+  --ph-ink:#15114A; --ph-text:#2B2656; --ph-pill-bg:#EEE8FD; --ph-pill-ink:#5216BF;
+  --ph-bg:#F8F7FE;
+  position:relative; overflow:hidden; background:var(--ph-bg); color:var(--ph-text);
+  font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif;
+}
+/* the title's gradient line uses the homepage hero's light-theme stops */
+html:not(.dark) .ph{--purple:#7C2BD4; --gold-bright:#F4B530;}
+html.dark .ph{--ph-ink:var(--t1); --ph-text:var(--t2); --ph-pill-bg:rgba(185,123,255,.14); --ph-pill-ink:#D2B4FF; --ph-bg:var(--bg);}
+
+.ph-in{
+  display:grid; align-items:center;
+  grid-template-columns:minmax(0,1fr) minmax(0,calc(var(--pg-max) * .46)) minmax(0,calc(var(--pg-max) * .54)) minmax(0,1fr);
+  min-height:clamp(330px,25vw,400px);
+}
+/* the copy's left edge is the page column's (.pg-wrap's padding) */
+.ph-copy{grid-column:2; grid-row:1; position:relative; z-index:2; padding:clamp(34px,3vw,46px) clamp(12px,1.6vw,28px) clamp(36px,3.2vw,50px) clamp(16px,2.6vw,24px);}
+.ph-art{grid-column:3 / 5; grid-row:1; align-self:stretch; position:relative; z-index:1; min-width:0; margin-left:clamp(-120px,-6vw,0px);}
+
+.ph-pill{
+  display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 15px; border-radius:999px;
+  background:var(--ph-pill-bg); color:var(--ph-pill-ink); font-size:14.5px; font-weight:600; letter-spacing:-.005em; white-space:nowrap;
+}
+.ph-pill svg{width:17px; height:17px; flex:none;}
+.ph-title{
+  margin:14px 0 0; font-size:clamp(34px,3.35vw,54px); line-height:1.04; font-weight:800; letter-spacing:-.035em; color:var(--ph-ink);
+  text-wrap:balance;
+}
+/* the gradient line: block so it always starts its own line, padded so descenders aren't clipped */
+.ph-title .g{display:inline-block; padding-bottom:.08em; margin-bottom:-.08em;}
+.ph-lead{margin:18px 0 0; max-width:540px; font-size:clamp(15.5px,1.1vw,17px); line-height:1.62; color:var(--ph-text);}
+.ph-cta{display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-top:clamp(22px,2vw,30px);}
+
+.ph-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:10px; height:50px; padding:0 26px; border-radius:999px;
+  font-size:16px; font-weight:700; letter-spacing:-.01em; white-space:nowrap; cursor:pointer; border:0; font-family:inherit;
+  background:linear-gradient(135deg,#5A12C8,#7424DA); color:#fff; box-shadow:0 12px 24px -16px rgba(90,18,200,.7);
+  transition:transform .15s, box-shadow .2s, background .2s, color .2s;
+}
+.ph-btn svg{width:19px; height:19px; flex:none; transition:transform .2s;}
+.ph-btn:hover{transform:translateY(-2px); box-shadow:0 20px 36px -14px rgba(90,18,200,.85);}
+.ph-btn:hover svg:last-child{transform:translateX(3px);}
+.ph-btn.is-ghost{background:rgba(255,255,255,.6); color:#4F14BC; box-shadow:inset 0 0 0 1.5px #6A1FD6;}
+.ph-btn.is-ghost:hover{background:#fff;}
+.ph-btn.is-ghost:hover svg:last-child{transform:none;}
+.ph-btn:focus-visible{outline:3px solid rgba(106,31,214,.4); outline-offset:3px;}
+html.dark .ph-btn.is-ghost{background:transparent; color:#E2CCFF; box-shadow:inset 0 0 0 1.5px #B97BFF;}
+html.dark .ph-btn.is-ghost:hover{background:rgba(185,123,255,.12);}
+html.dark .ph-btn:focus-visible{outline-color:rgba(185,123,255,.55);}
+
+/* ── the art ──────────────────────────────────────────────────────────────── */
+.ph.has-photo .ph-art > img{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 40%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 24%),linear-gradient(0deg,transparent 0,#000 7%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,transparent 0,#000 24%),linear-gradient(0deg,transparent 0,#000 7%);
+  mask-composite:intersect;
+}
+.ph.has-art .ph-art{display:flex; align-items:center; justify-content:center;}
+
+/* the handwritten note, top right over the art */
+.ph-note{
+  position:absolute; z-index:2; top:clamp(14px,6%,40px); right:clamp(14px,3.4vw,56px); margin:0;
+  display:flex; flex-direction:column; align-items:flex-start;
+  font-family:'Caveat','Segoe Print','Bradley Hand',cursive; font-weight:600; font-size:clamp(22px,2.05vw,33px); line-height:1.02;
+  /* the note sits on the art, which is the same picture in both themes, so its ink doesn't follow the theme */
+  color:#4A14B8; transform:rotate(-8deg); transform-origin:100% 0; pointer-events:none;
+}
+.ph-note-mark{display:block; width:clamp(120px,10.5vw,170px); height:auto; margin:0 0 .3em -.1em; transform:rotate(4deg);}
+.ph-note span:nth-of-type(2){margin-left:.35em;}
+.ph-note span:nth-of-type(3){margin-left:.7em;}
+.ph-note svg{width:72%; height:.42em; margin:.12em 0 0 .6em; overflow:visible;}
+.ph-note path{fill:none; stroke:currentColor; stroke-width:3.2; stroke-linecap:round;}
+.ph-note.is-light{color:#fff; text-shadow:0 1px 10px rgba(20,6,50,.45);}
+
+/* ── the deep purple band (APK) ───────────────────────────────────────────── */
+.ph.is-band, html.dark .ph.is-band{
+  --ph-ink:#fff; --ph-text:rgba(236,226,255,.88); --ph-pill-bg:rgba(255,255,255,.12); --ph-pill-ink:#fff;
+  --purple:#B98BFF; --gold-bright:#FACC45;
+  background:
+    radial-gradient(60% 90% at 72% 60%, rgba(150,70,255,.42), transparent 70%),
+    linear-gradient(110deg,#170846 0%,#24105E 42%,#36137F 100%);
+}
+.ph.is-band .ph-pill{box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);}
+.ph.is-band .ph-btn.is-ghost{background:transparent; color:#fff; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55);}
+
+/* past the board's width, fade the art's right edge too */
+@media (min-width:1700px){
+  .ph.has-photo .ph-art > img{
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 22%,#000 92%,transparent 100%),linear-gradient(0deg,transparent 0,#000 7%);
+    mask-image:linear-gradient(90deg,transparent 0,#000 22%,#000 92%,transparent 100%),linear-gradient(0deg,transparent 0,#000 7%);
+  }
+}
+
+/* tablet and down: copy, then the art full width */
+@media (max-width:1100px){
+  .ph-in{grid-template-columns:minmax(0,1fr) minmax(0,var(--pg-max)) minmax(0,1fr); min-height:0;}
+  .ph-copy{grid-column:2; padding:38px clamp(16px,2.6vw,24px) 26px;}
+  .ph-lead{max-width:640px;}
+  .ph-art{grid-column:1 / -1; grid-row:2; margin-left:0;}
+  .ph.has-photo .ph-art{aspect-ratio:var(--ph-ratio,16 / 7); max-height:440px;}
+  .ph.has-photo .ph-art > img{
+    -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 12%,#000 92%,transparent 100%);
+    mask-image:linear-gradient(180deg,transparent 0,#000 12%,#000 92%,transparent 100%);
+  }
+}
+@media (max-width:640px){
+  .ph-copy{padding-top:28px; padding-bottom:20px;}
+  .ph-title{font-size:clamp(32px,9.4vw,42px);}
+  .ph-cta{gap:10px;}
+  .ph-cta .ph-btn{flex:1 1 auto; height:50px; padding:0 18px; font-size:15.5px;}
+  .ph.has-photo .ph-art{aspect-ratio:var(--ph-ratio-sm,4 / 3);}
+  .ph-note{font-size:clamp(19px,5.6vw,24px);}
+}

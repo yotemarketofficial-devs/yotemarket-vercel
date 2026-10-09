@@ -37,17 +37,17 @@ export const PAGES = {
   '/about': {
     title: 'About YoteMarket — Kenya’s virtual mall',
     description:
-      "What YoteMarket is: Kenya's virtual mall where local shops sell via branded storefronts and YoteFeed videos, shoppers chat and pay with M-Pesa, and riders deliver to pickup hubs.",
+      "What YoteMarket is: Kenya's virtual mall where local shops sell via branded storefronts and YoteFeed videos, shoppers chat, negotiate and pay with M-Pesa, and scouts earn by bringing shops online.",
   },
   '/pricing': {
     title: 'Pricing & plans for sellers — YoteMarket',
     description:
-      'Simple monthly plans for Kenyan businesses: your own storefront, POS, delivery and AI tools. No commission on your sales.',
+      'Simple monthly plans for Kenyan businesses, from Ksh 500: your own storefront, M-Pesa checkout, YoteFeed and YoteAI. No commission on your sales.',
   },
   '/mobile': {
     title: 'The YoteMarket shopping app',
     description:
-      'Shop local Kenyan stores from your phone: chat to sellers, pay with M-Pesa, track delivery and collect at a hub.',
+      'Shop local Kenyan stores from your phone: chat to sellers, negotiate, pay with M-Pesa and collect your order with a one-time code.',
   },
   '/apk': {
     title: 'Download the YoteMarket Android apps (APK)',
@@ -57,7 +57,7 @@ export const PAGES = {
   '/rider': {
     title: 'Earn as a YoteMarket rider',
     description:
-      'Deliver for YoteMarket and get paid per run. Pick up batched orders and drop at neighbourhood hubs.',
+      'Sign up to ride for YoteMarket: batched runs from local shops to neighbourhood hubs, paid per run to M-Pesa, on your own hours.',
   },
   '/marketers': {
     // "Scout" is what we call them internally; "marketer" is what the programme is
@@ -71,7 +71,7 @@ export const PAGES = {
   },
   '/careers': {
     title: 'Careers at YoteMarket',
-    description: 'Open roles at YoteMarket — help build the platform Kenyan shops sell on.',
+    description: 'Open roles and open applications at YoteMarket. Help build the platform Kenyan shops sell on.',
   },
   '/help': {
     title: 'Help Centre — YoteMarket',

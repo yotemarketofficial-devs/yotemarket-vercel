@@ -1,82 +1,164 @@
 import { Link } from 'react-router-dom';
-import PhoneMockup from '../components/PhoneMockup.jsx';
-import UptodownBadge from '../components/UptodownBadge.jsx';
+import { APPS } from '../lib/apk-releases.mjs';
+import PageHero from '../components/PageHero.jsx';
+import YoteAiMark from '../components/YoteAiMark.jsx';
+import YoteFeedMark from '../components/YoteFeedMark.jsx';
+import { Icon, GooglePlayIcon, AppleIcon } from '../components/LineIcon.jsx';
+import phones from '../assets/pages/mobile-phones.webp';
+import phones2x from '../assets/pages/mobile-phones@2x.webp';
+import feedStill from '../assets/home/feed-handbag.webp';
+import mpesaLogo from '../assets/pages/mpesa-logo.png';
+import '../styles/pages.css';
+
+/* /mobile — the shopping app, laid out to the 2026-10-09 mobile board: hero with two
+   phones, three steps, four feature cards and a closing band.
+   The board promised what the app doesn't do, so those lines say what it does instead:
+   there is no live delivery tracking and no door delivery (an order is collected with a
+   one-time code), hub carriage is paused, there are not "thousands" of shops, and
+   payment is M‑Pesa. Its "Live Delivery Tracking" and "Pickup Hubs" cards became
+   Chat & negotiate and YoteAI, which the app has. */
+
+const SHOPPER = APPS.find((a) => a.slug === 'shopper');
+
+const STEPS = [
+  { icon: 'search', title: 'Browse local shops', text: 'Explore Kenyan shops and their products by category, from fashion to electronics and home essentials.' },
+  { icon: 'chat', title: 'Chat & pay securely', text: 'Message sellers, agree a price, then pay with M‑Pesa — held in escrow until you collect.' },
+  { icon: 'store', title: 'Collect your order', text: 'Pick it up at the store with your one-time collection code. No code, no handover.' },
+];
+
+function MpesaPhone() {
+  return (
+    <div className="mb-mini mb-mpesa" aria-hidden="true">
+      <img className="mb-mpesa-logo" src={mpesaLogo} alt="" width="480" height="141" loading="lazy" decoding="async" />
+      <span className="mb-mpesa-ok"><Icon name="check" /></span>
+      <span className="mb-mpesa-l">Payment held in escrow</span>
+      <span className="mb-mpesa-amt">Ksh 2,850</span>
+    </div>
+  );
+}
+
+function ChatMini() {
+  return (
+    <div className="mb-mini mb-chat" aria-hidden="true">
+      <span className="mb-bub is-in">Is this still Ksh 1,500?</span>
+      <span className="mb-bub is-out">For you, Ksh 1,350 🙂</span>
+      <span className="mb-bub is-offer"><Icon name="tag" /> Offer accepted</span>
+    </div>
+  );
+}
+
+function AiMini() {
+  return (
+    <div className="mb-mini mb-ai" aria-hidden="true">
+      <span className="mb-ai-q"><YoteAiMark size={16} /> Wireless earbuds under Ksh 3,000?</span>
+      <span className="mb-ai-a"><span className="mb-ai-dot" />3 matches in local stores</span>
+    </div>
+  );
+}
 
 const FEATURES = [
-  { icon: 'fa-store', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Shop the mall', desc: 'Browse 200+ local stores like a physical mall, anywhere you are.' },
-  { icon: 'fa-comments', tint: 'linear-gradient(135deg,#7C2BD4,#A020F0)', title: 'Negotiate in chat', desc: 'Message sellers in the app messenger, make offers, and agree a price before you pay.' },
-  { icon: 'fa-truck-fast', tint: 'linear-gradient(135deg,#3b82f6,#2563eb)', title: 'Track to your hub', desc: 'Follow your rider in real time and collect at your nearest pickup hub.' },
-  { icon: 'fa-mobile-screen', tint: 'linear-gradient(135deg,#009B3A,#057a30)', title: 'Pay with M-Pesa', desc: 'Secure, escrow-protected checkout — your money is safe until you collect.' },
+  { mark: <YoteFeedMark size={22} />, title: 'YoteFeed', sub: 'Shoppable videos', text: 'Discover products from local sellers through short videos. Tap Buy on a tagged product to add it to your cart.',
+    art: <img className="mb-feed" src={feedStill} alt="" loading="lazy" decoding="async" /> },
+  { icon: 'wallet', green: true, title: 'M‑Pesa checkout', sub: 'Safe & simple payments', text: 'Pay with M‑Pesa. Your money is held in escrow until you collect your order.', art: <MpesaPhone /> },
+  { icon: 'chat', title: 'Chat & negotiate', sub: 'Talk to the seller', text: 'Ask questions, send offers and agree a price in the app messenger before you pay.', art: <ChatMini /> },
+  { mark: <YoteAiMark size={22} />, title: 'YoteAI', sub: 'Your shopping assistant', text: 'Ask for what you need in your own words and YoteAI finds it in local stores.', art: <AiMini /> },
 ];
+
+function StoreBadges() {
+  return (
+    <div className="badges mb-badges">
+      {SHOPPER?.playUrl ? (
+        <a className="store" href={SHOPPER.playUrl} target="_blank" rel="noreferrer">
+          <GooglePlayIcon />
+          <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
+        </a>
+      ) : (
+        <span className="store is-soon" aria-label="Google Play — coming soon">
+          <GooglePlayIcon />
+          <span className="st"><small>COMING SOON TO</small><b>Google Play</b></span>
+        </span>
+      )}
+      <span className="store is-soon" aria-label="App Store — coming soon">
+        <AppleIcon />
+        <span className="st"><small>COMING SOON TO</small><b>App Store</b></span>
+      </span>
+    </div>
+  );
+}
 
 function MobilePage() {
   return (
-    <main>
-      <section className="wrap app-hero">
-        <div>
-          <span className="eyebrow"><i className="fas fa-mobile-alt"></i> YoteMarket Shopper</span>
-          <h1>The mall in <span className="g">your pocket</span>.</h1>
-          <p className="lead">
-            Shop hundreds of local stores, negotiate over chat, pay with M-Pesa, and track every delivery to your
-            nearest hub — all from the YoteMarket app.
-          </p>
-          <div className="app-badges">
-            <a className="store" href="#" aria-label="Get it on Google Play">
-              <i className="fab fa-google-play"></i>
-              <span className="st"><small>GET IT ON</small><b>Google Play</b></span>
-            </a>
-            <a className="store" href="#" aria-label="Download on the App Store">
-              <i className="fab fa-apple"></i>
-              <span className="st"><small>Download on the</small><b>App Store</b></span>
-            </a>
-            {/* No Play Store on the phone? This is the way in. */}
-            <UptodownBadge />
-          </div>
-          <div className="trust">
-            <span>Free to download</span><span className="dot"></span>
-            <span>4.7★ rating</span><span className="dot"></span>
-            <span>Works on Android &amp; iOS</span>
-          </div>
+    <main className="pg mobile">
+      <PageHero
+        className="mb-hero"
+        pill={{ icon: 'phone', text: 'Shop local · Support Kenyan businesses' }}
+        title={<>The YoteMarket<br /><span className="g">shopping app</span></>}
+        lead="Discover and shop from local Kenyan stores right from your phone. Chat with sellers, negotiate prices, pay with M‑Pesa and collect your order with a one-time code — all in one app."
+        actions={<>
+          <Link className="ph-btn" to="/apk"><Icon name="download" /> Get the app</Link>
+          <Link className="ph-btn is-ghost" to="/storefront"><Icon name="store" /> Explore shops</Link>
+        </>}
+        art={{
+          node: <img className="mb-art" src={phones} srcSet={`${phones} 625w, ${phones2x} 1250w`} sizes="(max-width: 1100px) 92vw, 54vw"
+            width="625" height="510" decoding="async" fetchPriority="high"
+            alt="The YoteMarket app on two phones: the home screen with categories and popular shops, and a store page with its products" />,
+        }}
+        note={'Local shops.\nReal people.\nBig dreams.'}
+      >
+        <StoreBadges />
+      </PageHero>
+
+      <section className="pg-sec is-soft mb-steps-sec">
+        <div className="pg-wrap">
+          <ol className="mb-steps">
+            {STEPS.map((s, i) => (
+              <li key={s.title}>
+                <span className="mb-step-ic"><Icon name={s.icon} /><b>{i + 1}</b></span>
+                <div>
+                  <h2>{s.title}</h2>
+                  <p>{s.text}</p>
+                </div>
+                {i < STEPS.length - 1 && <Icon name="arrow" className="mb-step-arrow" />}
+              </li>
+            ))}
+          </ol>
         </div>
-        <div className="phone-wrap"><PhoneMockup app="shopper" /></div>
       </section>
 
-      <section className="pad" style={{ paddingTop: '32px' }}>
-        <div className="wrap">
-          <div className="sec-head">
-            <div className="kicker">One app · everything you need</div>
-            <h2>Built for the way Kenya shops</h2>
-          </div>
-          <div className="app-feature-grid">
+      <section className="pg-sec">
+        <div className="pg-wrap">
+          <div className="mb-feats">
             {FEATURES.map((f) => (
-              <article className="app-feature" key={f.title}>
-                <div className="fi" style={{ background: f.tint }}>
-                  <i className={`${f.brand ? 'fab' : 'fas'} ${f.icon}`}></i>
+              <article className="pg-card mb-feat" key={f.title}>
+                <div className="mb-feat-copy">
+                  <div className="mb-feat-head">
+                    <span className={'pg-ic is-sm' + (f.green ? ' is-mpesa' : '')}>{f.mark || <Icon name={f.icon} />}</span>
+                    <div><h3>{f.title}</h3><span>{f.sub}</span></div>
+                  </div>
+                  <p>{f.text}</p>
                 </div>
-                <div>
-                  <h4>{f.title}</h4>
-                  <p>{f.desc}</p>
-                </div>
+                <div className="mb-feat-art">{f.art}</div>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="pad" style={{ paddingTop: '8px' }}>
-        <div className="wrap stats">
-          <div className="stat"><div className="v">200+</div><div className="l">Local stores</div></div>
-          <div className="stat"><div className="v">47</div><div className="l">Counties served</div></div>
-          <div className="stat"><div className="v">4.7★</div><div className="l">App rating</div></div>
-          <div className="stat"><div className="v">M-Pesa</div><div className="l">Instant checkout</div></div>
-        </div>
-      </section>
-
-      <section className="pad" style={{ paddingTop: '8px', paddingBottom: '80px' }}>
-        <div className="wrap" style={{ textAlign: 'center' }}>
-          <div className="page-actions" style={{ justifyContent: 'center' }}>
-            <Link className="btn btn-primary btn-lg" to="/storefront">Try the web mall <i className="fas fa-arrow-right"></i></Link>
-            <Link className="btn btn-outline btn-lg" to="/rider">Ride with us</Link>
+      <section className="pg-sec mb-close-sec">
+        <div className="pg-wrap">
+          <div className="pg-band mb-close">
+            <div className="mb-close-brand">
+              <img src="/assets/logo-white.png" alt="YoteMarket" width="953" height="368" />
+              <span>Local shops. Real opportunities.</span>
+            </div>
+            <div className="mb-close-copy">
+              <h2>Shop local. <span className="g">Delivered</span> fast.</h2>
+              <p>Support Kenyan businesses <i>•</i> Chat &amp; negotiate <i>•</i> All in one app</p>
+            </div>
+            <div className="mb-close-cta">
+              <Link className="pg-btn is-white" to="/apk"><Icon name="download" /> Get the app</Link>
+              <Link className="pg-btn is-ghost mb-ghost-light" to="/storefront">Explore shops</Link>
+            </div>
           </div>
         </div>
       </section>

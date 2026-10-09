@@ -2,6 +2,28 @@ import { Link } from 'react-router-dom';
 // One source of truth for the founders' profile urls — these must match the Person
 // `sameAs` in index.html, or the entity splits. See lib/socials.js.
 import { COMPANY_PROFILES, FOUNDERS } from '../lib/socials.js';
+import PageHero from '../components/PageHero.jsx';
+import YoteAiMark from '../components/YoteAiMark.jsx';
+import YoteFeedMark from '../components/YoteFeedMark.jsx';
+import { Icon } from '../components/LineIcon.jsx';
+import stallPhoto from '../assets/pages/about-stall.webp';
+import stallPhoto2x from '../assets/pages/about-stall@2x.webp';
+import mpesaLogo from '../assets/pages/mpesa-logo.png';
+import roleShop from '../assets/home/role-shop.webp';
+import roleSell from '../assets/home/role-sell.webp';
+import roleEarn from '../assets/home/role-earn.webp';
+import roleRide from '../assets/home/role-ride.webp';
+import '../styles/pages.css';
+
+/* /about — laid out to the 2026-10-09 about board: hero with the merchant at her stall,
+   "Why we built YoteMarket" with four values, "One platform, every role", a "Built for
+   local business" strip, the founders, and a closing band.
+   The board's claims that the product doesn't back were rewritten: there is no door
+   delivery and hub carriage is paused (orders are collected with a one-time code), there
+   are not "thousands" of shops, merchants pay a monthly plan (no free storefront), POS is
+   Growth and up, POS receipts are not eTIMS invoices, and YoteAI has no demand data.
+   The founders section and the company profiles are kept whole: index.html's JSON-LD
+   claims those profiles, and the page must link every one of them. */
 
 /* Every profile socials.js claims for a founder, as a rel="me" link.
  *
@@ -16,123 +38,194 @@ function FounderLinks({ id, first }) {
       {links.map((l, i) => (
         <span key={l.url}>
           {i === 0 ? '' : i === links.length - 1 ? ' and ' : ', '}
-          <a href={l.url} target="_blank" rel="noopener noreferrer me"
-            style={{ color: 'var(--purple)', fontWeight: 600 }}>{i === 0 ? `${first} on ${l.label}` : l.label}</a>
+          <a href={l.url} target="_blank" rel="noopener noreferrer me">{i === 0 ? `${first} on ${l.label}` : l.label}</a>
         </span>
       ))}
     </>
   );
 }
 
+const CHIPS = [
+  { icon: 'store', text: 'Local shops & communities' },
+  { icon: 'shield', text: 'Secure payments (M‑Pesa escrow)' },
+  { icon: 'key', text: 'Collect with a one-time code' },
+  { icon: 'pin', text: 'Built in Nairobi, for Kenya' },
+];
+
+const VALUES = [
+  { icon: 'users', title: 'Support local', text: 'Keep money in local communities and help Kenyan businesses grow.' },
+  { icon: 'shield', title: 'Create opportunities', text: 'Let merchants, scouts and riders earn on their own terms.' },
+  { icon: 'rocket', title: 'Make life easier', text: 'Give shoppers a simple, secure way to shop and pay.' },
+  { icon: 'heart', title: 'Build a stronger Kenya', text: 'More local commerce, more work, more thriving communities.' },
+];
+
+const ROLES = [
+  { key: 'shop', img: roleShop, icon: 'cart', title: 'Shoppers', to: '/storefront', alt: 'A smiling shopper with YoteMarket bags and her phone',
+    text: 'Browse branded storefronts, chat and negotiate with sellers, pay with M‑Pesa escrow and collect your order with a one-time code.' },
+  { key: 'sell', img: roleSell, icon: 'store', title: 'Merchants', to: '/pricing', alt: 'A merchant in a YoteMarket apron with his laptop',
+    text: 'Get a branded storefront from Ksh 500 a month, sell with YoteFeed videos and YoteAI, take M‑Pesa payments, and add POS on Growth.' },
+  { key: 'earn', img: roleEarn, icon: 'megaphone', title: 'Marketers', to: '/marketers', alt: 'A YoteMarket scout with a megaphone and her phone',
+    text: 'Sign up local shops as a scout and earn for every verified merchant you bring on.' },
+  { key: 'ride', img: roleRide, icon: 'scooter', title: 'Riders', to: '/rider', alt: 'A YoteMarket rider with his delivery box, giving a thumbs up',
+    text: 'Sign up to carry batched orders from shops to pickup hubs, on your own hours, paid per run.' },
+];
+
+const BUILT = [
+  { art: <img className="ab-mpesa" src={mpesaLogo} alt="M-Pesa" width="480" height="141" loading="lazy" decoding="async" />, title: 'M‑Pesa', text: 'Escrow checkout and wallet payouts.' },
+  { art: <span className="pg-ic is-sm"><Icon name="key" /></span>, title: 'Store pickup', text: 'Collect with a one-time code.' },
+  { art: <span className="pg-ic is-sm"><YoteAiMark size={20} /></span>, title: 'YoteAI', text: 'Finds products for shoppers and drafts copy for sellers.' },
+  { art: <span className="pg-ic is-sm"><YoteFeedMark size={20} /></span>, title: 'YoteFeed', text: 'Shoppable videos from local stores.' },
+];
+
 function About() {
   return (
-    <main>
-      <section className="pad">
-        <div className="wrap">
-          <div className="page-head">
-            <span className="eyebrow"><i className="fas fa-building"></i> About YoteMarket</span>
-            <h1>Kenya's virtual mall, built for everyone</h1>
-            <p>
-              We combine a virtual mall, shoppable YoteFeed videos, merchant tools, and last-mile delivery into
-              one ecosystem — so local stores can reach the whole country and shoppers can buy with confidence.
+    <main className="pg about">
+      <PageHero
+        pill={{ icon: 'store', text: 'About YoteMarket' }}
+        title={<>Local shops. Real people.<br /><span className="g">Real impact.</span></>}
+        lead="YoteMarket is Kenya's virtual mall: local shops get their own branded storefront, shoppers chat, negotiate and pay with M‑Pesa, and scouts earn by bringing shops online."
+        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 775, height: 270, position: '35% 40%',
+          alt: 'A smiling merchant in a YoteMarket apron at her stall beside a "Support Local Business" chalkboard, with shoppers behind her' }}
+        note={'Kenyan businesses.\nBigger\ntomorrows.'}
+      >
+        <ul className="ab-chips">
+          {CHIPS.map((c) => <li key={c.text}><span className="pg-ic is-sm"><Icon name={c.icon} /></span>{c.text}</li>)}
+        </ul>
+      </PageHero>
+
+      <section className="pg-sec is-soft">
+        <div className="pg-wrap ab-why">
+          <div className="ab-why-copy">
+            <span className="pg-ic is-solid ab-why-ic"><Icon name="target" /></span>
+            <div>
+              <h2 className="pg-h2">Why we built YoteMarket</h2>
+              <p>
+                We saw the potential in Kenya&rsquo;s local businesses — and the challenges they face. Many great shops
+                lack an online presence, easy access to customers and the right tools to grow. At the same time,
+                shoppers want a simpler, safer and more local way to shop.
+              </p>
+              <p><b>That&rsquo;s why we built YoteMarket — to connect, empower and grow together.</b></p>
+            </div>
+          </div>
+          <ul className="ab-values">
+            {VALUES.map((v) => (
+              <li key={v.title}>
+                <span className="pg-ic"><Icon name={v.icon} /></span>
+                <h3>{v.title}</h3>
+                <p>{v.text}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="pg-sec">
+        <div className="pg-wrap">
+          <div className="pg-head is-center">
+            <h2 className="pg-h2">One platform, every role</h2>
+            <p className="pg-sub">YoteMarket brings together everyone in local commerce.</p>
+          </div>
+          <div className="ab-roles">
+            {ROLES.map((r) => (
+              <Link className={`pg-card ab-role is-${r.key}`} to={r.to} key={r.key}>
+                <span className="ab-role-photo"><img src={r.img} alt={r.alt} loading="lazy" decoding="async" /></span>
+                <span className="pg-ic is-solid ab-role-ic" aria-hidden="true"><Icon name={r.icon} /></span>
+                <b>{r.title}</b>
+                <span className="ab-role-text">{r.text}</span>
+                <span className="ab-more">Learn more <Icon name="arrow" /></span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="pg-strip ab-built">
+            <div className="ab-built-copy">
+              <h2>Built for local business</h2>
+              <p>The tools that make a real difference to Kenyan commerce.</p>
+            </div>
+            <ul>
+              {BUILT.map((b) => (
+                <li key={b.title}>
+                  <span className="ab-built-art">{b.art}</span>
+                  <span><b>{b.title}</b><span>{b.text}</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="pg-sec ab-people">
+        <div className="pg-wrap">
+          <div className="pg-head">
+            <span className="pg-kicker">The founders</span>
+            <h2 className="pg-h2">Who&rsquo;s behind YoteMarket</h2>
+            <p className="pg-sub">
+              YoteMarket was founded by <strong>Moses Kiambi</strong> and <strong>Arnold Kamau</strong>, who lead the
+              company as Chief Executive Officer and Chief Operating Officer.
             </p>
           </div>
-          <div className="prose">
-            <h3>What YoteMarket is</h3>
-            <p>
-              YoteMarket is Kenya's virtual mall — an online marketplace that brings hundreds of local shops
-              into one place. Every business gets its own branded storefront, and shoppers browse them like
-              walking through a physical mall: compare stores, chat and negotiate directly with sellers in the
-              in-app messenger, and check out in a few taps. It's built for Kenya first — payments in M-Pesa,
-              prices in shillings, and collection at neighbourhood pickup hubs.
-            </p>
-            <h3>YoteFeed — shop short videos</h3>
-            <p>
-              YoteFeed is our shoppable short-form video feed. Stores post quick vertical clips of what they
-              sell, and shoppers watch, tap a tagged product, and buy it on the spot — discovery and checkout
-              in the same swipe. It turns browsing into entertainment and gives small shops a way to show
-              their products in motion, not just as photos.
-            </p>
-            <h3>How shopping works</h3>
-            <p>
-              Find something you like, message the store to ask questions or agree a price, then pay with
-              M-Pesa — held in escrow until you collect, so your money is protected. Choose the pickup hub
-              nearest you or have a rider deliver. Every order is tracked end to end, with a digital receipt.
-            </p>
-            <h3>Tools for sellers</h3>
-            <p>
-              Sellers run the whole business from one dashboard: list products with photos and stock, take
-              in-store sales on the built-in Point-of-Sale terminal, issue KRA-compliant tax invoices, and get
-              paid into an M-Pesa wallet. YoteAI writes product listings and turns real sales into demand
-              insights — all on a flat monthly subscription, with no commission on sales.
-            </p>
-            <h3>Delivery, riders &amp; scouts</h3>
-            <p>
-              A network of zero-hour riders delivers batched orders from local hubs, which keeps costs low and
-              earnings fair. Scouts — our marketer program — sign up new shops and earn for every verified
-              merchant they bring on. It all adds up to one ecosystem where stores sell, riders deliver, scouts
-              grow the network, and shoppers buy with confidence.
-            </p>
-            <h3>Who's behind YoteMarket</h3>
-            <p>
-              YoteMarket was founded by <strong>Moses Kiambi</strong> and <strong>Arnold Kamau</strong>, who lead
-              the company as Chief Executive Officer and Chief Operating Officer.
-            </p>
-            <p id="moses-kiambi">
-              <strong>Moses Kiambi — Chief Executive Officer (CEO).</strong> Moses leads YoteMarket's
-              go-to-market. Marketing strategy, brand and user acquisition sit with him: how the mall reaches
-              shoppers across Kenya, how merchants first hear about us, and how that attention converts into
-              active stores and repeat buyers.
-            </p>
-            <p>
-              His background is in e-commerce, digital media and marketing. He has run digital marketing and
-              media independently, and supports <em>Jacity Travellers &amp; Tours</em> in Nairobi with content
-              and social campaigns in the travel sector. He is certified by Google in Digital Marketing
-              Fundamentals and has studied information technology.{' '}
-              <FounderLinks id="moses-kiambi" first="Moses" />.
-            </p>
-            <p id="arnold-kamau">
-              <strong>Arnold Kamau — Chief Operating Officer (COO).</strong> Arnold carries the rest of the
-              business. Product and technology, operations and logistics, merchant systems, finance and
-              compliance all report to him — the platform itself, the pickup-hub and rider delivery network,
-              merchant onboarding and the scout program, and the processes that let hundreds of stores fulfil
-              orders reliably across the country.
-            </p>
-            <p>
-              He is a startup operator with a foot in both technology and policy. He is co-founder and COO of
-              <em> LeaseUs</em>, a blockchain-powered service-delivery platform, a director at
-              <em> Portico Agency</em> in London, and founder of the <em>Kaiserberg Independent Policy Design
-              Initiative</em>. He also founded <em>Tuelewane</em>, a thought-leadership blog and podcast on
-              geopolitics, technology and social change, and serves as Secretary General of The Patriciah
-              Foundation, which backs education, empowerment and social-justice work. He holds a bachelor's
-              degree in International Relations from Daystar University, with further study at Leiden
-              University in the political economy of institutions and development and in international
-              humanitarian law, and a specialisation in negotiation, mediation and conflict resolution from
-              ESSEC Business School.{' '}
-              <FounderLinks id="arnold-kamau" first="Arnold" />.
-            </p>
-            <h3>YoteMarket elsewhere</h3>
-            <p>
-              The company is listed on{' '}
-              {COMPANY_PROFILES.map((p, i) => (
-                <span key={p.url}>
-                  {i > 0 ? ', ' : ''}
-                  <a href={p.url} target="_blank" rel="noopener noreferrer me"
-                    style={{ color: 'var(--purple)', fontWeight: 600 }}>{p.label}</a>
-                </span>
-              ))}. Those pages describe the same company as this one — they are claimed in our
-              structured data so search and answer engines resolve them to one YoteMarket.
-            </p>
-            <h3>Join us</h3>
-            <p>
-              We're always looking for sharp marketers and reliable riders. Sign up merchants through our{' '}
-              <Link to="/marketers" style={{ color: 'var(--purple)', fontWeight: 600 }}>marketer program</Link>, or{' '}
-              <Link to="/rider" style={{ color: 'var(--purple)', fontWeight: 600 }}>ride with us</Link> on your own schedule.
-            </p>
+          <div className="ab-founders">
+            <article className="pg-card ab-founder" id="moses-kiambi">
+              <h3>Moses Kiambi <span>Chief Executive Officer (CEO)</span></h3>
+              <p>
+                Moses leads YoteMarket&rsquo;s go-to-market. Marketing strategy, brand and user acquisition sit with him:
+                how the mall reaches shoppers across Kenya, how merchants first hear about us, and how that attention
+                converts into active stores and repeat buyers.
+              </p>
+              <p>
+                His background is in e-commerce, digital media and marketing. He has run digital marketing and media
+                independently, and supports <em>Jacity Travellers &amp; Tours</em> in Nairobi with content and social
+                campaigns in the travel sector. He is certified by Google in Digital Marketing Fundamentals and has
+                studied information technology.
+              </p>
+              <p className="ab-links"><FounderLinks id="moses-kiambi" first="Moses" />.</p>
+            </article>
+            <article className="pg-card ab-founder" id="arnold-kamau">
+              <h3>Arnold Kamau <span>Chief Operating Officer (COO)</span></h3>
+              <p>
+                Arnold carries the rest of the business. Product and technology, operations and logistics, merchant
+                systems, finance and compliance all report to him — the platform itself, the pickup-hub and rider
+                delivery network, merchant onboarding and the scout program, and the processes that let stores fulfil
+                orders reliably.
+              </p>
+              <p>
+                He is a startup operator with a foot in both technology and policy. He is co-founder and COO of
+                <em> LeaseUs</em>, a blockchain-powered service-delivery platform, a director at <em>Portico Agency</em>{' '}
+                in London, and founder of the <em>Kaiserberg Independent Policy Design Initiative</em>. He also founded{' '}
+                <em>Tuelewane</em>, a thought-leadership blog and podcast on geopolitics, technology and social change,
+                and serves as Secretary General of The Patriciah Foundation, which backs education, empowerment and
+                social-justice work. He holds a bachelor&rsquo;s degree in International Relations from Daystar
+                University, with further study at Leiden University in the political economy of institutions and
+                development and in international humanitarian law, and a specialisation in negotiation, mediation and
+                conflict resolution from ESSEC Business School.
+              </p>
+              <p className="ab-links"><FounderLinks id="arnold-kamau" first="Arnold" />.</p>
+            </article>
           </div>
-          <div className="sec-cta">
-            <Link className="btn btn-primary btn-lg" to="/storefront">Shop the mall <i className="fas fa-arrow-right"></i></Link>
-            <Link className="btn btn-outline btn-lg" to="/contact">Contact us</Link>
+          <p className="ab-elsewhere">
+            YoteMarket is also listed on{' '}
+            {COMPANY_PROFILES.map((p, i) => (
+              <span key={p.url}>
+                {i > 0 ? (i === COMPANY_PROFILES.length - 1 ? ' and ' : ', ') : ''}
+                <a href={p.url} target="_blank" rel="noopener noreferrer me">{p.label}</a>
+              </span>
+            ))}. Those pages describe the same company as this one.
+          </p>
+        </div>
+      </section>
+
+      <section className="pg-sec ab-grow-sec">
+        <div className="pg-wrap">
+          <div className="pg-band ab-grow">
+            <span className="pg-ic ab-grow-ic"><Icon name="chart" /></span>
+            <div>
+              <h2>Grow with YoteMarket</h2>
+              <p>Join the Kenyan shops, shoppers, scouts and riders building a stronger local economy.</p>
+            </div>
+            <div className="ab-grow-cta">
+              <Link className="pg-btn is-white" to="/dashboard">Start selling <Icon name="arrow" /></Link>
+              <Link className="pg-btn is-ghost ab-ghost-light" to="/storefront">Shop the mall</Link>
+            </div>
           </div>
         </div>
       </section>
