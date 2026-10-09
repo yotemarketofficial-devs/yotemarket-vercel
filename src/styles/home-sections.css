@@ -664,3 +664,57 @@ html.dark .hs-psteps-ic{background:#2E1C5E; color:#D3B2FF; box-shadow:0 0 0 1px 
   .hs-role:hover .hs-role-photo img{transform:translateX(-50%);}
   .hs-role:hover .hs-role-go{transform:none;}
 }
+
+/* ============================================================================
+   A growing Kenyan community (CommunityStatsSection): three live figures laid
+   out to the stats board. Each card is number, label and line on top and a
+   picture standing on its floor: a merchant under a striped awning, the map of
+   Kenya, a merchant with a rising arrow.
+   ========================================================================== */
+.hs-com-grid{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,2.6fr); gap:clamp(18px,2.4vw,34px); align-items:center;}
+.hs-band-com .hs-title{font-size:clamp(28px,2.6vw,38px);}
+.hs-swash.is-com{display:block; width:150px; height:18px; margin:8px 0 0; color:#B793F2; stroke-width:4;}
+html.dark .hs-swash.is-com{color:rgba(201,162,255,.5);}
+.hs-live{display:inline-flex; align-items:center; gap:8px; margin:16px 0 0; font-size:13px; font-weight:600; color:var(--t2);}
+.hs-live-dot{width:9px; height:9px; border-radius:50%; background:#22C55E; box-shadow:0 0 0 0 rgba(34,197,94,.55); animation:hs-live 2.2s infinite;}
+@keyframes hs-live{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5);} 70%{box-shadow:0 0 0 9px rgba(34,197,94,0);} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}}
+
+.hs-stats{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:clamp(12px,1.5vw,20px); min-width:0;}
+.hs-stat{position:relative; display:flex; flex-direction:column; min-width:0; padding:20px 20px 0; border-radius:22px; overflow:hidden;
+  border:1px solid var(--hs-card-line);
+  background:radial-gradient(80% 50% at 80% 0%, rgba(255,255,255,.75), transparent 70%), linear-gradient(170deg,#F4EDFF 0%,#E7D9FD 100%);}
+html.dark .hs-stat{background:radial-gradient(80% 50% at 80% 0%, rgba(201,162,255,.16), transparent 70%), linear-gradient(170deg,#28175A 0%,#1E1146 100%);}
+.hs-stat-ic{width:52px; height:52px; border-radius:16px; display:inline-flex; align-items:center; justify-content:center; background:#fff; color:#6A1FD6;
+  box-shadow:0 10px 22px -16px rgba(70,23,143,.7);}
+html.dark .hs-stat-ic{background:#341F6B; color:#D3B2FF;}
+.hs-stat-ic svg{width:26px; height:26px;}
+.hs-stat-n{display:block; margin-top:14px; font-size:clamp(40px,4vw,60px); line-height:1; font-weight:800; letter-spacing:-.04em; color:var(--t1); font-variant-numeric:tabular-nums;}
+.hs-stat-l{margin-top:6px; font-size:clamp(18px,1.6vw,23px); font-weight:800; letter-spacing:-.02em; color:var(--t1);}
+.hs-stat-d{margin-top:6px; font-size:14px; line-height:1.5; color:var(--t2); max-width:24ch;}
+.hs-stat-art{position:relative; display:block; margin:8px -20px 0; aspect-ratio:100/86; flex:none;}
+.hs-stat-art img{position:absolute; left:50%; bottom:0; height:100%; width:auto; max-width:none; transform:translateX(-50%);}
+.hs-stat.is-stores .hs-stat-art img{height:104%; left:55%;}
+.hs-stat.is-products .hs-stat-art img{height:104%; left:50%;}
+.hs-stat-art img.hs-map{height:92%; bottom:4%;}
+/* the stall's awning, behind the merchant: stripes and a scalloped valance */
+.hs-awning{position:absolute; left:8%; right:8%; top:12%; height:13%; border-radius:10px 10px 0 0;
+  background:repeating-linear-gradient(90deg,#7C3AED 0 12.5%,#FBF8FF 12.5% 25%); box-shadow:0 6px 14px -10px rgba(70,23,143,.6);}
+.hs-awning::before{content:''; position:absolute; left:0; right:0; top:100%; height:42%;
+  background:radial-gradient(circle at 50% 0, #6A1FD6 0 46%, transparent 49%) 0 0/12.5% 100% repeat-x;}
+html.dark .hs-awning{background:repeating-linear-gradient(90deg,#7C3AED 0 12.5%,#3A2470 12.5% 25%);}
+.hs-sparks.is-map{right:8%; top:8%; width:14%; height:auto; aspect-ratio:1; stroke:#E89B0C;}
+html.dark .hs-sparks.is-map{stroke:#FACC45;}
+.hs-trend{position:absolute; right:5%; top:4%; width:24%; height:auto; fill:none; stroke:#E89B0C; stroke-width:4; stroke-linecap:round; stroke-linejoin:round;}
+html.dark .hs-trend{stroke:#FACC45;}
+
+@media (max-width:1199px){
+  .hs-com-grid{grid-template-columns:minmax(0,1fr);}
+  .hs-band-com .hs-copy{max-width:640px;}
+}
+@media (max-width:760px){
+  .hs-stats{grid-template-columns:minmax(0,1fr); max-width:420px; width:100%; justify-self:center;}
+  .hs-stat-art{aspect-ratio:100/70;}
+}
+@media (prefers-reduced-motion:reduce){
+  .hs-live-dot{animation:none;}
+}

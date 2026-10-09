@@ -11,7 +11,7 @@ Storage rules live in the **yotemarket-flutter** repo under `firebase/`.
 ```
 npm install
 npm run dev        # local dev server
-npm test           # vitest — 294 tests, all passing as of 2026-10-07
+npm test           # vitest — 303 tests, all passing as of 2026-10-09
 npm run build      # prebuild = sitemap, build = vite, postbuild = prerender
 ```
 
@@ -372,6 +372,27 @@ panels clip their sides only (`clip-path: inset(-N% 0 0 0)`).
 **The copy on these bands has not been fact-checked yet** — see `docs/TODO.md`. In particular the
 rider band says "Get paid per run" while carriage is paused, and the marketer steps end in
 "Interview" (the earn landing says top scouts are invited to interview, not hired).
+
+## A growing Kenyan community: the live figures (2026-10-09)
+
+`CommunityStatsSection` (in `HomeSections.jsx`) replaces the old stats band, laid out to the stats
+board: three cards, each a big number, a label, a line and a picture (the apron merchant under a
+CSS-drawn striped awning, the supplied map of Kenya, the polo merchant with a rising arrow). **No
+number on it is typed in.** The owner asked for a live counter that goes up when a merchant joins:
+
+- `lib/community-stats.js` (pure, tested in `community-stats.test.js`) turns store documents into
+  the figures: **stores** = every store not suspended by staff (what the shop and the sitemap show);
+  **counties** = distinct counties among them, from the `county` field, or else a WHOLE word (or
+  two neighbouring words) of `area` / `town` / `subCounty` / `address` that is one of the 47 names
+  in `lib/counties.js` ("Homabay town" is Homa Bay; "Embulbul" is not Embu).
+- `lib/community-live.js` reads them: an `onSnapshot` on `stores` (so a new merchant's store adds
+  to the count on every open homepage) and a server-side `getCountFromServer` on `products`, minus
+  the products of suspended stores. Loaded after mount like `lib/feed.js`, so Firebase stays off
+  the critical path. While loading the numbers show a dash; if they can't be read at all, the
+  numbers and the "Live figures" line are left out and the cards keep their words.
+- The board's "Merchants" card became **Products**: one store per merchant, so "merchants" would
+  only repeat the store count. On 2026-10-09 the band read 15 stores, 7 counties, 39 products.
+- The numbers count up from 0 the first time they scroll into view (not with reduced motion).
 
 ## Gotchas worth remembering
 

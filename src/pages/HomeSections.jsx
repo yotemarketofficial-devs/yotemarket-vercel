@@ -12,7 +12,7 @@
 // is one the product makes good on (storefront engage.jsx, feed.jsx, commerce.jsx,
 // profile.jsx; dashboard extras.jsx, feedmgr.jsx, pos.jsx, pricing.js; lib/entitlements.js).
 // Keep it that way when editing the copy.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
@@ -37,6 +37,10 @@ import roleRide from '../assets/home/role-ride.webp';
 import earnScout from '../assets/home/earn-scout.webp';
 import earnRider from '../assets/home/earn-rider.webp';
 import ctaGroup from '../assets/home/cta-group.webp';
+import statStores from '../assets/home/stat-stores.webp';
+import statProducts from '../assets/home/stat-products.webp';
+import kenyaMap from '../assets/home/kenya-map.webp';
+import kenyaMap2x from '../assets/home/kenya-map@2x.webp';
 import stillSneaker from '../assets/home/feed-sneaker.webp';
 import stillKitchen from '../assets/home/feed-kitchen.webp';
 import stillBackpack from '../assets/home/feed-backpack.webp';
@@ -251,6 +255,93 @@ export function EarnSection() {
               <img className="hs-prog-photo" src={earnRider} alt="A YoteMarket rider on his motorbike with a delivery box"
                 loading="lazy" decoding="async" />
             </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── A growing Kenyan community ─────────────────────────────────────────────────── */
+
+// A number that counts up from 0 the first time it is seen, then follows the live value.
+// With reduced motion it just shows the value.
+function CountUp({ value }) {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(null);
+  const calm = useMedia('(prefers-reduced-motion: reduce)');
+  const started = useRef(false);
+  useEffect(() => {
+    if (value == null) return undefined;
+    if (calm || started.current) { setShown(value); return undefined; }
+    const el = ref.current;
+    let raf = 0;
+    const run = () => {
+      started.current = true;
+      const t0 = performance.now();
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / 1100);
+        setShown(Math.round(value * (1 - (1 - k) ** 3)));
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    if (!el || !('IntersectionObserver' in window)) { run(); return () => cancelAnimationFrame(raf); }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); run(); } }, { threshold: 0.4 });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [value, calm]);
+  return <span ref={ref}>{shown == null ? '\u2013' : shown.toLocaleString('en-KE')}</span>;
+}
+
+/* `stats` is undefined while loading, null if it can't be read, else the live figures
+   from lib/community-live.js. Every number here is counted from the catalogue: a new
+   merchant's store adds to it on its own, on every open page. */
+export function CommunityStatsSection({ stats }) {
+  const failed = stats === null;
+  const v = stats || {};
+  const cards = [
+    { key: 'stores', icon: 'store', value: v.stores, label: v.stores === 1 ? 'Local store' : 'Local stores',
+      desc: 'Kenyan businesses selling on YoteMarket.' },
+    { key: 'counties', icon: 'pin', value: v.counties, label: v.counties === 1 ? 'County' : 'Counties',
+      desc: 'Where our stores are, and growing.' },
+    { key: 'products', icon: 'box', value: v.products, label: v.products === 1 ? 'Product' : 'Products',
+      desc: 'More businesses. More choices.' },
+  ];
+  return (
+    <section className="pad hs-sec" id="community" aria-labelledby="hs-com-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-com reveal">
+          <div className="hs-com-grid">
+            <div className="hs-copy">
+              <span className="hs-pill hs-pill-ic is-outline"><Icon name="shield" />Shop. Sell. Deliver. Earn.</span>
+              <h2 className="hs-title" id="hs-com-title">A growing <span className="hs-accent">Kenyan community.</span></h2>
+              <svg className="hs-swash is-com" viewBox="0 0 120 14" aria-hidden="true" focusable="false"><path d="M4 9C30 4 62 3 76 5M86 6c10-1 20-1 30 0" /></svg>
+              <p className="hs-lead">
+                From local stores to everyday shoppers, YoteMarket brings people, businesses and opportunities
+                together across Kenya.
+              </p>
+              {failed ? null : (
+                <p className="hs-live"><span className="hs-live-dot" aria-hidden="true" />Live figures. They go up as each new store joins.</p>
+              )}
+            </div>
+            <ul className="hs-stats">
+              {cards.map((c) => (
+                <li key={c.key} className={`hs-stat is-${c.key}`}>
+                  <span className="hs-stat-ic" aria-hidden="true"><Icon name={c.icon} /></span>
+                  {failed ? null : <b className="hs-stat-n" aria-live="polite"><CountUp value={c.value} /></b>}
+                  <span className="hs-stat-l">{c.label}</span>
+                  <span className="hs-stat-d">{c.desc}</span>
+                  <span className="hs-stat-art" aria-hidden="true">
+                    {c.key === 'stores' ? (<><span className="hs-awning" /><img src={statStores} alt="" loading="lazy" decoding="async" /></>) : null}
+                    {c.key === 'counties' ? (<><img className="hs-map" src={kenyaMap} srcSet={`${kenyaMap} 420w, ${kenyaMap2x} 840w`} sizes="(max-width: 860px) 70vw, 240px" alt="" loading="lazy" decoding="async" />
+                      <svg className="hs-sparks is-map" viewBox="0 0 24 24" focusable="false">{ICONS.sparks}</svg></>) : null}
+                    {c.key === 'products' ? (<><img src={statProducts} alt="" loading="lazy" decoding="async" />
+                      <svg className="hs-trend" viewBox="0 0 64 48" focusable="false"><path d="M4 42 22 24l10 9L58 7" /><path d="M44 6h14v14" /></svg></>) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
