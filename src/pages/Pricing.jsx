@@ -101,7 +101,7 @@ function Pricing() {
         title={<>Simple monthly plans for<br /><span className="g">Kenyan businesses</span></>}
         lead="Your own storefront, M‑Pesa checkout, YoteFeed and YoteAI on one flat monthly fee. No commission on your sales — you keep 100% of every sale."
         actions={toggle}
-        art={{ src: merchantPhoto, src2x: merchantPhoto2x, width: 800, height: 281,
+        art={{ src: merchantPhoto, src2x: merchantPhoto2x, width: 800, height: 276,
           alt: 'A smiling merchant in a YoteMarket apron checks her store on a tablet between stocked shelves' }}
       />
 
