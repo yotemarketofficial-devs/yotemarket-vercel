@@ -1,6 +1,7 @@
-import { useState, Fragment } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FEATURES } from '../lib/entitlements.js';
+import { fulfilmentStatus } from '../lib/firebase.js';
 import PageHero from '../components/PageHero.jsx';
 import { Icon } from '../components/LineIcon.jsx';
 import merchantPhoto from '../assets/pages/pricing-merchant.webp';
@@ -76,6 +77,14 @@ function AmountCell({ to, amount }) {
 
 function Pricing() {
   const [mode, setMode] = useState('plans'); // plans (default) | delivery
+  // Delivery is temporarily suspended (Terms, clause 1). Read the same live flag the
+  // subscribe flow reads, so the delivery prices never show without saying so.
+  const [paused, setPaused] = useState(null);
+  useEffect(() => {
+    let live = true;
+    fulfilmentStatus().then((st) => { if (live) setPaused(st ? st.riderDelivery === false : null); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   const toggle = (
     <div className="pr-seg" role="tablist" aria-label="Plan type">
@@ -170,6 +179,12 @@ function Pricing() {
       ) : (
         <section className="pg-sec">
           <div className="pg-wrap">
+            {paused && (
+              <p className="rider-paused pr-paused" role="status">
+                <Icon name="clock" />
+                <span><b>Delivery is temporarily paused</b> while we restructure the service to meet new regulations. Orders are collected from the store in the meantime, and no delivery fee is charged.</span>
+              </p>
+            )}
             <div className="pr-legend">
               <span><b>Entry</b> · 10 deliveries/mo</span>
               <span><b>Growth</b> · 20 deliveries/mo</span>

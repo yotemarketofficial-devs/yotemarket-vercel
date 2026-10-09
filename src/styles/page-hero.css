@@ -102,7 +102,7 @@ html.dark .ph-btn:focus-visible{outline-color:rgba(185,123,255,.55);}
 
 /* tablet and down: copy, then the art full width */
 @media (max-width:1100px){
-  .ph-in{grid-template-columns:minmax(0,1fr) minmax(0,808px) minmax(0,1fr); min-height:0;}
+  .ph-in{grid-template-columns:minmax(0,1fr) minmax(0,var(--pg-max)) minmax(0,1fr); min-height:0;}
   .ph-copy{grid-column:2; padding:38px clamp(16px,2.6vw,24px) 26px;}
   .ph-lead{max-width:640px;}
   .ph-art{grid-column:1 / -1; grid-row:2; margin-left:0;}
