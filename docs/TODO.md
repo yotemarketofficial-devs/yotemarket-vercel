@@ -166,9 +166,10 @@ the homepage. They are outside those bands, and the hero's words were approved b
 were left alone and need a decision. Live today: 15 stores in 6 counties, 1 pickup point, and the
 Terms say delivery is suspended.
 
-- [ ] **`[web]` "200+ Local Stores", "Nationwide Delivery"** in the hero feature row, the "200+
-  stores" card baked into the hero art, and the stats band's **200+ / 47 counties / 1,200+ active
-  merchants**. **needs-a-human** (which figures, or computed at build time like the sitemap).
+- [ ] **`[web]` "200+ Local Stores", "Nationwide Delivery"** in the hero feature row and the "200+
+  stores" card baked into the hero art. **needs-a-human** (which figures). The stats band's
+  200+ / 47 / 1,200+ is FIXED (2026-10-09): it is now live, counted from the catalogue
+  (`lib/community-live.js`), at the owner's request.
   **Done when:** every figure on the homepage is either true today or computed from the catalogue.
 - [ ] **`[web]` The rider card's "Real-time routes to your nearest hubs"** and "Pick up delivery
   runs, drop at hubs", while carriage is paused. Same decision.

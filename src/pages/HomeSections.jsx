@@ -12,7 +12,7 @@
 // is one the product makes good on (storefront engage.jsx, feed.jsx, commerce.jsx,
 // profile.jsx; dashboard extras.jsx, feedmgr.jsx, pos.jsx, pricing.js; lib/entitlements.js).
 // Keep it that way when editing the copy.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
@@ -37,6 +37,12 @@ import roleRide from '../assets/home/role-ride.webp';
 import earnScout from '../assets/home/earn-scout.webp';
 import earnRider from '../assets/home/earn-rider.webp';
 import ctaGroup from '../assets/home/cta-group.webp';
+import statStores from '../assets/home/stat-stores.webp';
+import statProducts from '../assets/home/stat-products.webp';
+import statStall from '../assets/home/stat-stall.webp';
+import statShelf from '../assets/home/stat-shelf.webp';
+import kenyaMap from '../assets/home/kenya-map.webp';
+import kenyaMap2x from '../assets/home/kenya-map@2x.webp';
 import stillSneaker from '../assets/home/feed-sneaker.webp';
 import stillKitchen from '../assets/home/feed-kitchen.webp';
 import stillBackpack from '../assets/home/feed-backpack.webp';
@@ -232,7 +238,7 @@ export function EarnSection() {
               <img className="hs-prog-photo" src={earnScout} alt="A YoteMarket scout checking her phone"
                 loading="lazy" decoding="async" />
               <div className="hs-prog-body">
-                <span className="hs-tag"><Icon name="star" />Marketer program</span>
+                <span className="hs-tag">Marketer program</span>
                 <h3>Become a YoteMarket Scout</h3>
                 <p>Refer merchants. Get paid for each one you bring.</p>
                 <Steps steps={SCOUT_STEPS} label="How the marketer program works" />
@@ -242,15 +248,132 @@ export function EarnSection() {
 
             <article className="hs-prog is-rider">
               <div className="hs-prog-body">
-                <span className="hs-tag"><Icon name="star" />Rider program</span>
+                <span className="hs-tag">Rider program</span>
                 <h3>Ride with YoteMarket</h3>
                 <p>Deliver on your schedule. Get paid per run.</p>
                 <Steps steps={RIDER_STEPS} label="How the rider program works" />
                 <Link className="hs-btn" to="/rider">Ride with us <Icon name="arrow" /></Link>
               </div>
-              <img className="hs-prog-photo" src={earnRider} alt="A YoteMarket rider on his motorbike with a delivery box"
+              <img className="hs-prog-photo" src={earnRider} alt="A smiling YoteMarket rider on his motorbike, with his delivery box"
                 loading="lazy" decoding="async" />
             </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── A growing Kenyan community ─────────────────────────────────────────────────── */
+
+// A number that counts up from 0 the first time it is seen, then follows the live value.
+// With reduced motion it just shows the value.
+function CountUp({ value }) {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(null);
+  const calm = useMedia('(prefers-reduced-motion: reduce)');
+  const started = useRef(false);
+  useEffect(() => {
+    if (value == null) return undefined;
+    if (calm || started.current) { setShown(value); return undefined; }
+    const el = ref.current;
+    let raf = 0;
+    const run = () => {
+      started.current = true;
+      const t0 = performance.now();
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / 1100);
+        setShown(Math.round(value * (1 - (1 - k) ** 3)));
+        if (k < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    if (!el || !('IntersectionObserver' in window)) { run(); return () => cancelAnimationFrame(raf); }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); run(); } }, { threshold: 0.4 });
+    io.observe(el);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); };
+  }, [value, calm]);
+  return <span ref={ref}>{shown == null ? '\u2013' : shown.toLocaleString('en-KE')}</span>;
+}
+
+// Filled glyphs for the stat tiles, as the board draws them (24-unit grid).
+const SOLID = {
+  store: <><path d="M3.2 3.5h17.6l1.7 5.4a3.1 3.1 0 0 1-5.4 2.2 3.3 3.3 0 0 1-5.1.2 3.3 3.3 0 0 1-5.1-.2A3.1 3.1 0 0 1 1.5 8.9z" /><path d="M3.6 12.6a5 5 0 0 0 3.2-.3 5.2 5.2 0 0 0 5.2.6 5.2 5.2 0 0 0 5.2-.6 5 5 0 0 0 3.2.3v7.6a1.3 1.3 0 0 1-1.3 1.3h-3.6v-5.2H8.5v5.2H4.9a1.3 1.3 0 0 1-1.3-1.3z" /></>,
+  pin: <path fillRule="evenodd" d="M12 1.8a7.6 7.6 0 0 0-7.6 7.6c0 5.6 7.6 12.8 7.6 12.8s7.6-7.2 7.6-12.8A7.6 7.6 0 0 0 12 1.8zm0 10.6a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" />,
+  box: <><path d="M12 1.8 3 6.3l9 4.5 9-4.5z" /><path d="M2 8v9.6l9 4.6v-9.7z" /><path d="M13 12.5v9.7l9-4.6V8z" /></>,
+  shield: <path fillRule="evenodd" d="M12 1.8 3.8 5.1v6.1c0 5 3.4 8.9 8.2 10.9 4.8-2 8.2-5.9 8.2-10.9V5.1zm4.4 7.5-5.3 5.6-3.4-3.4 1.4-1.4 2 2 3.9-4.2z" />,
+};
+const Solid = ({ name }) => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">{SOLID[name]}</svg>;
+// The board's little emphasis marks beside the woman and the map.
+const Burst = ({ className }) => (
+  <svg className={`hs-burst ${className}`} viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+    <path d="M24 6 18 15M34 18l-11 2.5M32 31l-9.5-5" />
+  </svg>
+);
+
+/* `stats` is undefined while loading, null if it can't be read, else the live figures
+   from lib/community-live.js. Every number here is counted from the catalogue: a new
+   merchant's store adds to it on its own, on every open page. */
+export function CommunityStatsSection({ stats }) {
+  const failed = stats === null;
+  const v = stats || {};
+  const cards = [
+    { key: 'stores', icon: 'store', value: v.stores, label: v.stores === 1 ? 'Local store' : 'Local stores',
+      desc: 'Kenyan businesses selling on YoteMarket.' },
+    { key: 'counties', icon: 'pin', value: v.counties, label: v.counties === 1 ? 'County' : 'Counties',
+      desc: 'From city centres to county towns.' },
+    { key: 'products', icon: 'box', value: v.products, label: v.products === 1 ? 'Product' : 'Products',
+      desc: 'More businesses. More choices.' },
+  ];
+  return (
+    <section className="pad hs-sec" id="community" aria-labelledby="hs-com-title">
+      <div className="wrap hs-wrap">
+        <div className="hs-band hs-band-com reveal">
+          <div className="hs-com-grid">
+            <div className="hs-copy">
+              <span className="hs-pill hs-pill-ic is-outline"><Solid name="shield" />Shop. Sell. Deliver. Earn.</span>
+              <h2 className="hs-title" id="hs-com-title">A growing<br />Kenyan community.</h2>
+              <svg className="hs-brush" viewBox="0 0 300 22" aria-hidden="true" focusable="false">
+                <path d="M6 15c38-6 88-7 124-4" /><path d="M156 12c32-3 82-3 128 1" />
+              </svg>
+              <p className="hs-lead">
+                From local stores to everyday shoppers, YoteMarket is bringing people, businesses and
+                opportunities together, across Kenya.
+              </p>
+              {failed ? null : (
+                <p className="hs-live"><span className="hs-live-dot" aria-hidden="true" />Live figures. They go up as each new store joins.</p>
+              )}
+            </div>
+            <ul className="hs-stats">
+              {cards.map((c) => (
+                <li key={c.key} className={`hs-stat is-${c.key}`}>
+                  <span className="hs-stat-ic" aria-hidden="true"><Solid name={c.icon} /></span>
+                  {failed ? null : <b className="hs-stat-n" aria-live="polite"><CountUp value={c.value} /></b>}
+                  <span className="hs-stat-l">{c.label}</span>
+                  <span className="hs-stat-d">{c.desc}</span>
+                  <span className="hs-stat-art" aria-hidden="true">
+                    {c.key === 'stores' ? (<>
+                      <span className="hs-scene is-stall"><img src={statStall} alt="" loading="lazy" decoding="async" /></span>
+                      <Burst className="is-stall" />
+                      <img className="hs-stat-fig" src={statStores} alt="" loading="lazy" decoding="async" />
+                    </>) : null}
+                    {c.key === 'counties' ? (<>
+                      <span className="hs-map-blob" />
+                      <img className="hs-map" src={kenyaMap} srcSet={`${kenyaMap} 420w, ${kenyaMap2x} 840w`} sizes="(max-width: 860px) 70vw, 240px" alt="" loading="lazy" decoding="async" />
+                      <Burst className="is-map" />
+                    </>) : null}
+                    {c.key === 'products' ? (<>
+                      <span className="hs-scene is-shelf">
+                        <img src={statShelf} alt="" loading="lazy" decoding="async" />
+                        <img className="is-mirror" src={statShelf} alt="" loading="lazy" decoding="async" />
+                      </span>
+                      <img className="hs-stat-fig" src={statProducts} alt="" loading="lazy" decoding="async" />
+                      <svg className="hs-trend" viewBox="0 0 64 48" focusable="false"><path d="M4 42 22 24l10 9L58 7" /><path d="M44 6h14v14" /></svg>
+                    </>) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>

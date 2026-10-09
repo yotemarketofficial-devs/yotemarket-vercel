@@ -5,7 +5,8 @@ import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import { SOCIAL_LINKS } from '../lib/socials.js';
 import '../styles/home-hero.css';
 import {
-  RolesSection, ShoppersSection, MerchantsSection, YoteAiSection, YoteFeedSection, EarnSection, AppsSection, CtaSection,
+  RolesSection, ShoppersSection, MerchantsSection, YoteAiSection, YoteFeedSection, EarnSection, AppsSection,
+  CommunityStatsSection, CtaSection,
 } from './HomeSections.jsx';
 // Imported, not referenced from public/, so Vite fingerprints the file names: every
 // change to the art gets a new URL. A fixed name sat in browsers' caches for up to an
@@ -90,6 +91,20 @@ function HomePage() {
       setFeedMod(m);
       off = m.subscribeFeed((rows) => setClips(rows.slice(0, 4)), 12);
     }).catch(() => { /* band keeps its placeholders */ });
+    return () => { cancelled = true; if (off) off(); };
+  }, []);
+
+  // The community band's live figures (stores, counties, products). Loaded after mount
+  // like the feed above, so Firebase stays off the critical path. undefined = loading,
+  // null = unavailable (the band then shows its words without numbers).
+  const [stats, setStats] = useState(undefined);
+  useEffect(() => {
+    let off = null;
+    let cancelled = false;
+    import('../lib/community-live.js').then((m) => {
+      if (cancelled) return;
+      off = m.subscribeCommunityStats(setStats);
+    }).catch(() => { if (!cancelled) setStats(null); });
     return () => { cancelled = true; if (off) off(); };
   }, []);
 
@@ -195,14 +210,8 @@ function HomePage() {
 
       <AppsSection />
 
-      <section className="pad" style={{ paddingTop: '24px' }}>
-        <div className="wrap stats">
-          <div className="stat reveal" style={{ '--rd': '0ms' }}><div className="v">200+</div><div className="l">Local stores</div></div>
-          <div className="stat reveal" style={{ '--rd': '80ms' }}><div className="v">47</div><div className="l">Counties served</div></div>
-          <div className="stat reveal" style={{ '--rd': '160ms' }}><div className="v">1,200+</div><div className="l">Active merchants</div></div>
-          <div className="stat reveal" style={{ '--rd': '240ms' }}><div className="v">M-Pesa</div><div className="l">Instant checkout</div></div>
-        </div>
-      </section>
+      {/* Live figures, counted from the catalogue — see lib/community-live.js. */}
+      <CommunityStatsSection stats={stats} />
 
       <CtaSection />
 
