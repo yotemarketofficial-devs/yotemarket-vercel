@@ -404,9 +404,21 @@ packaging brands on the shelves illegible, even at 2x; don't ship them sharp. Th
 twice, the right copy mirrored. Icon tiles use filled glyphs (`SOLID`), and the headline is one
 colour, as the board has it.
 
-The Rider program card shows the supplied rider on his bike (second model sheet), shifted right so
-the copy panel covers his delivery box and never his face. Re-fit `right` on `.hs-prog.is-rider
-.hs-prog-photo` if the photo changes. The program tags carry no star.
+The Rider program card shows the supplied rider on his bike (second model sheet). The copy panel
+covers his delivery box and never his face. **He is placed by his helmet, not by a percentage of the
+card**: the photo's left edge is put at the panel's right edge (`--panel`) and pulled back 35% of
+its own width (where the helmet starts). His height is capped from the card's width (container
+units) so the helmet (35–61% of the photo) always ends inside the card. The first version used
+`right: -50%` of the card, which worked only in the 3-up desktop row. In the wide one-column card
+(481–960px) it pushed him out of the card, so only his box showed. If the photo changes, re-measure
+those two fractions and update the `translateX` and the height caps.
+
+The program cards can't overflow, by construction. Each card clips sideways (`overflow-x: clip`;
+heads may still rise over the top). The step rows compact in a card under 480px (`@container`).
+The rider's panel and the scout's copy column are never narrower than their steps: `--panel` has a
+208px floor, and both have `min-width: min-content`. Before this, "Interview" and "Earn" were cut
+off at 1024–1366px. On phones the photo box is the card's width with `object-fit: contain`, so a
+figure is scaled down instead of covering the card's border. The program tags carry no star.
 
 ## Gotchas worth remembering
 
