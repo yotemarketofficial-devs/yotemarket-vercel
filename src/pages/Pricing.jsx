@@ -1,30 +1,49 @@
 import { useState, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FEATURES } from '../lib/entitlements.js';
+import PageHero from '../components/PageHero.jsx';
+import { Icon } from '../components/LineIcon.jsx';
+import merchantPhoto from '../assets/pages/pricing-merchant.webp';
+import merchantPhoto2x from '../assets/pages/pricing-merchant@2x.webp';
+import '../styles/pages.css';
 
-const ksh = (n) => 'Ksh ' + n.toLocaleString();
+/* /pricing — laid out to the 2026-10-09 pricing board: hero with the merchant photo,
+   three plan cards with the middle one raised, a "Compare features" table and a help strip.
+   The board's prices, plan names, Annual toggle and feature lines were placeholders; every
+   price, tier and feature here is the product's own:
+   - the ladder is Entry → Growth → Pro → Enterprise (lib/entitlements.js TIER_NAMES), and
+     each feature's tier comes from FEATURES there — the single source of truth the dashboard
+     gates on — so this page can't drift from what a plan actually unlocks;
+   - billing is monthly only (there is no annual plan), so the toggle switches between the
+     software plans and the same plans with hub deliveries. */
 
-// Features unlocked AT a given tier rank — pulled straight from the entitlements
-// matrix (the single source of truth), so pricing can never drift from what the
-// product actually gates. Entry(1) → Growth(2) → Pro(3) → Enterprise(4).
+const ksh = (n) => 'Ksh ' + Number(n).toLocaleString('en-KE');
+
+// Features unlocked AT a given tier rank, from the entitlements matrix.
 const addsAt = (rank) => Object.values(FEATURES).filter((f) => f.minTier === rank).map((f) => f.label);
 
 // Entry is the floor — the core toolkit every plan includes. There is no free tier;
 // a free offer or scout activation code simply unlocks the Entry software package.
 const ENTRY_CORE = [
   'Branded storefront & unlimited listings',
-  'M-Pesa escrow checkout',
+  'M‑Pesa escrow checkout',
   'In-app messenger & price negotiation',
   'Orders, receipts & wallet payouts',
   'Reviews, followers & YoteAI assistant',
 ];
 
-const TIERS = [
-  { name: 'Entry', price: 500, tagline: 'Everything to start selling', note: 'Free with a scout code or launch offer', items: [...ENTRY_CORE, ...addsAt(1)] },
-  { name: 'Growth', price: 700, tagline: 'Power tools to scale', feat: true, prev: 'Entry', items: addsAt(2) },
-  { name: 'Pro', price: 1000, tagline: 'Close more, rank higher', prev: 'Growth', items: addsAt(3) },
-  { name: 'Enterprise', price: null, tagline: 'For multi-store businesses', prev: 'Pro', items: [...addsAt(4), 'High-volume delivery', 'Custom pricing & rates', 'Dedicated account manager'] },
+const PLANS = [
+  { name: 'Entry', rank: 1, price: 500, tagline: 'Everything to start selling.', note: 'Free with a scout code or launch offer', items: [...ENTRY_CORE, ...addsAt(1)] },
+  { name: 'Growth', rank: 2, price: 700, tagline: 'Power tools for a growing store.', feat: true, prev: 'Entry', items: addsAt(2) },
+  { name: 'Pro', rank: 3, price: 1000, tagline: 'Close more sales and rank higher.', prev: 'Growth', items: addsAt(3) },
 ];
+
+// The compare table: every row is a real gate. Core rows are in every plan.
+const COMPARE = [
+  ...ENTRY_CORE.map((label) => ({ label, minTier: 1 })),
+  ...Object.values(FEATURES).map((f) => ({ label: f.label, minTier: f.minTier })),
+];
+const COLS = [{ name: 'Entry', rank: 1 }, { name: 'Growth', rank: 2 }, { name: 'Pro', rank: 3 }, { name: 'Enterprise', rank: 4 }];
 
 // With delivery — every delivery plan is the matching software tier PLUS hub
 // deliveries, priced by distance (Entry = 10, Growth = 20, Pro = 30 runs/mo).
@@ -58,101 +77,157 @@ function AmountCell({ to, amount }) {
 function Pricing() {
   const [mode, setMode] = useState('plans'); // plans (default) | delivery
 
+  const toggle = (
+    <div className="pr-seg" role="tablist" aria-label="Plan type">
+      <button type="button" role="tab" className={mode === 'plans' ? 'on' : ''} aria-selected={mode === 'plans'} onClick={() => setMode('plans')}>Plans</button>
+      <button type="button" role="tab" className={mode === 'delivery' ? 'on' : ''} aria-selected={mode === 'delivery'} onClick={() => setMode('delivery')}>With delivery</button>
+      <span className="pr-seg-note">Monthly · no commission</span>
+    </div>
+  );
+
   return (
-    <main>
-      <section className="pad">
-        <div className="wrap">
-          <div className="page-head">
-            <span className="eyebrow"><i className="fas fa-id-card"></i> Merchant pricing</span>
-            <h1>One ladder. No commission.</h1>
-            <p>
-              Pick a software tier — that's your feature set. Need us to deliver? The same tier is
-              available with hub deliveries, priced by distance. Either way you keep 100% of
-              every sale; we never take a cut.
-            </p>
-          </div>
+    <main className="pg pricing">
+      <PageHero
+        pill={{ icon: 'tag', text: 'Seller plans & pricing' }}
+        title={<>Simple monthly plans for<br /><span className="g">Kenyan businesses</span></>}
+        lead="Your own storefront, M‑Pesa checkout, YoteFeed and YoteAI on one flat monthly fee. No commission on your sales — you keep 100% of every sale."
+        actions={toggle}
+        art={{ src: merchantPhoto, src2x: merchantPhoto2x, width: 640, height: 285, position: '42% 35%',
+          alt: 'A smiling merchant in a YoteMarket apron checks her store on a tablet between stocked shelves' }}
+        note={'Grow your\nbusiness\nwith YoteMarket.'}
+      />
 
-          <div className="seg-wrap">
-            <div className="seg" role="tablist" aria-label="Plan type">
-              <button className={mode === 'plans' ? 'on' : ''} aria-selected={mode === 'plans'} onClick={() => setMode('plans')}>Plans</button>
-              <button className={mode === 'delivery' ? 'on' : ''} aria-selected={mode === 'delivery'} onClick={() => setMode('delivery')}>With delivery</button>
-            </div>
-          </div>
-
-          {mode === 'plans' ? (
-            <>
-              <div className="price-grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(min(220px, 100%), 1fr))' }}>
-                {TIERS.map((t) => (
-                  <div key={t.name} className={`price-card ${t.feat ? 'feat' : ''}`} style={t.price === null ? { borderColor: 'var(--purple)' } : undefined}>
-                    {t.feat && <span className="badge">Popular</span>}
-                    {t.price === null && <span className="badge" style={{ background: 'linear-gradient(135deg,#5B16A8,#A020F0)' }}>Enterprise</span>}
-                    <div className="pn">{t.name}</div>
-                    <div className="pp">{t.price !== null ? <>{ksh(t.price)}<small>/mo</small></> : <>Custom<small> · quote</small></>}</div>
-                    <div className="pd">{t.tagline}</div>
+      {mode === 'plans' ? (
+        <>
+          <section className="pg-sec pr-plans-sec">
+            <div className="pg-wrap">
+              <div className="pr-plans">
+                {PLANS.map((t) => (
+                  <article key={t.name} className={'pg-card pr-plan' + (t.feat ? ' is-feat' : '')}>
+                    {t.feat && <span className="pr-badge">Popular</span>}
+                    <h2>{t.name}</h2>
+                    <p className="pr-tag">{t.tagline}</p>
+                    <p className="pr-price"><span>Ksh</span>{Number(t.price).toLocaleString('en-KE')}<small>/month</small></p>
                     <ul>
-                      {t.prev && <li style={{ fontWeight: 600 }}><i className="fas fa-circle-check" style={{ color: 'var(--purple)' }}></i><span>Everything in {t.prev}</span></li>}
-                      {t.items.map((it) => <li key={it}><i className="fas fa-check"></i><span>{it}</span></li>)}
+                      {t.prev && <li className="is-prev"><Icon name="check" /><span>Everything in {t.prev}, plus:</span></li>}
+                      {t.items.map((it) => <li key={it}><Icon name="check" /><span>{it}</span></li>)}
                     </ul>
-                    {t.note && <div className="price-note" style={{ margin: '0 0 12px', fontSize: '12.5px' }}><i className="fas fa-gift" style={{ color: 'var(--purple)', marginRight: 6 }}></i>{t.note}</div>}
-                    {t.price !== null
-                      ? <Link className={`btn ${t.feat ? 'btn-primary' : 'btn-outline'}`} style={{ justifyContent: 'center' }} to={softwareLink(t.name)}>Choose {t.name}</Link>
-                      : <Link className="btn btn-primary" style={{ justifyContent: 'center' }} to="/contact">Talk to sales</Link>}
-                  </div>
+                    {t.note && <p className="pr-note"><Icon name="gift" /> {t.note}</p>}
+                    <Link className={'pg-btn' + (t.feat ? '' : ' is-ghost')} to={softwareLink(t.name)}>Choose {t.name}</Link>
+                  </article>
                 ))}
               </div>
-              <p className="price-note">
-                Every tier is software-only by default (a flat monthly fee, no delivery runs). Want us to
-                deliver too? See{' '}
-                <button onClick={() => setMode('delivery')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--purple)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>With delivery</button>.
+              <p className="pr-fine">
+                Every plan is software-only: a flat monthly fee, no delivery runs. Want us to deliver too?{' '}
+                <button type="button" className="pr-linkbtn" onClick={() => setMode('delivery')}>See the plans with delivery</button>.
               </p>
-            </>
-          ) : (
-            <>
-              <div className="plan-legend">
-                <span><b>Entry</b> · 10 deliveries/mo</span>
-                <span><b>Growth</b> · 20 deliveries/mo</span>
-                <span><b>Pro</b> · 30 deliveries/mo</span>
-              </div>
-              <div className="ptable-wrap">
-                <table className="ptable">
-                  <thead>
-                    <tr>
-                      <th>Delivery range</th>
-                      <th>Entry<span>10 deliveries</span></th>
-                      <th>Growth<span>20 deliveries</span></th>
-                      <th>Pro<span>30 deliveries</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DELIVERY_BANDS.map((band) => (
-                      <Fragment key={band.label}>
-                        <tr className="bandrow"><td colSpan={4}>{band.label} · {band.span}</td></tr>
-                        {band.tiers.map((t) => (
-                          <tr key={t.id}>
-                            <td>{t.range}</td>
-                            <AmountCell to={deliveryLink(t.id, 'Starter')} amount={t.s} />
-                            <AmountCell to={deliveryLink(t.id, 'Growth')} amount={t.g} />
-                            <AmountCell to={deliveryLink(t.id, 'Pro')} amount={t.p} />
-                          </tr>
-                        ))}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="price-note">
-                Each delivery plan pairs the matching software tier (Entry / Growth / Pro) with hub
-                deliveries — tap any price to sign up with it pre-selected. Higher volume or nationwide?{' '}
-                <Link to="/contact" style={{ color: 'var(--purple)', fontWeight: 600 }}>Enterprise delivery is quote-based</Link>.
-              </p>
-            </>
-          )}
+            </div>
+          </section>
 
-          <div className="sec-cta" style={{ marginTop: '30px' }}>
-            <Link className="btn btn-primary btn-lg" to="/dashboard">Start selling <i className="fas fa-arrow-right"></i></Link>
-            <span className="sec-cta-note">
-              Also earn with us — <Link to="/marketers" style={{ color: 'var(--purple)', fontWeight: 600 }}>refer merchants</Link> or <Link to="/rider" style={{ color: 'var(--purple)', fontWeight: 600 }}>ride</Link>.
-            </span>
+          <section className="pg-sec pr-compare-sec">
+            <div className="pg-wrap">
+              <div className="pr-compare pg-card">
+                <div className="pr-compare-copy">
+                  <h2 className="pg-h2">Compare features</h2>
+                  <p>Every plan gives you the tools to sell, grow and manage your business on one platform. Each feature is unlocked from the plan where it is ticked.</p>
+                  <Link className="pr-more" to="/contact">Questions about a feature? <Icon name="arrow" /></Link>
+                </div>
+                <div className="pr-table-wrap">
+                  <table className="pr-table">
+                    <thead>
+                      <tr>
+                        <th scope="col"><span className="sr-only">Feature</span></th>
+                        {COLS.map((c) => <th scope="col" key={c.name} className={c.rank === 2 ? 'is-feat' : ''}>{c.name}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {COMPARE.map((r) => (
+                        <tr key={r.label}>
+                          <th scope="row">{r.label}</th>
+                          {COLS.map((c) => (
+                            <td key={c.name} className={c.rank === 2 ? 'is-feat' : ''}>
+                              {c.rank >= r.minTier
+                                ? <><Icon name="check" className="pr-yes" /><span className="sr-only">Included</span></>
+                                : <><span className="pr-no" aria-hidden="true">—</span><span className="sr-only">Not included</span></>}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      <tr className="pr-price-row">
+                        <th scope="row">Monthly price</th>
+                        {COLS.map((c) => {
+                          const p = PLANS.find((x) => x.rank === c.rank);
+                          return <td key={c.name} className={c.rank === 2 ? 'is-feat' : ''}>{p ? ksh(p.price) : 'Quote'}</td>;
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        <section className="pg-sec">
+          <div className="pg-wrap">
+            <div className="pr-legend">
+              <span><b>Entry</b> · 10 deliveries/mo</span>
+              <span><b>Growth</b> · 20 deliveries/mo</span>
+              <span><b>Pro</b> · 30 deliveries/mo</span>
+            </div>
+            <div className="ptable-wrap pr-delivery">
+              <table className="ptable">
+                <thead>
+                  <tr>
+                    <th>Delivery range</th>
+                    <th>Entry<span>10 deliveries</span></th>
+                    <th>Growth<span>20 deliveries</span></th>
+                    <th>Pro<span>30 deliveries</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {DELIVERY_BANDS.map((band) => (
+                    <Fragment key={band.label}>
+                      <tr className="bandrow"><td colSpan={4}>{band.label} · {band.span}</td></tr>
+                      {band.tiers.map((t) => (
+                        <tr key={t.id}>
+                          <td>{t.range}</td>
+                          <AmountCell to={deliveryLink(t.id, 'Starter')} amount={t.s} />
+                          <AmountCell to={deliveryLink(t.id, 'Growth')} amount={t.g} />
+                          <AmountCell to={deliveryLink(t.id, 'Pro')} amount={t.p} />
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="pr-fine">
+              Each delivery plan pairs the matching software plan (Entry / Growth / Pro) with hub
+              deliveries — tap any price to sign up with it pre-selected. Higher volume or nationwide?{' '}
+              <Link to="/contact">Enterprise delivery is quote-based</Link>.
+            </p>
+          </div>
+        </section>
+      )}
+
+      <section className="pg-sec pr-help-sec">
+        <div className="pg-wrap pr-help">
+          <div className="pg-strip">
+            <span className="pg-ic"><Icon name="layers" /></span>
+            <div>
+              <h3>Need a custom plan?</h3>
+              <p>Enterprise is for businesses that run several stores: more than one storefront under one account, top-brand placement, custom rates and a dedicated account manager.</p>
+            </div>
+            <Link className="pg-btn" to="/contact">Talk to sales <Icon name="arrow" /></Link>
+          </div>
+          <div className="pg-strip">
+            <span className="pg-ic"><Icon name="headset" /></span>
+            <div>
+              <h3>Need help choosing a plan?</h3>
+              <p>Our team will help you find the right plan for your business. Also earn with us — <Link to="/marketers">refer merchants</Link> or <Link to="/rider">ride</Link>.</p>
+            </div>
+            <Link className="pg-btn is-ghost" to="/contact">Contact us <Icon name="arrow" /></Link>
           </div>
         </div>
       </section>

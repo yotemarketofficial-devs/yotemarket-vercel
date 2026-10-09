@@ -71,7 +71,7 @@ export const PAGES = {
   },
   '/careers': {
     title: 'Careers at YoteMarket',
-    description: 'Open roles at YoteMarket — help build the platform Kenyan shops sell on.',
+    description: 'Open roles and open applications at YoteMarket. Help build the platform Kenyan shops sell on.',
   },
   '/help': {
     title: 'Help Centre — YoteMarket',
