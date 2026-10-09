@@ -99,11 +99,10 @@ function MobilePage() {
           <Link className="ph-btn is-ghost" to="/storefront"><Icon name="store" /> Explore shops</Link>
         </>}
         art={{
-          node: <img className="mb-art" src={phones} srcSet={`${phones} 625w, ${phones2x} 1250w`} sizes="(max-width: 1100px) 92vw, 54vw"
-            width="625" height="510" decoding="async" fetchPriority="high"
+          node: <img className="mb-art" src={phones} srcSet={`${phones} 865w, ${phones2x} 1730w`} sizes="(max-width: 1100px) 92vw, 54vw"
+            width="865" height="510" decoding="async" fetchPriority="high"
             alt="The YoteMarket app on two phones: the home screen with categories and popular shops, and a store page with its products" />,
         }}
-        note={'Local shops.\nReal people.\nBig dreams.'}
       >
         <StoreBadges />
       </PageHero>

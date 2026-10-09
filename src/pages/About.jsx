@@ -81,12 +81,13 @@ function About() {
   return (
     <main className="pg about">
       <PageHero
+        className="ab-hero"
         pill={{ icon: 'store', text: 'About YoteMarket' }}
         title={<>Local shops. Real people.<br /><span className="g">Real impact.</span></>}
         lead="YoteMarket is Kenya's virtual mall: local shops get their own branded storefront, shoppers chat, negotiate and pay with M‑Pesa, and scouts earn by bringing shops online."
-        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 775, height: 270, position: '35% 40%',
+        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 775, height: 269,
           alt: 'A smiling merchant in a YoteMarket apron at her stall beside a "Support Local Business" chalkboard, with shoppers behind her' }}
-        note={'Kenyan businesses.\nBigger\ntomorrows.'}
+        note={'Kenyan businesses.\nBigger tomorrows.'}
       >
         <ul className="ab-chips">
           {CHIPS.map((c) => <li key={c.text}><span className="pg-ic is-sm"><Icon name={c.icon} /></span>{c.text}</li>)}

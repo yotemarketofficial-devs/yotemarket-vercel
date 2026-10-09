@@ -208,10 +208,8 @@ function RiderPage() {
           <a className="ph-btn" href="#join" onClick={toForm}>Become a rider <Icon name="arrow" /></a>
           <a className="ph-btn is-ghost" href="#how"><Icon name="play" /> How it works</a>
         </>}
-        art={{ src: riderPhoto, src2x: riderPhoto2x, width: 765, height: 335, position: '45% 30%',
+        art={{ src: riderPhoto, src2x: riderPhoto2x, width: 930, height: 330,
           alt: 'A smiling rider in a purple YoteMarket helmet and jacket, with his delivery box, outside a YoteMarket pickup point' }}
-        note={'Your ride.\nYour hours.'}
-        noteTone="light"
       >
         {paused && (
           <p className="rider-paused" role="status">
