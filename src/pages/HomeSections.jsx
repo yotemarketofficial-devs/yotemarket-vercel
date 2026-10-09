@@ -18,7 +18,7 @@ import YoteAiMark from '../components/YoteAiMark.jsx';
 import YoteFeedMark from '../components/YoteFeedMark.jsx';
 import SubscriptionMark from '../components/SubscriptionMark.jsx';
 import PhoneMockup from '../components/PhoneMockup.jsx';
-import { Icon, GooglePlayIcon, AppleIcon } from '../components/LineIcon.jsx';
+import { ICONS, Icon, GooglePlayIcon, AppleIcon } from '../components/LineIcon.jsx';
 import UptodownBadge from '../components/UptodownBadge.jsx';
 import { APPS } from '../lib/apk-releases.mjs';
 // The shopper and merchant photos were supplied (recoloured to the brand, the real logo

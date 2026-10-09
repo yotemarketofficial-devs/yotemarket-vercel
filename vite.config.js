@@ -12,6 +12,9 @@ const RELEASE_INDEX_PATH = '/v0/b/yotemarket-app.firebasestorage.app/o/app_relea
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Vercel preview URLs proxy to the sandbox through a dynamic *.vercel.run host.
+    // Keep the allowlist scoped to that domain instead of disabling host checks.
+    allowedHosts: ['.vercel.run'],
     proxy: {
       '/app-releases.json': {
         target: STORAGE_HOST,
