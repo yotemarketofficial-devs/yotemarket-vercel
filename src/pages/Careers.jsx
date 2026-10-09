@@ -160,7 +160,7 @@ function Careers() {
           <a className="ph-btn" href="#positions">View open positions <Icon name="arrow" /></a>
           <a className="ph-btn is-ghost" href="#why"><Icon name="users" /> How we work</a>
         </>}
-        art={{ src: teamPhoto, src2x: teamPhoto2x, width: 895, height: 363, position: '60% 40%',
+        art={{ src: teamPhoto, src2x: teamPhoto2x, width: 895, height: 363,
           alt: 'Young people in YoteMarket tops working together at a laptop in a bright office' }}
         note={'Local shops.\nBuilt in\nNairobi.'}
         noteMark

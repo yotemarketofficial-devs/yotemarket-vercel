@@ -12,7 +12,7 @@ import '../styles/page-hero.css';
  * title   node                 — wrap the gradient part in <span className="g">
  * lead    node
  * actions node                 — buttons (.ph-btn / .ph-btn.is-ghost), badges
- * art     { src, src2x, width, height, alt, position?, sizes? } for a photo (cover-cropped),
+ * art     { src, src2x, width, height, alt, sizes? } for a photo — shown whole, never cropped or zoomed,
  *         or { node } for composed art that must be shown whole (phones on a band)
  * note    string, lines split on "\n" — Caveat, over the art
  * noteMark true → the real logo above the note (purple, for a light wall in the photo)
@@ -46,7 +46,6 @@ export default function PageHero({ pill, title, lead, actions, art, note, noteTo
                 width={art.width}
                 height={art.height}
                 alt={art.alt}
-                style={art.position ? { objectPosition: art.position } : undefined}
                 fetchPriority="high"
                 decoding="async"
               />

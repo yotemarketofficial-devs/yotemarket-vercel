@@ -21,8 +21,9 @@ import '../styles/pages.css';
  * static entries in apk-releases.mjs when nothing is published or the fetch fails.
  * That's what lets a new build go live without redeploying this site.
  *
- * The board's note said "Same app. Different roles." — but these are two apps (the
- * YoteMarket app for shoppers and merchants, and the Rider app), so it says what's true.
+ * The art keeps the board's own handwritten note, "Same app. Different roles." — true of
+ * the YoteMarket app, which shoppers and merchants share (the rider app is the second
+ * phone). The photo is shown whole at its own resolution: never cropped or zoomed.
  */
 
 const schema = (apps) => ({
@@ -180,11 +181,9 @@ function ApkPage() {
         title={<>Download the official<br /><span className="g">YoteMarket</span> APKs</>}
         lead={<>The signed APKs we publish ourselves, for the YoteMarket app and the YoteMarket Rider app. Check each file against its SHA-256 checksum below before you install it.</>}
         art={{
-          node: <img className="apk-art" src={apkPhones} width="1200" height="644" decoding="async"
+          node: <img className="apk-art" src={apkPhones} width="1650" height="644" decoding="async"
             alt="The YoteMarket shopping app and the YoteMarket Rider app, side by side on two phones" />,
         }}
-        note={'Shop, sell\nor ride.'}
-        noteTone="light"
       />
 
       <section className="pg-sec">
