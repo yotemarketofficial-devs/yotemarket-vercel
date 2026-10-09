@@ -394,6 +394,10 @@ number on it is typed in.** The owner asked for a live counter that goes up when
   only repeat the store count. On 2026-10-09 the band read 15 stores, 7 counties, 39 products.
 - The numbers count up from 0 the first time they scroll into view (not with reduced motion).
 
+The Rider program card shows the supplied rider on his bike (second model sheet), shifted right so
+the copy panel covers his delivery box and never his face. Re-fit `right` on `.hs-prog.is-rider
+.hs-prog-photo` if the photo changes. The program tags carry no star.
+
 ## Gotchas worth remembering
 
 - **The prerender `<noscript>` swap is position-sensitive.** A head comment mentions

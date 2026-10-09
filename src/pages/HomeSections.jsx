@@ -236,7 +236,7 @@ export function EarnSection() {
               <img className="hs-prog-photo" src={earnScout} alt="A YoteMarket scout checking her phone"
                 loading="lazy" decoding="async" />
               <div className="hs-prog-body">
-                <span className="hs-tag"><Icon name="star" />Marketer program</span>
+                <span className="hs-tag">Marketer program</span>
                 <h3>Become a YoteMarket Scout</h3>
                 <p>Refer merchants. Get paid for each one you bring.</p>
                 <Steps steps={SCOUT_STEPS} label="How the marketer program works" />
@@ -246,13 +246,13 @@ export function EarnSection() {
 
             <article className="hs-prog is-rider">
               <div className="hs-prog-body">
-                <span className="hs-tag"><Icon name="star" />Rider program</span>
+                <span className="hs-tag">Rider program</span>
                 <h3>Ride with YoteMarket</h3>
                 <p>Deliver on your schedule. Get paid per run.</p>
                 <Steps steps={RIDER_STEPS} label="How the rider program works" />
                 <Link className="hs-btn" to="/rider">Ride with us <Icon name="arrow" /></Link>
               </div>
-              <img className="hs-prog-photo" src={earnRider} alt="A YoteMarket rider on his motorbike with a delivery box"
+              <img className="hs-prog-photo" src={earnRider} alt="A smiling YoteMarket rider on his motorbike, with his delivery box"
                 loading="lazy" decoding="async" />
             </article>
           </div>
