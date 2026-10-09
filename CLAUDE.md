@@ -376,8 +376,8 @@ rider band says "Get paid per run" while carriage is paused, and the marketer st
 ## A growing Kenyan community: the live figures (2026-10-09)
 
 `CommunityStatsSection` (in `HomeSections.jsx`) replaces the old stats band, laid out to the stats
-board: three cards, each a big number, a label, a line and a picture (the apron merchant under a
-CSS-drawn striped awning, the supplied map of Kenya, the polo merchant with a rising arrow). **No
+board: three cards, each a big number, a label, a line and a picture (the apron merchant in front of
+a market stall, the supplied map of Kenya, the polo merchant in front of shelves with a rising arrow). **No
 number on it is typed in.** The owner asked for a live counter that goes up when a merchant joins:
 
 - `lib/community-stats.js` (pure, tested in `community-stats.test.js`) turns store documents into
@@ -393,6 +393,16 @@ number on it is typed in.** The owner asked for a live counter that goes up when
 - The board's "Merchants" card became **Products**: one store per merchant, so "merchants" would
   only repeat the store count. On 2026-10-09 the band read 15 stores, 7 counties, 39 products.
 - The numbers count up from 0 the first time they scroll into view (not with reduced motion).
+
+The stall and the shelf behind the two merchants are one supplied picture, branded like the models
+(purple awning, posts and frame; the real logo on the counter panel and the hanging tote; plants,
+produce and packs untouched), then cut in two and softened (`stat-stall.webp`, `stat-shelf.webp`).
+Each sits in a rounded scene panel at the card's foot (`.hs-scene`), the merchant standing in front
+with her head above it, as on the board; the map card has a pale blob behind the map, and short
+emphasis marks (`Burst`) sit beside the woman and the map. The softening is what keeps the
+packaging brands on the shelves illegible, even at 2x; don't ship them sharp. The shelf is used
+twice, the right copy mirrored. Icon tiles use filled glyphs (`SOLID`), and the headline is one
+colour, as the board has it.
 
 The Rider program card shows the supplied rider on his bike (second model sheet), shifted right so
 the copy panel covers his delivery box and never his face. Re-fit `right` on `.hs-prog.is-rider
