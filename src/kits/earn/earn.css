@@ -70,6 +70,11 @@
 .kit-earn .payout-row .pr-stage .merchants{ font-size: 11px; color: var(--mute2); }
 .kit-earn .payout-row .pr-amount{ font-family: var(--font-display); font-weight: 800; font-size: 24px; color: var(--white); }
 .kit-earn .payout-foot{ margin-top: 18px; padding: 12px 14px; background: rgba(255,215,0,0.08); border-radius: 12px; font-size: 12px; color: var(--gold-300); display: flex; gap: 8px; align-items: center; }
+/* The scout behind the payout card: her head, megaphone and phone rise above it. She is
+   never drawn taller than the photo's own 481px, so she is never upscaled. */
+.kit-earn .hero-stage{ position: relative; z-index: 2; padding-top: 220px; }
+.kit-earn .hero-scout{ position: absolute; top: 0; right: 6%; height: 380px; width: auto; max-width: none; display: block; filter: drop-shadow(0 18px 28px rgba(10,4,40,0.45)); }
+.kit-earn .hero-stage .payout-card{ z-index: 1; }
 
 
 .kit-earn section{ padding: 90px 24px; }
@@ -119,7 +124,13 @@
 .kit-earn .testimonials{ background: linear-gradient(180deg, #3a1a78, #2a0e64); }
 .kit-earn .test-grid{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 50px; }
 .kit-earn .tc{ background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 26px 24px; }
-.kit-earn .tc .quote{ font-family: var(--font-display); font-weight: 700; font-size: 60px; color: var(--gold-400); line-height: 1; opacity: 0.4; height: 28px; }
+/* Each background has its model, standing on a panel at the card's top; the head rises
+   past the panel, whose sides clip (as the homepage's program cards do). */
+.kit-earn .test-grid{ margin-top: 84px; row-gap: 72px; }
+.kit-earn .tc-scene{ height: 190px; margin: 0 0 22px; border-radius: 16px; display: flex; align-items: flex-end; justify-content: center;
+  background: radial-gradient(circle at 50% 35%, rgba(252,211,77,0.2), transparent 62%), linear-gradient(160deg, rgba(196,160,245,0.3), rgba(139,63,234,0.14));
+  clip-path: inset(-70px 0 0 0 round 16px); }
+.kit-earn .tc-scene img{ height: 240px; width: auto; max-width: none; display: block; }
 .kit-earn .tc blockquote{ margin: 0; font-size: 15px; color: var(--white); line-height: 1.55; margin-bottom: 18px; }
 .kit-earn .tc .person{ display: flex; align-items: center; gap: 12px; }
 .kit-earn .tc .person .who b{ color: var(--white); font-weight: 600; font-size: 14px; display: block; }
@@ -166,6 +177,8 @@
   .kit-earn .payout-card{ transform: none; }
   .kit-earn .how-steps, .kit-earn .earnings-grid, .kit-earn .test-grid, .kit-earn .kit-grid{ grid-template-columns: 1fr 1fr; }
   .kit-earn .ec.featured{ transform: scale(1); }
+  .kit-earn .hero-stage{ padding-top: 180px; max-width: 560px; }
+  .kit-earn .hero-scout{ height: 310px; right: 4%; }
 }
 @media (max-width: 600px){
   .kit-earn section{ padding: 60px 20px; }
@@ -221,7 +234,7 @@ html:not(.dark) .kit-earn .ec ul li::before{color:#0E8A57; background:rgba(16,18
 html:not(.dark) .kit-earn .ec.locked ul li::before{color:#8C86A8; background:rgba(21,17,74,.06);}
 
 html:not(.dark) .kit-earn .tc{background:#fff; border-color:#EAE3F7; box-shadow:0 14px 30px -26px rgba(60,20,110,.45);}
-html:not(.dark) .kit-earn .tc .quote{color:#F4B530; opacity:.7;}
+html:not(.dark) .kit-earn .tc-scene{background:radial-gradient(circle at 50% 35%,rgba(244,181,48,.22),transparent 62%),linear-gradient(160deg,#F3ECFE,#E4D7FB);}
 html:not(.dark) .kit-earn .tc blockquote{color:#15114A;}
 html:not(.dark) .kit-earn .tc .person .who b{color:#15114A;}
 html:not(.dark) .kit-earn .tc .person .who span{color:#8A4E00;}
