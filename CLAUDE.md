@@ -420,6 +420,22 @@ The rider's panel and the scout's copy column are never narrower than their step
 off at 1024–1366px. On phones the photo box is the card's width with `object-fit: contain`, so a
 figure is scaled down instead of covering the card's border. The program tags carry no star.
 
+## The Marketer Program landing wears the site header (2026-10-10)
+
+`/marketers` (`kits/earn/index.jsx`) had its own top bar with no way home and no theme toggle.
+The header is now one component, `components/SiteHeader.jsx`, rendered by `Layout.jsx` and by
+`MarketersLanding` in `App.jsx` (its own calls to action, Sign in and Apply now, and a "Marketer
+Program" tag after the logo). The theme is one hook, `lib/useSiteTheme.js`, on the same saved
+choice, so the landing follows the rest of the site. It has a light theme (end of `earn.css`):
+pale sections and white cards, with the hero and the calculator kept as deep purple bands.
+
+It carries the branded models like the other pages, at their own size, never zoomed: the
+megaphone scout (`home/role-earn.webp`) stands behind the payout card in the hero with her head,
+megaphone and phone above it, and each "Who scouts well" card has its model on a panel, head
+rising past it: the apron trader (`home/stat-stores.webp`), the man on his phone and the blazer
+scout (`assets/earn/`, from the model pack). They illustrate the backgrounds; they are not scouts
+in the program, and nothing on the page should say they are.
+
 ## Gotchas worth remembering
 
 - **The prerender `<noscript>` swap is position-sensitive.** A head comment mentions

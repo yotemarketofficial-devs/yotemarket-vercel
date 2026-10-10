@@ -101,7 +101,7 @@ function Pricing() {
         title={<>Simple monthly plans for<br /><span className="g">Kenyan businesses</span></>}
         lead="Your own storefront, M‑Pesa checkout, YoteFeed and YoteAI on one flat monthly fee. No commission on your sales — you keep 100% of every sale."
         actions={toggle}
-        art={{ src: merchantPhoto, src2x: merchantPhoto2x, width: 800, height: 281,
+        art={{ src: merchantPhoto, src2x: merchantPhoto2x, width: 800, height: 276,
           alt: 'A smiling merchant in a YoteMarket apron checks her store on a tablet between stocked shelves' }}
       />
 
@@ -112,7 +112,7 @@ function Pricing() {
               <div className="pr-plans">
                 {PLANS.map((t) => (
                   <article key={t.name} className={'pg-card pr-plan' + (t.feat ? ' is-feat' : '')}>
-                    {t.feat && <span className="pr-badge">Popular</span>}
+                    {t.feat && <span className="pr-badge">Recommended</span>}
                     <h2>{t.name}</h2>
                     <p className="pr-tag">{t.tagline}</p>
                     <p className="pr-price"><span>Ksh</span>{Number(t.price).toLocaleString('en-KE')}<small>/month</small></p>

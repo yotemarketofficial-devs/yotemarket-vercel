@@ -1,89 +1,16 @@
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { useEffect, useState, Suspense } from 'react';
-import { useEscape } from './lib/useEscape.js';
-import ThemeToggle from './components/ThemeToggle.jsx';
-
-const navItems = [
-  { label: 'Home', path: '/', end: true },
-  { label: 'Shops', path: '/storefront' },
-  { label: 'For Merchants', path: '/dashboard' },
-  { label: 'Delivery', path: '/rider' },
-  { label: 'Marketers', path: '/marketers' },
-  { label: 'About', path: '/about' },
-];
-
-function NavItem({ item, activeClass }) {
-  return <NavLink to={item.path} end={item.end} className={activeClass}>{item.label}</NavLink>;
-}
+import { Outlet } from 'react-router-dom';
+import { Suspense } from 'react';
+import SiteHeader from './components/SiteHeader.jsx';
+import { useSiteTheme } from './lib/useSiteTheme.js';
 
 function Layout() {
-  // Read the saved theme up front rather than after mount: the homepage picks its hero
-  // art from this on the first render, and starting light would fetch both images.
-  const [dark, setDark] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ym_platform_theme');
-      if (saved) return saved === 'dark';
-      return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-    } catch {
-      return false;
-    }
-  });
-  const [menuOpen, setMenuOpen] = useState(false);
-  const location = useLocation();
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('ym_platform_theme', dark ? 'dark' : 'light');
-  }, [dark]);
-
-  // Close the mobile menu whenever the route changes.
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
-  useEscape(() => setMenuOpen(false), menuOpen);
-
-  const logoSrc = dark ? '/assets/logo-white.png' : '/assets/logo.png';
-  const activeClass = ({ isActive }) => (isActive ? 'active-link' : '');
+  const [dark, setDark] = useSiteTheme();
 
   return (
     <div className="app-shell">
       {/* Keyboard/screen-reader users can jump the nav straight to the page (WCAG 2.4.1). */}
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <header className="nav">
-        <div className="wrap nav-in">
-          <NavLink to="/" className="logo-link">
-            <img className="logo" src={logoSrc} alt="YoteMarket" />
-          </NavLink>
-
-          <nav className="links" aria-label="Main">
-            {navItems.map((item) => <NavItem key={item.path} item={item} activeClass={activeClass} />)}
-          </nav>
-
-          <div className="nav-cta">
-            <ThemeToggle dark={dark} onToggle={() => setDark((prev) => !prev)} className="nav-theme" />
-            {/* The storefront opens to guests and offers sign-in itself. */}
-            <Link to="/storefront" className="nav-login">Login</Link>
-            <Link to="/mobile" className="nav-start">Get App</Link>
-            <button
-              className="nav-burger"
-              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((o) => !o)}
-            >
-              <i className={menuOpen ? 'fas fa-xmark' : 'fas fa-bars'}></i>
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile slide-down menu */}
-        <div className={`nav-mobile ${menuOpen ? 'open' : ''}`}>
-          <nav className="nav-mobile-links" aria-label="Main">
-            {navItems.map((item) => <NavItem key={item.path} item={item} activeClass={activeClass} />)}
-            <div className="nav-mobile-cta">
-              <Link className="nav-login" to="/storefront" onClick={() => setMenuOpen(false)}>Login</Link>
-              <Link className="nav-start" to="/mobile" onClick={() => setMenuOpen(false)}>Get App</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader dark={dark} onToggle={() => setDark((prev) => !prev)} />
       {/* Skip-link target. A plain wrapper — each page renders its own <main>. */}
       <div id="main-content" tabIndex={-1} style={{ outline: 'none' }}>
         {/* Lazy marketing pages (rider, careers, help) suspend here rather than at the

@@ -8,6 +8,12 @@ import Calculator from './Calculator.jsx';
 import { useAuth } from '../../lib/useAuth.jsx';
 import { firebaseEnabled } from '../../lib/firebase.js';
 import { registerMarketer } from '../marketers/service.js';
+// The branded models the rest of the site uses (supplied photos: greens turned brand purple,
+// the real logo on the tote and apron). Shown at their own size, never zoomed.
+import scoutMegaphone from '../../assets/home/role-earn.webp';
+import scoutTrader from '../../assets/home/stat-stores.webp';
+import scoutSeller from '../../assets/earn/scout-seller.webp';
+import scoutGrad from '../../assets/earn/scout-grad.webp';
 const { useState } = React;
 
 const PROOF_TINTS = ['#7c3aed', '#10b981', '#f59e0b', '#ec4899'];
@@ -49,18 +55,6 @@ export default function EarnLanding() {
 
   return (
     <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="top-logo">
-            <img src="/assets/logo-white.png" alt="YoteMarket" />
-            <span className="badge">Marketer Program</span>
-          </div>
-          <div className="top-cta">
-            <Link className="calc-link" to="/marketers/app"><i className="fas fa-right-to-bracket"></i> Sign in</Link>
-            <a className="btn-gold" href="#apply" style={{ padding: '10px 22px', fontSize: '14px' }}>Apply now</a>
-          </div>
-        </div>
-      </header>
 
       {/* ===== HERO ===== */}
       <section className="hero" style={{ paddingTop: '60px' }}>
@@ -92,32 +86,38 @@ export default function EarnLanding() {
             </div>
           </div>
 
-          <div className="payout-card">
-            <h3>What you can earn</h3>
-            <p className="sub">Verified merchants → KSH in your M-Pesa</p>
-            <div className="payout-rows">
-              <div className="payout-row">
-                <div className="pr-stage"><span className="stage">Qualify</span><span className="merchants">10 verified merchants</span></div>
-                <span className="pr-amount">KSH 300</span>
+          {/* The scout stands behind the payout card, calling it out: her head, megaphone and
+              phone rise above it, as the figures on the homepage's program cards do. */}
+          <div className="hero-stage">
+            <img className="hero-scout" src={scoutMegaphone} width="362" height="481" fetchPriority="high" decoding="async"
+              alt="A smiling YoteMarket scout calling out through a megaphone, her phone in her other hand" />
+            <div className="payout-card">
+              <h3>What you can earn</h3>
+              <p className="sub">Verified merchants → KSH in your M-Pesa</p>
+              <div className="payout-rows">
+                <div className="payout-row">
+                  <div className="pr-stage"><span className="stage">Qualify</span><span className="merchants">10 verified merchants</span></div>
+                  <span className="pr-amount">KSH 300</span>
+                </div>
+                <div className="payout-row">
+                  <div className="pr-stage"><span className="stage">First cash-out</span><span className="merchants">30 verified merchants</span></div>
+                  <span className="pr-amount">KSH 500</span>
+                </div>
+                <div className="payout-row gold">
+                  <div className="pr-stage"><span className="stage">Checkpoint 1</span><span className="merchants">40 verified · 20 KSH re-rate</span></div>
+                  <span className="pr-amount">KSH 900</span>
+                </div>
+                <div className="payout-row gold">
+                  <div className="pr-stage"><span className="stage">Checkpoint 2</span><span className="merchants">70 verified merchants</span></div>
+                  <span className="pr-amount">KSH 1,500</span>
+                </div>
+                <div className="payout-row gold">
+                  <div className="pr-stage"><span className="stage">Checkpoint 3</span><span className="merchants">100 verified · top tier</span></div>
+                  <span className="pr-amount">KSH 2,100</span>
+                </div>
               </div>
-              <div className="payout-row">
-                <div className="pr-stage"><span className="stage">First cash-out</span><span className="merchants">30 verified merchants</span></div>
-                <span className="pr-amount">KSH 500</span>
-              </div>
-              <div className="payout-row gold">
-                <div className="pr-stage"><span className="stage">Checkpoint 1</span><span className="merchants">40 verified · 20 KSH re-rate</span></div>
-                <span className="pr-amount">KSH 900</span>
-              </div>
-              <div className="payout-row gold">
-                <div className="pr-stage"><span className="stage">Checkpoint 2</span><span className="merchants">70 verified merchants</span></div>
-                <span className="pr-amount">KSH 1,500</span>
-              </div>
-              <div className="payout-row gold">
-                <div className="pr-stage"><span className="stage">Checkpoint 3</span><span className="merchants">100 verified · top tier</span></div>
-                <span className="pr-amount">KSH 2,100</span>
-              </div>
+              <div className="payout-foot"><i className="fas fa-info-circle"></i> Top monthly scouts → invited to interview for full-time marketing roles</div>
             </div>
-            <div className="payout-foot"><i className="fas fa-info-circle"></i> Top monthly scouts → invited to interview for full-time marketing roles</div>
           </div>
         </div>
       </section>
@@ -207,17 +207,17 @@ export default function EarnLanding() {
           <p className="section-sub">YoteMarket is just starting. We need scouts who already have relationships with merchants — not strangers cold-calling. Most successful scouts come from one of these backgrounds:</p>
           <div className="test-grid">
             <div className="tc">
-              <div className="quote">·</div>
+              <div className="tc-scene"><img src={scoutTrader} width="374" height="483" alt="A smiling market trader in a YoteMarket apron, arms crossed" loading="lazy" decoding="async" /></div>
               <blockquote>You sell or trade in a market, salon, or local shop. You know other shop owners in your area and can introduce them in person.</blockquote>
               <div className="person"><i className="fas fa-store" style={{ fontSize: '36px', color: '#FCD34D', width: '44px', textAlign: 'center' }}></i><div className="who"><b>Market traders &amp; shop owners</b><span>The most natural scouts</span></div></div>
             </div>
             <div className="tc">
-              <div className="quote">·</div>
+              <div className="tc-scene"><img src={scoutSeller} width="398" height="490" alt="A smiling seller checking his phone" loading="lazy" decoding="async" /></div>
               <blockquote>You sell on Instagram, TikTok or run a WhatsApp shopping group. You can share your link in places we can't reach.</blockquote>
               <div className="person"><i className="fab fa-instagram" style={{ fontSize: '36px', color: '#FCD34D', width: '44px', textAlign: 'center' }}></i><div className="who"><b>Social-media sellers</b><span>Strong online reach</span></div></div>
             </div>
             <div className="tc">
-              <div className="quote">·</div>
+              <div className="tc-scene"><img src={scoutGrad} width="408" height="530" alt="A smiling young woman in a blazer with her phone" loading="lazy" decoding="async" /></div>
               <blockquote>You're between jobs, a recent grad, or hustling. You're hungry, you know your neighbourhood, and you want a marketing career.</blockquote>
               <div className="person"><i className="fas fa-user-tie" style={{ fontSize: '36px', color: '#FCD34D', width: '44px', textAlign: 'center' }}></i><div className="who"><b>Job-seekers &amp; recent grads</b><span>Where most of our hires will come from</span></div></div>
             </div>

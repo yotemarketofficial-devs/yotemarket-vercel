@@ -49,14 +49,14 @@ const CHIPS = [
   { icon: 'store', text: 'Local shops & communities' },
   { icon: 'shield', text: 'Secure payments (M‑Pesa escrow)' },
   { icon: 'key', text: 'Collect with a one-time code' },
-  { icon: 'pin', text: 'Built in Nairobi, for Kenya' },
+  { icon: 'coins', text: 'No commission on sales' },
 ];
 
 const VALUES = [
-  { icon: 'users', title: 'Support local', text: 'Keep money in local communities and help Kenyan businesses grow.' },
-  { icon: 'shield', title: 'Create opportunities', text: 'Let merchants, scouts and riders earn on their own terms.' },
-  { icon: 'rocket', title: 'Make life easier', text: 'Give shoppers a simple, secure way to shop and pay.' },
-  { icon: 'heart', title: 'Build a stronger Kenya', text: 'More local commerce, more work, more thriving communities.' },
+  { icon: 'users', title: 'Support local', text: 'No commission on sales: local shops keep every shilling they sell.' },
+  { icon: 'shield', title: 'Create opportunities', text: 'Scouts earn for each verified merchant they bring. Riders can apply now for when runs restart.' },
+  { icon: 'rocket', title: 'Make life easier', text: 'Chat with the seller, agree a price, pay by M\u2011Pesa and collect with a code.' },
+  { icon: 'heart', title: 'Built for Kenya', text: 'Prices in shillings, M\u2011Pesa checkout, and local stores you can visit.' },
 ];
 
 const ROLES = [
@@ -65,16 +65,16 @@ const ROLES = [
   { key: 'sell', img: roleSell, icon: 'store', title: 'Merchants', to: '/pricing', alt: 'A merchant in a YoteMarket apron with his laptop',
     text: 'Get a branded storefront from Ksh 500 a month, sell with YoteFeed videos and YoteAI, take M‑Pesa payments, and add POS on Growth.' },
   { key: 'earn', img: roleEarn, icon: 'megaphone', title: 'Marketers', to: '/marketers', alt: 'A YoteMarket scout with a megaphone and her phone',
-    text: 'Sign up local shops as a scout and earn for every verified merchant you bring on.' },
+    text: 'Refer local merchants as a scout and get paid to your M\u2011Pesa for each one that gets verified.' },
   { key: 'ride', img: roleRide, icon: 'scooter', title: 'Riders', to: '/rider', alt: 'A YoteMarket rider with his delivery box, giving a thumbs up',
-    text: 'Sign up to carry batched orders from shops to pickup hubs, on your own hours, paid per run.' },
+    text: 'Apply to ride on your own hours, carrying batched orders from shops to pickup hubs, paid per run to your M\u2011Pesa.' },
 ];
 
 const BUILT = [
-  { art: <img className="ab-mpesa" src={mpesaLogo} alt="M-Pesa" width="480" height="141" loading="lazy" decoding="async" />, title: 'M‑Pesa', text: 'Escrow checkout and wallet payouts.' },
+  { art: <img className="ab-mpesa" src={mpesaLogo} alt="M-Pesa" width="480" height="141" loading="lazy" decoding="async" />, title: 'M‑Pesa', text: 'Checkout held in escrow; withdraw to M‑Pesa when you like.' },
   { art: <span className="pg-ic is-sm"><Icon name="key" /></span>, title: 'Store pickup', text: 'Collect with a one-time code.' },
   { art: <span className="pg-ic is-sm"><YoteAiMark size={20} /></span>, title: 'YoteAI', text: 'Finds products for shoppers and drafts copy for sellers.' },
-  { art: <span className="pg-ic is-sm"><YoteFeedMark size={20} /></span>, title: 'YoteFeed', text: 'Shoppable videos from local stores.' },
+  { art: <span className="pg-ic is-sm"><YoteFeedMark size={20} /></span>, title: 'YoteFeed', text: 'Short shop videos: tap Buy to add the tagged product.' },
 ];
 
 function About() {
@@ -83,11 +83,11 @@ function About() {
       <PageHero
         className="ab-hero"
         pill={{ icon: 'store', text: 'About YoteMarket' }}
-        title={<>Local shops. Real people.<br /><span className="g">Real impact.</span></>}
-        lead="YoteMarket is Kenya's virtual mall: local shops get their own branded storefront, shoppers chat, negotiate and pay with M‑Pesa, and scouts earn by bringing shops online."
-        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 775, height: 269,
+        title={<>Local shops. Real people.<br /><span className="g">One Kenyan mall.</span></>}
+        lead="YoteMarket is Kenya's virtual mall: local shops sell from their own storefronts, shoppers chat, pay by M‑Pesa and collect, and scouts earn for each merchant they bring."
+        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 782, height: 263,
           alt: 'A smiling merchant in a YoteMarket apron at her stall beside a "Support Local Business" chalkboard, with shoppers behind her' }}
-        note={'Kenyan businesses.\nBigger tomorrows.'}
+        note={'Kenyan shops.\nOpen online.'}
       >
         <ul className="ab-chips">
           {CHIPS.map((c) => <li key={c.text}><span className="pg-ic is-sm"><Icon name={c.icon} /></span>{c.text}</li>)}
@@ -101,11 +101,10 @@ function About() {
             <div>
               <h2 className="pg-h2">Why we built YoteMarket</h2>
               <p>
-                We saw the potential in Kenya&rsquo;s local businesses — and the challenges they face. Many great shops
-                lack an online presence, easy access to customers and the right tools to grow. At the same time,
-                shoppers want a simpler, safer and more local way to shop.
+                We saw great local shops with no simple way to sell online, take M&#8209;Pesa orders or keep track of
+                their stock — and shoppers who wanted to buy from them safely.
               </p>
-              <p><b>That&rsquo;s why we built YoteMarket — to connect, empower and grow together.</b></p>
+              <p><b>So we built YoteMarket: one virtual mall to connect them.</b></p>
             </div>
           </div>
           <ul className="ab-values">
@@ -124,7 +123,7 @@ function About() {
         <div className="pg-wrap">
           <div className="pg-head is-center">
             <h2 className="pg-h2">One platform, every role</h2>
-            <p className="pg-sub">YoteMarket brings together everyone in local commerce.</p>
+            <p className="pg-sub">YoteMarket connects shoppers, merchants, marketers and riders in one place.</p>
           </div>
           <div className="ab-roles">
             {ROLES.map((r) => (
@@ -141,7 +140,7 @@ function About() {
           <div className="pg-strip ab-built">
             <div className="ab-built-copy">
               <h2>Built for local business</h2>
-              <p>The tools that make a real difference to Kenyan commerce.</p>
+              <p>The tools a Kenyan shop needs to sell online, in one place.</p>
             </div>
             <ul>
               {BUILT.map((b) => (
@@ -221,7 +220,7 @@ function About() {
             <span className="pg-ic ab-grow-ic"><Icon name="chart" /></span>
             <div>
               <h2>Grow with YoteMarket</h2>
-              <p>Join the Kenyan shops, shoppers, scouts and riders building a stronger local economy.</p>
+              <p>Open your store, start shopping, or earn with us.</p>
             </div>
             <div className="ab-grow-cta">
               <Link className="pg-btn is-white" to="/dashboard">Start selling <Icon name="arrow" /></Link>
