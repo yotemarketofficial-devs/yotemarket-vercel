@@ -33,14 +33,6 @@
 .kit-earn a{ color: inherit; }
 
 
-.kit-earn .topbar{ position: sticky; top: 0; z-index: 50; background: rgba(16, 6, 50, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.08); }
-.kit-earn .topbar-inner{ max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-.kit-earn .top-logo{ display: flex; align-items: center; gap: 10px; }
-.kit-earn .top-logo img{ height: 28px; }
-.kit-earn .top-logo .badge{ background: rgba(252,211,77,0.15); color: var(--gold-300); padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-.kit-earn .top-cta{ display: flex; align-items: center; gap: 14px; }
-.kit-earn .top-cta .calc-link{ color: var(--mute); font-size: 14px; font-weight: 500; text-decoration: none; display: flex; align-items: center; gap: 6px; }
-.kit-earn .top-cta .calc-link:hover{ color: var(--gold-300); }
 
 
 .kit-earn .hero{ position: relative; padding: 60px 24px 90px; overflow: hidden; background: var(--bg-marketing-deep); }
@@ -182,9 +174,62 @@
   .kit-earn form .row{ grid-template-columns: 1fr; }
   /* Header on phones: drop the decorative badge so the logo + Sign in + Apply
      now no longer overflow / squeeze. */
-  .kit-earn .topbar-inner{ padding: 12px 18px; }
-  .kit-earn .top-logo .badge{ display: none; }
-  .kit-earn .top-cta{ gap: 10px; }
-}
+      }
 
 .kit-earn{min-height:100vh;}
+
+
+/* ── Light theme ──────────────────────────────────────────────────────────────
+   The landing wears the site header and follows its theme toggle (html.dark). In light
+   mode the page turns pale like the rest of the site; the hero and the payout
+   calculator stay deep purple bands (as the homepage's merchant and CTA bands do), and
+   the purple cards keep their own colours. Gold text, unreadable on a pale ground,
+   becomes the dark gold the homepage uses there. */
+html:not(.dark) .kit-earn{background:#F8F7FE; color:#15114A;}
+html:not(.dark) .kit-earn .hero{color:#fff;}
+html:not(.dark) .kit-earn .apply-card .section-eyebrow{color:var(--gold-300);}
+html:not(.dark) .kit-earn .calculator{background:linear-gradient(160deg,#2a0e64 0%,#3a1a78 55%,#5b2c9c 100%); color:#fff;}
+html:not(.dark) .kit-earn .pitch,
+html:not(.dark) .kit-earn .earnings,
+html:not(.dark) .kit-earn .apply{background:#F8F7FE;}
+html:not(.dark) .kit-earn .how,
+html:not(.dark) .kit-earn .testimonials{background:#F3EEFE;}
+html:not(.dark) .kit-earn .kit{background:#F3EEFE; border-top-color:#E6DDF7;}
+
+html:not(.dark) .kit-earn section:not(.hero):not(.calculator) .section-eyebrow{color:#8A4E00;}
+html:not(.dark) .kit-earn section:not(.hero):not(.calculator) .section-h{color:#15114A;}
+html:not(.dark) .kit-earn section:not(.hero):not(.calculator) .section-h em{color:#A35E00;}
+html:not(.dark) .kit-earn section:not(.hero):not(.calculator) .section-sub{color:#4A4672;}
+html:not(.dark) .kit-earn section:not(.hero):not(.calculator) .btn-ghost-light{color:#4F14BC; border-color:#6A1FD6;}
+html:not(.dark) .kit-earn section:not(.hero):not(.calculator) .btn-ghost-light:hover{background:rgba(106,31,214,.06);}
+
+html:not(.dark) .kit-earn .step{background:#fff; border-color:#EAE3F7; box-shadow:0 14px 30px -26px rgba(60,20,110,.45);}
+html:not(.dark) .kit-earn .step:hover{background:#fff; border-color:#F4D58A;}
+html:not(.dark) .kit-earn .step-n{color:rgba(163,94,0,.35);}
+html:not(.dark) .kit-earn .step h5{color:#15114A;}
+html:not(.dark) .kit-earn .step p{color:#4A4672;}
+html:not(.dark) .kit-earn .step p strong{color:#8A4E00 !important;}
+
+html:not(.dark) .kit-earn .ec{background:#fff; border-color:#EAE3F7; box-shadow:0 14px 30px -26px rgba(60,20,110,.45);}
+html:not(.dark) .kit-earn .ec.featured{background:linear-gradient(160deg,#FFF6DD,#FFFBF0); border-color:#F4D58A;}
+html:not(.dark) .kit-earn .ec .ec-stage{color:#8A4E00;}
+html:not(.dark) .kit-earn .ec .ec-pay{color:#A35E00;}
+html:not(.dark) .kit-earn .ec.locked .ec-pay{color:rgba(163,94,0,.5);}
+html:not(.dark) .kit-earn .ec .ec-when{color:#4A4672;}
+html:not(.dark) .kit-earn .ec ul{color:#15114A;}
+html:not(.dark) .kit-earn .ec ul li::before{color:#0E8A57; background:rgba(16,185,129,.14);}
+html:not(.dark) .kit-earn .ec.locked ul li::before{color:#8C86A8; background:rgba(21,17,74,.06);}
+
+html:not(.dark) .kit-earn .tc{background:#fff; border-color:#EAE3F7; box-shadow:0 14px 30px -26px rgba(60,20,110,.45);}
+html:not(.dark) .kit-earn .tc .quote{color:#F4B530; opacity:.7;}
+html:not(.dark) .kit-earn .tc blockquote{color:#15114A;}
+html:not(.dark) .kit-earn .tc .person .who b{color:#15114A;}
+html:not(.dark) .kit-earn .tc .person .who span{color:#8A4E00;}
+
+html:not(.dark) .kit-earn .kit h6{color:#8A4E00;}
+html:not(.dark) .kit-earn .kit-tile{background:#fff; border-color:#EAE3F7; color:#15114A;}
+html:not(.dark) .kit-earn .kit-tile:hover{background:#FFFBF0; border-color:#F4D58A;}
+html:not(.dark) .kit-earn .kit-tile i{color:#A35E00;}
+html:not(.dark) .kit-earn .kit-tile span{color:#4A4672;}
+html:not(.dark) .kit-earn .footer-strip{color:#6B6790; border-top-color:#E6DDF7;}
+html:not(.dark) .kit-earn .footer-strip .contact i{color:#A35E00;}

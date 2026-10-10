@@ -49,18 +49,6 @@ export default function EarnLanding() {
 
   return (
     <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="top-logo">
-            <img src="/assets/logo-white.png" alt="YoteMarket" />
-            <span className="badge">Marketer Program</span>
-          </div>
-          <div className="top-cta">
-            <Link className="calc-link" to="/marketers/app"><i className="fas fa-right-to-bracket"></i> Sign in</Link>
-            <a className="btn-gold" href="#apply" style={{ padding: '10px 22px', fontSize: '14px' }}>Apply now</a>
-          </div>
-        </div>
-      </header>
 
       {/* ===== HERO ===== */}
       <section className="hero" style={{ paddingTop: '60px' }}>

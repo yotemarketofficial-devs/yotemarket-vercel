@@ -608,6 +608,11 @@ html:not(.dark){--nav-bg:#F6F4FE;}
    design puts them (x=478 at 1536px), whatever the logo file's own proportions. */
 .logo-link{display:flex; align-items:center; flex:none; min-width:clamp(0px,17.3vw,266px);}
 .nav .logo{height:50px; width:auto;}
+/* a page's own tag beside the logo (the Marketer Program landing) */
+.nav-badge{margin-left:10px; padding:4px 10px; border-radius:999px; background:#EEE8FD; color:#5216BF;
+  font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif; font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; white-space:nowrap;}
+html.dark .nav-badge{background:rgba(185,123,255,.14); color:#D2B4FF;}
+@media (max-width:1180px){ .nav-badge{display:none;} }
 /* starts 136px after the logo at 1536px (the mockup's spacing), less the row gap */
 .nav .links{gap:33px; margin:0 auto 0 clamp(0px,calc(8.85vw - 24px),112px); font-family:'Plus Jakarta Sans','Poppins',system-ui,sans-serif;}
 .nav .links a{position:relative; padding:27px 0; font-size:13.75px; font-weight:500; color:#1F1A4D; white-space:nowrap;}

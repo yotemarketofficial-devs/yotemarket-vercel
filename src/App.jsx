@@ -15,6 +15,8 @@ import DeleteAccount from './pages/DeleteAccount.jsx';
 import NotFound from './components/NotFound.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import KitFrame from './components/KitFrame.jsx';
+import SiteHeader from './components/SiteHeader.jsx';
+import { useSiteTheme } from './lib/useSiteTheme.js';
 import GoogleOneTap from './components/GoogleOneTap.jsx';
 import Analytics from './components/Analytics.jsx';
 import CookieConsent from './components/CookieConsent.jsx';
@@ -32,6 +34,29 @@ const StorefrontApp = lazy(() => import('./kits/storefront/index.jsx'));
 const DashboardApp = lazy(() => import('./kits/dashboard/gated.jsx'));
 const MarketersApp = lazy(() => import('./kits/marketers/index.jsx'));
 const EarnLanding = lazy(() => import('./kits/earn/index.jsx'));
+
+// The Marketer Program landing wears the site's own header (logo home, main nav, theme
+// toggle) with its own calls to action, outside the kit's scoped CSS so the kit can't
+// restyle it. The kit follows the theme through html.dark (see kits/earn/earn.css).
+function MarketersLanding() {
+  const [dark, setDark] = useSiteTheme();
+  return (
+    <>
+      <SiteHeader
+        dark={dark}
+        onToggle={() => setDark((d) => !d)}
+        badge="Marketer Program"
+        cta={[
+          { label: 'Sign in', to: '/marketers/app', kind: 'login' },
+          { label: 'Apply now', href: '#apply', kind: 'start' },
+        ]}
+      />
+      <KitFrame scope="kit-earn">
+        <EarnLanding />
+      </KitFrame>
+    </>
+  );
+}
 const StaffApp = lazy(() => import('./kits/staff/index.jsx'));
 const HubApp = lazy(() => import('./kits/hub/index.jsx'));
 const PosApp = lazy(() => import('./kits/pos/index.jsx'));
@@ -103,11 +128,7 @@ function App() {
             the scout app itself lives at /marketers/app */}
         <Route
           path="/marketers"
-          element={
-            <KitFrame scope="kit-earn">
-              <EarnLanding />
-            </KitFrame>
-          }
+          element={<MarketersLanding />}
         />
         <Route
           path="/marketers/app"
