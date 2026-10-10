@@ -85,7 +85,7 @@ function About() {
         pill={{ icon: 'store', text: 'About YoteMarket' }}
         title={<>Local shops. Real people.<br /><span className="g">One Kenyan mall.</span></>}
         lead="YoteMarket is Kenya's virtual mall: local shops sell from their own storefronts, shoppers chat, pay by M‑Pesa and collect, and scouts earn for each merchant they bring."
-        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 775, height: 269,
+        art={{ src: stallPhoto, src2x: stallPhoto2x, width: 782, height: 263,
           alt: 'A smiling merchant in a YoteMarket apron at her stall beside a "Support Local Business" chalkboard, with shoppers behind her' }}
         note={'Kenyan shops.\nOpen online.'}
       >
